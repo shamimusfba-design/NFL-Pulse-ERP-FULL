@@ -1,0 +1,272 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  BLOCKED
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  NORMAL
+  HIGH
+  CRITICAL
+}
+
+enum OrderSource {
+  MANUAL
+  IMPORT
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  name          String
+  passwordHash  String
+  active        Boolean        @default(true)
+  roles         UserRole[]
+  refreshTokens RefreshToken[]
+  tasks         Task[]         @relation("TaskOwner")
+  ordersCreated Order[]        @relation("OrderCreator")
+  auditLogs     AuditLog[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  code        String           @unique
+  name        String
+  users       UserRole[]
+  permissions RolePermission[]
+  createdAt   DateTime         @default(now())
+}
+
+model Permission {
+  id    String           @id @default(cuid())
+  code  String           @unique
+  name  String
+  roles RolePermission[]
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  @@id([userId, roleId])
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  @@id([roleId, permissionId])
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+}
+
+model Factory {
+  id         String        @id @default(cuid())
+  code       String        @unique
+  name       String
+  active     Boolean       @default(true)
+  sections   Section[]
+  orders     Order[]
+  sequences  JobSequence[]
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+}
+
+model Section {
+  id        String    @id @default(cuid())
+  factoryId String
+  name      String
+  code      String
+  active    Boolean   @default(true)
+  factory   Factory   @relation(fields: [factoryId], references: [id], onDelete: Cascade)
+  floors    Floor[]
+  @@unique([factoryId, code])
+}
+
+model Floor {
+  id        String    @id @default(cuid())
+  sectionId String
+  name      String
+  code      String
+  active    Boolean   @default(true)
+  section   Section   @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  lines     Line[]
+  @@unique([sectionId, code])
+}
+
+model Line {
+  id             String        @id @default(cuid())
+  floorId        String
+  code           String
+  name           String
+  active         Boolean       @default(true)
+  effectiveFrom  DateTime      @default(now())
+  effectiveTo    DateTime?
+  floor          Floor         @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  machinePools   MachinePool[]
+  @@unique([floorId, code])
+}
+
+model MachinePool {
+  id          String   @id @default(cuid())
+  lineId      String
+  name        String
+  machineCount Int
+  capability  Json?
+  active      Boolean  @default(true)
+  line        Line     @relation(fields: [lineId], references: [id], onDelete: Cascade)
+}
+
+model Buyer {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  active    Boolean  @default(true)
+  orders    Order[]
+  createdAt DateTime @default(now())
+}
+
+model Order {
+  id             String       @id @default(cuid())
+  jobNo          String       @unique
+  factoryId      String
+  buyerId        String
+  merchandiserId String?
+  source         OrderSource  @default(MANUAL)
+  totalQty       Int
+  sourceMetadata Json?
+  confirmedAt    DateTime     @default(now())
+  factory        Factory      @relation(fields: [factoryId], references: [id])
+  buyer          Buyer        @relation(fields: [buyerId], references: [id])
+  createdById    String
+  createdBy      User         @relation("OrderCreator", fields: [createdById], references: [id])
+  styles         Style[]
+  tasks          Task[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model Style {
+  id              String           @id @default(cuid())
+  orderId         String
+  styleNo         String
+  itemDescription String?
+  quantity        Int
+  collection      String?
+  season          String?
+  sourceMetadata  Json?
+  order           Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  breakdowns      StyleBreakdown[]
+  purchaseOrders  PurchaseOrder[]
+  @@unique([orderId, styleNo])
+}
+
+model StyleBreakdown {
+  id        String @id @default(cuid())
+  styleId   String
+  color     String
+  colorCode String?
+  size      String
+  qty       Int
+  ean       String?
+  style     Style  @relation(fields: [styleId], references: [id], onDelete: Cascade)
+  @@unique([styleId, color, size])
+}
+
+model PurchaseOrder {
+  id             String                   @id @default(cuid())
+  styleId        String
+  poNumber       String
+  referenceType  String                   @default("PO")
+  totalQty       Int
+  ccd            DateTime?
+  shipmentDate   DateTime?
+  cancelDate     DateTime?
+  destination    String?
+  market         String?
+  sourceMetadata Json?
+  style          Style                    @relation(fields: [styleId], references: [id], onDelete: Cascade)
+  breakdowns     PurchaseOrderBreakdown[]
+  @@unique([styleId, poNumber])
+}
+
+model PurchaseOrderBreakdown {
+  id              String        @id @default(cuid())
+  purchaseOrderId String
+  color           String
+  colorCode       String?
+  size            String
+  qty             Int
+  ean             String?
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  @@unique([purchaseOrderId, color, size])
+}
+
+model JobSequence {
+  id        String  @id @default(cuid())
+  factoryId String
+  year      Int
+  lastValue Int     @default(0)
+  factory   Factory @relation(fields: [factoryId], references: [id], onDelete: Cascade)
+  @@unique([factoryId, year])
+}
+
+model Task {
+  id            String       @id @default(cuid())
+  title         String
+  module        String
+  entityType    String
+  entityId      String
+  orderId       String?
+  order         Order?       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  ownerUserId   String?
+  ownerUser     User?        @relation("TaskOwner", fields: [ownerUserId], references: [id])
+  ownerRoleCode String?
+  status        TaskStatus   @default(PENDING)
+  priority      TaskPriority @default(NORMAL)
+  dueAt         DateTime?
+  blockedReason String?
+  completedAt   DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  @@index([ownerUserId, status])
+  @@index([ownerRoleCode, status])
+  @@index([module, entityId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String
+  entityType String
+  entityId   String
+  before     Json?
+  after      Json?
+  createdAt  DateTime @default(now())
+  @@index([entityType, entityId])
+}

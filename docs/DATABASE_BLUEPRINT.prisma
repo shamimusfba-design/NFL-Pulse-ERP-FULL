@@ -1,0 +1,11 @@
+// CANONICAL FUTURE DATABASE BLUEPRINT
+// This is a review blueprint for IT discussion. It is intentionally separate from the
+// currently runnable apps/api/prisma/schema.prisma so the foundation is not broken before review.
+
+enum RecordStatus { DRAFT ACTIVE COMPLETED CANCELLED }
+enum ReadinessStatus { PENDING READY BLOCKED }
+enum PlanChangeStatus { REQUESTED ACCEPTED REJECTED CANCELLED }
+enum InspectionType { INTERNAL_PRE_FINAL INTERNAL_FINAL BUYER_FINAL }
+enum InspectionResult { PENDING PASS FAIL REINSPECTION_REQUIRED }
+
+a model-placeholder-is-not-valid-prisma "See docs/DATABASE_MODEL.md for full entity contract"

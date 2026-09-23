@@ -1,0 +1,20 @@
+{
+  "name": "nfl-pulse-erp",
+  "version": "0.4.2",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n API,WEB -c auto \"npm run dev -w @nfl/api\" \"npm run dev -w @nfl/web\"",
+    "build": "npm run build -w @nfl/api && npm run build -w @nfl/web",
+    "db:generate": "npm run prisma:generate -w @nfl/api",
+    "db:migrate": "npm run prisma:migrate -w @nfl/api",
+    "db:seed": "npm run prisma:seed -w @nfl/api",
+    "demo:seed": "npm run prisma:demo-seed -w @nfl/api",
+    "demo:clear": "npm run prisma:demo-clear -w @nfl/api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
