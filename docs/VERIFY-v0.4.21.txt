@@ -1,0 +1,42 @@
+NFL Pulse ERP v0.4.21 — Verification Summary
+Date: 2026-09-24
+
+PACKAGE CONTENT
+- API package version: 0.4.21
+- Web package version: 0.4.21
+- One-click launcher: START-NFL-PULSE.bat
+- Clean operational reset: RESET-ALL-ERP-DATA-KEEP-USERS.bat
+- Canonical demo workbook included under demo-import/
+
+APPROVED PHYSICAL LINE MODEL
+- NFL: 52 Gantt physical rows
+- NCL: 39 Gantt physical rows
+- Total: 91
+- NFL shifting main lines: D1,D2,E1,E2,F,G1,G2,H1,H2,U,V1,V2,W1,W2,ZA1,ZA2
+- Shifting capacity: 16h/day (8h A + 8h B), OT = 0
+- NFL general/NCL lines: configurable normal hours; 8–13h typical
+- CB normalizes to C2
+- ZA1A/ZA1B -> ZA1; ZA2A/ZA2B -> ZA2
+- NCL A/B names remain separate physical lines
+
+CANONICAL DEMO WORKBOOK
+- Sheet ERP_MASTER_IMPORT: 2,000 data rows
+- 127 columns
+- 500 rows each for Aug, Sep, Oct, Nov 2026
+- Sheet MASTER_LINES: 91 data rows
+- 2,000 unique Job_No values
+- ERP-created history spans Apr-Sep 2026 for a ~6 month running-system feel
+- Real source backbone is retained where available; generated values are source/data-quality tagged
+
+GANTT PERFORMANCE CHANGES
+- Date-window API loading
+- Direct Style query rather than loading all Orders + Styles
+- Indexed floor/day and line/day load calculations
+- Jobs indexed by physical line for rendering
+- Server-side job find outside active window
+- Local edit state retained until save/confirm
+
+STATIC CODE CHECK
+- Modified TS/TSX files were syntax-checked without syntax diagnostics.
+- Full npm dependency install/build could not be completed in the artifact environment because npm install timed out.
+- START-NFL-PULSE.bat performs install, Prisma generate/db push, master seed, and API build on the user's PC and stops if build fails.

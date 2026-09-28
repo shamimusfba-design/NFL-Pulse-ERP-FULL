@@ -1,0 +1,16 @@
+NFL Pulse ERP v0.4.19 — verification notes
+
+Static/source verification performed in build environment:
+- 67 TS/TSX files transpile-syntax checked: 0 diagnostics.
+- Cleaner unit checks passed for Buyer alias, line split, GTA separation, DB Tec typo correction, status correction, merchandiser exact match, and Job No short-form preservation.
+- Approved master counts verified: 12 buyers, 43 sewing lines, 37 merchandisers, 16 present statuses.
+
+Report analysis checks:
+- T&A Central Report: 2066 numeric job rows; 0 unknown Buyer aliases; 0 unknown approved Merchandiser values.
+- T&A unapproved line-like values remain REVIEW only, not dropdown masters: NFL3, NCL, NFL1, Q1, o1, NCL3, NFL2, NCL2.
+- IE September: 56 numeric job rows; 0 unknown Buyer aliases; line O remains REVIEW because it is outside the approved 43.
+- Finish Fabric September: 1372 numeric-looking rows; 1344 have valid approved Buyer values; 28 summary/total/factory/process rows are rejected by Buyer validation instead of becoming ERP masters.
+- Factory combinations such as GTA+Ceylon and U-02+JB Tex are split; GTA remains separate from Giant-Tex; DB Tec normalizes to DB Tex.
+
+Runtime limitation of build environment:
+- A complete npm install / Nest build could not be executed here because npm registry access timed out. The Windows launcher still runs npm install, prisma generate/db push, master cleanup, and npm run build before opening the ERP. If build fails on the target PC, the launcher stops instead of opening a partially working frontend.

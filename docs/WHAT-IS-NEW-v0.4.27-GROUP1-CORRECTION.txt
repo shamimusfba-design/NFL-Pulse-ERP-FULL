@@ -1,0 +1,19 @@
+NFL Pulse ERP v0.4.27 — GROUP 1 CORRECTION
+
+1. Merchandiser privacy / ownership
+- MERCH_SAMPLE, MERCH_BULK and MERCH_BOTH users see only orders assigned to their user ID.
+- ADMIN and MERCH_HEAD can see team/all jobs.
+- Strict ownership is enforced server-side in Orders, Company Forms and Production Lots.
+
+2. Color x Size visibility
+- Merchandising Follow-up now has a View Size-wise button per style.
+- The modal shows overall Style Color x Size and each PO/Market Color x Size.
+- PO/Market Production Lots now has View size-wise breakdown under every reference before selecting it.
+- Combined selected Color x Size remains available for lot creation.
+
+3. Fabric Order Sheet sync
+- Company Forms has Sync Order / Size Data.
+- Existing forms can pull latest Buyer/Job/PO-Market/Color x Size without overwriting manual fabric requirement/consumption fields.
+- Bulk Fabric Order falls back to PO/Market breakdowns when style-level breakdown is missing.
+
+No DB reset is required.

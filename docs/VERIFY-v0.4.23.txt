@@ -1,0 +1,10 @@
+NFL Pulse ERP v0.4.23 verification performed in build workspace
+
+- Based on cumulative v0.4.22 package.
+- Added DocumentsController and registered it in AppModule.
+- Added Forms & Print Documents UI and company-form A4 print route.
+- Added locked source template references under docs/form-templates.
+- Updated OVS parser to MARKET reference model and OVS layout extraction.
+- Updated Order Entry preview wording for PO / Market / Order references.
+- TypeScript parser scan: 61 TS/TSX application files, 0 syntax diagnostics.
+- Full npm install/build could not complete in the build environment because npm install timed out; START-NFL-PULSE.bat performs the real dependency install/build on the Windows machine and stops on build failure.

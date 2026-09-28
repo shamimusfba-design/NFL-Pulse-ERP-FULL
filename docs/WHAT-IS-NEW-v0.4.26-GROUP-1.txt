@@ -1,0 +1,44 @@
+NFL Pulse ERP v0.4.26 — GROUP 1: MERCHANDISING & ORDER FOUNDATION
+
+1) BUYER-SPECIFIC IMPORT
+- Bestseller family: ONLY / Name It / Only & Sons retains exact PO-level Color x Size plus style total.
+- UTG Production Card parser built against the supplied BAD1812L, BAD3104A and BAD3164A PDFs.
+- OVS Product Brief parser built against the supplied 271PJA416SP-903 document.
+- OVS Style Code remains Style No; no fake/traditional PO is created. Country/Market is stored as a MARKET reference.
+
+2) PRODUCTION LOT / PO GROUP
+- New ProductionLot and ProductionLotAllocation data models.
+- Select one or many POs/Order references for a shipment.
+- OVS selects one or many Country/Markets instead.
+- Same-date references can be selected together with one click.
+- Exact combined Color x Size matrix is calculated from selected references.
+- Partial color/size allocation is supported.
+- Draft lots reserve qty immediately so the same source quantity cannot be allocated twice.
+- Cancelled Draft/Approved lots release reserved qty; Released lots can only proceed to Closed.
+- Allocated and Remaining qty shown per reference and style.
+- IE and Planning roles can open the same Production Lot workspace in read-only mode.
+
+3) MANUAL ORDER ENTRY UPGRADE
+- Multiple PO/Order references per style.
+- OVS manual entry uses Country/Market rows.
+- Each reference can have its own Color x Size breakdown and shipment date.
+- Style overall Color x Size auto-aggregates from reference breakdowns.
+- Warnings are raised if reference totals / breakdown totals do not reconcile.
+- New lightweight repeat-job base endpoint prevents loading full order payload just to populate the Repeat Job selector.
+
+4) PERFORMANCE / SCALE
+- Production Lot job/style search is server-side (latest 40 by default; up to 80 search matches).
+- No longer loads the full 250-order payload with breakdowns just to search Production Lots.
+- Order Entry no longer loads the heavy /orders dataset for the Repeat Job dropdown.
+
+5) COMPANY FORMS
+- SMS Sample Order, T&A/TNF Plan and Bulk Fabric Order remain under Forms & Print Documents.
+- A new form can use Whole Style or a selected Production Lot scope.
+- Lot-scoped forms auto-fill only the selected PO/Market refs and lot Color x Size qty.
+- Sample Merchandiser, Bulk Merchandiser and Planning now have the correct Forms navigation access.
+- Original source Excel templates remain unchanged in docs/form-templates.
+
+6) SAFETY / AUDIT
+- Production Lot create and status changes are written to AuditLog.
+- Quantity reuse protection is validated server-side, not only in the browser.
+- Ambiguous/missing reference breakdown is not guessed; UI asks for latest re-import/manual detail.

@@ -4,21 +4,22 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { MODULE_GROUPS, ModuleGroup } from '../lib/modules';
+import GlobalStickyScrollbar from './GlobalStickyScrollbar';
 
 function roleFilteredGroups(groups: ModuleGroup[], roles: string[]): ModuleGroup[] {
   if (!roles.length || roles.includes('ADMIN')) return groups;
   const allowed: Record<string, string[]> = {};
   const add = (group: string, slugs: string[]) => { allowed[group] = [...(allowed[group] || []), ...slugs]; };
 
-  if (roles.includes('MERCH_BULK')) add('Merchandising', ['merchandising']);
-  if (roles.includes('MERCH_SAMPLE')) add('Merchandising', ['sample-merchandising']);
-  if (roles.includes('MERCH_BOTH')) add('Merchandising', ['merchandising', 'sample-merchandising']);
-  if (roles.includes('MERCH_HEAD')) { add('Merchandising', ['merchandising', 'projection', 'sample-merchandising']); add('Sample / CAD / Technical', ['central-sample', 'sample-fabric-store', 'cad', 'technical']); }
-  if (roles.includes('IE')) add('Industrial Production Engineering', ['ie-overview', 'ie-bulletin', 'ie-daily-target', 'ie-npt', 'ie-skill-matrix', 'ie-production-checkpoints', 'ie-reports']);
+  if (roles.includes('MERCH_BULK')) add('Merchandising', ['merchandising', 'production-lots', 'forms-print']);
+  if (roles.includes('MERCH_SAMPLE')) add('Merchandising', ['sample-merchandising', 'forms-print']);
+  if (roles.includes('MERCH_BOTH')) add('Merchandising', ['merchandising', 'production-lots', 'sample-merchandising', 'forms-print']);
+  if (roles.includes('MERCH_HEAD')) { add('Merchandising', ['merchandising', 'production-lots', 'projection', 'sample-merchandising', 'forms-print']); add('Sample / CAD / Technical', ['central-sample', 'sample-fabric-store', 'cad', 'technical']); }
+  if (roles.includes('IE')) { add('Merchandising', ['production-lots']); add('Industrial Production Engineering', ['ie-overview', 'ie-bulletin', 'ie-daily-target', 'ie-mis-import', 'ie-npt', 'ie-qco', 'ie-line-performance', 'ie-responsibility', 'ie-skill-matrix', 'ie-production-checkpoints', 'ie-reports']); add('Management', ['kpi-board','kaizen']); }
   if (roles.includes('CAD')) add('Sample / CAD / Technical', ['cad', 'technical']);
   if (roles.includes('SAMPLE')) add('Sample / CAD / Technical', ['central-sample', 'sample-fabric-store']);
-  if (roles.includes('PLANNING')) { add('Central Planning', ['ta', 'capacity', 'sewing-planning', 'subcontract', 'lead-time-history']); add('Management', ['job-360']); }
-  if (roles.includes('MANAGEMENT')) { add('Management', ['management', 'job-360']); add('Central Planning', ['capacity', 'lead-time-history']); add('Quality & Stores', ['quality', 'quality-history']); add('Shipment & System', ['reports']); }
+  if (roles.includes('PLANNING')) { add('Merchandising', ['production-lots', 'forms-print']); add('Central Planning', ['ta', 'capacity', 'sewing-planning', 'subcontract', 'lead-time-history']); add('Management', ['job-360']); }
+  if (roles.includes('MANAGEMENT')) { add('Management', ['management', 'job-360', 'kpi-board', 'kaizen']); add('Central Planning', ['capacity', 'lead-time-history']); add('Quality & Stores', ['quality', 'quality-history']); add('Shipment & System', ['reports']); }
   if (roles.includes('QUALITY')) { add('Management', ['job-360']); add('Yarn & Fabric', ['lab']); add('Quality & Stores', ['quality', 'quality-history']); }
   if (roles.includes('YARN_MANAGEMENT')) add('Yarn & Fabric', ['yarn', 'yarn-store', 'yarn-dyeing', 'knitting']);
   if (roles.includes('PROCUREMENT')) add('Yarn & Fabric', ['procurement', 'yarn']);
@@ -33,10 +34,11 @@ function roleFilteredGroups(groups: ModuleGroup[], roles: string[]): ModuleGroup
   if (roles.includes('CUTTING')) add('Garment Production', ['cutting']);
   if (roles.includes('PRINTING')) add('Garment Production', ['printing']);
   if (roles.includes('EMBROIDERY')) add('Garment Production', ['embroidery']);
-  if (roles.includes('SEWING')) add('Garment Production', ['sewing']);
+  if (roles.includes('SEWING')) { add('Garment Production', ['sewing']); add('Industrial Production Engineering', ['ie-npt', 'ie-qco']); }
   if (roles.includes('FINISHING')) add('Garment Production', ['finishing']);
   if (roles.includes('TRIMS_STORE')) add('Quality & Stores', ['trims']);
   if (roles.includes('SHIPMENT')) add('Shipment & System', ['shipment', 'reports']);
+  if (roles.includes('MAINTENANCE')) add('Maintenance & Engineering', ['maintenance']);
 
   if (!Object.keys(allowed).length) return groups;
   return groups.map((group) => ({ ...group, items: group.items.filter((item) => (allowed[group.label] || []).includes(item.slug)) })).filter((group) => group.items.length);
@@ -59,7 +61,7 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
 
   useEffect(() => {
     const current = roleGroups.find((group) =>
-      group.items.some((item) => pathname.startsWith(`/modules/${item.slug}`)),
+      pathname.startsWith(`/modules/${group.overviewSlug}`) || group.items.some((item) => pathname.startsWith(`/modules/${item.slug}`)),
     );
     if (current) setOpenGroups((prev) => ({ ...prev, [current.label]: true }));
   }, [pathname, roleGroups]);
@@ -83,8 +85,8 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
     <div className="shell">
       <aside className="sidebar">
         <div className="brand-wrap">
-          <div className="brand-mark">NP</div>
-          <div><div className="brand">NFL Pulse ERP</div><div className="brand-sub">Operations Control</div></div>
+          <img className="brand-logo" src="/branding/northern-fashions-logo.jpg" alt="Northern Fashions Limited" />
+          <div><div className="brand">Northern Fashions Limited</div><div className="brand-sub">NFL Pulse ERP · Operations Control</div></div>
         </div>
 
         <div className="sidebar-search">
@@ -100,12 +102,17 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
 
           {groups.map((group) => {
             const isOpen = query.length > 0 || !!openGroups[group.label];
-            const hasActive = group.items.some((item) => active(`/modules/${item.slug}`));
+            const overviewHref = `/modules/${group.overviewSlug}`;
+            const hasActive = active(overviewHref) || group.items.some((item) => active(`/modules/${item.slug}`));
             return <div className={`nav-group ${isOpen ? 'open' : ''}`} key={group.label}>
-              <button type="button" className={`nav-group-toggle ${hasActive ? 'has-active' : ''}`} onClick={() => toggleGroup(group.label)} aria-expanded={isOpen}>
-                <span className="nav-group-title">{group.label}</span>
-                <span className={`nav-chevron ${isOpen ? 'open' : ''}`} aria-hidden="true">⌄</span>
-              </button>
+              <div className={`nav-group-toggle ${hasActive ? 'has-active' : ''}`}>
+                <Link className="nav-group-overview" href={overviewHref} title={`${group.label} overview`} onClick={() => setOpenGroups((prev) => ({ ...prev, [group.label]: true }))}>
+                  <span className="nav-group-title">{group.label}</span>
+                </Link>
+                <button type="button" className="nav-group-chevron-btn" onClick={() => toggleGroup(group.label)} aria-label={`${isOpen?'Collapse':'Expand'} ${group.label}`} aria-expanded={isOpen}>
+                  <span className={`nav-chevron ${isOpen ? 'open' : ''}`} aria-hidden="true">⌄</span>
+                </button>
+              </div>
               <div className={`nav-group-items ${isOpen ? 'open' : ''}`}>
                 {group.items.map((item) => {
                   const href = `/modules/${item.slug}`;
@@ -127,10 +134,11 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
           <div className="top-actions">
             <button className="icon-btn" title="Notifications">●</button>
             <div className="user-chip"><div className="avatar">{(user?.name || 'A').slice(0, 1).toUpperCase()}</div><div className="user-meta"><strong>{user?.name || 'NFL Pulse User'}</strong><span>{user?.roles?.join(', ') || 'Authorized user'}</span></div></div>
-            <button className="btn btn-secondary" onClick={logout}>Logout</button>
+            <button className="btn btn-secondary" onClick={logout}>Sign Out</button>
           </div>
         </header>
         {children}
+        <GlobalStickyScrollbar />
       </main>
     </div>
   );

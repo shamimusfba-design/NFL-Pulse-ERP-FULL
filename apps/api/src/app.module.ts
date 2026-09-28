@@ -16,10 +16,15 @@ import { CadController } from './cad';
 import { PlanningController } from './planning';
 import { DemoController } from './demo';
 import { IeController } from './ie';
+import { ImportsController } from './imports';
+import { DocumentsController } from './documents';
+import { ProductionLotsController } from './production-lots';
+import { MaintenanceController } from './maintenance';
+import { IeOperationsController } from './ie-operations';
 
 @Module({
   imports: [ConfigModule.forRoot({ isGlobal: true }), JwtModule.register({})],
-  controllers: [HealthController, AuthController, MastersController, OrdersController, OrderImportController, TasksController, DomainController, UploadsController, CadController, PlanningController, DemoController, IeController],
+  controllers: [HealthController, AuthController, MastersController, OrdersController, OrderImportController, TasksController, DomainController, UploadsController, CadController, PlanningController, DemoController, IeController, ImportsController, DocumentsController, ProductionLotsController, MaintenanceController, IeOperationsController],
   providers: [PrismaService, AuthService, JwtAuthGuard, OrderImportService, PdfTextService],
 })
 export class AppModule {}

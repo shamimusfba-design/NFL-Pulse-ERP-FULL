@@ -1,0 +1,8 @@
+NFL Pulse ERP v0.4.34
+
+1. Extract this ZIP over your working project folder.
+2. Keep your existing apps\api\.env.
+3. Run START-NFL-PULSE.bat.
+4. Confirm the header shows: NFL PULSE ERP v0.4.34 - GLOBAL DESIGN SYSTEM V1
+
+Existing database data is retained.

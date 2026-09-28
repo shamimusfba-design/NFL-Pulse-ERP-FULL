@@ -1,0 +1,22 @@
+NFL Pulse ERP v0.4.33 HOTFIX-2
+
+Corrections included:
+- Orders API no longer stops the job list at 250; up to 5,000 jobs are returned and the supplied 2,000-job workbook remains fully searchable.
+- ERP Master Import gets paged/searchable staged review, inline edits and Skip before commit.
+- IE Target Giving: removed redundant Floor dropdown; Sewing-1/2/3 buttons select the section.
+- IE Target Giving: manpower/efficiency moved to line level; job rows are compact; normal WIP optional, short WIP required.
+- Save Draft / Release flow uses the IE target API and gives visible success/error feedback.
+- Target context scans up to 5,000 styles so imported jobs are not hidden by a 1,200 style cap.
+- MIS Import remains MIS performance/history only; NPT/QCO/Bulletin/Skill stay in their own modules.
+- Line Performance: All Floors + Sewing-1/2/3 filters, 3 charts/row, SMV vs Efficiency with hover NPT/QCO/target/actual/OT.
+- Forms & Print: status dropdown removed; order-owned fields are AUTO; Bulk Fabric size structure no longer collapses to ALL; width columns are job/fabric-driven, not fixed 72/64/56.
+- Bulk Fabric print border/margin/readability corrections; missing values stay blank instead of fake zero where appropriate.
+- UI readability: clearer fonts, spacing, responsive mobile entry layout.
+- QCO shipped default rule correction: 15.01-18=180 min, 18.01-22=220 min, 22.01-30=250 min. Existing user-customized rules are not overwritten.
+
+Validation performed:
+- TypeScript/TSX syntax transpile scan over API + Web source.
+- ZIP integrity check before delivery.
+- Full npm Nest/Next compile is not available in this build container when dependencies are absent; START-NFL-PULSE.bat performs install/generate/schema/build on the user's PC.
+- NPT and QCO now have mobile-first quick-entry forms. IE and SEWING role users can save day-by-day NPT/QCO; QCO standards/import remain IE/Admin only.
+- QCO actual minutes auto-calculate from Actual Start -> First Good Output when the user does not enter minutes separately.

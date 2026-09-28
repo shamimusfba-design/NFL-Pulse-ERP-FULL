@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import { OrderImportPreview } from './order-import.types';
+import { validateImportedStyles } from './parser-utils';
 import { resolveJobNumber } from '../job-number';
 
 function toPrismaJson(value: unknown): Prisma.InputJsonValue | undefined {
@@ -24,11 +25,24 @@ export async function persistImportedOrder(args: {
 }) {
   const { prisma, preview, buyerId, merchandiserId, userId, approveNeedReview, jobType, repeatBaseJobNo, repeatLotNo } = args;
   if (!preview.styles?.length) throw new BadRequestException('Import preview has no styles');
-  const failedChecks = (preview.validation?.checks || []).filter((x) => !x.ok);
+  // Never trust a stale browser-side validation object after the merchandiser edits
+  // imported quantities during Review. Recalculate from the exact payload that will
+  // be persisted so wrong PO/Market or Color × Size totals cannot slip through.
+  const liveValidation = validateImportedStyles(preview.styles, preview.warnings || []);
+  preview.validation = liveValidation;
+  const failedChecks = liveValidation.checks.filter((x) => !x.ok);
   const hardFailures = failedChecks.filter((x) => x.code !== 'PARSER_WARNINGS');
-  if (hardFailures.length) throw new BadRequestException('Import totals do not reconcile. Correct the mismatches before confirming.');
-  if (preview.validation?.status !== 'VALIDATED' && !approveNeedReview) {
+  if (hardFailures.length) throw new BadRequestException('Import totals do not reconcile. Correct the Style / PO-Market / Color × Size mismatches before confirming.');
+  if (liveValidation.status !== 'VALIDATED' && !approveNeedReview) {
     throw new BadRequestException('Import needs review. Explicit approval is required before confirming parser warnings.');
+  }
+  const sourceFileSha256 = typeof preview.sourceMetadata?.fileSha256 === 'string' ? preview.sourceMetadata.fileSha256 : undefined;
+  if (sourceFileSha256) {
+    const duplicate = await prisma.order.findFirst({
+      where: { buyerId, source: 'IMPORT', sourceMetadata: { path: ['sourceFileSha256'], equals: sourceFileSha256 } },
+      select: { jobNo: true },
+    });
+    if (duplicate) throw new BadRequestException(`This exact buyer file was already imported as Job ${duplicate.jobNo}. Duplicate import blocked.`);
   }
 
   return prisma.$transaction(async (tx) => {
@@ -39,7 +53,7 @@ export async function persistImportedOrder(args: {
     const buyer = await tx.buyer.findUnique({ where: { id: buyerId } });
     if (!buyer) throw new BadRequestException('Buyer/Brand not found');
 
-    const job = await resolveJobNumber(tx, factory.id, { jobType, repeatBaseJobNo, repeatLotNo });
+    const job = await resolveJobNumber(tx, factory.id, { jobType, repeatBaseJobNo, repeatLotNo }, buyer.code || buyer.name);
     const jobNo = job.jobNo;
     const totalQty = preview.styles.reduce((s, x) => s + x.totalQty, 0);
 
@@ -56,11 +70,13 @@ export async function persistImportedOrder(args: {
           parserFamily: preview.parserFamily,
           parserVersion: preview.parserVersion,
           sourceFileName: preview.sourceFileName,
+          sourceFileSha256,
           sourceMetadata: preview.sourceMetadata ?? null,
           needReviewApproved: Boolean(approveNeedReview && preview.validation?.status !== 'VALIDATED'),
           jobType: job.jobType,
           baseJobNo: job.baseJobNo,
           lotNo: job.lotNo,
+          buyerShortCode: job.buyerShortCode,
         }),
         styles: {
           create: preview.styles.map((style) => ({

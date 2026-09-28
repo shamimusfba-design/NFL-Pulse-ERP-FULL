@@ -1,0 +1,49 @@
+NFL Pulse ERP v0.4.26 — GROUP 1 VERIFICATION
+
+SOURCE SYNTAX
+- TS/TSX source files checked: 71
+- Syntax diagnostics: 0
+
+REAL PDF PARSER TESTS (layout-preserving extraction)
+UTG BAD1812L
+- Style: 111099
+- Total: 800 pcs
+- Order ref: BAD1812L
+- Parser status: VALIDATED
+
+UTG BAD3104A
+- Style: 120428
+- Total: 700 pcs
+- Order ref: BAD3104A
+- Parser status: VALIDATED
+
+UTG BAD3164A
+- Style: 120538
+- Total: 2,000 pcs
+- 2 colors x exact size breakdown
+- Order ref: BAD3164A
+- Parser status: VALIDATED
+
+OVS 271PJA416SP-903
+- Style total: 43,366 pcs
+- 5 colors parsed exactly from page-1 summary
+- Country/Market refs parsed: 6
+  OVS ITALY 42,081
+  OVS WARM 574
+  OVS INDIA 77
+  OVS MIDDLE EAST 203
+  OVS COLD 371
+  REPL. HUB DUBAI 60
+- Market sum: 43,366
+- Parser status: VALIDATED
+- No traditional PO is invented.
+
+ORIGINAL COMPANY TEMPLATE REFERENCES
+- SMS source Excel and packaged master SHA-256 match exactly.
+- T&A/TNF source Excel and packaged master SHA-256 match exactly.
+- Bulk Fabric Order source Excel and packaged master SHA-256 match exactly.
+- Additional Bulk Fabric reference source and packaged copy SHA-256 match exactly.
+
+NOT FULLY VERIFIED HERE
+- Full npm install + Nest API build + Next runtime was not completed in this environment because npm dependency installation times out.
+- Windows launcher performs Prisma generate/db push and API compilation before it starts the ERP. If compilation fails, it stops rather than silently opening a broken build.

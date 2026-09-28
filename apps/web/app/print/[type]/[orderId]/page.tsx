@@ -3,21 +3,26 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { api } from '../../../../lib/api';
+import { displayJobNo } from '../../../../lib/display';
 
-const TA_ACTIVITIES = [
-  ['yarnDyeingStart', 'Yarn Dyeing T&A Start'], ['yarnDyeingEnd', 'Yarn Dyeing T&A End'],
-  ['knittingStart', 'Knitting T&A Start'], ['knittingEnd', 'Knitting T&A End'],
-  ['dyeingFinishingStart', 'Dyeing-Finishing T&A Start'], ['dyeingFinishingEnd', 'Dyeing-Finishing T&A End'],
-  ['aopStart', 'All Over Print T&A Start'], ['aopEnd', 'All Over Print T&A End'],
-  ['trimsInhouseDate', 'Trims & Accessories T&A End'], ['fileHandoverDate', 'Production & Other File Handover Date'],
-  ['ppMeetingDate', 'PP Meeting Date'], ['cuttingStart', 'Cutting T&A Start'], ['cuttingEnd', 'Cutting T&A End'],
-  ['printingStart', 'Printing T&A Start'], ['printingEnd', 'Printing T&A End'],
-  ['stoneStart', 'Stone / Pearl Attachment T&A Start'], ['stoneEnd', 'Stone / Pearl Attachment T&A End'],
-  ['embroideryStart', 'Emb / Sequins / Array Emb T&A Start'], ['embroideryEnd', 'Emb / Sequins / Array Emb T&A End'],
-  ['sewingStartDate', 'Sewing T&A Start'], ['sewingEnd', 'Sewing T&A End'],
-  ['garmentWashStart', 'Garments Washing / Dyeing T&A Start'], ['garmentWashEnd', 'Garments Washing / Dyeing T&A End'],
-  ['finishingEnd', 'Iron, Folding, Packing & Finishing T&A End'], ['preFinalInspection', 'Pre-final Inspection Date'],
-  ['finalInspection', 'Final Inspection'], ['exFactoryDate', 'Ex-Factory Date'], ['cargoClosingDate', 'Cargo Closing Date'],
+const TA_ROWS = [
+  { label:'Yarn Dyeing', start:'yarnDyeingStart', end:'yarnDyeingEnd' },
+  { label:'Knitting', start:'knittingStart', end:'knittingEnd', core:true },
+  { label:'Dyeing / Fabric Finishing', start:'dyeingFinishingStart', end:'dyeingFinishingEnd', core:true },
+  { label:'AOP / Brush / Peach', start:'aopStart', end:'aopEnd' },
+  { label:'Trims In-house', date:'trimsInhouseDate', core:true },
+  { label:'File Handover', date:'fileHandoverDate', core:true },
+  { label:'PP Meeting', date:'ppMeetingDate', core:true },
+  { label:'Cutting', start:'cuttingStart', end:'cuttingEnd', core:true },
+  { label:'Printing', start:'printingStart', end:'printingEnd' },
+  { label:'Embroidery', start:'embroideryStart', end:'embroideryEnd' },
+  { label:'Sewing', start:'sewingStartDate', end:'sewingEnd', core:true },
+  { label:'Garment Wash / Dye', start:'garmentWashStart', end:'garmentWashEnd' },
+  { label:'Finishing / Packing', start:'finishingStart', end:'finishingEnd', core:true },
+  { label:'Pre-Final Inspection', date:'preFinalInspection', core:true },
+  { label:'Final Inspection', date:'finalInspection', core:true },
+  { label:'Ex-Factory', date:'exFactoryDate', core:true },
+  { label:'CCD / Shipment Date', date:'cargoClosingDate', core:true },
 ] as const;
 
 function fmtDate(v: any) { if (!v) return ''; const d = new Date(v); return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-GB'); }
@@ -40,10 +45,10 @@ export default function PrintableJobDocument() {
 
   return <main className="print-page">
     <div className="print-toolbar no-print"><button onClick={() => window.print()}>Print</button><button onClick={() => window.close()}>Close</button></div>
-    <header className="print-header"><div><h1>NORTHERN FASHION LIMITED</h1><p>Plot 16-18, Dakhin Panishail, EPZ Road, Kashimpur, Gazipur, Bangladesh</p></div><div className="print-doc-title">{title}</div></header>
+    <header className="print-header"><div className="print-brand"><img src="/branding/northern-fashions-logo.jpg" alt="Northern Fashions Limited"/><div><h1>NORTHERN FASHIONS LIMITED</h1><p>Plot 16-18, Dakhin Panishail, EPZ Road, Kashimpur, Gazipur, Bangladesh</p></div></div><div className="print-doc-title">{title}</div></header>
 
     <section className="print-meta-grid">
-      <div><span>Buyer</span><strong>{order.buyer?.name || '—'}</strong></div><div><span>Job No</span><strong>{order.jobNo}</strong></div><div><span>Order Qty</span><strong>{num(order.totalQty)} pcs</strong></div><div><span>PO / Order Ref</span><strong>{poRefs || '—'}</strong></div>
+      <div><span>Buyer Job No</span><strong>{displayJobNo(order.jobNo, order.buyer)}</strong></div><div><span>Order Qty</span><strong>{num(order.totalQty)} pcs</strong></div><div><span>PO / Order Ref</span><strong>{poRefs || '—'}</strong></div>
     </section>
 
     {type === 'fabric-order-sheet' && <FabricOrderSheet order={order} cad={cad} />}
@@ -68,10 +73,10 @@ function FabricOrderSheet({ order, cad }: { order: any; cad: any }) {
 function TaPlan({ order }: { order: any }) {
   return <div className="ta-print-stack">{(order.styles || []).map((style: any) => {
     const sm = style.sourceMetadata || {}; const planning = sm.planning || {}; const pos = style.purchaseOrders || [];
-    const ccd = pos.map((p: any) => p.ccd).filter(Boolean).sort()[0];
+    const ccd = pos.map((p: any) => p.ccd || p.shipmentDate).filter(Boolean).sort()[0];
     return <section className="ta-style-sheet" key={style.id}>
       <div className="ta-info-grid"><div><span>Style</span><strong>{style.styleNo}</strong></div><div><span>Item Description</span><strong>{style.itemDescription || '—'}</strong></div><div><span>Order Qty</span><strong>{num(style.quantity)} pcs</strong></div><div><span>CCD / Shipment</span><strong>{fmtDate(ccd) || '—'}</strong></div><div><span>Fabric Req. (KG)</span><strong>{sm.production?.fabricRequired ? Number(sm.production.fabricRequired).toFixed(2) : ''}</strong></div><div><span>T&A Status</span><strong>{planning.taStatus || 'DRAFT / NOT APPROVED'}</strong></div><div><span>T&A Plan Date</span><strong>{fmtDate(planning.taPlanDate)}</strong></div><div><span>Approved By</span><strong>{planning.taApprovedByName || ''}</strong></div></div>
-      <table className="print-table ta-table"><thead><tr><th>Activity</th><th>Planned Date</th><th>Activity</th><th>Planned Date</th></tr></thead><tbody>{Array.from({ length: Math.ceil(TA_ACTIVITIES.length / 2) }).map((_, i) => { const a = TA_ACTIVITIES[i * 2]; const b = TA_ACTIVITIES[i * 2 + 1]; return <tr key={i}><td>{a?.[1] || ''}</td><td>{a ? fmtDate(planning[a[0]]) : ''}</td><td>{b?.[1] || ''}</td><td>{b ? fmtDate(planning[b[0]]) : ''}</td></tr>; })}</tbody></table>
+      <table className="print-table ta-table"><thead><tr><th>Process</th><th>Start Date</th><th>End Date</th><th>Lead Time</th><th>Slack Time</th></tr></thead><tbody>{TA_ROWS.filter((r:any)=>r.core || (r.date ? planning[r.date] : planning[r.start] || planning[r.end])).map((r:any,i:number,arr:any[])=>{ const start=r.date?planning[r.date]:planning[r.start]; const end=r.date?planning[r.date]:planning[r.end]; const lead=!r.date&&start&&end?`${Math.max(1,Math.round((new Date(end).getTime()-new Date(start).getTime())/86400000)+1)} d`:'Milestone'; const next=arr[i+1]; const nextStart=next?(next.date?planning[next.date]:planning[next.start]):null; let slack='—'; if(end&&nextStart){const gap=Math.round((new Date(nextStart).getTime()-new Date(end).getTime())/86400000)-1;slack=gap<0?`Overlap ${Math.abs(gap)} d`:`${gap} d`;} return <tr key={r.label}><td>{r.label}</td>{r.date?<td colSpan={2}>{fmtDate(start)}</td>:<><td>{fmtDate(start)}</td><td>{fmtDate(end)}</td></>}<td>{lead}</td><td>{slack}</td></tr>;})}</tbody></table>
       <div className="print-note">Draft dates may be previewed here, but only APPROVED T&A dates are released to Merchandising. The exact company print layout will be replaced from the approved Excel template.</div>
     </section>;
   })}</div>;

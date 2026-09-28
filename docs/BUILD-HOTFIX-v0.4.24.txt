@@ -1,0 +1,10 @@
+NFL Pulse ERP v0.4.24 API BUILD HOTFIX
+
+Fix: apps/api/prisma/factory-report-seed.ts imports commitReportBatch from src/imports.ts.
+The function existed but was not exported, causing TS2459 during npm run build.
+
+Change:
+  async function commitReportBatch(...)
+  -> export async function commitReportBatch(...)
+
+No database reset is required. Paste/replace over v0.4.23 and rerun START-NFL-PULSE.bat.

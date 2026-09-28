@@ -1,0 +1,17 @@
+NFL Pulse ERP v0.4.32 — verification notes
+
+Static verification completed:
+- maintenance.ts weekly-requirement endpoint transpiles without TypeScript syntax errors.
+- IE Bulletin TSX page with Weekly Machine Requirement Plan transpiles without TSX syntax errors.
+- No Prisma schema change is required from v0.4.31.
+- Version references updated to v0.4.32 in API, Web, health endpoint and launcher.
+
+Functional checks after launch:
+1. Open IE Bulletin and confirm Weekly Machine Requirement Plan loads a 7-day range.
+2. Confirm rows are grouped by date and machine type, not only total machine.
+3. Verify Required Qty equals released IE Bulletin type-wise quantities for Gantt-active Jobs on that date.
+4. Verify Net Available = Factory Total - Breakdown + Rent from Maintenance latest actual.
+5. Verify Shortage = max(0, Required - Net Available), Available = max(0, Net Available - Required).
+6. Verify Affected Line/Job lists the Gantt lines/jobs consuming the machine type.
+7. Switch Shortage Only and confirm available/balanced rows are hidden.
+8. Change start date/factory and confirm the 7-day forecast refreshes.

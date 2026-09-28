@@ -69,6 +69,22 @@ export function validateImportedStyles(styles: ImportedStyle[], extraWarnings: s
         ok: refTotal === style.totalQty,
         message: `${style.styleNo}: order-reference total ${refTotal} ${refTotal === style.totalQty ? '=' : '≠'} style total ${style.totalQty}`,
       });
+      for (const ref of style.orderReferences) {
+        const refColorTotal = ref.colors.reduce((s, c) => s + c.totalQty, 0);
+        checks.push({
+          code: 'ORDER_REFERENCE_BREAKDOWN_TOTAL',
+          ok: refColorTotal === ref.totalQty,
+          message: `${style.styleNo} / ${ref.reference}: Color × Size total ${refColorTotal} ${refColorTotal === ref.totalQty ? '=' : '≠'} reference total ${ref.totalQty}`,
+        });
+        for (const color of ref.colors) {
+          const sizeTotal = color.sizes.reduce((s, x) => s + x.qty, 0);
+          checks.push({
+            code: 'ORDER_REFERENCE_COLOR_SIZE_TOTAL',
+            ok: sizeTotal === color.totalQty,
+            message: `${style.styleNo} / ${ref.reference} / ${color.color}: size total ${sizeTotal} ${sizeTotal === color.totalQty ? '=' : '≠'} color total ${color.totalQty}`,
+          });
+        }
+      }
     }
   }
   if (extraWarnings.length) {

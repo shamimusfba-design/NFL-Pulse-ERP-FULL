@@ -18,7 +18,7 @@ export interface ImportedColor {
 
 export interface ImportedOrderReference {
   reference: string;
-  referenceType: 'PO' | 'CUSTOMER_ORDER' | 'COLLECTION_STYLE' | 'ORDER';
+  referenceType: 'PO' | 'CUSTOMER_ORDER' | 'COLLECTION_STYLE' | 'ORDER' | 'MARKET';
   totalQty: number;
   ccd?: string;
   shipmentDate?: string;

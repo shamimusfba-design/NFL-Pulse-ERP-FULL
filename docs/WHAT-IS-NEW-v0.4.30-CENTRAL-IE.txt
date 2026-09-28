@@ -1,0 +1,21 @@
+NFL Pulse ERP v0.4.30
+
+Central IE
+- IE screen is now an operational Bulletin Import + Follow-up workspace.
+- Follow-up status is automatic: DONE, PENDING, MISSING, REVISED.
+- Multi-file IE bulletin upload is available for monthly processing.
+- Manual correction remains available for SMV, standard target, manpower and machine requirement.
+- Machine type-wise quantities are stored for Maintenance/changeover use.
+
+Planning / Gantt
+- Required SMV, manpower, machine and standard target come from IE Bulletin when available.
+- Planner cannot override these IE-owned requirement values from the Gantt quick editor.
+- Actual Present/Assigned and Actual Target are reserved for the Daily Actual Present Assign source.
+- Changeover machine delta shows Add / Remove / No change from previous to new job.
+- Main Gantt summary is reduced to core planning status + IE pending + machine overload.
+
+Architecture
+- IE Bulletin = standard requirement/source.
+- Daily Present Assign = actual manpower + actual target source.
+- Planning/Gantt = job/date/line source.
+- Maintenance consumes machine requirement/type detail; actual inventory/utilization remains Maintenance-owned.

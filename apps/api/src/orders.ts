@@ -24,6 +24,11 @@ class PoDto {
   @IsString() poNumber!: string;
   @IsInt() @Min(1) totalQty!: number;
   @IsDateString() ccd!: string;
+  @IsOptional() @IsDateString() shipmentDate?: string;
+  @IsOptional() @IsString() referenceType?: string;
+  @IsOptional() @IsString() destination?: string;
+  @IsOptional() @IsString() market?: string;
+  @IsOptional() @IsArray() @ValidateNested({ each: true }) @Type(() => BreakdownDto) breakdowns?: BreakdownDto[];
 }
 class StyleDto {
   @IsString() styleNo!: string;
@@ -60,6 +65,7 @@ class MerchFollowUpDto {
   @IsOptional() @IsDateString() fileHandoverActualDate?: string;
   @IsOptional() @IsDateString() workOrderActualDate?: string;
   @IsOptional() @IsString() presentStatus?: string;
+  @IsOptional() @IsString() merchandiser?: string;
   @IsOptional() @IsString() remarks?: string;
 }
 
@@ -99,16 +105,28 @@ export class OrdersController {
     return { year, lastJobNo: seq.lastValue, nextJobNo: seq.lastValue + 1 };
   }
 
+  @Get('repeat-bases')
+  async repeatBases(@Req() req: any) {
+    const roles: string[] = req.user.roles || [];
+    const isMerch = roles.some((role) => MERCH_ROLES.includes(role));
+    const canSeeTeam = roles.includes('ADMIN') || roles.includes('MERCH_HEAD');
+    const rows = await this.prisma.order.findMany({
+      where: isMerch && !canSeeTeam ? { OR: [{ merchandiserId: req.user.id }, { merchandiserId: null, createdById: req.user.id }] } : undefined,
+      select: { jobNo: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    return Array.from(new Set(rows.map((o) => String(o.jobNo || '').split(' ')[0]).filter((x) => /^\d+$/.test(x))));
+  }
+
   @Get()
   list(@Req() req: any) {
     const roles: string[] = req.user.roles || [];
     const isMerch = roles.some((role) => MERCH_ROLES.includes(role));
     const canSeeTeam = roles.includes('ADMIN') || roles.includes('MERCH_HEAD');
     return this.prisma.order.findMany({
-      where: isMerch && !canSeeTeam ? { merchandiserId: req.user.id } : undefined,
-      include: { buyer: true, factory: true, styles: { include: { purchaseOrders: true, breakdowns: true } } },
+      where: isMerch && !canSeeTeam ? { OR: [{ merchandiserId: req.user.id }, { merchandiserId: null, createdById: req.user.id }] } : undefined,
+      include: { buyer: true, factory: true, styles: { include: { purchaseOrders: { include: { breakdowns: true } }, breakdowns: true } } },
       orderBy: { createdAt: 'desc' },
-      take: 250,
     });
   }
 
@@ -119,14 +137,14 @@ export class OrdersController {
       include: {
         buyer: true,
         factory: true,
-        styles: { include: { purchaseOrders: true, breakdowns: true } },
+        styles: { include: { purchaseOrders: { include: { breakdowns: true } }, breakdowns: true } },
       },
     });
     if (!order) throw new BadRequestException('Order not found');
     const roles: string[] = req.user.roles || [];
     const isMerch = roles.some((role) => MERCH_ROLES.includes(role));
     const canSeeTeam = roles.includes('ADMIN') || roles.includes('MERCH_HEAD');
-    if (isMerch && !canSeeTeam && order.merchandiserId !== req.user.id) {
+    if (isMerch && !canSeeTeam && order.merchandiserId !== req.user.id && !(order.merchandiserId === null && order.createdById === req.user.id)) {
       throw new ForbiddenException('You can view only your assigned jobs');
     }
     return order;
@@ -146,7 +164,7 @@ export class OrdersController {
     if (!style) throw new BadRequestException('Style not found');
 
     const canEditTeam = roles.includes('ADMIN') || roles.includes('MERCH_HEAD');
-    if (!canEditTeam && style.order.merchandiserId !== req.user.id) {
+    if (!canEditTeam && style.order.merchandiserId !== req.user.id && !(style.order.merchandiserId === null && style.order.createdById === req.user.id)) {
       throw new ForbiddenException('You can update only your assigned jobs');
     }
 
@@ -205,15 +223,17 @@ export class OrdersController {
 
     const style = await this.prisma.style.findUnique({
       where: { id: styleId },
-      include: { order: true, breakdowns: true, purchaseOrders: true },
+      include: { order: true, breakdowns: true, purchaseOrders: true, productionLots: { where: { status: { not: 'CANCELLED' } }, include: { allocations: true } } },
     });
     if (!style) throw new BadRequestException('Style not found');
 
     const canEditTeam = roles.includes('ADMIN') || roles.includes('MERCH_HEAD');
-    if (!canEditTeam && style.order.merchandiserId !== req.user.id) {
+    if (!canEditTeam && style.order.merchandiserId !== req.user.id && !(style.order.merchandiserId === null && style.order.createdById === req.user.id)) {
       throw new ForbiddenException('You can revise only your assigned jobs');
     }
     if (style.quantity === dto.newQuantity) throw new BadRequestException('New quantity is the same as the current quantity');
+    const allocatedToProductionLots = (style.productionLots || []).reduce((sum, lot) => sum + (lot.allocations || []).reduce((s, row) => s + row.qty, 0), 0);
+    if (dto.newQuantity < allocatedToProductionLots) throw new BadRequestException(`Revised quantity cannot be below ${allocatedToProductionLots} pcs already reserved in active Production Lots`);
 
     const existing = (style.sourceMetadata || {}) as Record<string, any>;
     const history = Array.isArray(existing.qtyRevisionHistory) ? existing.qtyRevisionHistory : [];
@@ -225,6 +245,7 @@ export class OrdersController {
       reason,
       breakdownTotalAtRevision: breakdownTotal,
       poTotalAtRevision: poTotal,
+      productionLotAllocatedAtRevision: allocatedToProductionLots,
       detailsAligned: breakdownTotal === dto.newQuantity && poTotal === dto.newQuantity,
       revisedByUserId: req.user.id,
       revisedByName: req.user.name,
@@ -299,7 +320,12 @@ export class OrdersController {
       const breakdownTotal = style.breakdowns.reduce((s, x) => s + x.qty, 0);
       const poTotal = style.pos.reduce((s, x) => s + x.totalQty, 0);
       if (breakdownTotal !== style.quantity) warnings.push(`${style.styleNo}: color/size total ${breakdownTotal} ≠ style qty ${style.quantity}`);
-      if (poTotal !== style.quantity) warnings.push(`${style.styleNo}: PO total ${poTotal} ≠ style qty ${style.quantity}`);
+      if (poTotal !== style.quantity) warnings.push(`${style.styleNo}: PO / Market total ${poTotal} ≠ style qty ${style.quantity}`);
+      style.pos.forEach((po) => {
+        const refBreakdownTotal = (po.breakdowns || []).reduce((sum, row) => sum + row.qty, 0);
+        if ((po.breakdowns || []).length && refBreakdownTotal !== po.totalQty) warnings.push(`${style.styleNo} / ${po.poNumber}: Color × Size total ${refBreakdownTotal} ≠ reference qty ${po.totalQty}`);
+      });
+      if (style.pos.length > 1 && style.pos.some((po) => !(po.breakdowns || []).length)) warnings.push(`${style.styleNo}: one or more PO / Market references have no reference-level Color × Size breakdown. Exact partial Production Lot allocation will require that breakdown.`);
     });
 
     const result = await this.prisma.$transaction(async (tx) => {
@@ -308,7 +334,7 @@ export class OrdersController {
       const buyer = await tx.buyer.findUnique({ where: { id: dto.buyerId } });
       if (!buyer) throw new BadRequestException('Buyer not found');
 
-      const job = await resolveJobNumber(tx, factory.id, dto);
+      const job = await resolveJobNumber(tx, factory.id, dto, buyer.code || buyer.name);
       const totalQty = dto.styles.reduce((s, x) => s + x.quantity, 0);
       const userIsMerch = roles.some((role) => MERCH_ROLES.includes(role));
       const merchandiserId = userIsMerch && !roles.includes('MERCH_HEAD') ? req.user.id : dto.merchandiserId;
@@ -321,7 +347,7 @@ export class OrdersController {
           merchandiserId,
           totalQty,
           createdById: req.user.id,
-          sourceMetadata: toPrismaJson({ jobType: job.jobType, baseJobNo: job.baseJobNo, lotNo: job.lotNo }),
+          sourceMetadata: toPrismaJson({ jobType: job.jobType, baseJobNo: job.baseJobNo, lotNo: job.lotNo, buyerShortCode: job.buyerShortCode }),
           styles: {
             create: dto.styles.map((style) => ({
               styleNo: style.styleNo,
@@ -329,7 +355,16 @@ export class OrdersController {
               quantity: style.quantity,
               sourceMetadata: toPrismaJson({ itemImageUrl: style.itemImageUrl || null, fobPrice: style.fobPrice ?? null, merchandisingFollowUp: {} }),
               breakdowns: { create: style.breakdowns },
-              purchaseOrders: { create: style.pos.map((po) => ({ ...po, ccd: new Date(po.ccd) })) },
+              purchaseOrders: { create: style.pos.map((po) => ({
+                poNumber: po.poNumber,
+                referenceType: po.referenceType || 'PO',
+                totalQty: po.totalQty,
+                ccd: new Date(po.ccd),
+                shipmentDate: po.shipmentDate ? new Date(po.shipmentDate) : new Date(po.ccd),
+                destination: po.destination || undefined,
+                market: po.market || undefined,
+                breakdowns: (po.breakdowns || []).length ? { create: po.breakdowns } : undefined,
+              })) },
             })),
           },
         },

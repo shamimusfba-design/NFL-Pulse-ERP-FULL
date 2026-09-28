@@ -1,0 +1,24 @@
+NFL Pulse ERP v0.4.32 — IE Weekly Machine Requirement Plan
+
+1) Central IE weekly machine forecast
+- New Next 7 Days section inside IE Bulletin.
+- Start date and factory can be selected.
+- All Required Types / Shortage Only filter.
+
+2) Type-wise decision data
+- Date, Machine Type, Required, Factory Total, Breakdown, Rent, Net Available, Shortage/Available, affected Line/Job.
+- No decision is based on only a total-machine number.
+
+3) Data sources
+- Gantt: planned/running Job, line and date.
+- Released IE Bulletin: machine type-wise requirement.
+- Maintenance: actual machine master and latest daily breakdown/rent/availability.
+
+4) Forecast rule
+- Net Available = Factory Total - Breakdown + Rent.
+- Shortage = Required - Net Available when positive.
+- Available = Net Available - Required when positive.
+- Future dates use the latest Maintenance actual on/before the forecast date; Machine Master total is fallback.
+
+5) Follow-up
+- Affected Line/Job is shown against each type-wise shortage so Central IE can coordinate before changeover.

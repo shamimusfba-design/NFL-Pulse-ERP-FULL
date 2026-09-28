@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../lib/api';
+import { displayJobNo } from '../lib/display';
 
 type Mode = 'job360' | 'quality' | 'leadtime';
 
@@ -55,28 +56,28 @@ export default function JobHistoryWorkspace({ mode = 'job360' }: { mode?: Mode }
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return jobs;
-    return jobs.filter((j) => `${j.jobNo} ${j.buyer} ${j.styleNo} ${j.itemDescription}`.toLowerCase().includes(q));
+    return jobs.filter((j) => `${displayJobNo(j.jobNo,j.buyerCode||j.buyer)} ${j.styleNo} ${j.itemDescription}`.toLowerCase().includes(q));
   }, [jobs, query]);
 
   const title = mode === 'quality' ? 'Job Quality History' : mode === 'leadtime' ? 'Lead Time & Delivery History' : 'Job 360';
 
   if (loading) return <section className="panel"><div className="empty-state"><strong>Loading demo jobs…</strong></div></section>;
-  if (!jobs.length) return <section className="panel"><div className="empty-state"><strong>No demo jobs loaded</strong><span>Admin Overview → Load / Reset 50 Demo Jobs first.</span></div></section>;
+  if (!jobs.length) return <section className="panel"><div className="empty-state"><strong>No jobs available</strong><span>Import or create real job data first.</span></div></section>;
 
   return <div className="history-workspace">
     <section className="history-picker panel">
       <div className="panel-head"><div><div className="panel-title">{title}</div><div className="panel-sub">50 removable demo jobs · choose any job to inspect connected section data.</div></div><span className="status-pill neutral">DEMO</span></div>
       <div className="history-picker-row">
-        <input className="history-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search Job / Buyer / Style…" />
+        <input className="history-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search Buyer Job No / Style / Item…" />
         <select value={selected} onChange={(e) => setSelected(e.target.value)}>
-          {filtered.map((j) => <option value={j.id} key={j.id}>{j.jobNo} · {j.buyer} · {j.styleNo}</option>)}
+          {filtered.map((j) => <option value={j.id} key={j.id}>{displayJobNo(j.jobNo,j.buyerCode||j.buyer)} · {j.styleNo}</option>)}
         </select>
       </div>
     </section>
 
     {detail && <>
       <section className="job360-head panel">
-        <div className="job360-title"><div className="job360-image">{detail.order.itemImageUrl ? <img src={detail.order.itemImageUrl} alt="Item" /> : <span>ITEM</span>}</div><div><div className="page-eyebrow">{detail.order.buyer}</div><h2>Job {detail.order.jobNo} · {detail.order.styleNo}</h2><p>{detail.order.itemDescription || '—'}</p></div></div>
+        <div className="job360-title"><div className="job360-image">{detail.order.itemImageUrl ? <img src={detail.order.itemImageUrl} alt="Item" /> : <span>ITEM</span>}</div><div><div className="page-eyebrow">Buyer Job No</div><h2>{displayJobNo(detail.order.jobNo,detail.order.buyerCode||detail.order.buyer)} · {detail.order.styleNo}</h2><p>{detail.order.itemDescription || '—'}</p></div></div>
         <div className="job360-facts">
           <div><span>Order Qty</span><strong>{fmt(detail.order.orderQty)} pcs</strong></div><div><span>FOB</span><strong>{detail.order.fobPrice ? `$${fmt(detail.order.fobPrice)}` : '—'}</strong></div><div><span>CCD / Ship</span><strong>{date(detail.order.ccd)}</strong></div><div><span>PO</span><strong>{fmt(detail.order.poNo)}</strong></div>
         </div>

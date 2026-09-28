@@ -1,0 +1,25 @@
+NFL Pulse ERP v0.4.23
+
+COMPANY FORMS & PRINT DOCUMENTS
+- Added Merchandising > Forms & Print Documents.
+- Three locked document families:
+  1) SMS Fabric & Sample Garment Order Sheet
+  2) T&A / TNF Plan
+  3) Bulk Fabric Order Sheet
+- Search/select an existing Job + Style.
+- ERP data auto-fills Buyer, Job, Style, Order Qty, PO/Market, shipment, color-size breakdown and available CAD/fabric information.
+- Missing document-only fields remain editable.
+- Multiple PO/order rows can be added manually.
+- Draft / Planning Pending / Ready to Print / Approved states.
+- Revision number and audit trail are saved in Style source metadata.
+- A4 Preview / Print pages follow the section order and layout of the supplied company workbooks.
+- Original supplied workbook templates are kept unchanged under docs/form-templates as the visual source of truth.
+
+OVS CORRECTION
+- OVS Product Brief is no longer treated as having a traditional PO number.
+- Style Code stays Style No.
+- Operational allocation is Country/Market (OVS Italy, OVS Warm, OVS India, OVS Middle East, OVS Cold, Repl. Hub Dubai when present).
+- OVS importer emits MARKET references so downstream PO/Market selection can distinguish OVS from normal buyer PO workflows.
+
+INSTALL
+Extract and paste/replace into the existing project root (the same level where apps exists), then run START-NFL-PULSE.bat.

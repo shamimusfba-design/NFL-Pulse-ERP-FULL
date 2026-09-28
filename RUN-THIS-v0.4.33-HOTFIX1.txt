@@ -1,0 +1,3 @@
+Run START-NFL-PULSE.bat from THIS extracted folder.
+The first console header must show v0.4.33 HOTFIX-1.
+If it shows v0.4.32, close it and run the BAT from this folder instead.

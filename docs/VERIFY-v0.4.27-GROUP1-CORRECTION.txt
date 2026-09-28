@@ -1,0 +1,19 @@
+NFL Pulse ERP v0.4.27 — GROUP 1 CORRECTION VERIFICATION
+
+Scope checked:
+- strict merchandiser ownership across Orders, Production Lots and Company Forms
+- merchandising Style + PO/Market Color x Size visibility
+- PO/Market reference size-wise preview before lot selection
+- Bulk Fabric Order sync from latest Order Entry / Production Lot scope
+- fallback from reference-level breakdown if style-level breakdown is missing
+
+Static verification:
+- TypeScript transpile syntax check: 71 TS/TSX files, 0 syntax diagnostics
+- package.json parse: API + Web OK
+- version labels updated to 0.4.27
+
+Build limitation:
+- npm install was attempted in this environment but timed out before dependencies were available.
+- therefore full Nest + Next semantic/end-to-end build must still be confirmed by START-NFL-PULSE.bat on the Windows office PC.
+
+Database reset: NOT REQUIRED.

@@ -1,0 +1,29 @@
+NFL Pulse ERP v0.4.31 — Maintenance Machine Utilization
+
+1) Maintenance & Engineering
+- New Machine Utilization & Requirement workspace.
+- Separate Maintenance role/menu.
+- Machine Master stores factory machine type and total quantity.
+
+2) Daily machine utilization
+- Legacy .xls / .xlsx / .xlsm upload from the Maintenance screen.
+- Flexible header detection for Factory Total M/C, M/C Breakdown, Factory Utilize M/C, Rent M/C, Factory Unused M/C and Sewing-01/02/03 columns.
+- Daily data can also be corrected row-by-row without changing IE/Planning data.
+
+3) IE + Gantt connection
+- Selected date identifies running Gantt jobs by line.
+- Machine type requirement comes from the released IE Bulletin.
+- Requirement is aggregated factory-wide by machine type.
+- Common machine-name aliases are normalized (SNLS, 4T OL, 5T OL, Flatlock, Kansai/Multi Needle, Bartack, etc.).
+- Missing type-wise IE detail is exposed as Unclassified IE total.
+
+4) Maintenance decision view
+- Total | Breakdown | Rent | Available | Actual Utilized | IE Running Requirement | Idle | Shortage.
+- Job-wise read-only running requirement list.
+- Upcoming 7-day changeover old-vs-new machine Add/Remove list.
+
+5) Ownership
+- IE owns standard requirement.
+- Planning/Gantt owns running date + line.
+- Maintenance owns actual machine inventory/utilization.
+- Manpower remains in IE.

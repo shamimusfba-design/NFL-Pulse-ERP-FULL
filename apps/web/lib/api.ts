@@ -1,4 +1,4 @@
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+const API = '/api';
 export function getToken() { if (typeof window === 'undefined') return ''; return localStorage.getItem('nfl_access_token') || ''; }
 export async function api(path: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers || {});

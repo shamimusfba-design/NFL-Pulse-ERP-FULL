@@ -1,0 +1,19 @@
+{
+  "version": "0.4.19",
+  "policy": "approved-controlled-masters-only",
+  "buyers": 12,
+  "sewingLines": 43,
+  "merchandisers": 37,
+  "presentStatuses": 16,
+  "floors": 7,
+  "factories": 14,
+  "additionalProcesses": 10,
+  "printEmbroideryTypes": 2,
+  "notDropdownMasters": ["GSM", "WIDTH_DIA", "COLOR", "FABRIC_DESCRIPTION", "JOB_NO", "STYLE_NO", "BATCH_NO", "REMARKS"],
+  "notes": [
+    "GTA and Giant-Tex are separate factory masters.",
+    "Combined sewing lines are split into approved individual lines.",
+    "Job number preserves ordinal/source short form such as 48551 1st.",
+    "Raw values remain in import audit data even when corrected."
+  ]
+}

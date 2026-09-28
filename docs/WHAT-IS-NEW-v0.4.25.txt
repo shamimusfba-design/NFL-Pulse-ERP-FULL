@@ -1,0 +1,11 @@
+NFL Pulse ERP v0.4.25 — FAST GANTT POPUP
+
+- Quick Edit is the default lightweight Gantt popup.
+- Advanced calculations, line recommendations, split planning and readiness load only on Advanced tab.
+- Revision history is fetched only when History tab is opened.
+- Popup edits stay local until Save Review; typing no longer rewrites the full Gantt row collection on every keystroke.
+- Large Gantt grid is memoized so popup editing does not rebuild thousands of day/line cells.
+- Planner Intelligence starts OFF by default; it remains available with one click.
+- Gantt API returns only the sewing/readiness subset of section data instead of the full Yarn-to-Shipment payload for every visible job.
+- Prisma Gantt query selects only required relational fields.
+- All v0.4.24 API export hotfix changes are included.

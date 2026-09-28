@@ -1,0 +1,23 @@
+NFL Pulse ERP v0.4.31 — verification notes
+
+Static verification completed in package workspace:
+- Maintenance API controller TypeScript parses without syntax errors; unresolved-module diagnostics are expected because node_modules is not bundled.
+- Maintenance Next/TSX page parses without syntax errors; unresolved React/Next module diagnostics are expected for the same reason.
+- Prisma schema contains MaintenanceMachine and MaintenanceDailyMachine with factory/date uniqueness and relations.
+- AppModule includes MaintenanceController.
+- Sidebar includes Maintenance & Engineering and MAINTENANCE role routing.
+- Seed adds MAINTENANCE role and maintenance@nfl.local user.
+- START-NFL-PULSE.bat runs prisma generate + prisma db push before compile, so the new tables are created on the existing database without deleting existing ERP records.
+
+Environment limitation:
+- npm install timed out in this container, so full Nest + Next semantic build could not be completed here.
+- START-NFL-PULSE.bat remains the final Windows compile/start gate and stops if Prisma/API/Web setup fails.
+
+Functional checks to perform after launch:
+1. Open /modules/maintenance.
+2. Import the existing Daily Machine Use Statement .xls for a selected report date.
+3. Confirm machine types and factory totals populate the Machine Master automatically.
+4. Confirm Breakdown / Rent / Utilized / Sewing-01/02/03 values appear where present in the report.
+5. Select a date containing Gantt running jobs; confirm IE Running Requirement matches the released IE Bulletin machine type quantities.
+6. Confirm shortage = max(0, Available + Rent - requirement reversed as requirement - available) and idle = max(0, available - requirement).
+7. Confirm upcoming changeover shows Add/Remove differences by machine type.

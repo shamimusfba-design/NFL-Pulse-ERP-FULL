@@ -1,0 +1,15 @@
+NFL Pulse ERP v0.4.33 verification checklist
+
+1. Run START-NFL-PULSE.bat; verify Prisma db push and seed complete without error.
+2. Login as Admin/IE and open IE Overview.
+3. IE Target Giving: choose floor, verify 2 rows/line, +Add Job, Auto/Manual Job, WIP target and Short <200 => 2x effective SMV.
+4. Import Daily Actual Present/Assign sample; verify Actual MP/Actual Target appear read-only.
+5. Import NPTData SEP-2026.xlsx; verify five NPT analysis views and detail rows.
+6. Import QCO workbook; verify configurable SMV rule table and QCO detail.
+7. Import MIS 12-09-2026.xlsx; verify line performance rows and summary import counts.
+8. Open Line-wise Performance; select floor/month/custom range and verify SMV/Efficiency charts and hover detail.
+9. Open Skill Matrix and Production Checkpoints.
+10. Open KPI Board; verify AUTO/MANUAL badges, yearly line-wise table, and print.
+11. Open Kaizen and Responsible Person Master; verify current responsibility seeds.
+12. Open Gantt; short/balance status should remain on original job bar rather than create a new Gantt bar.
+13. Open Maintenance + IE Weekly Machine Plan; verify machine type-wise shortage, not only total machines.

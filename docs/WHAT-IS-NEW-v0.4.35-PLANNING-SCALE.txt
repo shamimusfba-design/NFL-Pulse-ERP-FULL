@@ -1,0 +1,8 @@
+NFL Pulse ERP v0.4.35 — Planning Scale & Line Cleanup
+
+- Capacity Heatmap has no fixed Job cap; every relevant planned Job/Style is included.
+- Heatmap demand is distributed across the actual process date range and monthly slot overlap instead of only the process start date.
+- T&A work queue, bulk T&A generation, Gantt loading/generation and Order lists no longer stop at arbitrary 300/500/2500/5000/6000 limits.
+- NFL/NCL physical sewing lines are deduplicated for planner views; duplicate zero-machine rows no longer render as separate lines.
+- Capacity machine totals use the same canonical physical-line set, preventing duplicated line capacity.
+- Official Northern Fashions Limited logo and corrected company name are added to login, sidebar and print headers.

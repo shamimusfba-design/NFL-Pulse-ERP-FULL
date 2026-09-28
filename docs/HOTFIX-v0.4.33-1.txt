@@ -1,0 +1,21 @@
+NFL Pulse ERP v0.4.33 HOTFIX-1
+
+Fixed API TypeScript compile error in apps/api/src/maintenance.ts:
+TS2345: object not assignable to parameter of type never when pushing weekly machine requirement job details.
+
+Cause:
+Strict TypeScript inferred fallback jobs: [] as never[] inside a union.
+
+Fix:
+Requirement accumulator objects now have explicit jobs:any[] typing before push().
+Both Maintenance dashboard and Weekly Machine Requirement accumulator paths are covered.
+
+Verification:
+- Exact strict TypeScript inference pattern tested successfully with local tsc.
+- maintenance.ts noResolve strict check shows no non-module TypeScript errors.
+- ZIP integrity tested after packaging.
+
+IMPORTANT:
+When launching this package, the console header must say:
+NFL PULSE ERP v0.4.33 HOTFIX-1 - IE PERFORMANCE + KPI CUMULATIVE
+If it says v0.4.32, you are launching the old folder.

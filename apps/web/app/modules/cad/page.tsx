@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Shell from '../../../components/Shell';
 import { api } from '../../../lib/api';
+import { displayJobNo } from '../../../lib/display';
 
 type Basis = 'KG_DOZ' | 'KG_PCS' | 'TOTAL_KG';
 type ConsumptionRow = {
@@ -124,7 +125,7 @@ export default function CadWorkspace() {
         <div className="panel-head"><div><div className="panel-title">CAD Pending Jobs</div><div className="panel-sub">New orders and quantity-revision re-checks</div></div><span className="status-pill neutral">{loading ? 'Loading…' : tasks.length}</span></div>
         <div className="cad-task-list">
           {tasks.map((t) => <button key={t.id} className={`cad-task-card ${selectedOrderId === t.orderId ? 'active' : ''}`} onClick={() => setSelectedOrderId(t.orderId)}>
-            <strong>{t.order?.jobNo || 'Job'}</strong><span>{t.order?.buyer?.name || '—'}</span><small>{t.title}</small>
+            <strong>{displayJobNo(t.order?.jobNo || 'Job',t.order?.buyer)}</strong><small>{t.title}</small>
           </button>)}
           {!loading && !tasks.length && <div className="empty-state compact"><strong>No CAD pending jobs</strong><span>New confirmed orders will appear here automatically.</span></div>}
         </div>
@@ -132,7 +133,7 @@ export default function CadWorkspace() {
 
       <div className="panel cad-editor-panel">
         {!order ? <div className="workspace-empty"><div className="workspace-symbol">CD</div><div><strong>Select a pending Job</strong><span>Consumption entry will open here.</span></div></div> : <>
-          <div className="panel-head"><div><div className="panel-title">Job {order.jobNo} · {order.buyer?.name}</div><div className="panel-sub">Order Qty {n(order.totalQty).toLocaleString()} pcs · color quantities are taken from Order Entry</div></div><div className="document-buttons"><a className="btn btn-secondary btn-compact" target="_blank" href={`/print/ta-plan/${order.id}`}>Print T&A Draft</a><a className="btn btn-primary btn-compact" target="_blank" href={`/print/fabric-order-sheet/${order.id}`}>Fabric Order Sheet</a></div></div>
+          <div className="panel-head"><div><div className="panel-title">{displayJobNo(order.jobNo,order.buyer)}</div><div className="panel-sub">Order Qty {n(order.totalQty).toLocaleString()} pcs · color quantities are taken from Order Entry</div></div><div className="document-buttons"><a className="btn btn-primary btn-compact" href={`/modules/forms-print?job=${encodeURIComponent(order.jobNo)}`}>Company Forms / Print</a></div></div>
           <div className="cad-help">Consumption basis is selectable because the factory may use different methods. <b>Total KG</b> lets CAD enter the final requirement directly; KG/Dozen and KG/Piece calculate from order quantity. This can later be locked to your approved company rule.</div>
           <div className="wide-table-wrap">
             <table className="table cad-consumption-table"><thead><tr><th>Style</th><th>Color</th><th>Order Qty</th><th>Fabric Description</th><th>Fabric Type</th><th>GSM</th><th>Dia</th><th>Basis</th><th>Consumption / Total KG</th><th>Wastage %</th><th>Required KG</th><th>Remarks</th><th></th></tr></thead><tbody>

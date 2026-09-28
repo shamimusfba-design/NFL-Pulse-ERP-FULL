@@ -1,0 +1,7 @@
+NFL Pulse ERP v0.4.35
+
+1. Extract this cumulative package over/into your NFL Pulse ERP working folder.
+2. Keep your existing .env / PostgreSQL database.
+3. Run START-NFL-PULSE.bat.
+4. Confirm the header shows: NFL PULSE ERP v0.4.35 - PLANNING SCALE & LINE CLEANUP
+5. Open Capacity Balancing and choose the planning month; all relevant planned Jobs are included regardless of Job count.

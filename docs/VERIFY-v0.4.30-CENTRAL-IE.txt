@@ -1,0 +1,15 @@
+NFL Pulse ERP v0.4.30 verification
+
+1. Open Industrial Production Engineering > IE Bulletin & Follow-up.
+2. Confirm KPI cards show Total Jobs / Done / Pending / Missing / Revised.
+3. Filter tracker by Missing and confirm planned jobs without an IE bulletin remain visible.
+4. Select multiple IE files (.xls/.xlsx/.xlsm) and use Import Selected Bulletins.
+5. Confirm imported jobs show source filename, bulletin date/revision, SMV, target, manpower and machine quantity.
+6. Open a job and confirm machine type-wise rows can be edited and saved.
+7. Release the bulletin and open Central Planning > Sewing Line Planning.
+8. Open the same job; confirm SMV, Standard Target, Required Manpower and Required Machine are read-only IE-owned values.
+9. If the previous job on the same line also has machine type-wise requirement, confirm Changeover Machine Requirement shows Add/Remove/No change.
+10. No database reset or Prisma migration is required.
+
+Build note
+- TypeScript syntax was checked in the package environment. Final dependency-aware Windows compile remains available through START-NFL-PULSE.bat.

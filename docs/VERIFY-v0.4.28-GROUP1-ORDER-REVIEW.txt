@@ -1,0 +1,12 @@
+NFL Pulse ERP v0.4.28 — VERIFICATION
+
+Source-level checks:
+- OVS parser compiled independently with TypeScript.
+- OVS supplied Product Brief parsed into six separate markets with exact totals: 42,081 + 574 + 77 + 203 + 371 + 60 = 43,366.
+- Bestseller supplied style 15323159 parsed into 14 separate Order references.
+- Verified three same-date references NOF4754793 (7,926) + NOF4754794 (2,268) + NOF4754796 (414) aggregate to 10,608 pcs and the combined Color x Size cells also total 10,608.
+- Updated parser validation checks reference-level breakdown totals in addition to style-level totals.
+- Import persistence revalidates the edited payload server-side.
+
+Environment limitation:
+- Full npm install / Nest / Next build could not be completed in this container because npm install timed out. START-NFL-PULSE.bat performs the final build on the user's Windows machine and stops on compile failure.

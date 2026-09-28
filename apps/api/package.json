@@ -1,6 +1,6 @@
 {
   "name": "@nfl/api",
-  "version": "0.4.2",
+  "version": "0.4.35",
   "private": true,
   "scripts": {
     "dev": "nest start --watch",
@@ -10,7 +10,10 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "tsx prisma/seed.ts",
     "prisma:demo-seed": "tsx prisma/demo-seed.ts",
-    "prisma:demo-clear": "tsx prisma/demo-clear.ts"
+    "prisma:demo-clear": "tsx prisma/demo-clear.ts",
+    "prisma:reference-seed": "tsx prisma/reference-values-seed.ts",
+    "prisma:factory-report-seed": "tsx prisma/factory-report-seed.ts",
+    "prisma:master-cleanup": "tsx prisma/master-cleanup.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.2.5",
@@ -24,7 +27,8 @@
     "class-validator": "^0.14.2",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
-    "pdf-parse": "1.1.1"
+    "pdf-parse": "1.1.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.10",

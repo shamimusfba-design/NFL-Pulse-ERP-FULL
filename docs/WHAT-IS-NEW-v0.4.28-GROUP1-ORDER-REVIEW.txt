@@ -1,0 +1,25 @@
+NFL Pulse ERP v0.4.28 — GROUP 1 ORDER REVIEW + OVS MULTI-MARKET CORRECTION
+
+1. Editable import review
+- Style / Job Qty is editable before Confirm.
+- Every PO / Market Qty is editable before Confirm.
+- Every reference Color x Size cell is editable before Confirm.
+- "Use breakdown total" and "Use PO/Market Sum" shortcuts reconcile totals without manual arithmetic.
+- Backend recalculates validation from the edited payload and blocks unreconciled hard mismatches.
+
+2. Multi-reference combined breakdown
+- Tick any 2-3 or more PO / Market references.
+- Combined Color x Size matrix and selected total are calculated instantly.
+- Quick "Select date" buttons select all references sharing a shipment/CCD date; users can then deselect individual references.
+- No manual Excel addition is required.
+
+3. OVS parser correction
+- OVS no traditional PO rule remains unchanged.
+- Product Brief market pages are segmented by HEADING markers rather than unreliable PDF page separators.
+- Verified sample: OVS ITALY 42,081; OVS WARM 574; OVS INDIA 77; OVS MIDDLE EAST 203; OVS COLD 371; REPL. HUB DUBAI 60; total 43,366.
+
+4. Existing Group 1 behavior retained
+- Merchandiser ownership restrictions.
+- Bestseller / UTG import profiles.
+- Production Lot allocation and duplicate-allocation protection.
+- Company forms foundation.

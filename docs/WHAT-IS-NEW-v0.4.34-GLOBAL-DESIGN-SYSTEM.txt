@@ -1,0 +1,28 @@
+NFL Pulse ERP v0.4.34 — Global Design System v1
+
+Global UI baseline
+- Inter/system sans-serif typography. Body 14px; tables 13–14px; labels 13px; section headings 16–18px; page title 22–24px.
+- Enterprise semantic palette: Primary #2563EB, Success #16A34A, Warning #D97706, Danger #DC2626, Info #0284C7, Draft neutral gray.
+- Text: #111827 / #4B5563 / #6B7280; page #F8FAFC; card #FFFFFF; border #D1D5DB.
+- Standard buttons: Primary, Secondary, Success, Warning, Danger, Info and Ghost. Desktop 38px; phone minimum 44px.
+- Consistent forms, validation/focus states, table density, totals, responsive layouts and controlled horizontal scrolling.
+- Spacing scale 4/8/12/16/24/32 and controlled radii.
+- Same status meaning uses the same color throughout the ERP.
+
+Professional workflow wording
+- Import flows use Review Import and Confirm Import.
+- Filters use Apply Filters / Reset-style wording where applicable.
+- Sign Out replaces casual logout wording.
+
+Retained functional corrections
+- 2000-job access/review remains enabled; no 250-row UI cap.
+- Import staging remains editable before confirm.
+- IE Target Save/Release and compact layout retained.
+- MIS remains MIS/performance-only.
+- NPT/QCO mobile entry retained.
+- Line Performance graph/filters retained.
+- Fabric Order size-wise breakdown and dynamic width/GSM/fabric values retained.
+- Relevant information is role/section scoped.
+
+Database
+- No reset required. Existing data is retained.

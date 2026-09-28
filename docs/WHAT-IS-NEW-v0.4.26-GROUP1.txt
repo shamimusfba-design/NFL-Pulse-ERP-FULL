@@ -1,0 +1,65 @@
+NFL Pulse ERP v0.4.26 — GROUP 1: MERCHANDISING & ORDER FOUNDATION
+
+Scope completed in this cumulative build
+---------------------------------------
+1) Canonical Order Entry
+   Job -> Style -> Shipment -> PO/Market -> Color -> Size -> Qty.
+   Manual order entry and buyer-PDF import use the same downstream model.
+
+2) Buyer-specific PDF import
+   BESTSELLER family: ONLY / Name It / Only & Sons.
+   UTG: Production Card parser (Order No as operational reference; Customer Order No preserved as source metadata).
+   OVS: Product Brief parser with NO invented PO number. Style Code remains Style; Country/Market is the selectable production reference.
+
+3) OVS Country/Market structure
+   OVS Italy, OVS Warm, OVS India, OVS Middle East, OVS Cold, Repl. Hub Dubai are stored as MARKET references when present in the source.
+   Market Color x Size is parsed separately, while style totals are stored once to avoid double counting.
+
+4) Exact Color x Size preview and validation
+   Style and reference-level matrices are shown before import.
+   Totals are reconciled. NEED_REVIEW imports can no longer be silently confirmed; a merchandiser/admin must explicitly acknowledge parser warnings.
+
+5) Production Lot / shipment scope
+   Select one or more PO/order references, or OVS markets.
+   Select all available references for one shipment date with one click.
+   Combined Color x Size matrix is calculated immediately.
+   Full or partial reference/color/size allocation is supported.
+
+6) Double-allocation protection
+   Allocated and Remaining Qty are shown by reference/color/size.
+   DRAFT / APPROVED / RELEASED / CLOSED lots keep their reservation.
+   CANCELLED lots release their reservation.
+
+7) Production Lot release workflow
+   DRAFT -> APPROVED -> RELEASED -> CLOSED, with cancellation before release.
+   Audit entries record lot creation and status changes.
+   IE and Planning roles can view the same production scope read-only.
+
+8) Company standard forms retained
+   SMS Fabric & Sample Garment Order
+   T&A / TNF Plan
+   Bulk Fabric Order Sheet
+   Forms can use order/style data and Production-Lot scope without changing the locked company template reference.
+
+9) Performance / UX
+   Production Lot style search is server-side and debounced.
+   Only the selected style loads detailed PO/market breakdown and allocations.
+   This avoids loading every color-size row for every job at once.
+
+Source-study verification used for v0.4.26
+------------------------------------------
+UTG sample Production Cards:
+- BAD1812L: 800 pcs, 1 color; XS-S-M-L-XL parsed as 63/168/248/182/139.
+- BAD3104A: 700 pcs, 1 color; 55/147/217/159/122.
+- BAD3164A: 2,000 pcs, 2 colors; each color 1,000 pcs and XS-3XL = 136/367/299/119/52/18/9.
+
+OVS Product Brief sample:
+- Style 271PJA416SP-903, style total 43,366 pcs.
+- Market totals reconstructed from the source: OVS Italy 42,081; OVS Warm 574; OVS India 77; OVS Middle East 203; OVS Cold 371; Repl. Hub Dubai 60. Total = 43,366.
+- OVS does not receive a fabricated PO number; these market allocations are the operational selectors.
+
+Important
+---------
+This is a cumulative build and includes previous import/master/Gantt/company-form fixes.
+Paste extracted files into the existing project ROOT (same level as apps) and choose Replace / Yes to All.
+No database reset is required just to upgrade code/schema. Prisma db push runs from the launcher.

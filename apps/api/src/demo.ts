@@ -3,6 +3,12 @@ import { JwtAuthGuard } from './auth';
 import { PrismaService } from './prisma.service';
 import { clearDemoData, demoStatus, loadDemoData } from '../prisma/demo-data';
 
+function buyerShortCode(value?: string | null) {
+  const raw = String(value || '').trim().toUpperCase();
+  const map: Record<string,string> = { ONLY:'ONL', ONL:'ONL', ONLYSONS:'ONS', 'ONLY & SONS':'ONS', ONS:'ONS', NAMEIT:'NMT', 'NAME IT':'NMT', NMT:'NMT', OVS:'OVS', UTG:'UTG' };
+  return map[raw] || map[raw.replace(/\s+/g,'')] || raw.replace(/[^A-Z0-9]/g,'').slice(0,4) || 'JOB';
+}
+
 @Controller('demo')
 @UseGuards(JwtAuthGuard)
 export class DemoController {
@@ -32,7 +38,7 @@ export class DemoController {
     const key = this.sectionKey(slug);
     const orders = await this.prisma.order.findMany({
       include: { buyer: true, styles: { include: { purchaseOrders: true } }, tasks: true },
-      orderBy: { jobNo: 'asc' }, take: 250,
+      orderBy: { jobNo: 'asc' }, take: 5000,
     });
     return orders.filter((o) => (o.sourceMetadata as any)?.demoData === true).map((order) => {
       const style = order.styles[0];
@@ -43,7 +49,7 @@ export class DemoController {
       const task = order.tasks.find((t) => t.status !== 'COMPLETED') || order.tasks[0];
       const noAction = ['Complete', 'Pass', 'Ready', 'Released / Monitoring', 'N/A', 'Shipped'].includes(String(sectionStatus));
       return {
-        orderId: order.id, jobNo: order.jobNo, buyer: order.buyer?.name, styleNo: style?.styleNo,
+        orderId: order.id, jobNo: order.jobNo, buyer: order.buyer?.name, buyerCode: buyerShortCode(order.buyer?.code || order.buyer?.name), styleNo: style?.styleNo,
         itemDescription: style?.itemDescription, orderQty: style?.quantity || order.totalQty, sectionStatus,
         production, sectionData,
         pendingAction: noAction ? 'No action' : `${slug.replace(/-/g, ' ')} follow-up`,
@@ -61,7 +67,7 @@ export class DemoController {
       const style = order.styles[0];
       const sm = (style?.sourceMetadata || {}) as any;
       return {
-        id: order.id, jobNo: order.jobNo, buyer: order.buyer?.name, styleNo: style?.styleNo,
+        id: order.id, jobNo: order.jobNo, buyer: order.buyer?.name, buyerCode: buyerShortCode(order.buyer?.code || order.buyer?.name), styleNo: style?.styleNo,
         itemDescription: style?.itemDescription, orderQty: style?.quantity || order.totalQty,
         ccd: style?.purchaseOrders?.[0]?.ccd || style?.purchaseOrders?.[0]?.shipmentDate || null,
         presentStatus: sm.merchandisingFollowUp?.presentStatus || 'Confirmed',
@@ -83,7 +89,7 @@ export class DemoController {
     const om = (order.sourceMetadata || {}) as any;
     return {
       order: {
-        id: order.id, jobNo: order.jobNo, buyer: order.buyer?.name, factory: order.factory?.name,
+        id: order.id, jobNo: order.jobNo, buyer: order.buyer?.name, buyerCode: buyerShortCode(order.buyer?.code || order.buyer?.name), factory: order.factory?.name,
         orderQty: style?.quantity || order.totalQty, styleNo: style?.styleNo, itemDescription: style?.itemDescription,
         collection: style?.collection, season: style?.season, fobPrice: sm.fobPrice || null, itemImageUrl: sm.itemImageUrl || null,
         ccd: style?.purchaseOrders?.[0]?.ccd || style?.purchaseOrders?.[0]?.shipmentDate || null,

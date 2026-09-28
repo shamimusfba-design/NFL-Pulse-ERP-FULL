@@ -1,6 +1,9 @@
 import { Prisma, PrismaClient } from '@prisma/client';
 
-const DEMO_BATCH = 'NFL-DEMO-50-V2';
+const DEMO_BATCH = 'NFL-DEMO-50-V3';
+
+const DEMO_BUYER_SHORT: Record<string, string> = { ONLY:'ONL', NAMEIT:'NMT', ONLYSONS:'ONS', OVS:'OVS', UTG:'UTG' };
+function demoJobNo(buyerCode: string, numericJobNo: number) { return `${DEMO_BUYER_SHORT[buyerCode] || buyerCode} ${numericJobNo}`; }
 
 function json(value: unknown): Prisma.InputJsonValue {
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
@@ -196,7 +199,7 @@ export async function clearDemoData(prisma: PrismaClient) {
 
 export async function loadDemoData(prisma: PrismaClient, createdById: string) {
   await clearDemoData(prisma);
-  const factory = await prisma.factory.upsert({ where: { code: 'NFL' }, update: { name: 'Northern Fashion Limited', active: true }, create: { code: 'NFL', name: 'Northern Fashion Limited' } });
+  const factory = await prisma.factory.upsert({ where: { code: 'NFL' }, update: { name: 'Northern Fashions Limited', active: true }, create: { code: 'NFL', name: 'Northern Fashions Limited' } });
   const sewingLines = await prisma.line.findMany({ where: { active: true, floor: { section: { code: { startsWith: 'SEW' }, factory: { active: true } } } }, include: { floor: { include: { section: { include: { factory: true } } } } } });
   const buyers = new Map<string, { id: string; code: string; name: string }>();
   for (const t of buyerTemplates) {
@@ -212,7 +215,7 @@ export async function loadDemoData(prisma: PrismaClient, createdById: string) {
   for (let i = 0; i < 50; i += 1) {
     const t = buyerTemplates[i % buyerTemplates.length];
     const buyer = buyers.get(t.code)!;
-    const jobNo = String(990001 + i);
+    const jobNo = demoJobNo(t.code, 990001 + i);
     const styleNo = i < buyerTemplates.length ? t.baseStyle : `${t.baseStyle}-${String(i + 1).padStart(2, '0')}`;
     const qtyFactor = [1, 0.72, 0.48, 1.18, 0.36][i % 5];
     const quantity = Math.max(1200, Math.round(t.qty * qtyFactor));

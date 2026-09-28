@@ -1,0 +1,18 @@
+NFL Pulse ERP v0.4.29 — Group 2 verification
+
+Scope
+- IE Bulletin workflow extended to Production Lot scope.
+- Operation breakdown and readiness gate added.
+- Daily Target Board added.
+- No Prisma schema migration required; data is stored in existing style sourceMetadata JSON.
+
+Source grounding
+- IE Summary import already maps Line, Buyer, Job, Style, Item, Sewing Start, Order Qty, No of M/C, Actual SMV, Target, Remarks, Merchant Name, Cutting SMV, Costing SMV, CM $/dzn, Cost Dev/Pcs and September reduced SMV/revised target/variance fields.
+- T&A/import metadata is used for File, PP, Fabric and Trims readiness where available.
+
+Safety
+- Release blocks when critical readiness is Pending/Blocked.
+- Operation SMV total must match bulletin SMV within ±0.10 when operation rows are supplied.
+- If Production Lots exist, at least one scope must be selected before release.
+
+Final Windows compile is performed by START-NFL-PULSE.bat.
