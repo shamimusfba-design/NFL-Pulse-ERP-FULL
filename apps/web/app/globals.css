@@ -753,3 +753,7 @@ input[aria-invalid="true"],select[aria-invalid="true"],textarea[aria-invalid="tr
 .cf-brand{display:flex;align-items:center;justify-content:center;gap:8px}.cf-brand img{width:38px;height:38px;object-fit:contain}.cf-brand .cf-company{text-align:left}
 .print-brand{display:flex;align-items:center;gap:9px}.print-brand img{width:42px;height:42px;object-fit:contain}.print-brand h1{margin:0}
 @media(max-width:720px){.brand-wrap .brand{font-size:13px;max-width:130px}.brand-wrap .brand-sub{font-size:9px;max-width:130px}.brand-logo{width:38px;height:38px}}
+
+/* v0.4.37 material flow and Gantt containment */
+.material-form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:14px}.material-form-grid input,.material-form-grid select{min-height:40px;border:1px solid var(--border);border-radius:8px;padding:8px 10px;background:#fff;font:inherit}.target-hours-pair{display:grid;grid-template-columns:1fr 1fr;gap:5px}.gantt-lane{overflow:hidden}.gantt-bar{max-width:100%;box-sizing:border-box}.gantt-bar-copy{min-width:0;overflow:hidden}
+@media(max-width:760px){.material-form-grid{grid-template-columns:1fr}.material-form-grid input,.material-form-grid select{min-height:44px;font-size:16px}.target-hours-pair{grid-template-columns:1fr}}

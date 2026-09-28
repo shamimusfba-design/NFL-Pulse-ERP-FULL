@@ -824,8 +824,8 @@ export class PlanningController {
     const effectiveFactory=String(dto.factoryCode ?? before.factoryCode ?? 'NFL').toUpperCase();
     const effectiveLine=String(dto.lineCode ?? before.lineCode ?? '').toUpperCase();
     const isShifting=effectiveFactory==='NFL'&&NFL_SHIFTING_LINES.has(effectiveLine);
-    const workingHours = isShifting ? 16 : Number(dto.workingHours ?? before.workingHours ?? 8);
-    const overtimeHours = isShifting ? 0 : Number(dto.overtimeHours ?? before.overtimeHours ?? 0);
+    const workingHours = isShifting ? 16 : 8;
+    const overtimeHours = Math.max(0, Number(dto.overtimeHours ?? before.overtimeHours ?? 0));
     const totalHours = Math.max(1, workingHours + overtimeHours);
     const smv = Number(ie.smv ?? dto.smv ?? before.smv ?? 0);
     const manpower = Number(ie.manpower ?? dto.manpower ?? before.manpower ?? sectionSewing.manpower ?? 0);

@@ -480,6 +480,10 @@ model IeTargetEntry {
   wipQty           Int      @default(0)
   manpower         Int      @default(0)
   plannedHours     Float    @default(8)
+  regularHours     Float    @default(8)
+  overtimeHours    Float    @default(0)
+  regularTarget    Int      @default(0)
+  overtimeTarget   Int      @default(0)
   targetEfficiency Float    @default(0)
   targetPerHour    Int      @default(0)
   finalTarget      Int      @default(0)
@@ -739,4 +743,229 @@ model IeSkillMatrix {
   updatedAt      DateTime @updatedAt
   @@index([floorCode, lineCode, active])
   @@index([employeeName, active])
+}
+
+
+model MaterialItem {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  category    String
+  count       String?
+  composition String?
+  color       String?
+  gsm         Float?
+  width       String?
+  uom         String   @default("KG")
+  active      Boolean  @default(true)
+  lots        MaterialLot[]
+  balances    MaterialStockBalance[]
+  ledger      MaterialLedger[]
+  reservations MaterialReservation[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@index([category, active])
+}
+
+model MaterialLot {
+  id              String   @id @default(cuid())
+  itemId          String
+  lotNo           String
+  supplierName    String?
+  supplierLotNo   String?
+  shade           String?
+  status          String   @default("OPEN")
+  item            MaterialItem @relation(fields:[itemId],references:[id],onDelete:Cascade)
+  balances        MaterialStockBalance[]
+  ledger          MaterialLedger[]
+  reservations    MaterialReservation[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  @@unique([itemId, lotNo])
+  @@index([supplierName])
+}
+
+model MaterialStockBalance {
+  id           String   @id @default(cuid())
+  stockKey     String   @unique
+  itemId       String
+  lotId        String?
+  locationCode String?
+  rollNo       String?
+  jobNo        String?
+  qty          Float    @default(0)
+  item         MaterialItem @relation(fields:[itemId],references:[id])
+  lot          MaterialLot? @relation(fields:[lotId],references:[id],onDelete:SetNull)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  @@index([itemId, locationCode])
+  @@index([jobNo])
+}
+
+model MaterialLedger {
+  id             String   @id @default(cuid())
+  itemId         String
+  lotId          String?
+  locationCode   String?
+  rollNo         String?
+  jobNo          String?
+  styleId        String?
+  batchNo        String?
+  txnType        String
+  direction      String
+  qty            Float
+  uom            String   @default("KG")
+  referenceType  String?
+  referenceId    String?
+  idempotencyKey String   @unique
+  remarks        String?
+  createdByName  String?
+  item           MaterialItem @relation(fields:[itemId],references:[id])
+  lot            MaterialLot? @relation(fields:[lotId],references:[id],onDelete:SetNull)
+  createdAt      DateTime @default(now())
+  @@index([itemId, createdAt])
+  @@index([jobNo, createdAt])
+}
+
+model MaterialReservation {
+  id            String   @id @default(cuid())
+  itemId        String
+  lotId         String?
+  jobNo         String
+  styleId       String?
+  qty           Float
+  issuedQty     Float    @default(0)
+  status        String   @default("RESERVED")
+  reference     String?
+  createdByName String?
+  item          MaterialItem @relation(fields:[itemId],references:[id])
+  lot           MaterialLot? @relation(fields:[lotId],references:[id],onDelete:SetNull)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@index([jobNo, status])
+}
+
+model KnittingPlan {
+  id                String   @id @default(cuid())
+  jobNo             String
+  styleId           String?
+  fabricCode        String
+  machineCode       String?
+  machineCapability String?
+  plannedStart      DateTime?
+  plannedEnd        DateTime?
+  targetKg          Float    @default(0)
+  actualKg          Float    @default(0)
+  status            String   @default("PLANNED")
+  subcontractor     String?
+  remarks           String?
+  createdByName     String?
+  production        KnittingProduction[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  @@index([jobNo, status])
+  @@index([machineCode, plannedStart])
+}
+
+model KnittingProduction {
+  id             String   @id @default(cuid())
+  planId         String
+  productionDate DateTime
+  shift          String?
+  yarnItemId     String?
+  yarnLotId      String?
+  yarnIssuedKg   Float    @default(0)
+  yarnConsumedKg Float    @default(0)
+  yarnReturnedKg Float    @default(0)
+  wastageKg      Float    @default(0)
+  greigeKg       Float    @default(0)
+  rollNo         String
+  sourceRef      String   @unique
+  createdByName  String?
+  plan           KnittingPlan @relation(fields:[planId],references:[id])
+  greigeRolls    GreigeRoll[]
+  createdAt      DateTime @default(now())
+  @@index([planId, productionDate])
+}
+
+model GreigeRoll {
+  id                   String   @id @default(cuid())
+  rollNo               String   @unique
+  knittingProductionId String?
+  jobNo                String
+  styleId              String?
+  materialItemId       String
+  materialLotId        String?
+  lotNo                String
+  gsm                  Float?
+  composition          String?
+  width                String?
+  weightKg             Float
+  qualityStatus        String   @default("PENDING")
+  locationCode         String
+  status               String   @default("AVAILABLE")
+  dyeBatchId           String?
+  knittingProduction   KnittingProduction? @relation(fields:[knittingProductionId],references:[id],onDelete:SetNull)
+  batchRolls           DyeBatchRoll[]
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  @@index([jobNo, status])
+  @@index([locationCode, status])
+}
+
+model DyeBatch {
+  id            String   @id @default(cuid())
+  batchNo       String   @unique
+  jobNo         String
+  styleId       String?
+  color         String?
+  shade         String?
+  machineCode   String?
+  recipeRef     String?
+  plannedStart  DateTime?
+  plannedEnd    DateTime?
+  actualStart   DateTime?
+  actualEnd     DateTime?
+  inputKg       Float    @default(0)
+  outputKg      Float    @default(0)
+  processLossKg Float    @default(0)
+  status        String   @default("PLANNED")
+  parentBatchId String?
+  remarks       String?
+  createdByName String?
+  parentBatch   DyeBatch? @relation("DyeReprocess",fields:[parentBatchId],references:[id],onDelete:SetNull)
+  childBatches  DyeBatch[] @relation("DyeReprocess")
+  rolls         DyeBatchRoll[]
+  handoffs      FinishedFabricHandoff[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@index([jobNo, status])
+}
+
+model DyeBatchRoll {
+  id            String   @id @default(cuid())
+  batchId       String
+  rollId        String   @unique
+  inputWeightKg Float
+  batch         DyeBatch @relation(fields:[batchId],references:[id],onDelete:Cascade)
+  roll          GreigeRoll @relation(fields:[rollId],references:[id])
+  createdAt     DateTime @default(now())
+  @@unique([batchId, rollId])
+}
+
+model FinishedFabricHandoff {
+  id             String   @id @default(cuid())
+  dyeBatchId     String
+  jobNo          String
+  styleId        String?
+  materialItemId String
+  materialLotId  String?
+  qtyKg          Float
+  status         String   @default("READY")
+  sourceRef      String   @unique
+  createdByName  String?
+  dyeBatch       DyeBatch @relation(fields:[dyeBatchId],references:[id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([jobNo, status])
 }

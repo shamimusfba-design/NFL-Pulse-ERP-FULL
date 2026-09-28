@@ -118,6 +118,19 @@ export class OrdersController {
     return Array.from(new Set(rows.map((o) => String(o.jobNo || '').split(' ')[0]).filter((x) => /^\d+$/.test(x))));
   }
 
+  @Get('dashboard-summary')
+  async dashboardSummary(@Req() req:any) {
+    const roles:string[]=req.user.roles||[];const isMerch=roles.some((role)=>MERCH_ROLES.includes(role));const canSeeTeam=roles.includes('ADMIN')||roles.includes('MERCH_HEAD');
+    const where:any=isMerch&&!canSeeTeam?{OR:[{merchandiserId:req.user.id},{merchandiserId:null,createdById:req.user.id}]}:undefined;
+    const [jobCount,qty,buyerGroups]=await Promise.all([
+      this.prisma.order.count({where}),
+      this.prisma.order.aggregate({where,_sum:{totalQty:true}}),
+      this.prisma.order.groupBy({by:['buyerId'],where,_sum:{totalQty:true},orderBy:{_sum:{totalQty:'desc'}},take:8}),
+    ]);
+    const buyers=await this.prisma.buyer.findMany({where:{id:{in:buyerGroups.map(x=>x.buyerId)}}});const names=new Map(buyers.map(x=>[x.id,x.name]));
+    return {jobCount,totalQty:Number(qty._sum.totalQty||0),buyers:buyerGroups.map(x=>({name:names.get(x.buyerId)||'Unknown',qty:Number(x._sum.totalQty||0)}))};
+  }
+
   @Get()
   list(@Req() req: any) {
     const roles: string[] = req.user.roles || [];

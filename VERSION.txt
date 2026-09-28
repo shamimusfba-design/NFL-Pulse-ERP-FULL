@@ -1,2 +1,2 @@
-NFL Pulse ERP v0.4.35
-Planning Scale & Line Cleanup cumulative build — no fixed Job cap in Capacity/T&A/Gantt, NFL/NCL physical-line deduplication, and official Northern Fashions Limited branding.
+NFL Pulse ERP v0.4.37
+Cumulative Material Flow build — Yarn Store, Knitting, Greige Store and Dyeing with traceability, stock ledger, target-hours correction and scalability stabilization.
