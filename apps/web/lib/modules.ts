@@ -82,8 +82,8 @@ export const MODULE_GROUPS: ModuleGroup[] = [
       { slug: 'greige-store', name: 'Greige Fabric Store', short: 'GS', status: 'Working', description: 'Greige receive, issue, stock and job-wise fabric position.' },
       { slug: 'dyeing', name: 'Dyeing', short: 'DY', status: 'Working', description: 'Bulk/sample dyeing plan, execution, RFT, reprocess and delivery performance.' },
       { slug: 'lab', name: 'Testing Lab', short: 'TL', status: 'Working', description: 'Independent yarn/fabric testing, test history, pass/fail/hold and release status.' },
-      { slug: 'fabric-finishing', name: 'Fabric Finishing / AOP / Brush / Peach', short: 'FF', status: 'Planned', description: 'Configurable post-dyeing processes and finishing execution.' },
-      { slug: 'finished-fabric', name: 'Finished Fabric Store', short: 'FS', status: 'Planned', description: 'Finished fabric receive, stock, issue and cutting readiness.' },
+      { slug: 'fabric-finishing', name: 'Fabric Finishing / AOP / Brush / Peach', short: 'FF', status: 'Working', description: 'Configurable post-dyeing processes and finishing execution.' },
+      { slug: 'finished-fabric', name: 'Finished Fabric Store', short: 'FS', status: 'Working', description: 'Finished fabric receive, stock, issue and cutting readiness.' },
     ],
   },
   {
