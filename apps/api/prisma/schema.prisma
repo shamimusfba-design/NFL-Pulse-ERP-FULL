@@ -1024,6 +1024,7 @@ model YarnProcurement {
   piNo              String?
   lcNo              String?
   qtyKg             Float
+  receivedKg        Float    @default(0)
   etd               DateTime?
   eta               DateTime?
   arrivalDate       DateTime?
