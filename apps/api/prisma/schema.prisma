@@ -1085,3 +1085,49 @@ model LabTestRecord {
   @@index([jobNo, resultStatus])
   @@index([referenceType, referenceId])
 }
+
+
+model FabricFinishingProcess {
+  id             String   @id @default(cuid())
+  sourceRef      String   @unique
+  handoffId      String?
+  dyeBatchId     String?
+  jobNo          String
+  styleId        String?
+  processType    String
+  processorName  String?
+  inputKg        Float
+  outputKg       Float    @default(0)
+  processLossKg  Float    @default(0)
+  plannedDate    DateTime?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  status         String   @default("PLANNED")
+  remarks        String?
+  createdByName  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([jobNo, status])
+  @@index([dyeBatchId, status])
+}
+
+model CuttingFabricIssue {
+  id             String   @id @default(cuid())
+  sourceRef      String   @unique
+  jobNo          String
+  styleId        String?
+  materialItemId String
+  materialLotId  String?
+  locationCode   String?
+  qtyKg          Float
+  cuttingFloor   String?
+  cutQty         Int      @default(0)
+  status         String   @default("ISSUED")
+  issuedAt       DateTime @default(now())
+  remarks        String?
+  createdByName  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([jobNo, status])
+  @@index([materialItemId, issuedAt])
+}
