@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { JwtAuthGuard } from './auth';
 import { PrismaService } from './prisma.service';
@@ -204,4 +204,81 @@ export class MaterialFlowController {
 
   @Get('finished-handoffs')
   async handoffs(@Query('status') status?:string){return this.prisma.finishedFabricHandoff.findMany({where:status?{status:txt(status).toUpperCase()}:undefined,orderBy:{createdAt:'desc'},take:200})}
+
+  @Get('finished-fabric/handoffs')
+  async finishedFabricHandoffs(@Query('jobNo') jobNo?:string,@Query('page') p?:string,@Query('pageSize') ps?:string){
+    const take=pageSize(ps),page=pageNo(p),where:any=jobNo?{jobNo:txt(jobNo)}:{};
+    const [rows,total]=await Promise.all([
+      this.prisma.finishedFabricHandoff.findMany({where,orderBy:{updatedAt:'desc'},skip:(page-1)*take,take}),
+      this.prisma.finishedFabricHandoff.count({where}),
+    ]);
+    return {rows,total,page,pageSize:take};
+  }
+
+  @Get('fabric-finishing')
+  async fabricFinishing(@Query('jobNo') jobNo?:string,@Query('status') status?:string,@Query('page') p?:string,@Query('pageSize') ps?:string){
+    const take=pageSize(ps),page=pageNo(p),where:any={...(jobNo?{jobNo:txt(jobNo)}:{}),...(status?{status:txt(status).toUpperCase()}:{})};
+    const [rows,total]=await Promise.all([
+      this.prisma.fabricFinishingProcess.findMany({where,orderBy:{updatedAt:'desc'},skip:(page-1)*take,take}),
+      this.prisma.fabricFinishingProcess.count({where}),
+    ]);
+    return {rows,total,page,pageSize:take};
+  }
+
+  @Post('fabric-finishing')
+  async createFabricFinishing(@Req() req:any,@Body() b:any){
+    const handoffId=txt(b.handoffId),jobNo=txt(b.jobNo),processType=txt(b.processType).toUpperCase()||'STANDARD_FINISH',inputKg=Math.max(0,num(b.inputKg));
+    if(!jobNo||inputKg<=0)throw new BadRequestException('Job and positive input KG are required');
+    const sourceRef=txt(b.sourceRef)||`FINISH:${handoffId||jobNo}:${processType}:${Date.now()}`;
+    const row=await this.prisma.fabricFinishingProcess.create({data:{sourceRef,handoffId:handoffId||null,dyeBatchId:txt(b.dyeBatchId)||null,jobNo,styleId:txt(b.styleId)||null,processType,processorName:txt(b.processorName)||null,inputKg,plannedDate:b.plannedDate?new Date(b.plannedDate):null,status:'PLANNED',remarks:txt(b.remarks)||null,createdByName:req.user?.name||null}});
+    if(handoffId)await this.prisma.finishedFabricHandoff.updateMany({where:{id:handoffId},data:{status:'FINISHING'}});
+    await this.audit(req,'FABRIC_FINISHING_CREATED','FABRIC_FINISHING',row.id,row);return row;
+  }
+
+  @Put('fabric-finishing/:id/start')
+  async startFabricFinishing(@Req() req:any,@Param('id') id:string){
+    const row=await this.prisma.fabricFinishingProcess.update({where:{id},data:{status:'RUNNING',startedAt:new Date()}});
+    await this.audit(req,'FABRIC_FINISHING_STARTED','FABRIC_FINISHING',id,row);return row;
+  }
+
+  @Put('fabric-finishing/:id/complete')
+  async completeFabricFinishing(@Req() req:any,@Param('id') id:string,@Body() b:any){
+    const before=await this.prisma.fabricFinishingProcess.findUnique({where:{id}});if(!before)throw new BadRequestException('Fabric finishing record not found');
+    if(before.status==='COMPLETED')return before;
+    const outputKg=Math.max(0,num(b.outputKg));if(outputKg<=0||outputKg>before.inputKg+0.0001)throw new BadRequestException('Output KG must be positive and cannot exceed input KG');
+    const result=await this.prisma.$transaction(async tx=>{
+      const code=txt(b.materialCode).toUpperCase()||`FF-${before.jobNo.replace(/[^A-Z0-9]/gi,'')}`;
+      const item=await tx.materialItem.upsert({where:{code},update:{active:true,category:'FINISHED_FABRIC',name:txt(b.materialName)||`Finished Fabric ${before.jobNo}`,gsm:num(b.gsm)||undefined,width:txt(b.width)||undefined},create:{code,name:txt(b.materialName)||`Finished Fabric ${before.jobNo}`,category:'FINISHED_FABRIC',gsm:num(b.gsm)||null,width:txt(b.width)||null,uom:'KG'}});
+      const lotNo=txt(b.lotNo)||`FF-${new Date().toISOString().slice(0,10).replace(/-/g,'')}`;const lot=await tx.materialLot.upsert({where:{itemId_lotNo:{itemId:item.id,lotNo}},update:{status:'OPEN'},create:{itemId:item.id,lotNo,status:'OPEN'}});
+      await this.move(tx,req,{itemId:item.id,lotId:lot.id,locationCode:txt(b.locationCode)||'FINISHED-FABRIC',jobNo:before.jobNo,styleId:before.styleId,qty:outputKg,direction:'IN',txnType:'FABRIC_FINISHING_RECEIPT',referenceType:'FABRIC_FINISHING',referenceId:id,idempotencyKey:`FINISH:${id}:IN`});
+      const row=await tx.fabricFinishingProcess.update({where:{id},data:{outputKg,processLossKg:Math.max(0,before.inputKg-outputKg),status:'COMPLETED',completedAt:new Date()}});
+      if(before.handoffId)await tx.finishedFabricHandoff.updateMany({where:{id:before.handoffId},data:{status:'FINISHED'}});
+      return row;
+    },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
+    await this.audit(req,'FABRIC_FINISHING_COMPLETED','FABRIC_FINISHING',id,result);return result;
+  }
+
+  @Get('cutting/issues')
+  async cuttingIssues(@Query('jobNo') jobNo?:string,@Query('page') p?:string,@Query('pageSize') ps?:string){
+    const take=pageSize(ps),page=pageNo(p),where:any=jobNo?{jobNo:txt(jobNo)}:{};
+    const [rows,total]=await Promise.all([
+      this.prisma.cuttingFabricIssue.findMany({where,orderBy:{issuedAt:'desc'},skip:(page-1)*take,take}),
+      this.prisma.cuttingFabricIssue.count({where}),
+    ]);
+    return {rows,total,page,pageSize:take};
+  }
+
+  @Post('cutting/issues')
+  async cuttingIssue(@Req() req:any,@Body() b:any){
+    const qtyKg=Math.max(0,num(b.qtyKg)),jobNo=txt(b.jobNo),itemId=txt(b.materialItemId);
+    if(!jobNo||!itemId||qtyKg<=0)throw new BadRequestException('Job, finished fabric item and positive KG are required');
+    const sourceRef=txt(b.sourceRef)||`CUT:${jobNo}:${Date.now()}`;
+    const result=await this.prisma.$transaction(async tx=>{
+      const existing=await tx.cuttingFabricIssue.findUnique({where:{sourceRef}});if(existing)return existing;
+      await this.move(tx,req,{itemId,lotId:txt(b.materialLotId)||null,locationCode:txt(b.locationCode)||'FINISHED-FABRIC',jobNo,styleId:txt(b.styleId)||null,qty:qtyKg,direction:'OUT',txnType:'CUTTING_ISSUE',referenceType:'CUTTING',referenceId:sourceRef,idempotencyKey:`${sourceRef}:OUT`});
+      return tx.cuttingFabricIssue.create({data:{sourceRef,jobNo,styleId:txt(b.styleId)||null,materialItemId:itemId,materialLotId:txt(b.materialLotId)||null,locationCode:txt(b.locationCode)||'FINISHED-FABRIC',qtyKg,cuttingFloor:txt(b.cuttingFloor)||null,cutQty:Math.max(0,Math.trunc(num(b.cutQty))),status:'ISSUED',remarks:txt(b.remarks)||null,createdByName:req.user?.name||null}});
+    },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
+    await this.audit(req,'CUTTING_FABRIC_ISSUED','CUTTING_ISSUE',result.id,result);return result;
+  }
+
 }
