@@ -1,3 +1,5 @@
+ALTER TABLE "YarnProcurement" ADD COLUMN "receivedKg" DOUBLE PRECISION NOT NULL DEFAULT 0;
+
 -- v0.4.39 factory-standardized downstream fabric flow (additive only)
 CREATE TABLE "FabricFinishingProcess" (
   "id" TEXT NOT NULL,
