@@ -1,2 +1,2 @@
-NFL Pulse ERP v0.4.38
-Yarn & Fabric operational restoration — CAD-linked requirements, Procurement, Yarn Dyeing and independent Testing Lab.
+NFL Pulse ERP v0.4.39
+Factory-standardized cumulative flow — running-data bridge, partial yarn receipts, Yarn/Knitting/Greige/Dyeing/Lab plus Fabric Finishing, Finished Fabric Store and Cutting traceability.
