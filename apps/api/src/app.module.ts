@@ -22,10 +22,11 @@ import { ProductionLotsController } from './production-lots';
 import { MaintenanceController } from './maintenance';
 import { IeOperationsController } from './ie-operations';
 import { MaterialFlowController } from './material-flow';
+import { YarnFabricController } from './yarn-fabric';
 
 @Module({
   imports: [ConfigModule.forRoot({ isGlobal: true }), JwtModule.register({})],
-  controllers: [HealthController, AuthController, MastersController, OrdersController, OrderImportController, TasksController, DomainController, UploadsController, CadController, PlanningController, DemoController, IeController, ImportsController, DocumentsController, ProductionLotsController, MaintenanceController, IeOperationsController, MaterialFlowController],
+  controllers: [HealthController, AuthController, MastersController, OrdersController, OrderImportController, TasksController, DomainController, UploadsController, CadController, PlanningController, DemoController, IeController, ImportsController, DocumentsController, ProductionLotsController, MaintenanceController, IeOperationsController, MaterialFlowController, YarnFabricController],
   providers: [PrismaService, AuthService, JwtAuthGuard, OrderImportService, PdfTextService],
 })
 export class AppModule {}

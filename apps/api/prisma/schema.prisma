@@ -969,3 +969,119 @@ model FinishedFabricHandoff {
   updatedAt      DateTime @updatedAt
   @@index([jobNo, status])
 }
+
+
+model FabricRequirement {
+  id                String   @id @default(cuid())
+  sourceRef         String   @unique
+  orderId           String
+  styleId           String
+  jobNo             String
+  styleNo           String
+  buyerName         String?
+  color             String?
+  fabricDescription String
+  fabricType        String?
+  gsm               Float?
+  dia               String?
+  requiredKg        Float
+  status            String   @default("OPEN")
+  sourceUpdatedAt   DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  @@index([jobNo, status])
+  @@index([styleId, status])
+}
+
+model YarnRequirement {
+  id                  String   @id @default(cuid())
+  fabricRequirementId String?
+  jobNo               String
+  styleId             String?
+  yarnItemId          String?
+  yarnCount           String?
+  composition         String?
+  color               String?
+  requiredKg          Float
+  reservedKg          Float    @default(0)
+  orderedKg           Float    @default(0)
+  inHouseKg           Float    @default(0)
+  status              String   @default("OPEN")
+  remarks             String?
+  createdByName       String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  @@index([jobNo, status])
+  @@index([fabricRequirementId])
+}
+
+model YarnProcurement {
+  id                String   @id @default(cuid())
+  yarnRequirementId String?
+  jobNo             String
+  yarnItemId        String?
+  supplierName      String
+  piNo              String?
+  lcNo              String?
+  qtyKg             Float
+  etd               DateTime?
+  eta               DateTime?
+  arrivalDate       DateTime?
+  status            String   @default("PLANNED")
+  sourceRef         String   @unique
+  remarks           String?
+  createdByName     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  @@index([jobNo, status])
+  @@index([supplierName, status])
+}
+
+model YarnDyeBatch {
+  id              String   @id @default(cuid())
+  batchNo         String   @unique
+  jobNo           String
+  styleId         String?
+  greyYarnItemId  String
+  greyYarnLotId   String?
+  dyedYarnItemId  String?
+  dyedYarnLotId   String?
+  processorName   String?
+  color           String
+  shade           String?
+  sentKg          Float
+  receivedKg      Float    @default(0)
+  processLossKg   Float    @default(0)
+  sentAt          DateTime?
+  receivedAt      DateTime?
+  status          String   @default("SENT")
+  remarks         String?
+  createdByName   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  @@index([jobNo, status])
+  @@index([processorName, status])
+}
+
+model LabTestRecord {
+  id            String   @id @default(cuid())
+  testNo        String   @unique
+  scope         String
+  referenceType String
+  referenceId   String?
+  jobNo         String
+  styleId       String?
+  batchNo       String?
+  testType      String
+  resultValue   String?
+  resultStatus  String   @default("PENDING")
+  reportRef     String?
+  testedAt      DateTime?
+  releasedAt    DateTime?
+  remarks       String?
+  createdByName String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@index([jobNo, resultStatus])
+  @@index([referenceType, referenceId])
+}

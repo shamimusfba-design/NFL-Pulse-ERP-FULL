@@ -1,2 +1,2 @@
-NFL Pulse ERP v0.4.37
-Cumulative Material Flow build — Yarn Store, Knitting, Greige Store and Dyeing with traceability, stock ledger, target-hours correction and scalability stabilization.
+NFL Pulse ERP v0.4.38
+Yarn & Fabric operational restoration — CAD-linked requirements, Procurement, Yarn Dyeing and independent Testing Lab.
