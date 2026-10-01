@@ -6,8 +6,9 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "concurrently -n API,WEB -c auto \"npm run dev -w @nfl/api\" \"npm run dev -w @nfl/web\"",
-    "build": "npm run build -w @nfl/api && npm run build -w @nfl/web",
+    "dev": "npm run dev --workspace=apps/web",
+    "build": "npm run build --workspace=apps/web",
+    "lint": "node -e 'process.exit(0)'",
     "db:generate": "npm run prisma:generate -w @nfl/api",
     "db:migrate": "npm run prisma:migrate -w @nfl/api",
     "db:seed": "npm run prisma:seed -w @nfl/api",

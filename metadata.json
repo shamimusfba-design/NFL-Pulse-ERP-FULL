@@ -1,0 +1,5 @@
+{
+  "name": "NFL Pulse ERP",
+  "description": "Enterprise Resource Planning system for Northern Fashions Limited (NFL / NCL) garment manufacturing",
+  "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

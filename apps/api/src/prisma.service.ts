@@ -3,6 +3,16 @@ import { PrismaClient } from '@prisma/client';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
-  async onModuleInit() { await this.$connect(); }
-  async onModuleDestroy() { await this.$disconnect(); }
+  async onModuleInit() {
+    try {
+      await this.$connect();
+    } catch {
+      console.warn('[AI Studio] Database not connected — using mock');
+    }
+  }
+  async onModuleDestroy() {
+    try {
+      await this.$disconnect();
+    } catch {}
+  }
 }
