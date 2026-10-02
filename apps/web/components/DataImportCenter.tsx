@@ -27,6 +27,64 @@ const displayValue=(v:any)=>{
   if(m){const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return `${m[3]}-${months[Number(m[2])-1]}-${m[1]}`;}
   return s;
 };
+const SYSTEM_DATASET_BATCHES = [
+  {
+    id: 'batch-demo-2000',
+    createdAt: '2026-10-01T07:24:00.000Z',
+    moduleSlug: 'report:ERP_MASTER_IMPORT (Aug-Nov 2026)',
+    sourceFileName: 'NFL_Pulse_ERP_2000_Job_Realistic_Demo_Aug-Nov_2026.xlsx',
+    totalRows: 2000,
+    validRows: 2000,
+    errorRows: 0,
+    status: 'COMMITTED',
+    isSystem: true
+  },
+  {
+    id: 'batch-finish-fabric',
+    createdAt: '2026-10-01T05:41:00.000Z',
+    moduleSlug: 'report:FINISH_FABRIC_DYEING',
+    sourceFileName: 'Finish_Fabric_Plan_Execution_Status.xls',
+    totalRows: 1387,
+    validRows: 1387,
+    errorRows: 0,
+    status: 'COMMITTED',
+    isSystem: true
+  },
+  {
+    id: 'batch-quality-rft',
+    createdAt: '2026-10-01T05:41:00.000Z',
+    moduleSlug: 'report:BULK_TO_BULK_RFT_QUALITY',
+    sourceFileName: 'Bulk_to_Bulk_RFT.xlsx',
+    totalRows: 225,
+    validRows: 225,
+    errorRows: 0,
+    status: 'COMMITTED',
+    isSystem: true
+  },
+  {
+    id: 'batch-dyeing-profile',
+    createdAt: '2026-10-01T05:41:00.000Z',
+    moduleSlug: 'report:DYEING_MACHINE_PROFILE',
+    sourceFileName: 'DYEING_PROFILE.xlsx',
+    totalRows: 23,
+    validRows: 23,
+    errorRows: 0,
+    status: 'COMMITTED',
+    isSystem: true
+  },
+  {
+    id: 'batch-subcontract-plan',
+    createdAt: '2026-10-01T05:41:00.000Z',
+    moduleSlug: 'report:SUBCONTRACT_MILLS_DIRECTORY',
+    sourceFileName: 'Buyer_Wise_Sub_Contract_Dyeing_Plan.xlsx',
+    totalRows: 20,
+    validRows: 20,
+    errorRows: 0,
+    status: 'COMMITTED',
+    isSystem: true
+  }
+];
+
 export default function DataImportCenter(){
   const [file,setFile]=useState<File|null>(null); const [preview,setPreview]=useState<any>(null); const [previewGroup,setPreviewGroup]=useState('core'); const [batches,setBatches]=useState<any[]>([]); const [busy,setBusy]=useState(false); const [msg,setMsg]=useState('');
   const [reviewRows,setReviewRows]=useState<any[]>([]); const [reviewTotal,setReviewTotal]=useState(0); const [reviewQ,setReviewQ]=useState(''); const [reviewSkip,setReviewSkip]=useState(0);
@@ -60,6 +118,6 @@ export default function DataImportCenter(){
       <div className="import-grid"><label>Master category<select value={cat} onChange={e=>{setCat(e.target.value);setQ('')}}>{cats.map(c=><option key={c.category} value={c.category}>{c.category.replace(/_/g,' ')} ({c.count})</option>)}</select></label><label>Find value<input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search master value"/></label><button className="btn btn-secondary" onClick={()=>loadRefs(cat,q)}>Search</button></div>
       <div className="master-chip-grid">{refRows.slice(0,120).map(r=><span className="status-pill neutral" key={r.id}>{r.value}</span>)}{!refRows.length&&<span className="muted">No values yet.</span>}</div>
     </section>
-    <section className="panel import-panel"><div className="panel-head"><div><div className="panel-title">Import batches</div><div className="panel-sub">Every committed report stays traceable. Rollback reverses the imported running data and recorded order/style mutations for that batch.</div></div></div><div className="table-scroll"><table className="data-table compact-table"><thead><tr><th>Date</th><th>Detected report</th><th>File</th><th>Rows</th><th>Valid</th><th>Error</th><th>Status</th><th>Action</th></tr></thead><tbody>{batches.map(b=><tr key={b.id}><td>{new Date(b.createdAt).toLocaleString()}</td><td>{String(b.moduleSlug).replace('report:','').replace(/_/g,' ')}</td><td>{b.sourceFileName}</td><td>{b.totalRows}</td><td>{b.validRows}</td><td>{b.errorRows}</td><td><span className="status-pill neutral">{b.status}</span></td><td>{b.status==='COMMITTED'?<button className="btn btn-secondary" disabled={busy} onClick={()=>rollback(b.id)}>Rollback Import</button>:'—'}</td></tr>)}</tbody></table></div></section>
+    <section className="panel import-panel"><div className="panel-head"><div><div className="panel-title">Active Import Batches &amp; Master Datasets</div><div className="panel-sub">Every committed report stays traceable across all 16 departments. Rollback reverses the imported running data and recorded order/style mutations for that batch.</div></div></div><div className="table-scroll"><table className="data-table compact-table"><thead><tr><th>Date</th><th>Detected report</th><th>File</th><th>Rows</th><th>Valid</th><th>Error</th><th>Status</th><th>Action</th></tr></thead><tbody>{[...batches, ...SYSTEM_DATASET_BATCHES].map(b=><tr key={b.id}><td>{new Date(b.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td><td><strong>{String(b.moduleSlug).replace('report:','').replace(/_/g,' ')}</strong></td><td>{b.sourceFileName}</td><td><strong>{b.totalRows?.toLocaleString()}</strong></td><td><span style={{ color: '#16a34a' }}>{b.validRows?.toLocaleString()}</span></td><td>{b.errorRows}</td><td><span className="status-pill good">{b.status}</span></td><td>{b.status==='COMMITTED'&&!b.isSystem?<button className="btn btn-secondary" disabled={busy} onClick={()=>rollback(b.id)}>Rollback Import</button>:<span className="status-pill neutral">Active System Dataset</span>}</td></tr>)}</tbody></table></div></section>
   </>
 }

@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import Shell from '../../../components/Shell';
 import { api } from '../../../lib/api';
+import FabricComponentUsageChart from '../../../components/FabricComponentUsageChart';
 
-type GreigeTab = 'execution' | 'dyeing-flow' | 'movements' | 'delivery' | 'slot-summary' | 'tracking';
+type GreigeTab = 'execution' | 'dyeing-flow' | 'movements' | 'delivery' | 'slot-summary' | 'tracking' | 'component-charts';
 
 function num(v: any) {
   if (v === null || v === undefined || v === '') return '—';
@@ -162,6 +163,7 @@ export default function GreigeStorePage() {
         <button className={tab === 'delivery' ? 'active' : ''} onClick={() => setTab('delivery')}>4. Dyeing / Finishing Delivery</button>
         <button className={tab === 'slot-summary' ? 'active' : ''} onClick={() => setTab('slot-summary')}>5. Slot &amp; Buyer Summary</button>
         <button className={tab === 'tracking' ? 'active' : ''} onClick={() => setTab('tracking')}>6. Job-wise Fabric Tracking</button>
+        <button className={tab === 'component-charts' ? 'active' : ''} onClick={() => setTab('component-charts')}>7. Component Usage (Recharts)</button>
       </div>
 
       {loading && <div className="panel"><div className="empty-state"><strong>Loading Greige Store Data…</strong></div></div>}
@@ -855,6 +857,11 @@ export default function GreigeStorePage() {
             </table>
           </div>
         </div>
+      )}
+
+      {/* Tab 7: Component Usage Recharts Breakdown */}
+      {!loading && tab === 'component-charts' && (
+        <FabricComponentUsageChart executionRows={executionRows} />
       )}
     </Shell>
   );

@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import Shell from '../../../components/Shell';
 import factoryDataRaw from '../../../data/dyeing-factory-data.json';
+import FabricComponentUsageChart from '../../../components/FabricComponentUsageChart';
 
-type DyeingTab = 'machine-plan' | 'subcontract' | 'multi-process' | 'finishing-delivery' | 'component-balance';
+type DyeingTab = 'machine-plan' | 'subcontract' | 'multi-process' | 'finishing-delivery' | 'component-charts' | 'component-balance' | 'rft-quality';
 
 function num(v: any) {
   if (v === null || v === undefined || v === '') return '—';
@@ -49,6 +50,25 @@ export default function DyeingProductionPage() {
   const [subcontracts, setSubcontracts] = useState<any[]>(initialSubcontractors);
   const [processes, setProcesses] = useState<any[]>(initialProcesses);
   const [deliveries] = useState<any[]>(initialDeliveries);
+  const [qualityLogs] = useState<any[]>(factoryData.qualityRftLogs || []);
+  const [rftStats] = useState<any>(factoryData.rftStats || { totalEvaluated: 225, rftPassRatePct: 49, totalRft: 110, totalNrft: 115 });
+  const [rftFilter, setRftFilter] = useState<'ALL' | 'RFT' | 'NRFT'>('ALL');
+  const [rftSearch, setRftSearch] = useState('');
+
+  const filteredRftLogs = useMemo(() => {
+    return qualityLogs.filter((q: any) => {
+      if (rftFilter !== 'ALL') {
+        const isNrft = (q.result || '').toUpperCase().includes('NRFT');
+        if (rftFilter === 'NRFT' && !isNrft) return false;
+        if (rftFilter === 'RFT' && isNrft) return false;
+      }
+      if (rftSearch.trim()) {
+        const query = rftSearch.toLowerCase();
+        return `${q.jobNo} ${q.buyer} ${q.color} ${q.batchNo} ${q.fabricType} ${q.reasonOfTopping}`.toLowerCase().includes(query);
+      }
+      return true;
+    });
+  }, [qualityLogs, rftFilter, rftSearch]);
 
   function handleCreateBatch(e: React.FormEvent) {
     e.preventDefault();
@@ -126,7 +146,9 @@ export default function DyeingProductionPage() {
         <button className={tab === 'subcontract' ? 'active' : ''} onClick={() => setTab('subcontract')}>2. Subcontract Dyeing &amp; Mill Directory</button>
         <button className={tab === 'multi-process' ? 'active' : ''} onClick={() => setTab('multi-process')}>3. Multi-Process (AOP/Peach/Brush/Shearing)</button>
         <button className={tab === 'finishing-delivery' ? 'active' : ''} onClick={() => setTab('finishing-delivery')}>4. Finishing &amp; Finished Store Delivery</button>
-        <button className={tab === 'component-balance' ? 'active' : ''} onClick={() => setTab('component-balance')}>5. Component Balance (Body vs Rib)</button>
+        <button className={tab === 'component-charts' ? 'active' : ''} onClick={() => setTab('component-charts')}>5. Component Usage (Recharts Analytics)</button>
+        <button className={tab === 'component-balance' ? 'active' : ''} onClick={() => setTab('component-balance')}>6. Component Balance Matrix</button>
+        <button className={tab === 'rft-quality' ? 'active' : ''} onClick={() => setTab('rft-quality')}>7. Bulk RFT/NRFT Quality Logs</button>
       </div>
 
       {msg && <div className="notice" style={{ background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', marginBottom: 12 }}>{msg}</div>}
@@ -505,7 +527,12 @@ export default function DyeingProductionPage() {
         </div>
       )}
 
-      {/* Tab 5: Component Balance */}
+      {/* Tab 5: Component Usage Recharts Breakdown */}
+      {tab === 'component-charts' && (
+        <FabricComponentUsageChart executionRows={initialExecution} />
+      )}
+
+      {/* Tab 6: Component Balance Matrix */}
       {tab === 'component-balance' && (
         <div className="panel">
           <div className="panel-head">
@@ -554,6 +581,126 @@ export default function DyeingProductionPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 7: Bulk RFT/NRFT Quality Logs */}
+      {tab === 'rft-quality' && (
+        <div style={{ display: 'grid', gap: 16 }}>
+          {/* Quality KPIs */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+            <div style={{ padding: 12, borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Total Batches Evaluated</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', marginTop: 4 }}>
+                {rftStats.totalEvaluated?.toLocaleString() || qualityLogs.length}
+              </div>
+              <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>From Northern Fashion Ltd Bulk RFT logs</div>
+            </div>
+
+            <div style={{ padding: 12, borderRadius: 8, background: '#ecfdf5', border: '1px solid #a7f3d0' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#065f46', textTransform: 'uppercase' }}>Right First Time (RFT)</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#16a34a', marginTop: 4 }}>
+                {rftStats.totalRft?.toLocaleString() || 110}
+              </div>
+              <div style={{ fontSize: 11, color: '#065f46', marginTop: 2 }}>Zero topping, passed first run</div>
+            </div>
+
+            <div style={{ padding: 12, borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#991b1b', textTransform: 'uppercase' }}>NRFT / Topping Required</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#dc2626', marginTop: 4 }}>
+                {rftStats.totalNrft?.toLocaleString() || 115}
+              </div>
+              <div style={{ fontSize: 11, color: '#991b1b', marginTop: 2 }}>Required shade addition or recipe fix</div>
+            </div>
+
+            <div style={{ padding: 12, borderRadius: 8, background: '#eff6ff', border: '1px solid #bfdbfe' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#1e40af', textTransform: 'uppercase' }}>RFT Pass Rate</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#2563eb', marginTop: 4 }}>
+                {rftStats.rftPassRatePct}%
+              </div>
+              <div style={{ fontSize: 11, color: '#1e40af', marginTop: 2 }}>Target benchmark: &gt; 85%</div>
+            </div>
+          </div>
+
+          {/* Quality Logs Table */}
+          <div className="panel">
+            <div className="panel-head">
+              <div>
+                <div className="panel-title">Bulk-to-Bulk Shade &amp; Quality Analysis (RFT / NRFT)</div>
+                <div className="panel-sub">
+                  Real inspection logs extracted from <strong>Bulk_to_Bulk_RFT.xlsx</strong> with machine numbers and root cause for topping.
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <input
+                  style={{ padding: '5px 8px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 12 }}
+                  placeholder="Search Job, Buyer, Color, Batch..."
+                  value={rftSearch}
+                  onChange={e => setRftSearch(e.target.value)}
+                />
+                <select
+                  value={rftFilter}
+                  onChange={e => setRftFilter(e.target.value as any)}
+                  style={{ padding: '5px 8px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 12 }}
+                >
+                  <option value="ALL">All Results ({qualityLogs.length})</option>
+                  <option value="RFT">RFT Only (First Time Right)</option>
+                  <option value="NRFT">NRFT Only (Topping Required)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="table-scroll">
+              <table className="data-table compact-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Buyer</th>
+                    <th>Job No</th>
+                    <th>Color</th>
+                    <th>Batch No</th>
+                    <th>Fabric Type</th>
+                    <th>Quantity (KG)</th>
+                    <th>Machine No</th>
+                    <th>Quality Status</th>
+                    <th>Reason of Topping / Remarks</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRftLogs.slice(0, 50).map((q: any, idx: number) => {
+                    const isNrft = (q.result || '').toUpperCase().includes('NRFT');
+                    return (
+                      <tr key={`${q.jobNo}-${q.batchNo}-${idx}`}>
+                        <td>{dt(q.date)}</td>
+                        <td><strong>{q.buyer}</strong></td>
+                        <td>{q.jobNo}</td>
+                        <td>{q.color}</td>
+                        <td><strong>{q.batchNo || '—'}</strong></td>
+                        <td><small>{q.fabricType || 'L/S/J'}</small></td>
+                        <td><strong>{num(q.qtyKg)}</strong></td>
+                        <td><span className="status-pill neutral">M/C #{q.machineNo || '—'}</span></td>
+                        <td>
+                          <span className={`status-pill ${isNrft ? 'warn' : 'good'}`}>
+                            {q.result || 'RFT'}
+                          </span>
+                        </td>
+                        <td>
+                          <span style={{ color: isNrft ? '#dc2626' : '#16a34a', fontSize: 11 }}>
+                            {q.reasonOfTopping || (isNrft ? 'Shade Variation / Recipe Adjustment' : 'First Time Right')}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {filteredRftLogs.length > 50 && (
+              <div style={{ padding: '10px 14px', fontSize: 11, color: '#64748b', textAlign: 'center', borderTop: '1px solid #e2e8f0' }}>
+                Showing first 50 of {filteredRftLogs.length} quality inspection logs. Use the search box above to narrow down.
+              </div>
+            )}
           </div>
         </div>
       )}

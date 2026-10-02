@@ -740,3 +740,269 @@ model IeSkillMatrix {
   @@index([floorCode, lineCode, active])
   @@index([employeeName, active])
 }
+
+// =============================================================================
+// NORTHERN FASHION LTD. (NFL) — DYEING & FABRIC EXECUTION CORE MODELS
+// =============================================================================
+
+enum FabricComponentType {
+  BODY
+  L_RIB
+  S_JERSEY
+  COLLAR_CUFF
+  POCKETING
+}
+
+enum DyeingRoute {
+  IN_HOUSE
+  SUBCONTRACT
+}
+
+enum MultiProcessType {
+  AOP
+  PEACH
+  BRUSH
+  SHEARING
+  SINGEING
+  SUEDING
+  HEAT_SETTING
+}
+
+enum DyeingBatchStatus {
+  PLANNED
+  GREIGE_ISSUED
+  LOADING
+  DYEING_RUNNING
+  SHADE_CHECKING
+  TOPPING_REQUIRED
+  UNLOADED
+  SLITTING_COMPLETED
+  STENTER_COMPLETED
+  COMPACTING_COMPLETED
+  STORE_DELIVERED
+  CANCELLED
+}
+
+enum RftStatus {
+  RFT
+  NRFT
+  STRIP_REDYE
+  PENDING
+}
+
+enum MultiProcessMovementStatus {
+  CHALLAN_CREATED
+  GATE_PASS_ISSUED
+  IN_TRANSIT
+  AT_VENDOR_MILL
+  PARTIALLY_RECEIVED
+  FULLY_RECEIVED
+  CLOSED
+}
+
+model DyeingMachine {
+  id               String          @id @default(cuid())
+  machineCode      String          @unique
+  machineName      String
+  machineType      String          // WINCH M/C, STENTER, COMPACTING, SLITTING
+  capacityKg       Float           // 1400.0, 1050.0, 525.0, 45.0
+  brandName        String          // DILMENLER, FONGS, THIES, BIANCO, ACC, LAFFER
+  originCountry    String          // TURKEY, CHINA, GERMANY, ITALY, KOREA
+  nozzleCount      Int             @default(1)
+  chamberCount     Int             @default(0)
+  isSampleMachine  Boolean         @default(false)
+  isActive         Boolean         @default(true)
+  remarks          String?
+  batches          DyeingBatch[]
+  slittingRuns     FinishingRun[]  @relation("SlittingMachine")
+  stenterRuns      FinishingRun[]  @relation("StenterMachine")
+  compactingRuns   FinishingRun[]  @relation("CompactingMachine")
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+}
+
+model SubcontractMill {
+  id                   String                  @id @default(cuid())
+  millName             String                  @unique
+  millCategory         String                  // Dyeing, AOP, Peach & Brush, Finishing
+  allowedBuyers        String[]
+  primaryContactPerson String?
+  primaryContactMobile String?
+  qcContactPerson      String?
+  qcContactMobile      String?
+  leadManagerName      String?
+  leadManagerMobile    String?
+  millAddress          String?
+  isActive             Boolean                 @default(true)
+  batches              DyeingBatch[]
+  movements            MultiProcessMovement[]
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+}
+
+model FabricOrder {
+  id                   String                   @id @default(cuid())
+  jobNo                String                   @unique
+  buyerName            String
+  styleNo              String?
+  season               String?
+  merchandiser         String?
+  orderQtyPcs          Int                      @default(0)
+  slotNo               String                   @default("1st Slot")
+  components           FabricOrderComponent[]
+  deliveries           FinishedFabricDelivery[]
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+  @@index([buyerName, slotNo])
+}
+
+model FabricOrderComponent {
+  id                   String              @id @default(cuid())
+  fabricOrderId        String
+  fabricOrder          FabricOrder         @relation(fields: [fabricOrderId], references: [id], onDelete: Cascade)
+  componentType        FabricComponentType // BODY, L_RIB, S_JERSEY
+  fabricDescription    String              // Single Jersey, 4x1 Rib with Lurex
+  colourName           String              // Nosegay (Lurex), Cloud Dancer
+  colorCode            String?
+  gsm                  String              // 150, 180, 200, 220
+  widthDia             String              // 60", 62", 78"
+  additionalProcess    String?             // AOP, Peach, Brush, Y/D, Solid
+  requiredQtyKg        Float
+  greigeReceivedKg     Float               @default(0)
+  dyeingDeliveredKg    Float               @default(0)
+  finishedDeliveredKg  Float               @default(0)
+  greigeRolls          GreigeRoll[]
+  dyeingBatches        DyeingBatch[]
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  @@index([fabricOrderId, componentType])
+}
+
+model GreigeRoll {
+  id                     String               @id @default(cuid())
+  rollBarcode            String               @unique
+  fabricOrderComponentId String
+  fabricOrderComponent   FabricOrderComponent @relation(fields: [fabricOrderComponentId], references: [id])
+  knittingSource         String
+  knittingMachineNo      String?
+  yarnLotNo              String
+  yarnBrandCount         String?
+  rollGrossWeightKg      Float
+  rollNetWeightKg        Float
+  qualityGrade           String               @default("A")
+  storeRackLocation      String?
+  isAllocated            Boolean              @default(false)
+  allocatedBatchId       String?
+  receivedDate           DateTime             @default(now())
+  createdAt              DateTime             @default(now())
+  @@index([fabricOrderComponentId, isAllocated])
+}
+
+model DyeingBatch {
+  id                     String                  @id @default(cuid())
+  batchNo                String                  @unique
+  fabricOrderComponentId String
+  fabricOrderComponent   FabricOrderComponent    @relation(fields: [fabricOrderComponentId], references: [id])
+  route                  DyeingRoute             // IN_HOUSE, SUBCONTRACT
+  targetMachineId        String?
+  targetMachine          DyeingMachine?          @relation(fields: [targetMachineId], references: [id])
+  subcontractMillId      String?
+  subcontractMill        SubcontractMill?        @relation(fields: [subcontractMillId], references: [id])
+  plannedBatchQtyKg      Float
+  greigeIssuedQtyKg      Float
+  liquorRatio            String?                 @default("1:6")
+  recipeCode             String?
+  dyeingDate             DateTime
+  dyeingOutputKg         Float                   @default(0)
+  status                 DyeingBatchStatus       @default(PLANNED)
+  remarks                String?
+  qualityLogs            DyeingQualityLog[]
+  multiProcesses         MultiProcessMovement[]
+  finishingRuns          FinishingRun[]
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  @@index([route, status])
+}
+
+model DyeingQualityLog {
+  id                       String       @id @default(cuid())
+  dyeingBatchId            String
+  dyeingBatch              DyeingBatch  @relation(fields: [dyeingBatchId], references: [id], onDelete: Cascade)
+  inspectionDate           DateTime     @default(now())
+  rftResult                RftStatus    @default(RFT)
+  shadeStatus              String       @default("APPROVED")
+  lightSourceTested        String?      @default("D65, TL84")
+  reasonOfTopping          String?
+  toppingRecipeCode        String?
+  additionalDyeTimeMin     Int          @default(0)
+  approvedByTechnologist   String?
+  createdAt                DateTime     @default(now())
+}
+
+model MultiProcessMovement {
+  id                       String                     @id @default(cuid())
+  movementCode             String                     @unique
+  dyeingBatchId            String
+  dyeingBatch              DyeingBatch                @relation(fields: [dyeingBatchId], references: [id])
+  processType              MultiProcessType           // AOP, PEACH, BRUSH, SHEARING, SINGEING
+  vendorMillId             String?
+  vendorMill               SubcontractMill?           @relation(fields: [vendorMillId], references: [id])
+  outwardChallanNo         String
+  outwardGatePassNo        String
+  sendDate                 DateTime
+  sendQtyKg                Float
+  comboName                String?
+  inwardChallanNo          String?
+  receiveDate              DateTime?
+  receivedQtyKg            Float                      @default(0)
+  processLossKg            Float                      @default(0)
+  processLossPct           Float                      @default(0)
+  movementStatus           MultiProcessMovementStatus @default(CHALLAN_CREATED)
+  strikeOffApprovalDate    DateTime?
+  remarks                  String?
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
+  @@index([processType, movementStatus])
+}
+
+model FinishingRun {
+  id                       String         @id @default(cuid())
+  dyeingBatchId            String
+  dyeingBatch              DyeingBatch    @relation(fields: [dyeingBatchId], references: [id])
+  slittingMachineId        String?
+  slittingMachine          DyeingMachine? @relation("SlittingMachine", fields: [slittingMachineId], references: [id])
+  slittingDate             DateTime?
+  slittingOutputKg         Float?
+  stenterMachineId         String?
+  stenterMachine           DyeingMachine? @relation("StenterMachine", fields: [stenterMachineId], references: [id])
+  stenterDate              DateTime?
+  stenterTempCelsius       Int?
+  stenterSpeedMPerMin      Float?
+  compactingMachineId      String?
+  compactingMachine        DyeingMachine? @relation("CompactingMachine", fields: [compactingMachineId], references: [id])
+  compactingDate           DateTime?
+  achievedGsm              Int?
+  achievedWidthDia         String?
+  fourPointPenaltyPoints   Int            @default(0)
+  qualityStatus            String         @default("PASSED")
+  inspectedBy              String?
+  createdAt                DateTime       @default(now())
+}
+
+model FinishedFabricDelivery {
+  id                           String       @id @default(cuid())
+  deliveryChallanNo            String       @unique
+  fabricOrderId                String
+  fabricOrder                  FabricOrder  @relation(fields: [fabricOrderId], references: [id])
+  deliveryDate                 DateTime     @default(now())
+  slotNo                       String       @default("1st Slot")
+  bodyDeliveryKg               Float        @default(0)
+  lribDeliveryKg               Float        @default(0)
+  sjerseyDeliveryKg            Float        @default(0)
+  totalDeliveryKg              Float        @default(0)
+  receivedByStoreOfficer       String?
+  handedOverToCuttingOfficer   String?
+  remarks                      String?
+  createdAt                    DateTime     @default(now())
+  @@index([fabricOrderId, deliveryDate])
+}
