@@ -1,9 +1,10 @@
 'use client';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import Shell from '../components/Shell';
 import { api } from '../lib/api';
-import { displayJobNo } from '../lib/display';
+import { displayJobNo, formatFloorLine } from '../lib/display';
 import demo2000DataRaw from '../data/demo-2000-master.json';
 
 function pct(a: number, b: number) { return b ? Math.round((a / b) * 100) : 0; }
@@ -85,9 +86,16 @@ const allManagementRows = initialMasterJobs.map((j: any) => {
   else if (rawFloor.includes('3') || rawFloor.includes('03')) floorLabel = `${factory} 3`;
   else floorLabel = `${factory} 1`;
 
-  const exDate = j.dates?.exFactory || '2026-08-15';
+  const floorLine = formatFloorLine(factory, rawFloor, j.lineAllocation?.line);
+  const floorLinePrefix = floorLine.split('-')[0].trim();
+
+  const exDate = j.dates?.exFactory || '05-Aug-2026';
   const shipmentWeek = getWeekNumber(exDate);
-  const shipmentMonth = d2(j.planMonth || exDate.substring(0, 7));
+  let shipmentMonth = 'Aug-26';
+  if (exDate.includes('-')) {
+    const parts = exDate.split('-');
+    if (parts.length === 3) shipmentMonth = `${parts[1]}-${parts[2].slice(-2)}`;
+  }
 
   const isCritical = j.riskStatus === 'HIGH' || j.riskStatus === 'CRITICAL' || j.presentStatus?.includes('Hold');
   const isShipmentRisk = (j.shipment?.shipBalance && j.shipment.shipBalance > 0) || j.presentStatus?.includes('Preparing') || j.presentStatus?.includes('Not Ready');
@@ -103,6 +111,8 @@ const allManagementRows = initialMasterJobs.map((j: any) => {
     orderQty: j.orderQty,
     factory,
     floor: floorLabel,
+    floorLine,
+    floorLinePrefix,
     merchandiser: j.merchandiser || 'Md. Jahidul Islam',
     shipmentMonth,
     shipmentWeek,
@@ -205,6 +215,7 @@ function generateJobManufacturingProfile(job: any) {
 }
 
 export default function Dashboard() {
+  const router = useRouter();
   const [orders, setOrders] = useState<any[]>(initialOrders);
   const [tasks, setTasks] = useState<any[]>(initialTasks);
   const [heat, setHeat] = useState<any>(initialHeat);
@@ -252,18 +263,54 @@ export default function Dashboard() {
     refresh().finally(() => setLoading(false));
   }, []);
 
-  const totalQty = orders.reduce((s, o) => s + Number(o.totalQty || 0), 0);
-  const urgent = tasks.filter(t => ['HIGH', 'CRITICAL'].includes(String(t.priority).toUpperCase()));
-  const sewingProd = sewing.reduce((s, r) => s + Number(r.sectionData?.productionQty || 0), 0);
-  const sewingOrder = sewing.reduce((s, r) => s + Number(r.orderQty || 0), 0);
-  const achievement = pct(sewingProd, sewingOrder);
-  const riskCount = shipment.filter(r => Number(r.sectionData?.balanceQty || 0) > 0 && ['Not Ready', 'Preparing'].includes(r.sectionData?.status)).length;
+  // Filtered rows for the Management Register
+  const filteredRows = useMemo(() => {
+    return allManagementRows.filter((r: any) => {
+      // Card selection filter
+      if (selectedFilterType === 'CRITICAL' && !r.isCritical) return false;
+      if (selectedFilterType === 'RISK' && !r.isShipmentRisk) return false;
+      if (selectedFilterType === 'SEWING' && !r.isSewingRunning) return false;
+      if (selectedFilterType.startsWith('BUYER:') && r.buyer !== selectedFilterType.replace('BUYER:', '')) return false;
+
+      // Table controls filter
+      if (weekFilter !== 'ALL' && r.shipmentWeek !== weekFilter) return false;
+      if (monthFilter !== 'ALL' && r.shipmentMonth !== monthFilter) return false;
+      if (floorUnitFilter !== 'ALL' && !r.floorLine.startsWith(floorUnitFilter) && r.floor !== floorUnitFilter) return false;
+      if (merchFilter !== 'ALL' && r.merchandiser !== merchFilter) return false;
+      if (presentStatusFilter !== 'ALL' && r.presentStatus !== presentStatusFilter) return false;
+      if (buyerFilter !== 'ALL' && r.buyer !== buyerFilter) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const match = `${r.jobNo} ${r.buyer} ${r.styleNo} ${r.itemDescription || ''} ${r.merchandiser || ''} ${r.floorLine || ''}`.toLowerCase();
+        if (!match.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [allManagementRows, selectedFilterType, weekFilter, monthFilter, floorUnitFilter, merchFilter, presentStatusFilter, buyerFilter, searchQuery]);
+
+  // Options for filter selects
+  const weekOptions = useMemo(() => (Array.from(new Set(allManagementRows.map((r: any) => r.shipmentWeek))).filter(Boolean) as string[]).sort(), []);
+  const monthOptions = useMemo(() => (Array.from(new Set(allManagementRows.map((r: any) => r.shipmentMonth))).filter(Boolean) as string[]).sort(), []);
+  const merchOptions = useMemo(() => (Array.from(new Set(allManagementRows.map((r: any) => r.merchandiser))).filter(Boolean) as string[]).sort(), []);
+  const presentStatusOptions = useMemo(() => (Array.from(new Set(allManagementRows.map((r: any) => r.presentStatus))).filter(Boolean) as string[]).sort(), []);
+  const buyerOptions = useMemo(() => (Array.from(new Set(allManagementRows.map((r: any) => r.buyer))).filter(Boolean) as string[]).sort(), []);
+  const floorUnitOptions: string[] = ['NCL1', 'NCL2', 'NCL3', 'NFL1', 'NFL2', 'NFL3'];
+
+  // Metrics calculated from filteredRows (dynamically updates dashboard!)
+  const totalQty = useMemo(() => filteredRows.reduce((s: number, o: any) => s + Number(o.orderQty || 0), 0), [filteredRows]);
+  const activeOrdersCount = filteredRows.length;
+  const filteredBuyersCount = useMemo(() => new Set(filteredRows.map((r: any) => r.buyerCode || r.buyer).filter(Boolean)).size, [filteredRows]);
+  const filteredLinesCount = useMemo(() => new Set(filteredRows.map((r: any) => r.floorLine || r.line).filter(Boolean)).size, [filteredRows]);
+  const urgent = useMemo(() => tasks.filter(t => ['HIGH', 'CRITICAL'].includes(String(t.priority).toUpperCase())), [tasks]);
+  const sewingProd = useMemo(() => filteredRows.reduce((s: number, r: any) => s + Number(r.rawJob?.sewing?.sewingActualQty || r.orderQty), 0), [filteredRows]);
+  const achievement = useMemo(() => totalQty ? Math.round((sewingProd / totalQty) * 100) : 94, [sewingProd, totalQty]);
+  const riskCount = useMemo(() => filteredRows.filter((r: any) => r.isCritical || r.isShipmentRisk).length, [filteredRows]);
 
   const buyers = useMemo(() => {
     const m = new Map<string, number>();
-    for (const o of orders) m.set(o.buyer?.name || 'Unknown', (m.get(o.buyer?.name || 'Unknown') || 0) + Number(o.totalQty || 0));
+    for (const r of filteredRows) m.set(r.buyer || 'Unknown', (m.get(r.buyer || 'Unknown') || 0) + Number(r.orderQty || 0));
     return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
-  }, [orders]);
+  }, [filteredRows]);
   const maxBuyer = Math.max(1, ...buyers.map((x: [string, number]) => x[1]));
 
   // Handle Card & Buyer Bar Selection
@@ -277,39 +324,6 @@ export default function Dashboard() {
     }
     setCurrentPage(1);
   }
-
-  // Filtered rows for the Management Register
-  const filteredRows = useMemo(() => {
-    return allManagementRows.filter((r: any) => {
-      // Card selection filter
-      if (selectedFilterType === 'CRITICAL' && !r.isCritical) return false;
-      if (selectedFilterType === 'RISK' && !r.isShipmentRisk) return false;
-      if (selectedFilterType === 'SEWING' && !r.isSewingRunning) return false;
-      if (selectedFilterType.startsWith('BUYER:') && r.buyer !== selectedFilterType.replace('BUYER:', '')) return false;
-
-      // Table controls filter
-      if (weekFilter !== 'ALL' && r.shipmentWeek !== weekFilter) return false;
-      if (monthFilter !== 'ALL' && r.shipmentMonth !== monthFilter) return false;
-      if (floorUnitFilter !== 'ALL' && r.floor !== floorUnitFilter) return false;
-      if (merchFilter !== 'ALL' && r.merchandiser !== merchFilter) return false;
-      if (presentStatusFilter !== 'ALL' && r.presentStatus !== presentStatusFilter) return false;
-      if (buyerFilter !== 'ALL' && r.buyer !== buyerFilter) return false;
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const match = `${r.jobNo} ${r.buyer} ${r.styleNo} ${r.itemDescription || ''} ${r.merchandiser || ''}`.toLowerCase();
-        if (!match.includes(q)) return false;
-      }
-      return true;
-    });
-  }, [allManagementRows, selectedFilterType, weekFilter, monthFilter, floorUnitFilter, merchFilter, presentStatusFilter, buyerFilter, searchQuery]);
-
-  // Options for filter selects
-  const weekOptions = useMemo(() => (Array.from(new Set(allManagementRows.map((r: any) => r.shipmentWeek))).filter(Boolean) as string[]).sort(), []);
-  const monthOptions = useMemo(() => (Array.from(new Set(allManagementRows.map((r: any) => r.shipmentMonth))).filter(Boolean) as string[]).sort(), []);
-  const merchOptions = useMemo(() => (Array.from(new Set(allManagementRows.map((r: any) => r.merchandiser))).filter(Boolean) as string[]).sort(), []);
-  const presentStatusOptions = useMemo(() => (Array.from(new Set(allManagementRows.map((r: any) => r.presentStatus))).filter(Boolean) as string[]).sort(), []);
-  const buyerOptions = useMemo(() => (Array.from(new Set(allManagementRows.map((r: any) => r.buyer))).filter(Boolean) as string[]).sort(), []);
-  const floorUnitOptions: string[] = ['NFL 1', 'NFL 2', 'NFL 3', 'NCL 1', 'NCL 2', 'NCL 3'];
 
   // Pagination calculation
   const totalPages = Math.ceil(filteredRows.length / pageSize) || 1;
@@ -373,94 +387,91 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* CLICKABLE KPI STAT CARDS (Card selection filters table and dashboard below) */}
+      {/* CLICKABLE KPI STAT CARDS (Click digit or card to open filtered jobs page) */}
       <section className="kpi-grid">
         {/* Card 1: Confirmed Jobs */}
-        <div
-          className={`metric-card accent-blue ${selectedFilterType === 'ALL' ? 'active-filter-card' : ''}`}
-          style={{ cursor: 'pointer', transition: 'all .2s ease', border: selectedFilterType === 'ALL' ? '2px solid #2563eb' : undefined }}
-          onClick={() => handleSelectCardFilter('ALL', 'All Confirmed Jobs')}
-          title="Click to view all confirmed jobs in table"
+        <Link
+          href="/jobs?type=ALL&title=All%20Confirmed%20Jobs"
+          className="metric-card accent-blue"
+          style={{ cursor: 'pointer', transition: 'all .2s ease', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column' }}
+          title="Click digit to view all confirmed jobs"
         >
-          <div className="metric-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div className="metric-label">
             <span>Confirmed Jobs</span>
-            {selectedFilterType === 'ALL' && <span style={{ fontSize: '9px', color: '#2563eb', fontWeight: 800 }}>ACTIVE</span>}
           </div>
-          <div className="metric-value">{loading ? '…' : orders.length}</div>
-          <div className="metric-foot">Click to show all jobs</div>
-        </div>
+          <div className="metric-value">{loading ? '…' : activeOrdersCount}</div>
+          <div className="metric-foot">Click to open full job register</div>
+        </Link>
 
         {/* Card 2: Order Qty */}
-        <div
+        <Link
+          href="/jobs?type=ALL&title=Total%20Order%20Volume"
           className="metric-card"
-          style={{ cursor: 'pointer' }}
-          onClick={() => handleSelectCardFilter('ALL', 'All Confirmed Jobs')}
-          title="Total Order Volume"
+          style={{ cursor: 'pointer', transition: 'all .2s ease', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column' }}
+          title="Click digit to view all orders"
         >
-          <div className="metric-label">Order Qty</div>
+          <div className="metric-label">
+            <span>Order Qty</span>
+          </div>
           <div className="metric-value">{loading ? '…' : totalQty.toLocaleString()}</div>
           <div className="metric-foot">pcs total volume</div>
-        </div>
+        </Link>
 
         {/* Card 3: Pending Tasks */}
-        <div
-          className={`metric-card accent-amber ${selectedFilterType === 'TASKS' ? 'active-filter-card' : ''}`}
-          style={{ cursor: 'pointer', transition: 'all .2s ease', border: selectedFilterType === 'TASKS' ? '2px solid #d97706' : undefined }}
-          onClick={() => handleSelectCardFilter('TASKS', 'Jobs with Assigned Tasks')}
-          title="Click to filter jobs with assigned tasks"
+        <Link
+          href="/tasks"
+          className="metric-card accent-amber"
+          style={{ cursor: 'pointer', transition: 'all .2s ease', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column' }}
+          title="Click digit to view My Tasks"
         >
-          <div className="metric-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div className="metric-label">
             <span>My Pending Tasks</span>
-            {selectedFilterType === 'TASKS' && <span style={{ fontSize: '9px', color: '#d97706', fontWeight: 800 }}>ACTIVE</span>}
           </div>
           <div className="metric-value">{tasks.length}</div>
           <div className="metric-foot">Role-based actions</div>
-        </div>
+        </Link>
 
         {/* Card 4: High / Critical Attention */}
-        <div
-          className={`metric-card accent-red ${selectedFilterType === 'CRITICAL' ? 'active-filter-card' : ''}`}
-          style={{ cursor: 'pointer', transition: 'all .2s ease', border: selectedFilterType === 'CRITICAL' ? '2px solid #dc2626' : undefined }}
-          onClick={() => handleSelectCardFilter('CRITICAL', 'High / Critical Risk Jobs')}
-          title="Click to filter High / Critical Risk Jobs"
+        <Link
+          href="/jobs?type=CRITICAL&title=High%20%2F%20Critical%20Attention%20Jobs"
+          className="metric-card accent-red"
+          style={{ cursor: 'pointer', transition: 'all .2s ease', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column' }}
+          title="Click digit to view High / Critical Risk Jobs"
         >
-          <div className="metric-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div className="metric-label">
             <span>High / Critical</span>
-            {selectedFilterType === 'CRITICAL' && <span style={{ fontSize: '9px', color: '#dc2626', fontWeight: 800 }}>ACTIVE</span>}
           </div>
           <div className="metric-value" style={{ color: '#dc2626' }}>{urgent.length || 3}</div>
           <div className="metric-foot">Click to inspect risk jobs</div>
-        </div>
+        </Link>
 
         {/* Card 5: Shipment Risk Jobs */}
-        <div
-          className={`metric-card ${selectedFilterType === 'RISK' ? 'active-filter-card' : ''}`}
-          style={{ cursor: 'pointer', transition: 'all .2s ease', border: selectedFilterType === 'RISK' ? '2px solid #e11d48' : undefined }}
-          onClick={() => handleSelectCardFilter('RISK', 'Shipment Risk / Preparing Jobs')}
-          title="Click to filter Shipment Risk Jobs"
+        <Link
+          href="/jobs?type=RISK&title=Shipment%20Delivery%20Risk%20Jobs"
+          className="metric-card"
+          style={{ cursor: 'pointer', transition: 'all .2s ease', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column' }}
+          title="Click digit to view delivery risk jobs"
         >
-          <div className="metric-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div className="metric-label">
             <span>Shipment Risk Jobs</span>
-            {selectedFilterType === 'RISK' && <span style={{ fontSize: '9px', color: '#e11d48', fontWeight: 800 }}>ACTIVE</span>}
           </div>
-          <div className="metric-value">{riskCount || '48'}</div>
+          <div className="metric-value" style={{ color: riskCount ? '#e11d48' : '#10b981' }}>{riskCount || '48'}</div>
           <div className="metric-foot">Click to inspect delivery status</div>
-        </div>
+        </Link>
 
         {/* Card 6: Sewing Achievement */}
-        <div
-          className={`metric-card ${selectedFilterType === 'SEWING' ? 'active-filter-card' : ''}`}
-          style={{ cursor: 'pointer', transition: 'all .2s ease', border: selectedFilterType === 'SEWING' ? '2px solid #16a34a' : undefined }}
-          onClick={() => handleSelectCardFilter('SEWING', 'Sewing Running Production Jobs')}
-          title="Click to filter sewing running jobs"
+        <Link
+          href="/jobs?type=SEWING&title=Sewing%20Running%20Jobs"
+          className="metric-card"
+          style={{ cursor: 'pointer', transition: 'all .2s ease', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column' }}
+          title="Click digit to view sewing floor jobs"
         >
-          <div className="metric-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span>Sewing Achievement</span>
-            {selectedFilterType === 'SEWING' && <span style={{ fontSize: '9px', color: '#16a34a', fontWeight: 800 }}>ACTIVE</span>}
+          <div className="metric-label">
+            <span>Sewing Output</span>
           </div>
-          <div className="metric-value">{sewing.length ? `${achievement}%` : '100%'}</div>
-          <div className="metric-foot">Click for sewing floor jobs</div>
-        </div>
+          <div className="metric-value" style={{ color: '#16a34a' }}>{sewingProd.toLocaleString()} pcs</div>
+          <div className="metric-foot">{achievement}% efficiency rate</div>
+        </Link>
       </section>
 
       {/* DASHBOARD CHARTS ROW (Buyer-wise position with clickable bars & Capacity Heatmap) */}
@@ -572,12 +583,12 @@ export default function Dashboard() {
               type="text"
               placeholder="Search Job, Buyer, Style..."
               value={searchQuery}
-              onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+              onChange={e => { setSearchQuery(e.target.value); setSelectedFilterType('ALL'); setCurrentPage(1); }}
               className="reg-search-compact"
             />
             <select
               value={weekFilter}
-              onChange={e => { setWeekFilter(e.target.value); setCurrentPage(1); }}
+              onChange={e => { setWeekFilter(e.target.value); setSelectedFilterType('ALL'); setCurrentPage(1); }}
               className="reg-select-compact"
               title="Shipment Week"
             >
@@ -588,7 +599,7 @@ export default function Dashboard() {
             </select>
             <select
               value={monthFilter}
-              onChange={e => { setMonthFilter(e.target.value); setCurrentPage(1); }}
+              onChange={e => { setMonthFilter(e.target.value); setSelectedFilterType('ALL'); setCurrentPage(1); }}
               className="reg-select-compact"
               title="Shipment Month"
             >
@@ -599,18 +610,18 @@ export default function Dashboard() {
             </select>
             <select
               value={floorUnitFilter}
-              onChange={e => { setFloorUnitFilter(e.target.value); setCurrentPage(1); }}
+              onChange={e => { setFloorUnitFilter(e.target.value); setSelectedFilterType('ALL'); setCurrentPage(1); }}
               className="reg-select-compact"
-              title="Floor & Factory Unit"
+              title="Floor/Line"
             >
-              <option value="ALL">🏢 Floor: All</option>
+              <option value="ALL">🏢 Floor/Line: All</option>
               {floorUnitOptions.map((f: string) => (
                 <option key={f} value={f}>{f}</option>
               ))}
             </select>
             <select
               value={merchFilter}
-              onChange={e => { setMerchFilter(e.target.value); setCurrentPage(1); }}
+              onChange={e => { setMerchFilter(e.target.value); setSelectedFilterType('ALL'); setCurrentPage(1); }}
               className="reg-select-compact"
               title="Merchandiser"
             >
@@ -621,7 +632,7 @@ export default function Dashboard() {
             </select>
             <select
               value={presentStatusFilter}
-              onChange={e => { setPresentStatusFilter(e.target.value); setCurrentPage(1); }}
+              onChange={e => { setPresentStatusFilter(e.target.value); setSelectedFilterType('ALL'); setCurrentPage(1); }}
               className="reg-select-compact"
               title="Present Status"
             >
@@ -632,7 +643,7 @@ export default function Dashboard() {
             </select>
             <select
               value={buyerFilter}
-              onChange={e => { setBuyerFilter(e.target.value); setCurrentPage(1); }}
+              onChange={e => { setBuyerFilter(e.target.value); setSelectedFilterType('ALL'); setCurrentPage(1); }}
               className="reg-select-compact"
               title="Buyer"
             >
@@ -641,6 +652,30 @@ export default function Dashboard() {
                 <option key={b} value={b}>{b}</option>
               ))}
             </select>
+
+            {/* Reset Filters Button if any filter active */}
+            {(weekFilter !== 'ALL' || monthFilter !== 'ALL' || floorUnitFilter !== 'ALL' || merchFilter !== 'ALL' || presentStatusFilter !== 'ALL' || buyerFilter !== 'ALL' || searchQuery !== '' || selectedFilterType !== 'ALL') && (
+              <button
+                onClick={() => {
+                  setWeekFilter('ALL');
+                  setMonthFilter('ALL');
+                  setFloorUnitFilter('ALL');
+                  setMerchFilter('ALL');
+                  setPresentStatusFilter('ALL');
+                  setBuyerFilter('ALL');
+                  setSearchQuery('');
+                  setSelectedFilterType('ALL');
+                  setSelectedFilterLabel('All Confirmed Jobs');
+                  setCurrentPage(1);
+                }}
+                className="reg-btn-compact"
+                style={{ background: '#fff1f2', color: '#be123c', borderColor: '#fecdd3', fontWeight: 700 }}
+                title="Reset all filters"
+              >
+                ✕ Reset
+              </button>
+            )}
+
             <button
               onClick={exportCsv}
               className="reg-btn-compact"
@@ -648,6 +683,60 @@ export default function Dashboard() {
             >
               <span>📥</span> Export
             </button>
+          </div>
+        </div>
+
+        {/* SUMMARY PANEL FOR CURRENTLY FILTERED JOBS */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+          gap: '12px',
+          padding: '10px 18px',
+          background: '#f8fafc',
+          borderTop: '1px solid #e2e8f0',
+          borderBottom: '1px solid #e2e8f0',
+          alignItems: 'center'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: 800 }}>
+              📦
+            </div>
+            <div>
+              <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em', color: '#64748b', fontWeight: 700, display: 'block' }}>
+                Total Order Quantity
+              </span>
+              <strong style={{ fontSize: '16px', color: '#0f172a' }}>
+                {totalQty.toLocaleString()} <span style={{ fontSize: '11px', fontWeight: 500, color: '#64748b' }}>pcs</span>
+              </strong>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: '#ecfdf5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: 800 }}>
+              🏷️
+            </div>
+            <div>
+              <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em', color: '#64748b', fontWeight: 700, display: 'block' }}>
+                Active Buyers Count
+              </span>
+              <strong style={{ fontSize: '16px', color: '#0f172a' }}>
+                {filteredBuyersCount} <span style={{ fontSize: '11px', fontWeight: 500, color: '#64748b' }}>accounts</span>
+              </strong>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: '#f5f3ff', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: 800 }}>
+              🏭
+            </div>
+            <div>
+              <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em', color: '#64748b', fontWeight: 700, display: 'block' }}>
+                Total Lines Involved
+              </span>
+              <strong style={{ fontSize: '16px', color: '#0f172a' }}>
+                {filteredLinesCount} <span style={{ fontSize: '11px', fontWeight: 500, color: '#64748b' }}>lines</span>
+              </strong>
+            </div>
           </div>
         </div>
 
@@ -660,7 +749,7 @@ export default function Dashboard() {
                 <th>Buyer</th>
                 <th>Style & Item</th>
                 <th style={{ textAlign: 'right' }}>Order Qty</th>
-                <th>Floor / Unit</th>
+                <th>Floor/Line</th>
                 <th>Merchandiser</th>
                 <th>Week</th>
                 <th>Ex-Factory</th>
@@ -678,28 +767,36 @@ export default function Dashboard() {
                   : 'running';
 
                 const displayJob = String(displayJobNo(r.jobNo, r.buyerCode || r.buyer)).replace(/\s+(\d)(st|nd|rd|th)/i, ' ($1$2)');
+                const jobUrl = `/jobs/${encodeURIComponent(r.jobNo)}`;
 
                 return (
                   <tr
                     key={r.orderId}
                     style={{ background: idx % 2 === 0 ? '#fff' : '#fcfdfe', cursor: 'pointer' }}
-                    onClick={() => setSelectedJob(r)}
+                    onClick={() => router.push(jobUrl)}
+                    title={`Click to open full details page for Job ${r.jobNo}`}
                   >
-                    <td style={{ whiteSpace: 'nowrap' }}>
-                      <span className="job-link">{displayJob}</span>
+                    <td style={{ whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                      <Link href={jobUrl} className="job-link">
+                        {displayJob}
+                      </Link>
                     </td>
                     <td style={{ whiteSpace: 'nowrap', color: '#334155' }}>
                       {r.buyer}
                     </td>
-                    <td style={{ maxWidth: '240px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={`${r.styleNo} · ${r.itemDescription || ''}`}>
-                      <span style={{ fontWeight: 600, color: '#0f172a' }}>{r.styleNo}</span>
-                      {r.itemDescription && <span style={{ color: '#64748b' }}> · {r.itemDescription}</span>}
+                    <td style={{ maxWidth: '220px', minWidth: '150px' }}>
+                      <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '11px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '1.25' }} title={r.styleNo}>
+                        {r.styleNo}
+                      </div>
+                      <div style={{ fontSize: '9.5px', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '1.2' }} title={r.itemDescription}>
+                        {r.itemDescription || '—'}
+                      </div>
                     </td>
                     <td style={{ textAlign: 'right', whiteSpace: 'nowrap', fontWeight: 600, color: '#0f172a' }}>
                       {n(r.orderQty)} <span style={{ fontSize: '9.5px', color: '#94a3b8', fontWeight: 400 }}>pcs</span>
                     </td>
                     <td style={{ whiteSpace: 'nowrap', fontWeight: 500, color: '#1e40af' }}>
-                      {r.floor}{r.line ? ` (${r.line.startsWith('L-') ? r.line : `L-${r.line}`})` : ''}
+                      {r.floorLine}
                     </td>
                     <td style={{ whiteSpace: 'nowrap', color: '#475569' }}>
                       {r.merchandiser}
@@ -719,13 +816,13 @@ export default function Dashboard() {
                       </span>
                     </td>
                     <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
-                      <button
-                        onClick={() => setSelectedJob(r)}
+                      <Link
+                        href={jobUrl}
                         className="btn btn-primary"
-                        style={{ padding: '2px 7px', fontSize: '10.5px', fontWeight: 600, borderRadius: '4px', whiteSpace: 'nowrap' }}
+                        style={{ padding: '2px 7px', fontSize: '10.5px', fontWeight: 600, borderRadius: '4px', whiteSpace: 'nowrap', textDecoration: 'none' }}
                       >
-                        View 360 ↗
-                      </button>
+                        View Details ↗
+                      </Link>
                     </td>
                   </tr>
                 );

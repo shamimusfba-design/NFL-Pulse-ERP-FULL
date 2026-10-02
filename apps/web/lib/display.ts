@@ -22,3 +22,17 @@ export function compactDate(value: any) {
   if (Number.isNaN(d.getTime())) return String(value).slice(0,10) || '—';
   return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}).replace(/ /g,'-');
 }
+
+export function formatFloorLine(factory?: string | null, floor?: string | null, line?: string | null) {
+  const fac = (factory || 'NFL').trim().toUpperCase();
+  const flStr = String(floor || '').trim();
+  let flNum = '1';
+  if (flStr.includes('2') || flStr.includes('02')) flNum = '2';
+  else if (flStr.includes('3') || flStr.includes('03')) flNum = '3';
+
+  let lineStr = String(line || '1').trim();
+  if (lineStr.startsWith('L-') || lineStr.startsWith('l-')) {
+    lineStr = lineStr.slice(2).trim();
+  }
+  return `${fac}${flNum}- ${lineStr}`;
+}

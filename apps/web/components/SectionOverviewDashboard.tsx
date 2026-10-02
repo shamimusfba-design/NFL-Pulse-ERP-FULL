@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { CSSProperties, useEffect, useMemo, useState } from 'react';
 import { api } from '../lib/api';
 import { MODULE_GROUPS, SectionOverview } from '../lib/modules';
-import { displayJobNo } from '../lib/display';
+import { displayJobNo, formatFloorLine } from '../lib/display';
 import demo2000DataRaw from '../data/demo-2000-master.json';
 
 function n(v: any) {
@@ -101,9 +102,9 @@ function SvgDonut({ data }: { data: { label: string; value: number; color: strin
                 {item.label}
               </span>
             </div>
-            <strong style={{ fontSize: '11px', color: '#0f172a', whiteSpace: 'nowrap' }}>
-              {Math.round((item.value / total) * 100)}% <span style={{ color: '#94a3b8', fontWeight: 500 }}>({item.value})</span>
-            </strong>
+            <span style={{ fontSize: '11px', fontWeight: 500, color: '#0f172a', whiteSpace: 'nowrap' }}>
+              {Math.round((item.value / total) * 100)}% <span style={{ color: '#94a3b8', fontWeight: 400 }}>({item.value})</span>
+            </span>
           </div>
         ))}
       </div>
@@ -121,7 +122,7 @@ function SvgBarChart({ data }: { data: { label: string; value1: number; value2?:
           <div key={i} className="bar-col">
             <div className="bar-bars">
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <span style={{ fontSize: '8px', fontWeight: 800, color: '#1e40af', marginBottom: '1px' }}>
+                <span style={{ fontSize: '8px', fontWeight: 400, color: '#1e40af', marginBottom: '1px' }}>
                   {d.value1 >= 1000 ? `${(d.value1 / 1000).toFixed(0)}k` : d.value1}
                 </span>
                 <div
@@ -132,7 +133,7 @@ function SvgBarChart({ data }: { data: { label: string; value1: number; value2?:
               </div>
               {d.value2 !== undefined && (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <span style={{ fontSize: '8px', fontWeight: 800, color: '#047857', marginBottom: '1px' }}>
+                  <span style={{ fontSize: '8px', fontWeight: 400, color: '#047857', marginBottom: '1px' }}>
                     {d.value2 >= 1000 ? `${(d.value2 / 1000).toFixed(0)}k` : d.value2}
                   </span>
                   <div
@@ -194,7 +195,7 @@ function SvgTrendChart({ data }: { data: { label: string; value: number }[] }) {
         {points.map((p, i) => (
           <g key={i}>
             <circle cx={p.x} cy={p.y} r="2.5" fill="#ffffff" stroke="#2563eb" strokeWidth="1.5" />
-            <text x={p.x} y={p.y - 4} textAnchor="middle" fontSize="7.5" fontWeight="800" fill="#1e40af">
+            <text x={p.x} y={p.y - 4} textAnchor="middle" fontSize="7.5" fontWeight="400" fill="#1e40af">
               {p.value}%
             </text>
           </g>
@@ -402,9 +403,16 @@ function buildSectionData(slug: string) {
     else if (rawFloor.includes('3') || rawFloor.includes('03')) floorLabel = `${factory} 3`;
     else floorLabel = `${factory} 1`;
 
-    const exDate = j.dates?.exFactory || '2026-08-15';
+    const floorLine = formatFloorLine(factory, rawFloor, j.lineAllocation?.line);
+    const floorLinePrefix = floorLine.split('-')[0].trim();
+
+    const exDate = j.dates?.exFactory || '05-Aug-2026';
     const shipmentWeek = getWeekNumber(exDate);
-    const shipmentMonth = d2(j.planMonth || exDate.substring(0, 7));
+    let shipmentMonth = 'Aug-26';
+    if (exDate.includes('-')) {
+      const parts = exDate.split('-');
+      if (parts.length === 3) shipmentMonth = `${parts[1]}-${parts[2].slice(-2)}`;
+    }
 
     return {
       orderId: j.id,
@@ -416,6 +424,8 @@ function buildSectionData(slug: string) {
       orderQty: j.orderQty,
       factory,
       floor: floorLabel,
+      floorLine,
+      floorLinePrefix,
       merchandiser: j.merchandiser || 'Md. Jahidul Islam',
       shipmentMonth,
       shipmentWeek,
@@ -435,6 +445,7 @@ function buildSectionData(slug: string) {
 }
 
 export default function SectionOverviewDashboard({ overview }: { overview: SectionOverview }) {
+  const router = useRouter();
   const init = useMemo(() => buildSectionData(overview.slug), [overview.slug]);
   const [orders, setOrders] = useState<any[]>(init.initialOrders);
   const [tasks, setTasks] = useState<any[]>(init.initialTasks);
@@ -489,42 +500,80 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
 
   const group = MODULE_GROUPS.find(g => g.overviewSlug === overview.slug);
 
-  // Facts & KPIs
+  // 1. FILTERED ROWS (Based on Week, Month, Merchandiser, Floor/Line, Status, Buyer, Search)
+  const filteredRows = useMemo(() => {
+    return allRows.filter(r => {
+      if (weekFilter !== 'ALL' && r.shipmentWeek !== weekFilter) return false;
+      if (monthFilter !== 'ALL' && weekFilter === 'ALL' && r.shipmentMonth !== monthFilter) return false;
+      if (merchFilter !== 'ALL' && r.merchandiser !== merchFilter) return false;
+      if (floorUnitFilter !== 'ALL' && !r.floorLine.startsWith(floorUnitFilter) && r.floor !== floorUnitFilter) return false;
+      if (presentStatusFilter !== 'ALL' && r.presentStatus !== presentStatusFilter) return false;
+      if (buyerFilter !== 'ALL' && r.buyer !== buyerFilter) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const match = `${r.jobNo} ${r.buyer} ${r.styleNo} ${r.itemDescription || ''} ${r.merchandiser || ''} ${r.floorLine || ''}`.toLowerCase();
+        if (!match.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [allRows, weekFilter, monthFilter, merchFilter, floorUnitFilter, presentStatusFilter, buyerFilter, searchQuery]);
+
+  // Options for all filters
+  const weekOptions = useMemo(() => Array.from(new Set(allRows.map(r => r.shipmentWeek))).filter(Boolean).sort(), [allRows]);
+  const monthOptions = useMemo(() => Array.from(new Set(allRows.map(r => r.shipmentMonth))).filter(Boolean).sort(), [allRows]);
+  const merchOptions = useMemo(() => Array.from(new Set(allRows.map(r => r.merchandiser))).filter(Boolean).sort(), [allRows]);
+  const presentStatusOptions = useMemo(() => Array.from(new Set(allRows.map(r => r.presentStatus))).filter(Boolean).sort(), [allRows]);
+  const buyerOptions = useMemo(() => Array.from(new Set(allRows.map(r => r.buyer))).filter(Boolean).sort(), [allRows]);
+  const floorUnitOptions = ['NCL1', 'NCL2', 'NCL3', 'NFL1', 'NFL2', 'NFL3'];
+
+  // Summary Metrics calculated for the currently filtered jobs
+  const filteredTotalQty = useMemo(() => {
+    return filteredRows.reduce((sum: number, r: any) => sum + Number(r.orderQty || 0), 0);
+  }, [filteredRows]);
+
+  const filteredBuyersCount = useMemo(() => {
+    return new Set(filteredRows.map((r: any) => r.buyerCode || r.buyer).filter(Boolean)).size;
+  }, [filteredRows]);
+
+  const filteredLinesCount = useMemo(() => {
+    return new Set(filteredRows.map((r: any) => r.floorLine || r.line).filter(Boolean)).size;
+  }, [filteredRows]);
+
+  // Facts & KPIs (Dynamically calculated based on active filters!)
   const facts = useMemo(() => {
-    const totalQty = allRows.reduce((s, o) => s + scalar(o.orderQty), 0);
+    const totalQty = filteredRows.reduce((s, o) => s + scalar(o.orderQty), 0);
     const critical = tasks.filter(t => ['HIGH', 'CRITICAL'].includes(String(t.priority).toUpperCase())).length;
-    const attention = allRows.filter(r => /hold|attention|late|fail|preparing/i.test(String(r.sectionStatus || ''))).length;
+    const attention = filteredRows.filter(r => /hold|attention|late|fail|preparing/i.test(String(r.sectionStatus || ''))).length;
 
     if (overview.slug === 'central-planning') {
-      const approved = allRows.filter(x => /released|approved/i.test(x.sectionStatus)).length;
-      const maxLoad = heat ? Math.max(0, ...heat.rows.flatMap((r: any) => r.slots.map((s: any) => Number(s.loadPct || 0)))) : 98;
+      const approved = filteredRows.filter(x => /released|approved/i.test(x.sectionStatus)).length;
       return {
         cards: [
-          ['T&A Queue', allRows.length, 'Confirmed jobs'],
+          ['T&A Queue', filteredRows.length, 'Filtered jobs in queue'],
           ['Approved T&A', approved, 'Released to lines'],
-          ['Draft / Planning', allRows.length - approved, 'Planning work'],
-          ['Max Capacity Load', `${maxLoad}%`, 'Peak sewing/dyeing']
+          ['Draft / Planning', filteredRows.length - approved, 'Planning work'],
+          ['Total Order Qty', `${n(totalQty)} pcs`, 'Scope volume']
         ]
       };
     }
     if (overview.slug === 'garment-production') {
-      const totalCut = allRows.reduce((s, r) => s + scalar(r.orderQty), 0);
-      const totalSewn = allRows.reduce((s, r) => s + scalar(r.rawJob?.sewing?.sewingActualQty || r.orderQty), 0);
-      const totalPacked = allRows.reduce((s, r) => s + scalar(r.rawJob?.finishing?.packingQty || r.orderQty), 0);
+      const totalCut = filteredRows.reduce((s, r) => s + scalar(r.orderQty), 0);
+      const totalSewn = filteredRows.reduce((s, r) => s + scalar(r.rawJob?.sewing?.sewingActualQty || r.orderQty), 0);
+      const totalPacked = filteredRows.reduce((s, r) => s + scalar(r.rawJob?.finishing?.packingQty || r.orderQty), 0);
       return {
         cards: [
-          ['Order Qty', n(totalQty), 'pcs total volume'],
-          ['Cutting Output', n(totalCut), 'pcs spread & cut'],
-          ['Sewing Output', n(totalSewn), 'pcs line produced'],
-          ['Packed & Ready', n(totalPacked), 'pcs cartons ready']
+          ['Order Qty', `${n(totalQty)} pcs`, `${filteredRows.length} active jobs`],
+          ['Cutting Output', `${n(totalCut)} pcs`, 'Spread & cut'],
+          ['Sewing Output', `${n(totalSewn)} pcs`, 'Line produced'],
+          ['Packed & Ready', `${n(totalPacked)} pcs`, 'Cartons ready']
         ]
       };
     }
     if (overview.slug === 'quality-stores') {
-      const clear = allRows.filter(r => /passed|released|clear/i.test(r.sectionStatus)).length;
+      const clear = filteredRows.filter(r => /passed|released|clear/i.test(r.sectionStatus)).length;
       return {
         cards: [
-          ['Jobs Monitored', allRows.length, 'Quality & audit scope'],
+          ['Jobs Monitored', filteredRows.length, 'Filtered scope'],
           ['Released / Clear', clear, 'Passed inspection'],
           ['Hold / Attention', attention, 'Under observation'],
           ['Active QC Tasks', tasks.length, 'Action items']
@@ -532,11 +581,11 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
       };
     }
     if (overview.slug === 'yarn-fabric') {
-      const reqKg = allRows.reduce((s, r) => s + scalar(r.rawJob?.yarn?.yarnReqKg || 2500), 0);
-      const recKg = allRows.reduce((s, r) => s + scalar(r.rawJob?.yarn?.yarnReceivedKg || 2500), 0);
+      const reqKg = filteredRows.reduce((s, r) => s + scalar(r.rawJob?.yarn?.yarnReqKg || 2500), 0);
+      const recKg = filteredRows.reduce((s, r) => s + scalar(r.rawJob?.yarn?.yarnReceivedKg || 2500), 0);
       return {
         cards: [
-          ['Tracked Jobs', allRows.length, 'Yarn & fabric flow'],
+          ['Tracked Jobs', filteredRows.length, 'Filtered jobs'],
           ['Yarn Required', `${n(reqKg)} KG`, 'Requirement total'],
           ['Yarn In-House', `${n(recKg)} KG`, 'Received stock'],
           ['Material Gap', attention, 'Pending clearance']
@@ -545,18 +594,18 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
     }
     return {
       cards: [
-        ['Active Jobs', allRows.length, 'Confirmed jobs'],
-        ['Total Order Qty', n(totalQty), 'pcs total volume'],
-        ['Critical Tasks', critical, 'Urgent actions'],
-        ['Section Readiness', `${pct(allRows.length - attention, allRows.length)}%`, 'On-track rate']
+        ['Active Jobs', filteredRows.length, 'Filtered records'],
+        ['Total Order Qty', `${n(totalQty)} pcs`, 'Selected volume'],
+        ['Critical Items', attention, 'Attention required'],
+        ['Section Readiness', `${filteredRows.length ? pct(filteredRows.length - attention, filteredRows.length) : 100}%`, 'On-track rate']
       ]
     };
-  }, [overview.slug, allRows, tasks, heat]);
+  }, [overview.slug, filteredRows, tasks]);
 
-  // Chart Data Calculations
+  // Chart Data Calculations (Dynamically recalculates on filter change!)
   const donutData = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const r of allRows) {
+    for (const r of filteredRows) {
       const st = r.sectionStatus || 'In Progress';
       counts.set(st, (counts.get(st) || 0) + 1);
     }
@@ -566,18 +615,19 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
       value,
       color: colors[i % colors.length]
     }));
-  }, [allRows]);
+  }, [filteredRows]);
 
   const barData = useMemo(() => {
-    const buyerMap = new Map<string, { plan: number; actual: number }>();
-    for (const r of allRows) {
-      const b = r.buyer || 'Unknown';
-      const cur = buyerMap.get(b) || { plan: 0, actual: 0 };
+    const isSingleBuyer = buyerFilter !== 'ALL';
+    const groupMap = new Map<string, { plan: number; actual: number }>();
+    for (const r of filteredRows) {
+      const key = isSingleBuyer ? (r.styleNo || r.floorLine) : (r.buyer || 'Unknown');
+      const cur = groupMap.get(key) || { plan: 0, actual: 0 };
       cur.plan += Number(r.orderQty || 0);
       cur.actual += Number(r.rawJob?.sewing?.sewingActualQty || r.rawJob?.shipment?.shipQty || r.orderQty);
-      buyerMap.set(b, cur);
+      groupMap.set(key, cur);
     }
-    return [...buyerMap.entries()]
+    return [...groupMap.entries()]
       .sort((a, b) => b[1].plan - a[1].plan)
       .slice(0, 5)
       .map(([label, val]) => ({
@@ -587,63 +637,40 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
         color1: '#2563eb',
         color2: '#10b981'
       }));
-  }, [allRows]);
+  }, [filteredRows, buyerFilter]);
 
   const trendData = useMemo(() => {
-    return [
-      { label: 'W31', value: 82 },
-      { label: 'W32', value: 88 },
-      { label: 'W33', value: 91 },
-      { label: 'W34', value: 89 },
-      { label: 'W35', value: 95 },
-      { label: 'W36', value: 94 },
-      { label: 'W37', value: 97 }
-    ];
-  }, []);
+    const weekMap = new Map<string, number>();
+    for (const r of filteredRows) {
+      const w = r.shipmentWeek || 'W33';
+      weekMap.set(w, (weekMap.get(w) || 0) + Number(r.orderQty || 0));
+    }
+    const sortedWeeks = Array.from(weekMap.keys()).sort();
+    if (!sortedWeeks.length) return [{ label: 'W31', value: 80 }];
+    const maxVal = Math.max(1, ...Array.from(weekMap.values()));
+    return sortedWeeks.slice(0, 7).map(w => ({
+      label: w,
+      value: Math.round(((weekMap.get(w) || 0) / maxVal) * 100)
+    }));
+  }, [filteredRows]);
 
-  // Filtered rows for the Data Register Table
-  const filteredRows = useMemo(() => {
-    return allRows.filter(r => {
-      // Card selection filter
-      if (cardFilterIndex === 1) {
-        if (!/released|completed|shipped|ok/i.test(r.sectionStatus)) return false;
-      } else if (cardFilterIndex === 2) {
-        if (/complete|shipped/i.test(r.sectionStatus)) return false;
-      } else if (cardFilterIndex === 3) {
-        if (!/hold|attention|late|fail|preparing/i.test(r.sectionStatus)) return false;
-      }
-
-      if (weekFilter !== 'ALL' && r.shipmentWeek !== weekFilter) return false;
-      if (monthFilter !== 'ALL' && r.shipmentMonth !== monthFilter) return false;
-      if (merchFilter !== 'ALL' && r.merchandiser !== merchFilter) return false;
-      if (floorUnitFilter !== 'ALL' && r.floor !== floorUnitFilter) return false;
-      if (presentStatusFilter !== 'ALL' && r.presentStatus !== presentStatusFilter) return false;
-      if (buyerFilter !== 'ALL' && r.buyer !== buyerFilter) return false;
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const match = `${r.jobNo} ${r.buyer} ${r.styleNo} ${r.itemDescription || ''} ${r.merchandiser || ''}`.toLowerCase();
-        if (!match.includes(q)) return false;
-      }
+  // Table rows with optional card filter
+  const tableRows = useMemo(() => {
+    if (cardFilterIndex === null) return filteredRows;
+    return filteredRows.filter(r => {
+      if (cardFilterIndex === 1) return /released|completed|shipped|ok/i.test(r.sectionStatus);
+      if (cardFilterIndex === 2) return !/complete|shipped/i.test(r.sectionStatus);
+      if (cardFilterIndex === 3) return /hold|attention|late|fail|preparing/i.test(r.sectionStatus);
       return true;
     });
-  }, [allRows, cardFilterIndex, weekFilter, monthFilter, merchFilter, floorUnitFilter, presentStatusFilter, buyerFilter, searchQuery]);
-
-  // Options for all filters
-  const weekOptions = useMemo(() => Array.from(new Set(allRows.map(r => r.shipmentWeek))).filter(Boolean).sort(), [allRows]);
-  const monthOptions = useMemo(() => Array.from(new Set(allRows.map(r => r.shipmentMonth))).filter(Boolean).sort(), [allRows]);
-  const merchOptions = useMemo(() => Array.from(new Set(allRows.map(r => r.merchandiser))).filter(Boolean).sort(), [allRows]);
-  const presentStatusOptions = useMemo(() => Array.from(new Set(allRows.map(r => r.presentStatus))).filter(Boolean).sort(), [allRows]);
-  const buyerOptions = useMemo(() => Array.from(new Set(allRows.map(r => r.buyer))).filter(Boolean).sort(), [allRows]);
-
-  // Combined 6 Floor / Unit Options: NFL 1, 2, 3 and NCL 1, 2, 3
-  const floorUnitOptions = ['NFL 1', 'NFL 2', 'NFL 3', 'NCL 1', 'NCL 2', 'NCL 3'];
+  }, [filteredRows, cardFilterIndex]);
 
   // Pagination calculation
-  const totalPages = Math.ceil(filteredRows.length / pageSize) || 1;
+  const totalPages = Math.ceil(tableRows.length / pageSize) || 1;
   const pageRows = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
-    return filteredRows.slice(start, start + pageSize);
-  }, [filteredRows, currentPage, pageSize]);
+    return tableRows.slice(start, start + pageSize);
+  }, [tableRows, currentPage, pageSize]);
 
   // Page size changer that resets to page 1
   function changePageSize(newSize: number) {
@@ -689,33 +716,32 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', width: '100%', boxSizing: 'border-box' }}>
-      {/* 1. TOP STAT CARDS (Clickable: filters table and dashboard below) */}
+      {/* 1. TOP STAT CARDS (Click digit or card to open filtered jobs page) */}
       <section className="section-overview-kpis">
         {facts.cards.map((c: any, i: number) => {
-          const isCardActive = cardFilterIndex === i;
+          const cardUrl = `/jobs?section=${overview.slug}&card=${i}&title=${encodeURIComponent(c[0])}`;
           return (
-            <div
+            <Link
+              href={cardUrl}
+              key={c[0]}
               className={`metric-card compact-metric ${i === 0 ? 'accent-blue' : i === 2 ? 'accent-amber' : ''}`}
               style={{
                 cursor: 'pointer',
-                border: isCardActive ? '2px solid #2563eb' : undefined,
-                boxShadow: isCardActive ? '0 4px 14px rgba(37,99,235,0.2)' : undefined,
-                transition: 'all .2s ease'
+                transition: 'all .2s ease',
+                textDecoration: 'none',
+                color: 'inherit',
+                display: 'flex',
+                flexDirection: 'column',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
               }}
-              onClick={() => {
-                setCardFilterIndex(cardFilterIndex === i ? null : i);
-                setCurrentPage(1);
-              }}
-              title={`Click to filter table by ${c[0]}`}
-              key={c[0]}
+              title={`Click digit to view all ${c[0]} jobs in new page`}
             >
-              <div className="metric-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span>{c[0]}</span>
-                {isCardActive && <span style={{ fontSize: '9px', color: '#2563eb', fontWeight: 800 }}>ACTIVE</span>}
+              <div className="metric-label">
+                <span style={{ fontWeight: 800, fontSize: '12px', color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{c[0]}</span>
               </div>
-              <div className="metric-value">{loading ? '…' : c[1]}</div>
-              <div className="metric-foot">{c[2]}</div>
-            </div>
+              <div className="metric-value" style={{ fontWeight: 900, fontSize: '26px', color: '#0f172a' }}>{loading ? '…' : c[1]}</div>
+              <div className="metric-foot" style={{ fontWeight: 700, fontSize: '11px', color: '#475569' }}>{c[2]}</div>
+            </Link>
           );
         })}
       </section>
@@ -821,33 +847,49 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
 
       {/* 4. NICHE: OPERATIONAL REGISTER (SINGLE-ROW COMPACT TOOLBAR) */}
       <section className="operational-register">
-        <div className="register-toolbar">
+        {/* STRICT SINGLE-LINE FILTER TOOLBAR (No wrapping, compact font, Enter key support) */}
+        <form
+          className="register-toolbar"
+          onSubmit={e => {
+            e.preventDefault();
+            setCurrentPage(1);
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <strong style={{ fontSize: '14px', color: '#0f172a' }}>{overview.label} Operational Register</strong>
-              <span className="status-pill" style={{ background: '#dbeafe', color: '#1e40af', fontSize: '11px' }}>
+              <strong style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a' }}>{overview.label} Operational Register</strong>
+              <span className="status-pill" style={{ background: '#dbeafe', color: '#1e40af', fontSize: '11px', fontWeight: 800 }}>
                 {filteredRows.length.toLocaleString()} Active Jobs
               </span>
             </div>
             <span style={{ fontSize: '11px', color: '#64748b' }}>Connected factory records · Click any row for Size & Country Breakdown</span>
           </div>
 
-          {/* STRICT SINGLE-LINE FILTER TOOLBAR (No wrapping, compact font) */}
           <div className="register-controls-single-row">
             {/* Search Input */}
             <input
               type="text"
-              placeholder="Search Job, Buyer, Style..."
+              placeholder="Search Job, Buyer, Style... (Enter ⏎)"
               value={searchQuery}
-              onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+              onChange={e => { setSearchQuery(e.target.value); setCardFilterIndex(null); setCurrentPage(1); }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  setCurrentPage(1);
+                  (e.target as HTMLElement).blur();
+                }
+              }}
               className="reg-search-compact"
+              style={{ fontWeight: 600 }}
             />
 
             {/* Shipment Week Filter */}
             <select
               value={weekFilter}
-              onChange={e => { setWeekFilter(e.target.value); setCurrentPage(1); }}
+              onChange={e => { setWeekFilter(e.target.value); setCardFilterIndex(null); setCurrentPage(1); }}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setCurrentPage(1); } }}
               className="reg-select-compact"
+              style={{ fontWeight: 700 }}
               title="Shipment Week"
             >
               <option value="ALL">📅 Week: All</option>
@@ -859,8 +901,10 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
             {/* Shipment Month Filter */}
             <select
               value={monthFilter}
-              onChange={e => { setMonthFilter(e.target.value); setCurrentPage(1); }}
+              onChange={e => { setMonthFilter(e.target.value); setCardFilterIndex(null); setCurrentPage(1); }}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setCurrentPage(1); } }}
               className="reg-select-compact"
+              style={{ fontWeight: 700 }}
               title="Shipment Month"
             >
               <option value="ALL">🗓️ Month: All</option>
@@ -869,14 +913,16 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
               ))}
             </select>
 
-            {/* Floor / Unit Single Filter (NFL 1..3, NCL 1..3) */}
+            {/* Floor / Line Filter (NCL1..3, NFL1..3) */}
             <select
               value={floorUnitFilter}
-              onChange={e => { setFloorUnitFilter(e.target.value); setCurrentPage(1); }}
+              onChange={e => { setFloorUnitFilter(e.target.value); setCardFilterIndex(null); setCurrentPage(1); }}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setCurrentPage(1); } }}
               className="reg-select-compact"
-              title="Floor & Factory Unit"
+              style={{ fontWeight: 700 }}
+              title="Floor/Line"
             >
-              <option value="ALL">🏢 Floor: All</option>
+              <option value="ALL">🏢 Floor/Line: All</option>
               {floorUnitOptions.map(f => (
                 <option key={f} value={f}>{f}</option>
               ))}
@@ -885,8 +931,10 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
             {/* Merchandiser Filter */}
             <select
               value={merchFilter}
-              onChange={e => { setMerchFilter(e.target.value); setCurrentPage(1); }}
+              onChange={e => { setMerchFilter(e.target.value); setCardFilterIndex(null); setCurrentPage(1); }}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setCurrentPage(1); } }}
               className="reg-select-compact"
+              style={{ fontWeight: 700 }}
               title="Merchandiser"
             >
               <option value="ALL">👤 Merch: All</option>
@@ -898,8 +946,10 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
             {/* Present Status Filter */}
             <select
               value={presentStatusFilter}
-              onChange={e => { setPresentStatusFilter(e.target.value); setCurrentPage(1); }}
+              onChange={e => { setPresentStatusFilter(e.target.value); setCardFilterIndex(null); setCurrentPage(1); }}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setCurrentPage(1); } }}
               className="reg-select-compact"
+              style={{ fontWeight: 700 }}
               title="Present Status"
             >
               <option value="ALL">⚡ Status: All</option>
@@ -911,8 +961,10 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
             {/* Buyer Filter */}
             <select
               value={buyerFilter}
-              onChange={e => { setBuyerFilter(e.target.value); setCurrentPage(1); }}
+              onChange={e => { setBuyerFilter(e.target.value); setCardFilterIndex(null); setCurrentPage(1); }}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setCurrentPage(1); } }}
               className="reg-select-compact"
+              style={{ fontWeight: 700 }}
               title="Buyer"
             >
               <option value="ALL">🏷️ Buyer: All</option>
@@ -921,14 +973,102 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
               ))}
             </select>
 
+            {/* Apply Button */}
+            <button
+              type="submit"
+              className="reg-btn-compact"
+              style={{ background: '#2563eb', color: '#fff', borderColor: '#2563eb', fontWeight: 800 }}
+              title="Apply filters (or press Enter)"
+            >
+              Apply ⏎
+            </button>
+
+            {/* Reset Filters Button if any filter active */}
+            {(weekFilter !== 'ALL' || monthFilter !== 'ALL' || floorUnitFilter !== 'ALL' || merchFilter !== 'ALL' || presentStatusFilter !== 'ALL' || buyerFilter !== 'ALL' || searchQuery !== '' || cardFilterIndex !== null) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setWeekFilter('ALL');
+                  setMonthFilter('ALL');
+                  setFloorUnitFilter('ALL');
+                  setMerchFilter('ALL');
+                  setPresentStatusFilter('ALL');
+                  setBuyerFilter('ALL');
+                  setSearchQuery('');
+                  setCardFilterIndex(null);
+                  setCurrentPage(1);
+                }}
+                className="reg-btn-compact"
+                style={{ background: '#fff1f2', color: '#be123c', borderColor: '#fecdd3', fontWeight: 800 }}
+                title="Reset all filters"
+              >
+                ✕ Reset
+              </button>
+            )}
+
             {/* Export CSV Button */}
             <button
+              type="button"
               onClick={exportCsv}
               className="reg-btn-compact"
               title="Export CSV"
             >
               <span>📥</span> Export
             </button>
+          </div>
+        </form>
+
+        {/* SUMMARY PANEL FOR CURRENTLY FILTERED JOBS */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+          gap: '12px',
+          padding: '12px 18px',
+          background: '#f8fafc',
+          borderTop: '1px solid #e2e8f0',
+          borderBottom: '1px solid #e2e8f0',
+          alignItems: 'center'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 900 }}>
+              📦
+            </div>
+            <div>
+              <span style={{ fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', fontWeight: 800, display: 'block' }}>
+                Total Order Quantity
+              </span>
+              <strong style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a' }}>
+                {n(filteredTotalQty)} <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748b' }}>pcs</span>
+              </strong>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#ecfdf5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 900 }}>
+              🏷️
+            </div>
+            <div>
+              <span style={{ fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', fontWeight: 800, display: 'block' }}>
+                Active Buyers Count
+              </span>
+              <strong style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a' }}>
+                {filteredBuyersCount} <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748b' }}>accounts</span>
+              </strong>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#f5f3ff', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 900 }}>
+              🏭
+            </div>
+            <div>
+              <span style={{ fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', fontWeight: 800, display: 'block' }}>
+                Total Lines Involved
+              </span>
+              <strong style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a' }}>
+                {filteredLinesCount} <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748b' }}>lines</span>
+              </strong>
+            </div>
           </div>
         </div>
 
@@ -941,7 +1081,7 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
                 <th>Buyer</th>
                 <th>Style & Item</th>
                 <th style={{ textAlign: 'right' }}>Order Qty</th>
-                <th>Floor / Unit</th>
+                <th>Floor/Line</th>
                 <th>Merchandiser</th>
                 <th>Week</th>
                 <th>Ex-Factory</th>
@@ -960,27 +1100,36 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
 
                 const displayJob = String(displayJobNo(r.jobNo, r.buyerCode || r.buyer)).replace(/\s+(\d)(st|nd|rd|th)/i, ' ($1$2)');
 
+                const jobUrl = `/jobs/${encodeURIComponent(r.jobNo)}`;
+
                 return (
                   <tr
                     key={r.orderId}
                     style={{ background: idx % 2 === 0 ? '#fff' : '#fcfdfe', cursor: 'pointer' }}
-                    onClick={() => setSelectedJob(r)}
+                    onClick={() => router.push(jobUrl)}
+                    title={`Click to open full details page for Job ${r.jobNo}`}
                   >
-                    <td style={{ whiteSpace: 'nowrap' }}>
-                      <span className="job-link">{displayJob}</span>
+                    <td style={{ whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                      <Link href={jobUrl} className="job-link">
+                        {displayJob}
+                      </Link>
                     </td>
                     <td style={{ whiteSpace: 'nowrap', color: '#334155' }}>
                       {r.buyer}
                     </td>
-                    <td style={{ maxWidth: '240px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={`${r.styleNo} · ${r.itemDescription || ''}`}>
-                      <span style={{ fontWeight: 600, color: '#0f172a' }}>{r.styleNo}</span>
-                      {r.itemDescription && <span style={{ color: '#64748b' }}> · {r.itemDescription}</span>}
+                    <td style={{ maxWidth: '220px', minWidth: '150px' }}>
+                      <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '11px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '1.25' }} title={r.styleNo}>
+                        {r.styleNo}
+                      </div>
+                      <div style={{ fontSize: '9.5px', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '1.2' }} title={r.itemDescription}>
+                        {r.itemDescription || '—'}
+                      </div>
                     </td>
                     <td style={{ textAlign: 'right', whiteSpace: 'nowrap', fontWeight: 600, color: '#0f172a' }}>
                       {n(r.orderQty)} <span style={{ fontSize: '9.5px', color: '#94a3b8', fontWeight: 400 }}>pcs</span>
                     </td>
                     <td style={{ whiteSpace: 'nowrap', fontWeight: 500, color: '#1e40af' }}>
-                      {r.floor}{r.line ? ` (${r.line.startsWith('L-') ? r.line : `L-${r.line}`})` : ''}
+                      {r.floorLine}
                     </td>
                     <td style={{ whiteSpace: 'nowrap', color: '#475569' }}>
                       {r.merchandiser}
@@ -1000,13 +1149,13 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
                       </span>
                     </td>
                     <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
-                      <button
-                        onClick={() => setSelectedJob(r)}
+                      <Link
+                        href={jobUrl}
                         className="btn btn-primary"
-                        style={{ padding: '2px 7px', fontSize: '10.5px', fontWeight: 600, borderRadius: '4px', whiteSpace: 'nowrap' }}
+                        style={{ padding: '2px 7px', fontSize: '10.5px', fontWeight: 600, borderRadius: '4px', whiteSpace: 'nowrap', textDecoration: 'none' }}
                       >
-                        View 360 ↗
-                      </button>
+                        View Details ↗
+                      </Link>
                     </td>
                   </tr>
                 );
