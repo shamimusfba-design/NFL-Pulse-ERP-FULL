@@ -334,56 +334,119 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   // 12. /api/masters/lines
   if (pathStr === 'masters/lines') {
     const lines: any[] = [];
-    // NFL 52 lines
-    for (let i = 1; i <= 26; i++) {
+    const nflNames = [
+      'A1', 'A2', 'B', 'B2', 'C', 'C2', 'D1', 'D2', 'E1', 'E2', 'F',
+      'G1', 'G2', 'H1', 'H2', 'J1', 'J2', 'K1', 'K2', 'L1', 'L2', 'M1',
+      'M2', 'N1', 'N2', 'O1', 'O2', 'P1', 'P2', 'Q1', 'Q2', 'R1', 'R2',
+      'R3', 'S1', 'S2', 'T1', 'T2', 'U', 'V1', 'V2', 'W1', 'W2', 'X1',
+      'Y1', 'Y2', 'Z1', 'Z2', 'ZA1', 'ZA2'
+    ];
+    nflNames.forEach((lineName, i) => {
+      const flNum = (i % 3) + 1;
       lines.push({
-        id: `nfl-${i}A`, code: `${i}A`, name: `${i}A`,
-        floor: { code: 'FL-01', name: 'Floor 1', section: { code: 'SEC-SEW', name: 'Sewing Section', factory: { code: 'NFL', name: 'Northern Fashions Ltd' } } }
+        id: `nfl-${lineName.toLowerCase()}`,
+        code: lineName,
+        name: lineName,
+        floor: {
+          code: `FL-0${flNum}`,
+          name: `Floor ${flNum}`,
+          section: { code: 'SEC-SEW', name: 'Sewing Section', factory: { code: 'NFL', name: 'Northern Fashions Ltd' } }
+        },
+        machinePools: [{ id: `mp-nfl-${lineName}`, name: 'Line Stitching Machines', machineCount: 24, active: true }]
       });
+    });
+
+    const nclNames = [
+      '1', '2', '3', '4', '5', '6', '7', '8A', '8B', '9A', '9B', '10A',
+      '10B', '11A', '11B', '12A', '12B', '13A', '13B', '14A', '14B',
+      '15A', '15B', '16A', '16B', '17A', '17B', '18A', '18B', '19A',
+      '19B', '20A', '20B', '21A', '21B', '22A', '22B', '23A', '23B'
+    ];
+    nclNames.forEach((lineName, i) => {
+      const sNum = (i % 3) + 1;
       lines.push({
-        id: `nfl-${i}B`, code: `${i}B`, name: `${i}B`,
-        floor: { code: 'FL-02', name: 'Floor 2', section: { code: 'SEC-SEW', name: 'Sewing Section', factory: { code: 'NFL', name: 'Northern Fashions Ltd' } } }
+        id: `ncl-${lineName.toLowerCase()}`,
+        code: lineName,
+        name: lineName,
+        floor: {
+          code: `S-0${sNum}`,
+          name: `S-0${sNum} Floor`,
+          section: { code: 'SEC-SEW', name: 'Sewing Section', factory: { code: 'NCL', name: 'Northern Clothing Ltd' } }
+        },
+        machinePools: [{ id: `mp-ncl-${lineName}`, name: 'Line Stitching Machines', machineCount: 22, active: true }]
       });
-    }
-    // NCL 39 lines
-    for (let i = 1; i <= 20; i++) {
-      lines.push({
-        id: `ncl-${i}A`, code: `${i}A`, name: `${i}A`,
-        floor: { code: 'S-01', name: 'S-01 Floor', section: { code: 'SEC-SEW', name: 'Sewing Section', factory: { code: 'NCL', name: 'Northern Clothing Ltd' } } }
-      });
-      if (i <= 19) {
-        lines.push({
-          id: `ncl-${i}B`, code: `${i}B`, name: `${i}B`,
-          floor: { code: 'S-02', name: 'S-02 Floor', section: { code: 'SEC-SEW', name: 'Sewing Section', factory: { code: 'NCL', name: 'Northern Clothing Ltd' } } }
-        });
-      }
-    }
+    });
+
     return NextResponse.json(lines);
   }
 
   // /api/planning/gantt
   if (pathStr === 'planning/gantt') {
-    const list = masterJobs.slice(0, 150).map((j: any) => ({
-      id: j.id,
-      jobNo: j.jobNo,
-      buyer: j.buyer,
-      buyerCode: j.buyer,
-      styleId: `s-${j.jobNo}`,
-      styleNo: j.styleNo,
-      itemDescription: j.itemDescription,
-      orderQty: j.orderQty,
-      ganttPlan: {
-        factoryCode: j.lineAllocation?.factory || 'NFL',
-        lineCode: j.lineAllocation?.line || '1A',
-        startDate: j.dates?.sewingStart || '2026-08-15',
-        endDate: j.dates?.sewingEnd || '2026-08-25',
-        status: 'RELEASED',
-        dailyTarget: j.ie?.dailyTarget || 1800,
-        smv: j.ie?.smv || 7.5,
-        manpower: j.ie?.manpower || 30,
-        efficiencyPct: j.ie?.efficiencyPct || 80
-      }
-    }));
+    const list = masterJobs.map((j: any) => {
+      const fac = j.lineAllocation?.factory || 'NFL';
+      const line = j.lineAllocation?.line || 'A1';
+      const rawStart = j.dates?.sewingStart || '15-Aug-2026';
+      const rawEnd = j.dates?.sewingEnd || '25-Aug-2026';
+      const startDt = new Date(rawStart);
+      const endDt = new Date(rawEnd);
+      const startDate = !isNaN(startDt.getTime()) ? startDt.toISOString().split('T')[0] : '2026-08-15';
+      const finishDate = !isNaN(endDt.getTime()) ? endDt.toISOString().split('T')[0] : '2026-08-25';
+      const ccdDt = new Date(j.dates?.cargoClosing || j.dates?.exFactory || rawEnd);
+      const ccd = !isNaN(ccdDt.getTime()) ? ccdDt.toISOString().split('T')[0] : finishDate;
+
+      return {
+        id: j.id,
+        jobNo: j.jobNo,
+        buyer: j.buyer,
+        buyerCode: j.buyer,
+        styleId: `s-${j.jobNo}`,
+        styleNo: j.styleNo,
+        itemDescription: j.itemDescription,
+        orderQty: j.orderQty,
+        ccd,
+        presentStatus: j.presentStatus || 'Confirmed',
+        ganttPlan: {
+          lineId: `${fac.toLowerCase()}-${line.toLowerCase()}`,
+          factoryCode: fac,
+          floorCode: j.lineAllocation?.floor || (fac === 'NCL' ? 'S-01' : 'FL-01'),
+          lineCode: line,
+          startDate,
+          finishDate,
+          endDate: finishDate,
+          status: j.lineAllocation?.status || 'RELEASED',
+          dailyTarget: j.ie?.dailyTarget || 1800,
+          smv: j.ie?.smv || 7.5,
+          manpower: j.ie?.manpower || 30,
+          efficiencyPct: j.ie?.efficiencyPct || 80,
+          machineQty: j.ie?.machineQty || 19,
+          workingHours: j.lineAllocation?.hours || 8,
+          actualQty: j.sewing?.sewingActualQty || 0,
+          risk: j.riskStatus || 'ON_TRACK',
+          splitPlan: []
+        },
+        sectionData: {
+          sewing: {
+            productionQty: j.sewing?.sewingActualQty || 0,
+            status: j.sewing?.status || 'RUNNING',
+            machineQty: j.ie?.machineQty || 19,
+            manpower: j.ie?.manpower || 30,
+            efficiencyPct: j.ie?.efficiencyPct || 80
+          },
+          finishedFabricStore: {
+            receivedKg: j.fabric?.fabricReceivedKg || 0,
+            status: 'READY'
+          },
+          cutting: {
+            cutQty: j.cutting?.cuttingQty || 0,
+            status: j.cutting?.status || 'COMPLETED'
+          },
+          trims: {
+            inhousePct: 100,
+            status: 'RELEASED'
+          }
+        }
+      };
+    });
     return NextResponse.json(list);
   }
 
@@ -453,11 +516,56 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const { path } = await params;
   const pathStr = path.join('/');
 
+  if (pathStr === 'auth/login') {
+    const body = await request.json().catch(() => ({}));
+    const email = body.email || 'admin@nfl.local';
+    const user = {
+      id: 'u-admin-1',
+      email,
+      name: email.split('@')[0] === 'admin' ? 'NFL Administrator' : 'Authorized User',
+      roles: ['ADMIN']
+    };
+    return NextResponse.json({
+      success: true,
+      accessToken: 'demo-access-token-' + Date.now(),
+      refreshToken: 'demo-refresh-token-' + Date.now(),
+      user
+    });
+  }
+
   if (pathStr === 'demo/load') {
     return NextResponse.json({ createdOrders: 2000, message: 'All 2,000 jobs loaded and active' });
   }
 
+  if (pathStr === 'planning/gantt/approve') {
+    return NextResponse.json({ success: true, message: 'Selected line plans approved for floor execution' });
+  }
+
+  if (pathStr === 'planning/gantt/generate') {
+    return NextResponse.json({ success: true, message: 'Line plan simulation re-generated from T&A dates' });
+  }
+
+  if (pathStr.endsWith('/undo')) {
+    return NextResponse.json({ success: true, message: 'Previous baseline plan restored' });
+  }
+
   return NextResponse.json({ success: true, message: `Action on ${pathStr} recorded successfully` });
+}
+
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+  const { path } = await params;
+  const pathStr = path.join('/');
+  const body = await request.json().catch(() => ({}));
+
+  if (pathStr.startsWith('planning/gantt/styles/')) {
+    return NextResponse.json({ ...body, status: body.status || 'REVIEWED' });
+  }
+
+  if (pathStr.startsWith('masters/lines/')) {
+    return NextResponse.json({ success: true, message: 'Line machines updated' });
+  }
+
+  return NextResponse.json({ success: true, ...body });
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {

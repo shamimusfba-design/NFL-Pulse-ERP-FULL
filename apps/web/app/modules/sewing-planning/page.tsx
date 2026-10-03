@@ -48,7 +48,7 @@ export default function SewingPlanningPage(){
  const [busy,setBusy]=useState(false); const [msg,setMsg]=useState(''); const [error,setError]=useState('');
  const [view,setView]=useState('JOB'); const [displayMode,setDisplayMode]=useState<'PLAN'|'ACTUAL'|'BOTH'>('BOTH'); const [selected,setSelected]=useState<any>(null); const [dragId,setDragId]=useState(''); const [pendingMove,setPendingMove]=useState<{row:any;line:LineMaster;startDate:string;finishDate:string;originalPlan:any}|null>(null);
  const [factory,setFactory]=useState('ALL'); const [floor,setFloor]=useState('ALL'); const [buyer,setBuyer]=useState('ALL'); const [risk,setRisk]=useState('ALL'); const [planStatus,setPlanStatus]=useState('ALL'); const [query,setQuery]=useState('');
- const [windowDays,setWindowDays]=useState(60); const [windowStart,setWindowStart]=useState(dateInput(new Date()));
+ const [windowDays,setWindowDays]=useState(60); const [windowStart,setWindowStart]=useState('2026-08-01');
  const [simHours,setSimHours]=useState(8); const [customHours,setCustomHours]=useState(9);
  const [showBaseline,setShowBaseline]=useState(true); const [heatmapMode,setHeatmapMode]=useState(true); const [history,setHistory]=useState<any[]>([]);
  const [splitLineId,setSplitLineId]=useState(''); const [splitPct,setSplitPct]=useState(50); const [showIntelligence,setShowIntelligence]=useState(false);
@@ -94,7 +94,22 @@ export default function SewingPlanningPage(){
  const capacityIndex=useMemo(()=>{const floorLoad=new Map<string,number>();const lineLoad=new Map<string,number>();const windowEnd=addDays(wStart,windowDays-1);for(const r of planned){const rs=d(r.ganttPlan?.startDate),rf=d(r.ganttPlan?.finishDate);if(!rs||!rf||rf<wStart||rs>windowEnd)continue;const allocations:{line:LineMaster;pct:number}[]=[];const g=r.ganttPlan||{};let main:LineMaster|undefined=g.lineId?lineById.get(g.lineId):undefined;if(!main)main=lineByCode.get(`${String(g.factoryCode||'NFL').toUpperCase()}|${String(g.floorCode||'').toUpperCase()}|${String(g.lineCode||'').toUpperCase()}`);if(main)allocations.push({line:main,pct:Math.max(1,100-splitPctTotal(r))});for(const x of (g.splitPlan||[])){const l=lineById.get(x.lineId);if(l)allocations.push({line:l,pct:Math.max(0,Math.min(100,Number(x.pct||0)))})}const start=rs<wStart?wStart:rs;const finish=rf>windowEnd?windowEnd:rf;for(let day=new Date(start.getFullYear(),start.getMonth(),start.getDate());day<=finish;day=addDays(day,1)){const dk=dateInput(day);for(const a of allocations){const used=machineNeed(r)*a.pct/100;const lk=`${a.line.id}|${dk}`;lineLoad.set(lk,(lineLoad.get(lk)||0)+used);const fk=`${masterFactory(a.line)}|${a.line.floor.code}|${dk}`;floorLoad.set(fk,(floorLoad.get(fk)||0)+used)}}}return{floorLoad,lineLoad}},[planned,lineById,lineByCode,wStart,windowDays]);
  function floorUsedOnDate(factoryCode:string,floorCode:string,dt:Date){return capacityIndex.floorLoad.get(`${factoryCode}|${floorCode}|${dateInput(dt)}`)||0}
  const rowByStyle=useMemo(()=>new Map(planned.map(r=>[r.styleId,r] as const)),[planned]);
- const jobsByLine=useMemo(()=>{const m=new Map<string,any[]>();for(const r of filteredRows){const g=r.ganttPlan||{};let main:LineMaster|undefined=g.lineId?lineById.get(g.lineId):undefined;if(!main)main=lineByCode.get(`${String(g.factoryCode||'NFL').toUpperCase()}|${String(g.floorCode||'').toUpperCase()}|${String(g.lineCode||'').toUpperCase()}`);if(main){const a=m.get(main.id)||[];a.push(r);m.set(main.id,a)}for(const x of (g.splitPlan||[])){const l=lineById.get(x.lineId);if(l){const a=m.get(l.id)||[];if(!a.some(z=>z.styleId===r.styleId))a.push(r);m.set(l.id,a)}}}return m},[filteredRows,lineById,lineByCode]);
+ const lineByFacAndCode=useMemo(()=>new Map(lines.map(l=>[`${masterFactory(l).toUpperCase()}|${displayLineName(l).toUpperCase()}`,l] as const)),[lines]);
+ const jobsByLine=useMemo(()=>{
+  const m=new Map<string,any[]>();
+  for(const r of filteredRows){
+   const g=r.ganttPlan||{};
+   let main:LineMaster|undefined=g.lineId?lineById.get(g.lineId):undefined;
+   if(!main)main=lineByCode.get(`${String(g.factoryCode||'NFL').toUpperCase()}|${String(g.floorCode||'').toUpperCase()}|${String(g.lineCode||'').toUpperCase()}`);
+   if(!main)main=lineByFacAndCode.get(`${String(g.factoryCode||'NFL').toUpperCase()}|${String(g.lineCode||'').toUpperCase()}`);
+   if(main){const a=m.get(main.id)||[];a.push(r);m.set(main.id,a)}
+   for(const x of (g.splitPlan||[])){
+    const l=lineById.get(x.lineId)||lineByFacAndCode.get(`${String(x.factoryCode||'NFL').toUpperCase()}|${String(x.lineCode||'').toUpperCase()}`);
+    if(l){const a=m.get(l.id)||[];if(!a.some(z=>z.styleId===r.styleId))a.push(r);m.set(l.id,a)}
+   }
+  }
+  return m;
+ },[filteredRows,lineById,lineByCode,lineByFacAndCode]);
  function jobsForLine(line:LineMaster){return jobsByLine.get(line.id)||[]}
  function isFirstFloorLine(line:LineMaster,index:number){return index===0||floorKey(visibleLines[index-1])!==floorKey(line)}
  function isVisible(r:any){const s=d(r.ganttPlan?.startDate),f=d(r.ganttPlan?.finishDate);if(!s||!f)return false;return f>=wStart&&s<=addDays(wStart,windowDays-1)}

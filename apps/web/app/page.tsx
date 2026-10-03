@@ -272,9 +272,9 @@ export default function Dashboard() {
       if (selectedFilterType === 'SEWING' && !r.isSewingRunning) return false;
       if (selectedFilterType.startsWith('BUYER:') && r.buyer !== selectedFilterType.replace('BUYER:', '')) return false;
 
-      // Table controls filter
+      // Table controls filter (if week is set, prioritize week to prevent 0-result month conflict)
       if (weekFilter !== 'ALL' && r.shipmentWeek !== weekFilter) return false;
-      if (monthFilter !== 'ALL' && r.shipmentMonth !== monthFilter) return false;
+      if (monthFilter !== 'ALL' && weekFilter === 'ALL' && r.shipmentMonth !== monthFilter) return false;
       if (floorUnitFilter !== 'ALL' && !r.floorLine.startsWith(floorUnitFilter) && r.floor !== floorUnitFilter) return false;
       if (merchFilter !== 'ALL' && r.merchandiser !== merchFilter) return false;
       if (presentStatusFilter !== 'ALL' && r.presentStatus !== presentStatusFilter) return false;
@@ -577,19 +577,35 @@ export default function Dashboard() {
             <span style={{ fontSize: '11px', color: '#64748b' }}>Connected factory records · Click any row for Size & Country Breakdown</span>
           </div>
 
-          {/* SINGLE-LINE FILTER TOOLBAR */}
-          <div className="register-controls-single-row">
+          {/* SINGLE-LINE FILTER TOOLBAR (With Form & Enter Execution) */}
+          <form
+            className="register-controls-single-row"
+            onSubmit={e => {
+              e.preventDefault();
+              setCurrentPage(1);
+            }}
+          >
             <input
               type="text"
-              placeholder="Search Job, Buyer, Style..."
+              placeholder="Search Job, Buyer, Style... (Enter ⏎)"
               value={searchQuery}
               onChange={e => { setSearchQuery(e.target.value); setSelectedFilterType('ALL'); setCurrentPage(1); }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  setCurrentPage(1);
+                  (e.target as HTMLElement).blur();
+                }
+              }}
               className="reg-search-compact"
+              style={{ fontWeight: 600 }}
             />
             <select
               value={weekFilter}
               onChange={e => { setWeekFilter(e.target.value); setSelectedFilterType('ALL'); setCurrentPage(1); }}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setCurrentPage(1); } }}
               className="reg-select-compact"
+              style={{ fontWeight: 700 }}
               title="Shipment Week"
             >
               <option value="ALL">📅 Week: All</option>
@@ -600,7 +616,9 @@ export default function Dashboard() {
             <select
               value={monthFilter}
               onChange={e => { setMonthFilter(e.target.value); setSelectedFilterType('ALL'); setCurrentPage(1); }}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setCurrentPage(1); } }}
               className="reg-select-compact"
+              style={{ fontWeight: 700 }}
               title="Shipment Month"
             >
               <option value="ALL">🗓️ Month: All</option>
@@ -611,7 +629,9 @@ export default function Dashboard() {
             <select
               value={floorUnitFilter}
               onChange={e => { setFloorUnitFilter(e.target.value); setSelectedFilterType('ALL'); setCurrentPage(1); }}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setCurrentPage(1); } }}
               className="reg-select-compact"
+              style={{ fontWeight: 700 }}
               title="Floor/Line"
             >
               <option value="ALL">🏢 Floor/Line: All</option>
@@ -622,7 +642,9 @@ export default function Dashboard() {
             <select
               value={merchFilter}
               onChange={e => { setMerchFilter(e.target.value); setSelectedFilterType('ALL'); setCurrentPage(1); }}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setCurrentPage(1); } }}
               className="reg-select-compact"
+              style={{ fontWeight: 700 }}
               title="Merchandiser"
             >
               <option value="ALL">👤 Merch: All</option>
@@ -633,7 +655,9 @@ export default function Dashboard() {
             <select
               value={presentStatusFilter}
               onChange={e => { setPresentStatusFilter(e.target.value); setSelectedFilterType('ALL'); setCurrentPage(1); }}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setCurrentPage(1); } }}
               className="reg-select-compact"
+              style={{ fontWeight: 700 }}
               title="Present Status"
             >
               <option value="ALL">⚡ Status: All</option>
@@ -644,7 +668,9 @@ export default function Dashboard() {
             <select
               value={buyerFilter}
               onChange={e => { setBuyerFilter(e.target.value); setSelectedFilterType('ALL'); setCurrentPage(1); }}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setCurrentPage(1); } }}
               className="reg-select-compact"
+              style={{ fontWeight: 700 }}
               title="Buyer"
             >
               <option value="ALL">🏷️ Buyer: All</option>
@@ -653,9 +679,20 @@ export default function Dashboard() {
               ))}
             </select>
 
+            {/* Apply Button */}
+            <button
+              type="submit"
+              className="reg-btn-compact"
+              style={{ background: '#2563eb', color: '#fff', borderColor: '#2563eb', fontWeight: 800, minWidth: '95px' }}
+              title="Apply selected filters (or press Enter)"
+            >
+              Apply Filter ⏎
+            </button>
+
             {/* Reset Filters Button if any filter active */}
             {(weekFilter !== 'ALL' || monthFilter !== 'ALL' || floorUnitFilter !== 'ALL' || merchFilter !== 'ALL' || presentStatusFilter !== 'ALL' || buyerFilter !== 'ALL' || searchQuery !== '' || selectedFilterType !== 'ALL') && (
               <button
+                type="button"
                 onClick={() => {
                   setWeekFilter('ALL');
                   setMonthFilter('ALL');
@@ -669,7 +706,7 @@ export default function Dashboard() {
                   setCurrentPage(1);
                 }}
                 className="reg-btn-compact"
-                style={{ background: '#fff1f2', color: '#be123c', borderColor: '#fecdd3', fontWeight: 700 }}
+                style={{ background: '#fff1f2', color: '#be123c', borderColor: '#fecdd3', fontWeight: 800 }}
                 title="Reset all filters"
               >
                 ✕ Reset
@@ -677,13 +714,14 @@ export default function Dashboard() {
             )}
 
             <button
+              type="button"
               onClick={exportCsv}
               className="reg-btn-compact"
               title="Export CSV"
             >
               <span>📥</span> Export
             </button>
-          </div>
+          </form>
         </div>
 
         {/* SUMMARY PANEL FOR CURRENTLY FILTERED JOBS */}
@@ -691,59 +729,59 @@ export default function Dashboard() {
           display: 'grid',
           gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
           gap: '12px',
-          padding: '10px 18px',
+          padding: '12px 18px',
           background: '#f8fafc',
           borderTop: '1px solid #e2e8f0',
           borderBottom: '1px solid #e2e8f0',
           alignItems: 'center'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: 800 }}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 900 }}>
               📦
             </div>
             <div>
-              <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em', color: '#64748b', fontWeight: 700, display: 'block' }}>
+              <span style={{ fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', fontWeight: 800, display: 'block' }}>
                 Total Order Quantity
               </span>
-              <strong style={{ fontSize: '16px', color: '#0f172a' }}>
-                {totalQty.toLocaleString()} <span style={{ fontSize: '11px', fontWeight: 500, color: '#64748b' }}>pcs</span>
+              <strong style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a' }}>
+                {totalQty.toLocaleString()} <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748b' }}>pcs</span>
               </strong>
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: '#ecfdf5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: 800 }}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#ecfdf5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 900 }}>
               🏷️
             </div>
             <div>
-              <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em', color: '#64748b', fontWeight: 700, display: 'block' }}>
+              <span style={{ fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', fontWeight: 800, display: 'block' }}>
                 Active Buyers Count
               </span>
-              <strong style={{ fontSize: '16px', color: '#0f172a' }}>
-                {filteredBuyersCount} <span style={{ fontSize: '11px', fontWeight: 500, color: '#64748b' }}>accounts</span>
+              <strong style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a' }}>
+                {filteredBuyersCount} <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748b' }}>accounts</span>
               </strong>
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: '#f5f3ff', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: 800 }}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#f5f3ff', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 900 }}>
               🏭
             </div>
             <div>
-              <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em', color: '#64748b', fontWeight: 700, display: 'block' }}>
+              <span style={{ fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', fontWeight: 800, display: 'block' }}>
                 Total Lines Involved
               </span>
-              <strong style={{ fontSize: '16px', color: '#0f172a' }}>
-                {filteredLinesCount} <span style={{ fontSize: '11px', fontWeight: 500, color: '#64748b' }}>lines</span>
+              <strong style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a' }}>
+                {filteredLinesCount} <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748b' }}>lines</span>
               </strong>
             </div>
           </div>
         </div>
 
-        {/* Data Table */}
-        <div className="register-table-wrap">
+        {/* Data Table with Frozen/Sticky Scroll and Sticky Headers */}
+        <div className="register-table-wrap" data-sticky-horizontal-scroll="true" style={{ maxHeight: '62vh', overflowY: 'auto', overflowX: 'auto', position: 'relative' }}>
           <table className="register-table">
-            <thead>
+            <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: '#f8fafc', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
               <tr>
                 <th>Job No</th>
                 <th>Buyer</th>
@@ -755,7 +793,7 @@ export default function Dashboard() {
                 <th>Ex-Factory</th>
                 <th>Present Status</th>
                 <th style={{ textAlign: 'center' }}>Section Status</th>
-                <th style={{ textAlign: 'center' }}>Action</th>
+                <th style={{ textAlign: 'center' }}>360 ভিউ</th>
               </tr>
             </thead>
             <tbody>
@@ -774,7 +812,7 @@ export default function Dashboard() {
                     key={r.orderId}
                     style={{ background: idx % 2 === 0 ? '#fff' : '#fcfdfe', cursor: 'pointer' }}
                     onClick={() => router.push(jobUrl)}
-                    title={`Click to open full details page for Job ${r.jobNo}`}
+                    title={`Click to open 360 view for Job ${r.jobNo}`}
                   >
                     <td style={{ whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
                       <Link href={jobUrl} className="job-link">
@@ -819,9 +857,9 @@ export default function Dashboard() {
                       <Link
                         href={jobUrl}
                         className="btn btn-primary"
-                        style={{ padding: '2px 7px', fontSize: '10.5px', fontWeight: 600, borderRadius: '4px', whiteSpace: 'nowrap', textDecoration: 'none' }}
+                        style={{ padding: '3px 9px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', whiteSpace: 'nowrap', textDecoration: 'none' }}
                       >
-                        View Details ↗
+                        360 ভিউ ↗
                       </Link>
                     </td>
                   </tr>
@@ -850,7 +888,7 @@ export default function Dashboard() {
           </table>
         </div>
 
-        {/* Pagination Footer with Working 10, 15, 25, 50, 100 Page Sizes */}
+        {/* Pagination Footer with Working 10, 15, 20, 25, 50, 100 Page Sizes */}
         <div className="register-pagination">
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span>
@@ -859,10 +897,14 @@ export default function Dashboard() {
             <span style={{ color: '#cbd5e1' }}>|</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <span style={{ fontSize: '11px', color: '#64748b' }}>Page size:</span>
-              {[10, 15, 25, 50, 100].map(sz => (
+              {[10, 15, 20, 25, 50, 100].map(sz => (
                 <button
+                  type="button"
                   key={sz}
-                  onClick={() => changePageSize(sz)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    changePageSize(sz);
+                  }}
                   className={`size-pill-btn ${pageSize === sz ? 'active' : ''}`}
                 >
                   {sz}

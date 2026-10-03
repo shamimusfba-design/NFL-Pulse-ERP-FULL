@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Shell from '../../components/Shell';
 import demo2000DataRaw from '../../data/demo-2000-master.json';
 import { displayJobNo, formatFloorLine } from '../../lib/display';
+import { SvgDonut, SvgBarChart, SvgTrendChart } from '../../components/OverviewCharts';
 
 function n(v: any) {
   return Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 1 });
@@ -133,9 +134,9 @@ function JobsListContent() {
     }
   }, [cardIndexParam]);
 
-  // Pagination state
+  // Pagination state: default 15
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize] = useState(15);
 
   // Dynamic filtering
   const filteredRows = useMemo(() => {
@@ -157,7 +158,7 @@ function JobsListContent() {
         }
       }
 
-      // 2. Dropdown Filters (If week is set, prioritize week so month doesn't wipe results to 0)
+      // 2. Dropdown Filters
       if (weekFilter !== 'ALL' && r.shipmentWeek !== weekFilter) return false;
       if (monthFilter !== 'ALL' && weekFilter === 'ALL' && r.shipmentMonth !== monthFilter) return false;
       if (merchFilter !== 'ALL' && r.merchandiser !== merchFilter) return false;
@@ -173,7 +174,7 @@ function JobsListContent() {
     });
   }, [allRows, typeParam, activeCardIndex, weekFilter, monthFilter, merchFilter, floorUnitFilter, presentStatusFilter, buyerFilter, searchQuery]);
 
-  // Options
+  // Options for dropdowns
   const weekOptions = useMemo(() => (Array.from(new Set(allRows.map((r: any) => r.shipmentWeek))).filter(Boolean) as string[]).sort(), [allRows]);
   const monthOptions = useMemo(() => (Array.from(new Set(allRows.map((r: any) => r.shipmentMonth))).filter(Boolean) as string[]).sort(), [allRows]);
   const merchOptions = useMemo(() => (Array.from(new Set(allRows.map((r: any) => r.merchandiser))).filter(Boolean) as string[]).sort(), [allRows]);
@@ -185,6 +186,58 @@ function JobsListContent() {
   const totalVolume = useMemo(() => filteredRows.reduce((s: number, r: any) => s + Number(r.orderQty || 0), 0), [filteredRows]);
   const buyersCount = useMemo(() => new Set(filteredRows.map((r: any) => r.buyer)).size, [filteredRows]);
   const linesCount = useMemo(() => new Set(filteredRows.map((r: any) => r.floorLine)).size, [filteredRows]);
+
+  // Chart data calculations driven by active filter
+  const donutData = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const r of filteredRows) {
+      const st = r.sectionStatus || 'In Progress';
+      counts.set(st, (counts.get(st) || 0) + 1);
+    }
+    const colors = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+    return [...counts.entries()].slice(0, 4).map(([label, value], i) => ({
+      label,
+      value,
+      color: colors[i % colors.length]
+    }));
+  }, [filteredRows]);
+
+  const barData = useMemo(() => {
+    const isSingleBuyer = buyerFilter !== 'ALL';
+    const groupMap = new Map<string, { plan: number; actual: number }>();
+    for (const r of filteredRows) {
+      const key = isSingleBuyer ? (r.styleNo || r.floorLine) : (r.buyer || 'Unknown');
+      const cur = groupMap.get(key) || { plan: 0, actual: 0 };
+      cur.plan += Number(r.orderQty || 0);
+      cur.actual += Number(r.rawJob?.sewing?.sewingActualQty || r.rawJob?.shipment?.shipQty || r.orderQty);
+      groupMap.set(key, cur);
+    }
+    return [...groupMap.entries()]
+      .sort((a, b) => b[1].plan - a[1].plan)
+      .slice(0, 5)
+      .map(([label, val]) => ({
+        label,
+        value1: val.plan,
+        value2: val.actual,
+        color1: '#2563eb',
+        color2: '#10b981'
+      }));
+  }, [filteredRows, buyerFilter]);
+
+  const trendData = useMemo(() => {
+    const weekMap = new Map<string, number>();
+    for (const r of filteredRows) {
+      const w = r.shipmentWeek || 'W33';
+      weekMap.set(w, (weekMap.get(w) || 0) + Number(r.orderQty || 0));
+    }
+    const sortedWeeks = Array.from(weekMap.keys()).sort();
+    if (!sortedWeeks.length) return [{ label: 'W31', value: 80 }];
+    const maxVal = Math.max(1, ...Array.from(weekMap.values()));
+    return sortedWeeks.slice(0, 7).map(w => ({
+      label: w,
+      value: Math.round(((weekMap.get(w) || 0) / maxVal) * 100)
+    }));
+  }, [filteredRows]);
 
   // Pagination calculation
   const totalPages = Math.ceil(filteredRows.length / pageSize) || 1;
@@ -317,7 +370,43 @@ function JobsListContent() {
         </div>
       </section>
 
-      {/* 3. OPERATIONAL REGISTER TABLE */}
+      {/* 3. MULTI-GRAPH ANALYTICS (Dynamically updates with filters) */}
+      <section className="section-graphs-row" style={{ marginBottom: '14px' }}>
+        <div className="chart-card">
+          <div className="chart-card-head">
+            <div>
+              <div className="chart-card-title">Status Distribution</div>
+              <div className="chart-card-sub">Active job mix with %</div>
+            </div>
+            <span className="status-pill ok">Live</span>
+          </div>
+          <SvgDonut data={donutData} />
+        </div>
+
+        <div className="chart-card">
+          <div className="chart-card-head">
+            <div>
+              <div className="chart-card-title">Volume by Key Buyer</div>
+              <div className="chart-card-sub">Order vs Produced (pcs)</div>
+            </div>
+            <span className="status-pill" style={{ background: '#ecfdf5', color: '#047857' }}>Volume</span>
+          </div>
+          <SvgBarChart data={barData} />
+        </div>
+
+        <div className="chart-card">
+          <div className="chart-card-head">
+            <div>
+              <div className="chart-card-title">Weekly Achievement Trend</div>
+              <div className="chart-card-sub">Trajectory with exact %</div>
+            </div>
+            <span className="status-pill" style={{ background: '#faf5ff', color: '#7e22ce' }}>Trend</span>
+          </div>
+          <SvgTrendChart data={trendData} />
+        </div>
+      </section>
+
+      {/* 4. OPERATIONAL REGISTER TABLE WITH FROZEN SCROLLBAR */}
       <section className="operational-register" style={{ marginTop: 0 }}>
         {/* Toolbar with Form for instant Enter key execution */}
         <form
@@ -440,14 +529,14 @@ function JobsListContent() {
               ))}
             </select>
 
-            {/* Apply Button */}
+            {/* Permanent Apply Button */}
             <button
               type="submit"
               className="reg-btn-compact"
-              style={{ background: '#2563eb', color: '#fff', borderColor: '#2563eb', fontWeight: 800 }}
-              title="Apply filters (or press Enter)"
+              style={{ background: '#2563eb', color: '#fff', borderColor: '#2563eb', fontWeight: 800, minWidth: '95px' }}
+              title="Apply selected filters (or press Enter)"
             >
-              Apply ⏎
+              Apply Filter ⏎
             </button>
 
             {/* Reset Filters Button */}
@@ -539,8 +628,8 @@ function JobsListContent() {
           </div>
         </div>
 
-        {/* Data Table */}
-        <div className="register-table-wrap">
+        {/* Data Table with Frozen Scrollbar Attribute */}
+        <div className="register-table-wrap" data-sticky-horizontal-scroll="true">
           <table className="register-table">
             <thead>
               <tr>
@@ -554,7 +643,7 @@ function JobsListContent() {
                 <th>Ex-Factory</th>
                 <th>Present Status</th>
                 <th style={{ textAlign: 'center' }}>Section Status</th>
-                <th style={{ textAlign: 'center' }}>Action</th>
+                <th style={{ textAlign: 'center' }}>360 ভিউ</th>
               </tr>
             </thead>
             <tbody>
@@ -573,7 +662,7 @@ function JobsListContent() {
                     key={r.orderId}
                     style={{ background: idx % 2 === 0 ? '#fff' : '#fcfdfe', cursor: 'pointer' }}
                     onClick={() => router.push(jobUrl)}
-                    title={`Click to open full details page for Job ${r.jobNo}`}
+                    title={`Click to open 360 profile for Job ${r.jobNo}`}
                   >
                     <td style={{ whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
                       <Link href={jobUrl} className="job-link">
@@ -618,9 +707,9 @@ function JobsListContent() {
                       <Link
                         href={jobUrl}
                         className="btn btn-primary"
-                        style={{ padding: '2px 7px', fontSize: '10.5px', fontWeight: 600, borderRadius: '4px', whiteSpace: 'nowrap', textDecoration: 'none' }}
+                        style={{ padding: '3px 9px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', whiteSpace: 'nowrap', textDecoration: 'none' }}
                       >
-                        View Details ↗
+                        360 ভিউ ↗
                       </Link>
                     </td>
                   </tr>
@@ -637,7 +726,7 @@ function JobsListContent() {
                       onClick={() => {
                         setWeekFilter('ALL'); setMonthFilter('ALL'); setFloorUnitFilter('ALL');
                         setMerchFilter('ALL'); setPresentStatusFilter('ALL'); setBuyerFilter('ALL');
-                        setSearchQuery(''); setActiveCardIndex(null);
+                        setSearchQuery(''); setActiveCardIndex(null); setCurrentPage(1);
                       }}
                       style={{ marginTop: '8px', border: 0, background: 'transparent', color: '#2563eb', fontWeight: 700, cursor: 'pointer', fontSize: '12px' }}
                     >
@@ -650,20 +739,30 @@ function JobsListContent() {
           </table>
         </div>
 
-        {/* Pagination Bar */}
+        {/* Working Pagination Bar with 10, 15, 20, 25, 50, 100 buttons */}
         <div className="register-pagination">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#64748b' }}>
-            <span>Show</span>
-            <select
-              value={pageSize}
-              onChange={e => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
-              className="reg-pagesize-select"
-            >
-              {[15, 25, 50, 100].map(sz => (
-                <option key={sz} value={sz}>{sz}</option>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span>
+              Showing <strong>{(currentPage - 1) * pageSize + (filteredRows.length > 0 ? 1 : 0)}</strong> to <strong>{Math.min(currentPage * pageSize, filteredRows.length)}</strong> of <strong>{filteredRows.length.toLocaleString()}</strong> jobs
+            </span>
+            <span style={{ color: '#cbd5e1' }}>|</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ fontSize: '11px', color: '#64748b' }}>Page size:</span>
+              {[10, 15, 20, 25, 50, 100].map(sz => (
+                <button
+                  type="button"
+                  key={sz}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setPageSize(sz);
+                    setCurrentPage(1);
+                  }}
+                  className={`size-pill-btn ${pageSize === sz ? 'active' : ''}`}
+                >
+                  {sz}
+                </button>
               ))}
-            </select>
-            <span>per page · Total <strong>{filteredRows.length.toLocaleString()}</strong> jobs</span>
+            </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -685,7 +784,7 @@ function JobsListContent() {
             >
               « Prev
             </button>
-            <span style={{ fontSize: '11px', padding: '0 6px', fontWeight: 600, color: '#0f172a' }}>
+            <span style={{ fontSize: '11px', padding: '0 6px', fontWeight: 750, color: '#0f172a' }}>
               Page {currentPage} of {totalPages}
             </span>
             <button

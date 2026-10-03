@@ -977,10 +977,10 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
             <button
               type="submit"
               className="reg-btn-compact"
-              style={{ background: '#2563eb', color: '#fff', borderColor: '#2563eb', fontWeight: 800 }}
+              style={{ background: '#2563eb', color: '#fff', borderColor: '#2563eb', fontWeight: 800, minWidth: '95px' }}
               title="Apply filters (or press Enter)"
             >
-              Apply ⏎
+              Apply Filter ⏎
             </button>
 
             {/* Reset Filters Button if any filter active */}
@@ -1072,10 +1072,10 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
           </div>
         </div>
 
-        {/* Data Table */}
-        <div className="register-table-wrap">
+        {/* Data Table with Frozen/Sticky Scroll and Sticky Headers */}
+        <div className="register-table-wrap" data-sticky-horizontal-scroll="true" style={{ maxHeight: '62vh', overflowY: 'auto', overflowX: 'auto', position: 'relative' }}>
           <table className="register-table">
-            <thead>
+            <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: '#f8fafc', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
               <tr>
                 <th>Job No</th>
                 <th>Buyer</th>
@@ -1087,7 +1087,7 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
                 <th>Ex-Factory</th>
                 <th>Present Status</th>
                 <th style={{ textAlign: 'center' }}>Section Status</th>
-                <th style={{ textAlign: 'center' }}>Action</th>
+                <th style={{ textAlign: 'center' }}>360 ভিউ</th>
               </tr>
             </thead>
             <tbody>
@@ -1152,9 +1152,9 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
                       <Link
                         href={jobUrl}
                         className="btn btn-primary"
-                        style={{ padding: '2px 7px', fontSize: '10.5px', fontWeight: 600, borderRadius: '4px', whiteSpace: 'nowrap', textDecoration: 'none' }}
+                        style={{ padding: '3px 9px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', whiteSpace: 'nowrap', textDecoration: 'none' }}
                       >
-                        View Details ↗
+                        360 ভিউ ↗
                       </Link>
                     </td>
                   </tr>
@@ -1182,7 +1182,7 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
           </table>
         </div>
 
-        {/* Pagination Footer with Working 10, 15, 25, 50, 100 Page Sizes */}
+        {/* Pagination Footer with Working 10, 15, 20, 25, 50, 100 Page Sizes */}
         <div className="register-pagination">
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span>
@@ -1191,10 +1191,14 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
             <span style={{ color: '#cbd5e1' }}>|</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <span style={{ fontSize: '11px', color: '#64748b' }}>Page size:</span>
-              {[10, 15, 25, 50, 100].map(sz => (
+              {[10, 15, 20, 25, 50, 100].map(sz => (
                 <button
+                  type="button"
                   key={sz}
-                  onClick={() => changePageSize(sz)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    changePageSize(sz);
+                  }}
                   className={`size-pill-btn ${pageSize === sz ? 'active' : ''}`}
                 >
                   {sz}
@@ -1321,35 +1325,42 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
                           <td style={{ textAlign: 'right', fontWeight: 800 }}>12.5</td>
                         </tr>
                         <tr>
-                          <td style={{ fontWeight: 700 }}>Order Qty (pcs)</td>
+                          <td style={{ fontWeight: 800, color: '#1e40af' }}>Order Qty (pcs)</td>
                           {jobProfile.sizeBreakdown.map(s => (
-                            <td key={s.size} style={{ textAlign: 'center', fontWeight: 800, color: '#0f172a' }}>{n(s.orderQty)}</td>
+                            <td key={s.size} style={{ textAlign: 'center', fontWeight: 900, color: '#0f172a' }}>{n(s.orderQty)}</td>
                           ))}
                           <td style={{ textAlign: 'right', fontWeight: 900, color: '#2563eb' }}>{n(selectedJob.orderQty)}</td>
                         </tr>
                         <tr>
-                          <td style={{ fontWeight: 700 }}>Actual Cut (pcs)</td>
+                          <td style={{ fontWeight: 700, color: '#047857' }}>Ex-Factory Shipped / Audit Qty</td>
                           {jobProfile.sizeBreakdown.map(s => (
-                            <td key={s.size} style={{ textAlign: 'center', color: '#475569' }}>{n(s.cutQty)}</td>
+                            <td key={s.size} style={{ textAlign: 'center', fontWeight: 800, color: '#16a34a' }}>{n(s.orderQty)}</td>
                           ))}
-                          <td style={{ textAlign: 'right', fontWeight: 800 }}>{n(Math.round(selectedJob.orderQty * 1.025))}</td>
-                        </tr>
-                        <tr>
-                          <td style={{ fontWeight: 700 }}>Sewing Output</td>
-                          {jobProfile.sizeBreakdown.map(s => (
-                            <td key={s.size} style={{ textAlign: 'center', color: '#16a34a', fontWeight: 700 }}>{n(s.sewingQty)}</td>
-                          ))}
-                          <td style={{ textAlign: 'right', fontWeight: 800, color: '#16a34a' }}>{n(selectedJob.orderQty)}</td>
-                        </tr>
-                        <tr>
-                          <td style={{ fontWeight: 700 }}>Carton Packed</td>
-                          {jobProfile.sizeBreakdown.map(s => (
-                            <td key={s.size} style={{ textAlign: 'center', color: '#2563eb', fontWeight: 700 }}>{n(s.packedQty)}</td>
-                          ))}
-                          <td style={{ textAlign: 'right', fontWeight: 800, color: '#2563eb' }}>{n(selectedJob.orderQty)}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 900, color: '#16a34a' }}>{n(selectedJob.orderQty)}</td>
                         </tr>
                       </tbody>
                     </table>
+                  </div>
+
+                  {/* Standard Factory Operating Flow Notice */}
+                  <div style={{ padding: '8px 12px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', fontSize: '11px', color: '#1e40af' }}>
+                    <strong style={{ fontWeight: 800 }}>Factory Flow Note:</strong> Size breakdown is imported during PO Order Entry and audited at Ex-Factory packing list. Intermediate Cutting, Sewing, and Finishing floors record aggregate batch/line output totals.
+                  </div>
+
+                  {/* Overall Production Totals */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '10px' }}>
+                    <div style={{ padding: '10px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                      <span style={{ fontSize: '10px', fontWeight: 800, color: '#475569', display: 'block', textTransform: 'uppercase' }}>OVERALL CUT BATCH</span>
+                      <strong style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a' }}>{n(Math.round(selectedJob.orderQty * 1.025))} pcs</strong>
+                    </div>
+                    <div style={{ padding: '10px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                      <span style={{ fontSize: '10px', fontWeight: 800, color: '#1e40af', display: 'block', textTransform: 'uppercase' }}>OVERALL SEWING OUTPUT</span>
+                      <strong style={{ fontSize: '18px', fontWeight: 900, color: '#2563eb' }}>{n(selectedJob.orderQty)} pcs</strong>
+                    </div>
+                    <div style={{ padding: '10px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                      <span style={{ fontSize: '10px', fontWeight: 800, color: '#047857', display: 'block', textTransform: 'uppercase' }}>EXPORT PACKED CARTONS</span>
+                      <strong style={{ fontSize: '18px', fontWeight: 900, color: '#16a34a' }}>{n(Math.ceil(selectedJob.orderQty / 24))} cartons</strong>
+                    </div>
                   </div>
 
                   {/* PO & Country-Wise Breakdown */}
