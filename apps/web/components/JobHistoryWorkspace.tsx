@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { api } from '../lib/api';
 import { displayJobNo } from '../lib/display';
 import demo2000DataRaw from '../data/demo-2000-master.json';
@@ -215,14 +216,19 @@ export default function JobHistoryWorkspace({ mode = 'job360' }: { mode?: Mode }
         <div className="job360-title"><div className="job360-image">{detail.order.itemImageUrl ? <img src={detail.order.itemImageUrl} alt="Item" /> : <span>ITEM</span>}</div><div><div className="page-eyebrow">Buyer Job No</div><h2>{displayJobNo(detail.order.jobNo,detail.order.buyerCode||detail.order.buyer)} · {detail.order.styleNo}</h2><p>{detail.order.itemDescription || '—'}</p></div></div>
         <div className="job360-facts">
           <div><span>Order Qty</span><strong>{fmt(detail.order.orderQty)} pcs</strong></div><div><span>FOB</span><strong>{detail.order.fobPrice ? `$${fmt(detail.order.fobPrice)}` : '—'}</strong></div><div><span>CCD / Ship</span><strong>{date(detail.order.ccd)}</strong></div><div><span>PO</span><strong>{fmt(detail.order.poNo)}</strong></div>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <Link href={`/jobs/${encodeURIComponent(detail.order.jobNo)}`} className="btn btn-primary" style={{ padding: '6px 14px', fontSize: '11px', fontWeight: 800, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+              Full 360 View ↗
+            </Link>
+          </div>
         </div>
       </section>
 
       {mode === 'job360' && <div className="workspace-tabs history-tabs">
-        <button className={tab === 'production' ? 'active' : ''} onClick={() => setTab('production')}>Production 360</button>
-        <button className={tab === 'tests' ? 'active' : ''} onClick={() => setTab('tests')}>Test Reports</button>
-        <button className={tab === 'quality' ? 'active' : ''} onClick={() => setTab('quality')}>Quality History</button>
-        <button className={tab === 'leadtime' ? 'active' : ''} onClick={() => setTab('leadtime')}>Lead Time History</button>
+        <button type="button" className={tab === 'production' ? 'active' : ''} onClick={() => setTab('production')}>Stage Production &amp; IE</button>
+        <button type="button" className={tab === 'tests' ? 'active' : ''} onClick={() => setTab('tests')}>Lab Test Reports</button>
+        <button type="button" className={tab === 'quality' ? 'active' : ''} onClick={() => setTab('quality')}>Quality History &amp; Audits</button>
+        <button type="button" className={tab === 'leadtime' ? 'active' : ''} onClick={() => setTab('leadtime')}>T&amp;A Schedule &amp; Lead Time</button>
       </div>}
 
       {(tab === 'production' && mode === 'job360') && <section className="panel">

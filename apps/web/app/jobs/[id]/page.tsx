@@ -156,12 +156,13 @@ function JobDetailContent() {
   const [viewMode, setViewMode] = useState<'tab' | 'all'>('tab');
 
   useEffect(() => {
-    const t = searchParams.get('tab');
+    const t = searchParams?.get('tab');
     if (t && ['sizes', 'material', 'production', 'quality', 'leadtime', 'reports'].includes(t)) {
       setActiveTab(t as any);
       setViewMode('tab');
     }
-  }, [searchParams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const jobsList = (demo2000DataRaw as any)?.jobs || [];
 
@@ -224,9 +225,11 @@ function JobDetailContent() {
     setViewMode('tab');
     setActiveTab(tabId);
     if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      url.searchParams.set('tab', tabId);
-      window.history.pushState({}, '', url.toString());
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', tabId);
+        window.history.replaceState({}, '', url.toString());
+      } catch {}
     }
   }
 
@@ -342,7 +345,7 @@ function JobDetailContent() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', borderBottom: '2px solid #e2e8f0', paddingBottom: '10px', marginBottom: '16px' }}>
         <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', flexWrap: 'wrap' }}>
           {[
-            { id: 'sizes', label: '📏 Size & PO Allocation', desc: 'Order breakdown & PO details' },
+            { id: 'sizes', label: '📏 Size & PO Breakdown', desc: 'Order breakdown & PO details' },
             { id: 'material', label: '🧵 Fabric & Trims', desc: 'Yarn, fabric & accessories BOM' },
             { id: 'production', label: '🏭 Stage Production & IE', desc: 'Lines, SMV & stage runs' },
             { id: 'quality', label: '🔍 Quality & Inspection', desc: 'Audit log & defect control' },
@@ -355,15 +358,16 @@ function JobDetailContent() {
                 type="button"
                 key={t.id}
                 onClick={() => handleTabClick(t.id as any)}
+                className={`tab-btn-360 ${isActive ? 'active' : ''}`}
                 style={{
                   padding: '9px 16px',
                   fontSize: '12.5px',
-                  fontWeight: isActive ? 900 : 700,
                   borderRadius: '8px',
                   cursor: 'pointer',
                   border: isActive ? '2px solid #2563eb' : '1px solid #cbd5e1',
                   background: isActive ? '#2563eb' : '#ffffff',
                   color: isActive ? '#ffffff' : '#1e293b',
+                  fontWeight: isActive ? 900 : 700,
                   boxShadow: isActive ? '0 3px 10px rgba(37,99,235,0.28)' : '0 1px 3px rgba(0,0,0,0.03)',
                   transition: 'all .15s ease',
                   display: 'flex',

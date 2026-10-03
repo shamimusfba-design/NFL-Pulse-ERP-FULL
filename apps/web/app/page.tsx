@@ -387,42 +387,42 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* CLICKABLE KPI STAT CARDS (Click digit or card to open filtered jobs page) */}
+      {/* CLICKABLE KPI STAT CARDS (Click card to filter dashboard in-place) */}
       <section className="kpi-grid">
         {/* Card 1: Confirmed Jobs */}
-        <Link
-          href="/jobs?type=ALL&title=All%20Confirmed%20Jobs"
-          className="metric-card accent-blue"
-          style={{ cursor: 'pointer', transition: 'all .2s ease', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column' }}
-          title="Click digit to view all confirmed jobs"
+        <div
+          onClick={() => handleSelectCardFilter('ALL', 'All Confirmed Jobs')}
+          className={`metric-card accent-blue ${selectedFilterType === 'ALL' ? 'selected-kpi-card' : ''}`}
+          style={{ cursor: 'pointer', transition: 'all .2s ease', display: 'flex', flexDirection: 'column' }}
+          title="Click to view all confirmed jobs"
         >
           <div className="metric-label">
             <span>Confirmed Jobs</span>
           </div>
           <div className="metric-value">{loading ? '…' : activeOrdersCount}</div>
-          <div className="metric-foot">Click to open full job register</div>
-        </Link>
+          <div className="metric-foot">Click to filter all</div>
+        </div>
 
         {/* Card 2: Order Qty */}
-        <Link
-          href="/jobs?type=ALL&title=Total%20Order%20Volume"
+        <div
+          onClick={() => handleSelectCardFilter('ALL', 'Total Order Volume')}
           className="metric-card"
-          style={{ cursor: 'pointer', transition: 'all .2s ease', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column' }}
-          title="Click digit to view all orders"
+          style={{ cursor: 'pointer', transition: 'all .2s ease', display: 'flex', flexDirection: 'column' }}
+          title="Total order volume"
         >
           <div className="metric-label">
             <span>Order Qty</span>
           </div>
           <div className="metric-value">{loading ? '…' : totalQty.toLocaleString()}</div>
           <div className="metric-foot">pcs total volume</div>
-        </Link>
+        </div>
 
         {/* Card 3: Pending Tasks */}
         <Link
           href="/tasks"
           className="metric-card accent-amber"
           style={{ cursor: 'pointer', transition: 'all .2s ease', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column' }}
-          title="Click digit to view My Tasks"
+          title="Click to open My Tasks"
         >
           <div className="metric-label">
             <span>My Pending Tasks</span>
@@ -432,46 +432,46 @@ export default function Dashboard() {
         </Link>
 
         {/* Card 4: High / Critical Attention */}
-        <Link
-          href="/jobs?type=CRITICAL&title=High%20%2F%20Critical%20Attention%20Jobs"
-          className="metric-card accent-red"
-          style={{ cursor: 'pointer', transition: 'all .2s ease', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column' }}
-          title="Click digit to view High / Critical Risk Jobs"
+        <div
+          onClick={() => handleSelectCardFilter('CRITICAL', 'High / Critical Risk Jobs')}
+          className={`metric-card accent-red ${selectedFilterType === 'CRITICAL' ? 'selected-kpi-card' : ''}`}
+          style={{ cursor: 'pointer', transition: 'all .2s ease', display: 'flex', flexDirection: 'column', boxShadow: selectedFilterType === 'CRITICAL' ? '0 0 0 2px #dc2626' : undefined }}
+          title="Click to filter High / Critical Risk Jobs"
         >
           <div className="metric-label">
             <span>High / Critical</span>
           </div>
           <div className="metric-value" style={{ color: '#dc2626' }}>{urgent.length || 3}</div>
-          <div className="metric-foot">Click to inspect risk jobs</div>
-        </Link>
+          <div className="metric-foot">Click to filter critical</div>
+        </div>
 
         {/* Card 5: Shipment Risk Jobs */}
-        <Link
-          href="/jobs?type=RISK&title=Shipment%20Delivery%20Risk%20Jobs"
-          className="metric-card"
-          style={{ cursor: 'pointer', transition: 'all .2s ease', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column' }}
-          title="Click digit to view delivery risk jobs"
+        <div
+          onClick={() => handleSelectCardFilter('RISK', 'Shipment Delivery Risk Jobs')}
+          className={`metric-card ${selectedFilterType === 'RISK' ? 'selected-kpi-card' : ''}`}
+          style={{ cursor: 'pointer', transition: 'all .2s ease', display: 'flex', flexDirection: 'column', boxShadow: selectedFilterType === 'RISK' ? '0 0 0 2px #ea580c' : undefined }}
+          title="Click to filter delivery risk jobs"
         >
           <div className="metric-label">
-            <span>Shipment Risk Jobs</span>
+            <span>Shipment Risk</span>
           </div>
           <div className="metric-value" style={{ color: riskCount ? '#e11d48' : '#10b981' }}>{riskCount || '48'}</div>
-          <div className="metric-foot">Click to inspect delivery status</div>
-        </Link>
+          <div className="metric-foot">Click to filter risk</div>
+        </div>
 
         {/* Card 6: Sewing Achievement */}
-        <Link
-          href="/jobs?type=SEWING&title=Sewing%20Running%20Jobs"
-          className="metric-card"
-          style={{ cursor: 'pointer', transition: 'all .2s ease', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column' }}
-          title="Click digit to view sewing floor jobs"
+        <div
+          onClick={() => handleSelectCardFilter('SEWING', 'Sewing Running Jobs')}
+          className={`metric-card ${selectedFilterType === 'SEWING' ? 'selected-kpi-card' : ''}`}
+          style={{ cursor: 'pointer', transition: 'all .2s ease', display: 'flex', flexDirection: 'column', boxShadow: selectedFilterType === 'SEWING' ? '0 0 0 2px #16a34a' : undefined }}
+          title="Click to filter sewing floor jobs"
         >
           <div className="metric-label">
             <span>Sewing Output</span>
           </div>
           <div className="metric-value" style={{ color: '#16a34a' }}>{sewingProd.toLocaleString()} pcs</div>
           <div className="metric-foot">{achievement}% efficiency rate</div>
-        </Link>
+        </div>
       </section>
 
       {/* DASHBOARD CHARTS ROW (Buyer-wise position with clickable bars & Capacity Heatmap) */}
@@ -564,30 +564,24 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* FULL OPERATIONAL REGISTER & MASTER DATA TABLE (With single-row toolbar, 2-digit years, and 360 profile) */}
+      {/* FULL OPERATIONAL REGISTER & MASTER DATA TABLE */}
       <section className="operational-register">
         <div className="register-toolbar">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <strong style={{ fontSize: '14px', color: '#0f172a' }}>Management Operational Register</strong>
-              <span className="status-pill" style={{ background: '#dbeafe', color: '#1e40af', fontSize: '11px' }}>
+              <strong style={{ fontSize: '14px', color: '#0f172a' }}>Operational Job Register</strong>
+              <span className="status-pill" style={{ background: '#dbeafe', color: '#1e40af', fontSize: '11px', fontWeight: 700 }}>
                 {filteredRows.length.toLocaleString()} Jobs Active
               </span>
             </div>
-            <span style={{ fontSize: '11px', color: '#64748b' }}>Connected factory records · Click any row for Size & Country Breakdown</span>
+            <span style={{ fontSize: '11px', color: '#64748b' }}>Click any row to open 360 View</span>
           </div>
 
-          {/* SINGLE-LINE FILTER TOOLBAR (With Form & Enter Execution) */}
-          <form
-            className="register-controls-single-row"
-            onSubmit={e => {
-              e.preventDefault();
-              setCurrentPage(1);
-            }}
-          >
+          {/* NON-FORM FILTER TOOLBAR (Prevents page reload) */}
+          <div className="register-controls-single-row">
             <input
               type="text"
-              placeholder="Search Job, Buyer, Style... (Enter ⏎)"
+              placeholder="Search Job, Buyer, Style..."
               value={searchQuery}
               onChange={e => { setSearchQuery(e.target.value); setSelectedFilterType('ALL'); setCurrentPage(1); }}
               onKeyDown={e => {
@@ -603,12 +597,11 @@ export default function Dashboard() {
             <select
               value={weekFilter}
               onChange={e => { setWeekFilter(e.target.value); setSelectedFilterType('ALL'); setCurrentPage(1); }}
-              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setCurrentPage(1); } }}
               className="reg-select-compact"
               style={{ fontWeight: 700 }}
               title="Shipment Week"
             >
-              <option value="ALL">📅 Week: All</option>
+              <option value="ALL">Week: All</option>
               {weekOptions.map((w: string) => (
                 <option key={w} value={w}>{w}</option>
               ))}
@@ -616,12 +609,11 @@ export default function Dashboard() {
             <select
               value={monthFilter}
               onChange={e => { setMonthFilter(e.target.value); setSelectedFilterType('ALL'); setCurrentPage(1); }}
-              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setCurrentPage(1); } }}
               className="reg-select-compact"
               style={{ fontWeight: 700 }}
               title="Shipment Month"
             >
-              <option value="ALL">🗓️ Month: All</option>
+              <option value="ALL">Month: All</option>
               {monthOptions.map((m: string) => (
                 <option key={m} value={m}>{m}</option>
               ))}
@@ -629,12 +621,11 @@ export default function Dashboard() {
             <select
               value={floorUnitFilter}
               onChange={e => { setFloorUnitFilter(e.target.value); setSelectedFilterType('ALL'); setCurrentPage(1); }}
-              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setCurrentPage(1); } }}
               className="reg-select-compact"
               style={{ fontWeight: 700 }}
               title="Floor/Line"
             >
-              <option value="ALL">🏢 Floor/Line: All</option>
+              <option value="ALL">Floor/Line: All</option>
               {floorUnitOptions.map((f: string) => (
                 <option key={f} value={f}>{f}</option>
               ))}
@@ -642,12 +633,11 @@ export default function Dashboard() {
             <select
               value={merchFilter}
               onChange={e => { setMerchFilter(e.target.value); setSelectedFilterType('ALL'); setCurrentPage(1); }}
-              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setCurrentPage(1); } }}
               className="reg-select-compact"
               style={{ fontWeight: 700 }}
               title="Merchandiser"
             >
-              <option value="ALL">👤 Merch: All</option>
+              <option value="ALL">Merch: All</option>
               {merchOptions.map((m: string) => (
                 <option key={m} value={m}>{m}</option>
               ))}
@@ -655,12 +645,11 @@ export default function Dashboard() {
             <select
               value={presentStatusFilter}
               onChange={e => { setPresentStatusFilter(e.target.value); setSelectedFilterType('ALL'); setCurrentPage(1); }}
-              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setCurrentPage(1); } }}
               className="reg-select-compact"
               style={{ fontWeight: 700 }}
               title="Present Status"
             >
-              <option value="ALL">⚡ Status: All</option>
+              <option value="ALL">Status: All</option>
               {presentStatusOptions.map((s: string) => (
                 <option key={s} value={s}>{s}</option>
               ))}
@@ -668,12 +657,11 @@ export default function Dashboard() {
             <select
               value={buyerFilter}
               onChange={e => { setBuyerFilter(e.target.value); setSelectedFilterType('ALL'); setCurrentPage(1); }}
-              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setCurrentPage(1); } }}
               className="reg-select-compact"
               style={{ fontWeight: 700 }}
               title="Buyer"
             >
-              <option value="ALL">🏷️ Buyer: All</option>
+              <option value="ALL">Buyer: All</option>
               {buyerOptions.map((b: string) => (
                 <option key={b} value={b}>{b}</option>
               ))}
@@ -681,15 +669,16 @@ export default function Dashboard() {
 
             {/* Apply Button */}
             <button
-              type="submit"
+              type="button"
+              onClick={() => setCurrentPage(1)}
               className="reg-btn-compact"
-              style={{ background: '#2563eb', color: '#fff', borderColor: '#2563eb', fontWeight: 800, minWidth: '95px' }}
-              title="Apply selected filters (or press Enter)"
+              style={{ background: '#2563eb', color: '#fff', borderColor: '#2563eb', fontWeight: 800, minWidth: '75px' }}
+              title="Apply filters"
             >
-              Apply Filter ⏎
+              Apply
             </button>
 
-            {/* Reset Filters Button if any filter active */}
+            {/* Reset Filters Button */}
             {(weekFilter !== 'ALL' || monthFilter !== 'ALL' || floorUnitFilter !== 'ALL' || merchFilter !== 'ALL' || presentStatusFilter !== 'ALL' || buyerFilter !== 'ALL' || searchQuery !== '' || selectedFilterType !== 'ALL') && (
               <button
                 type="button"
@@ -719,9 +708,9 @@ export default function Dashboard() {
               className="reg-btn-compact"
               title="Export CSV"
             >
-              <span>📥</span> Export
+              Export
             </button>
-          </form>
+          </div>
         </div>
 
         {/* SUMMARY PANEL FOR CURRENTLY FILTERED JOBS */}
@@ -793,7 +782,7 @@ export default function Dashboard() {
                 <th>Ex-Factory</th>
                 <th>Present Status</th>
                 <th style={{ textAlign: 'center' }}>Section Status</th>
-                <th style={{ textAlign: 'center' }}>360 ভিউ</th>
+                <th style={{ textAlign: 'center' }}>360 View</th>
               </tr>
             </thead>
             <tbody>
@@ -859,7 +848,7 @@ export default function Dashboard() {
                         className="btn btn-primary"
                         style={{ padding: '3px 9px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', whiteSpace: 'nowrap', textDecoration: 'none' }}
                       >
-                        360 ভিউ ↗
+                        360 View ↗
                       </Link>
                     </td>
                   </tr>
@@ -975,46 +964,46 @@ export default function Dashboard() {
             {/* TAB NAVIGATION */}
             <div style={{ display: 'flex', gap: '6px', padding: '10px 22px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', overflowX: 'auto' }}>
               <button
-                className={`size-pill-btn ${modalTab === 'sizes' ? 'active' : ''}`}
+                type="button"
+                className={`tab-btn-360 ${modalTab === 'sizes' ? 'active' : ''}`}
                 onClick={() => setModalTab('sizes')}
-                style={{ padding: '6px 12px', fontSize: '11px' }}
               >
-                📏 Size & PO Country Breakdown
+                📏 Size &amp; PO Breakdown
               </button>
               <button
-                className={`size-pill-btn ${modalTab === 'material' ? 'active' : ''}`}
+                type="button"
+                className={`tab-btn-360 ${modalTab === 'material' ? 'active' : ''}`}
                 onClick={() => setModalTab('material')}
-                style={{ padding: '6px 12px', fontSize: '11px' }}
               >
-                🧵 Fabric & Material Spec
+                🧵 Fabric &amp; Trims
               </button>
               <button
-                className={`size-pill-btn ${modalTab === 'production' ? 'active' : ''}`}
+                type="button"
+                className={`tab-btn-360 ${modalTab === 'production' ? 'active' : ''}`}
                 onClick={() => setModalTab('production')}
-                style={{ padding: '6px 12px', fontSize: '11px' }}
               >
-                🏭 Stage-Wise Production & IE
+                🏭 Stage Production
               </button>
               <button
-                className={`size-pill-btn ${modalTab === 'quality' ? 'active' : ''}`}
+                type="button"
+                className={`tab-btn-360 ${modalTab === 'quality' ? 'active' : ''}`}
                 onClick={() => setModalTab('quality')}
-                style={{ padding: '6px 12px', fontSize: '11px' }}
               >
-                🔍 Quality Root Cause Log
+                🔍 Quality Log
               </button>
               <button
-                className={`size-pill-btn ${modalTab === 'leadtime' ? 'active' : ''}`}
+                type="button"
+                className={`tab-btn-360 ${modalTab === 'leadtime' ? 'active' : ''}`}
                 onClick={() => setModalTab('leadtime')}
-                style={{ padding: '6px 12px', fontSize: '11px' }}
               >
-                ⏱️ Lead Time & Schedule
+                ⏱️ T&amp;A Schedule
               </button>
               <button
-                className={`size-pill-btn ${modalTab === 'reports' ? 'active' : ''}`}
+                type="button"
+                className={`tab-btn-360 ${modalTab === 'reports' ? 'active' : ''}`}
                 onClick={() => setModalTab('reports')}
-                style={{ padding: '6px 12px', fontSize: '11px' }}
               >
-                🧪 Lab Test Reports
+                🧪 Lab Tests
               </button>
             </div>
 

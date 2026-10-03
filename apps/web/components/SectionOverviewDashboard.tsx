@@ -716,32 +716,35 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', width: '100%', boxSizing: 'border-box' }}>
-      {/* 1. TOP STAT CARDS (Click digit or card to open filtered jobs page) */}
+      {/* 1. TOP STAT CARDS (Click card to filter dashboard in-place) */}
       <section className="section-overview-kpis">
         {facts.cards.map((c: any, i: number) => {
-          const cardUrl = `/jobs?section=${overview.slug}&card=${i}&title=${encodeURIComponent(c[0])}`;
+          const isSelected = cardFilterIndex === i;
           return (
-            <Link
-              href={cardUrl}
+            <div
               key={c[0]}
+              onClick={() => {
+                setCardFilterIndex(isSelected ? null : i);
+                setCurrentPage(1);
+              }}
               className={`metric-card compact-metric ${i === 0 ? 'accent-blue' : i === 2 ? 'accent-amber' : ''}`}
               style={{
                 cursor: 'pointer',
                 transition: 'all .2s ease',
-                textDecoration: 'none',
-                color: 'inherit',
                 display: 'flex',
                 flexDirection: 'column',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+                boxShadow: isSelected ? '0 0 0 2px #2563eb, 0 4px 12px rgba(37,99,235,0.18)' : '0 2px 8px rgba(0,0,0,0.06)',
+                background: isSelected ? '#eff6ff' : undefined
               }}
-              title={`Click digit to view all ${c[0]} jobs in new page`}
+              title={`Click to filter by ${c[0]}`}
             >
-              <div className="metric-label">
+              <div className="metric-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontWeight: 800, fontSize: '12px', color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{c[0]}</span>
+                {isSelected && <span style={{ fontSize: '10px', background: '#2563eb', color: '#fff', padding: '1px 6px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>}
               </div>
               <div className="metric-value" style={{ fontWeight: 900, fontSize: '26px', color: '#0f172a' }}>{loading ? '…' : c[1]}</div>
               <div className="metric-foot" style={{ fontWeight: 700, fontSize: '11px', color: '#475569' }}>{c[2]}</div>
-            </Link>
+            </div>
           );
         })}
       </section>
@@ -845,16 +848,10 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
         </section>
       )}
 
-      {/* 4. NICHE: OPERATIONAL REGISTER (SINGLE-ROW COMPACT TOOLBAR) */}
+      {/* 4. OPERATIONAL REGISTER */}
       <section className="operational-register">
-        {/* STRICT SINGLE-LINE FILTER TOOLBAR (No wrapping, compact font, Enter key support) */}
-        <form
-          className="register-toolbar"
-          onSubmit={e => {
-            e.preventDefault();
-            setCurrentPage(1);
-          }}
-        >
+        {/* NON-FORM TOOLBAR (Eliminates page reload) */}
+        <div className="register-toolbar">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <strong style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a' }}>{overview.label} Operational Register</strong>
@@ -862,16 +859,16 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
                 {filteredRows.length.toLocaleString()} Active Jobs
               </span>
             </div>
-            <span style={{ fontSize: '11px', color: '#64748b' }}>Connected factory records · Click any row for Size & Country Breakdown</span>
+            <span style={{ fontSize: '11px', color: '#64748b' }}>Connected records · Click any row for 360 profile</span>
           </div>
 
           <div className="register-controls-single-row">
             {/* Search Input */}
             <input
               type="text"
-              placeholder="Search Job, Buyer, Style... (Enter ⏎)"
+              placeholder="Search Job, Buyer, Style..."
               value={searchQuery}
-              onChange={e => { setSearchQuery(e.target.value); setCardFilterIndex(null); setCurrentPage(1); }}
+              onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
               onKeyDown={e => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
@@ -886,13 +883,13 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
             {/* Shipment Week Filter */}
             <select
               value={weekFilter}
-              onChange={e => { setWeekFilter(e.target.value); setCardFilterIndex(null); setCurrentPage(1); }}
+              onChange={e => { setWeekFilter(e.target.value); setCurrentPage(1); }}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setCurrentPage(1); } }}
               className="reg-select-compact"
               style={{ fontWeight: 700 }}
               title="Shipment Week"
             >
-              <option value="ALL">📅 Week: All</option>
+              <option value="ALL">Week: All</option>
               {weekOptions.map(w => (
                 <option key={w} value={w}>{w}</option>
               ))}
@@ -901,13 +898,13 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
             {/* Shipment Month Filter */}
             <select
               value={monthFilter}
-              onChange={e => { setMonthFilter(e.target.value); setCardFilterIndex(null); setCurrentPage(1); }}
+              onChange={e => { setMonthFilter(e.target.value); setCurrentPage(1); }}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setCurrentPage(1); } }}
               className="reg-select-compact"
               style={{ fontWeight: 700 }}
               title="Shipment Month"
             >
-              <option value="ALL">🗓️ Month: All</option>
+              <option value="ALL">Month: All</option>
               {monthOptions.map(m => (
                 <option key={m} value={m}>{m}</option>
               ))}
@@ -916,13 +913,13 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
             {/* Floor / Line Filter (NCL1..3, NFL1..3) */}
             <select
               value={floorUnitFilter}
-              onChange={e => { setFloorUnitFilter(e.target.value); setCardFilterIndex(null); setCurrentPage(1); }}
+              onChange={e => { setFloorUnitFilter(e.target.value); setCurrentPage(1); }}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setCurrentPage(1); } }}
               className="reg-select-compact"
               style={{ fontWeight: 700 }}
               title="Floor/Line"
             >
-              <option value="ALL">🏢 Floor/Line: All</option>
+              <option value="ALL">Floor/Line: All</option>
               {floorUnitOptions.map(f => (
                 <option key={f} value={f}>{f}</option>
               ))}
@@ -931,13 +928,13 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
             {/* Merchandiser Filter */}
             <select
               value={merchFilter}
-              onChange={e => { setMerchFilter(e.target.value); setCardFilterIndex(null); setCurrentPage(1); }}
+              onChange={e => { setMerchFilter(e.target.value); setCurrentPage(1); }}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setCurrentPage(1); } }}
               className="reg-select-compact"
               style={{ fontWeight: 700 }}
               title="Merchandiser"
             >
-              <option value="ALL">👤 Merch: All</option>
+              <option value="ALL">Merch: All</option>
               {merchOptions.map(m => (
                 <option key={m} value={m}>{m}</option>
               ))}
@@ -946,13 +943,13 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
             {/* Present Status Filter */}
             <select
               value={presentStatusFilter}
-              onChange={e => { setPresentStatusFilter(e.target.value); setCardFilterIndex(null); setCurrentPage(1); }}
+              onChange={e => { setPresentStatusFilter(e.target.value); setCurrentPage(1); }}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setCurrentPage(1); } }}
               className="reg-select-compact"
               style={{ fontWeight: 700 }}
               title="Present Status"
             >
-              <option value="ALL">⚡ Status: All</option>
+              <option value="ALL">Status: All</option>
               {presentStatusOptions.map(s => (
                 <option key={s} value={s}>{s}</option>
               ))}
@@ -961,13 +958,13 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
             {/* Buyer Filter */}
             <select
               value={buyerFilter}
-              onChange={e => { setBuyerFilter(e.target.value); setCardFilterIndex(null); setCurrentPage(1); }}
+              onChange={e => { setBuyerFilter(e.target.value); setCurrentPage(1); }}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setCurrentPage(1); } }}
               className="reg-select-compact"
               style={{ fontWeight: 700 }}
               title="Buyer"
             >
-              <option value="ALL">🏷️ Buyer: All</option>
+              <option value="ALL">Buyer: All</option>
               {buyerOptions.map(b => (
                 <option key={b} value={b}>{b}</option>
               ))}
@@ -975,12 +972,13 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
 
             {/* Apply Button */}
             <button
-              type="submit"
+              type="button"
+              onClick={() => setCurrentPage(1)}
               className="reg-btn-compact"
-              style={{ background: '#2563eb', color: '#fff', borderColor: '#2563eb', fontWeight: 800, minWidth: '95px' }}
-              title="Apply filters (or press Enter)"
+              style={{ background: '#2563eb', color: '#fff', borderColor: '#2563eb', fontWeight: 800, minWidth: '75px' }}
+              title="Apply filters"
             >
-              Apply Filter ⏎
+              Apply
             </button>
 
             {/* Reset Filters Button if any filter active */}
@@ -1016,7 +1014,7 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
               <span>📥</span> Export
             </button>
           </div>
-        </form>
+        </div>
 
         {/* SUMMARY PANEL FOR CURRENTLY FILTERED JOBS */}
         <div style={{
@@ -1087,7 +1085,7 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
                 <th>Ex-Factory</th>
                 <th>Present Status</th>
                 <th style={{ textAlign: 'center' }}>Section Status</th>
-                <th style={{ textAlign: 'center' }}>360 ভিউ</th>
+                <th style={{ textAlign: 'center' }}>360 View</th>
               </tr>
             </thead>
             <tbody>
@@ -1154,7 +1152,7 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
                         className="btn btn-primary"
                         style={{ padding: '3px 9px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', whiteSpace: 'nowrap', textDecoration: 'none' }}
                       >
-                        360 ভিউ ↗
+                        360 View ↗
                       </Link>
                     </td>
                   </tr>
@@ -1252,46 +1250,46 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
             {/* TAB NAVIGATION */}
             <div style={{ display: 'flex', gap: '6px', padding: '10px 22px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', overflowX: 'auto' }}>
               <button
-                className={`size-pill-btn ${modalTab === 'sizes' ? 'active' : ''}`}
+                type="button"
+                className={`tab-btn-360 ${modalTab === 'sizes' ? 'active' : ''}`}
                 onClick={() => setModalTab('sizes')}
-                style={{ padding: '6px 12px', fontSize: '11px' }}
               >
-                📏 Size & PO Country Breakdown
+                📏 Size &amp; PO Breakdown
               </button>
               <button
-                className={`size-pill-btn ${modalTab === 'material' ? 'active' : ''}`}
+                type="button"
+                className={`tab-btn-360 ${modalTab === 'material' ? 'active' : ''}`}
                 onClick={() => setModalTab('material')}
-                style={{ padding: '6px 12px', fontSize: '11px' }}
               >
-                🧵 Fabric & Material Spec
+                🧵 Fabric &amp; Trims Spec
               </button>
               <button
-                className={`size-pill-btn ${modalTab === 'production' ? 'active' : ''}`}
+                type="button"
+                className={`tab-btn-360 ${modalTab === 'production' ? 'active' : ''}`}
                 onClick={() => setModalTab('production')}
-                style={{ padding: '6px 12px', fontSize: '11px' }}
               >
-                🏭 Stage-Wise Production & IE
+                🏭 Production &amp; IE Target
               </button>
               <button
-                className={`size-pill-btn ${modalTab === 'quality' ? 'active' : ''}`}
+                type="button"
+                className={`tab-btn-360 ${modalTab === 'quality' ? 'active' : ''}`}
                 onClick={() => setModalTab('quality')}
-                style={{ padding: '6px 12px', fontSize: '11px' }}
               >
-                🔍 Quality Root Cause Log
+                🔍 Quality Audit Log
               </button>
               <button
-                className={`size-pill-btn ${modalTab === 'leadtime' ? 'active' : ''}`}
+                type="button"
+                className={`tab-btn-360 ${modalTab === 'leadtime' ? 'active' : ''}`}
                 onClick={() => setModalTab('leadtime')}
-                style={{ padding: '6px 12px', fontSize: '11px' }}
               >
-                ⏱️ Lead Time & Schedule
+                ⏱️ T&amp;A Schedule
               </button>
               <button
-                className={`size-pill-btn ${modalTab === 'reports' ? 'active' : ''}`}
+                type="button"
+                className={`tab-btn-360 ${modalTab === 'reports' ? 'active' : ''}`}
                 onClick={() => setModalTab('reports')}
-                style={{ padding: '6px 12px', fontSize: '11px' }}
               >
-                🧪 Lab Test Reports
+                🧪 Lab Reports
               </button>
             </div>
 
@@ -1342,9 +1340,9 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
                     </table>
                   </div>
 
-                  {/* Standard Factory Operating Flow Notice */}
-                  <div style={{ padding: '8px 12px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', fontSize: '11px', color: '#1e40af' }}>
-                    <strong style={{ fontWeight: 800 }}>Factory Flow Note:</strong> Size breakdown is imported during PO Order Entry and audited at Ex-Factory packing list. Intermediate Cutting, Sewing, and Finishing floors record aggregate batch/line output totals.
+                  {/* Factory Flow Notice */}
+                  <div style={{ padding: '7px 12px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', fontSize: '11px', color: '#1e40af' }}>
+                    <strong>Order sizes defined at PO entry · Shipped counts verified at Ex-Factory.</strong>
                   </div>
 
                   {/* Overall Production Totals */}
@@ -1612,7 +1610,7 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
             {/* Modal Footer */}
             <div className="view360-footer">
               <Link
-                href="/modules/job-360"
+                href={`/jobs/${encodeURIComponent(selectedJob.jobNo)}`}
                 className="btn btn-primary"
                 style={{ fontSize: '12px', padding: '8px 14px' }}
                 onClick={() => setSelectedJob(null)}
@@ -1620,6 +1618,7 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
                 Open Full Job 360 Workspace →
               </Link>
               <button
+                type="button"
                 onClick={() => setSelectedJob(null)}
                 className="btn btn-secondary"
                 style={{ fontSize: '12px', padding: '8px 14px' }}

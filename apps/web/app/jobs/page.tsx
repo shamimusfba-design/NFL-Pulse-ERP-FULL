@@ -282,7 +282,7 @@ function JobsListContent() {
   return (
     <Shell
       title={displayTitle}
-      eyebrow={`Dedicated Filtered Job Register · ${filteredRows.length.toLocaleString()} matching orders`}
+      eyebrow={`Job Register · ${filteredRows.length.toLocaleString()} matching orders`}
     >
       {/* 1. TOP BREADCRUMB & SUMMARY BAR */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
@@ -309,7 +309,7 @@ function JobsListContent() {
             className="btn btn-secondary"
             style={{ fontSize: '11px', padding: '6px 12px' }}
           >
-            🖨️ Print List
+            🖨️ Print
           </button>
           <button
             type="button"
@@ -322,7 +322,7 @@ function JobsListContent() {
         </div>
       </div>
 
-      {/* 2. STATS STRIP (Bold & Clickable) */}
+      {/* 2. STATS STRIP */}
       <section style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '12px', marginBottom: '14px' }}>
         <div
           className="panel"
@@ -336,7 +336,7 @@ function JobsListContent() {
         >
           <span style={{ fontSize: '11px', color: '#475569', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>FILTERED JOBS</span>
           <strong style={{ fontSize: '26px', fontWeight: 900, color: '#0f172a', display: 'block', marginTop: '2px' }}>{filteredRows.length.toLocaleString()}</strong>
-          <span style={{ fontSize: '11px', color: '#16a34a', fontWeight: 800, display: 'block', marginTop: '3px' }}>✓ Click to show all</span>
+          <span style={{ fontSize: '11px', color: '#16a34a', fontWeight: 700, display: 'block', marginTop: '3px' }}>Click to reset</span>
         </div>
 
         <div
@@ -346,7 +346,7 @@ function JobsListContent() {
         >
           <span style={{ fontSize: '11px', color: '#1e40af', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>TOTAL ORDER VOLUME</span>
           <strong style={{ fontSize: '26px', fontWeight: 900, color: '#2563eb', display: 'block', marginTop: '2px' }}>{n(totalVolume)} <span style={{ fontSize: '13px', fontWeight: 700 }}>pcs</span></strong>
-          <span style={{ fontSize: '11px', color: '#475569', fontWeight: 700, display: 'block', marginTop: '3px' }}>Garment total</span>
+          <span style={{ fontSize: '11px', color: '#475569', fontWeight: 600, display: 'block', marginTop: '3px' }}>Total order pcs</span>
         </div>
 
         <div
@@ -354,9 +354,9 @@ function JobsListContent() {
           style={{ padding: '14px 18px', border: '1px solid #cbd5e1', boxShadow: '0 2px 6px rgba(0,0,0,0.05)' }}
           title="Assigned Floor & Lines count"
         >
-          <span style={{ fontSize: '11px', color: '#475569', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>ASSIGNED FLOOR / LINES</span>
+          <span style={{ fontSize: '11px', color: '#475569', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>ASSIGNED LINES</span>
           <strong style={{ fontSize: '26px', fontWeight: 900, color: '#0f172a', display: 'block', marginTop: '2px' }}>{linesCount} <span style={{ fontSize: '13px', fontWeight: 700 }}>lines</span></strong>
-          <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 700, display: 'block', marginTop: '3px' }}>Across NFL & NCL</span>
+          <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, display: 'block', marginTop: '3px' }}>NFL & NCL lines</span>
         </div>
 
         <div
@@ -365,18 +365,18 @@ function JobsListContent() {
           title="Active export buyers"
         >
           <span style={{ fontSize: '11px', color: '#475569', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>ACTIVE BUYERS</span>
-          <strong style={{ fontSize: '26px', fontWeight: 900, color: '#0f172a', display: 'block', marginTop: '2px' }}>{buyersCount} <span style={{ fontSize: '13px', fontWeight: 700 }}>brands</span></strong>
-          <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 700, display: 'block', marginTop: '3px' }}>Export accounts</span>
+          <strong style={{ fontSize: '26px', fontWeight: 900, color: '#0f172a', display: 'block', marginTop: '2px' }}>{buyersCount} <span style={{ fontSize: '13px', fontWeight: 700 }}>buyers</span></strong>
+          <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, display: 'block', marginTop: '3px' }}>Export brands</span>
         </div>
       </section>
 
-      {/* 3. MULTI-GRAPH ANALYTICS (Dynamically updates with filters) */}
+      {/* 3. MULTI-GRAPH ANALYTICS */}
       <section className="section-graphs-row" style={{ marginBottom: '14px' }}>
         <div className="chart-card">
           <div className="chart-card-head">
             <div>
               <div className="chart-card-title">Status Distribution</div>
-              <div className="chart-card-sub">Active job mix with %</div>
+              <div className="chart-card-sub">Active job mix</div>
             </div>
             <span className="status-pill ok">Live</span>
           </div>
@@ -386,7 +386,7 @@ function JobsListContent() {
         <div className="chart-card">
           <div className="chart-card-head">
             <div>
-              <div className="chart-card-title">Volume by Key Buyer</div>
+              <div className="chart-card-title">Volume by Buyer</div>
               <div className="chart-card-sub">Order vs Produced (pcs)</div>
             </div>
             <span className="status-pill" style={{ background: '#ecfdf5', color: '#047857' }}>Volume</span>
@@ -397,8 +397,8 @@ function JobsListContent() {
         <div className="chart-card">
           <div className="chart-card-head">
             <div>
-              <div className="chart-card-title">Weekly Achievement Trend</div>
-              <div className="chart-card-sub">Trajectory with exact %</div>
+              <div className="chart-card-title">Weekly Shipment Trend</div>
+              <div className="chart-card-sub">Shipment schedule</div>
             </div>
             <span className="status-pill" style={{ background: '#faf5ff', color: '#7e22ce' }}>Trend</span>
           </div>
@@ -406,16 +406,10 @@ function JobsListContent() {
         </div>
       </section>
 
-      {/* 4. OPERATIONAL REGISTER TABLE WITH FROZEN SCROLLBAR */}
+      {/* 4. OPERATIONAL REGISTER TABLE */}
       <section className="operational-register" style={{ marginTop: 0 }}>
-        {/* Toolbar with Form for instant Enter key execution */}
-        <form
-          className="register-toolbar"
-          onSubmit={e => {
-            e.preventDefault();
-            setCurrentPage(1);
-          }}
-        >
+        {/* Toolbar (Clean non-form div to eliminate any accidental page reload) */}
+        <div className="register-toolbar">
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <strong style={{ fontSize: '13px', fontWeight: 800, color: '#0f172a' }}>Job Register</strong>
             <span className="status-pill ok" style={{ fontWeight: 800 }}>{filteredRows.length.toLocaleString()} Jobs</span>
@@ -425,7 +419,7 @@ function JobsListContent() {
             {/* Search Input */}
             <input
               type="text"
-              placeholder="Search Job, Buyer, Style... (Enter ⏎)"
+              placeholder="Search Job, Buyer, Style..."
               value={searchQuery}
               onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
               onKeyDown={e => {
@@ -448,7 +442,7 @@ function JobsListContent() {
               style={{ fontWeight: 700 }}
               title="Shipment Week"
             >
-              <option value="ALL">📅 Week: All</option>
+              <option value="ALL">Week: All</option>
               {weekOptions.map(w => (
                 <option key={w} value={w}>{w}</option>
               ))}
@@ -463,7 +457,7 @@ function JobsListContent() {
               style={{ fontWeight: 700 }}
               title="Shipment Month"
             >
-              <option value="ALL">🗓️ Month: All</option>
+              <option value="ALL">Month: All</option>
               {monthOptions.map(m => (
                 <option key={m} value={m}>{m}</option>
               ))}
@@ -478,7 +472,7 @@ function JobsListContent() {
               style={{ fontWeight: 700 }}
               title="Floor/Line"
             >
-              <option value="ALL">🏢 Floor/Line: All</option>
+              <option value="ALL">Floor/Line: All</option>
               {floorUnitOptions.map(f => (
                 <option key={f} value={f}>{f}</option>
               ))}
@@ -493,7 +487,7 @@ function JobsListContent() {
               style={{ fontWeight: 700 }}
               title="Merchandiser"
             >
-              <option value="ALL">👤 Merch: All</option>
+              <option value="ALL">Merch: All</option>
               {merchOptions.map(m => (
                 <option key={m} value={m}>{m}</option>
               ))}
@@ -508,7 +502,7 @@ function JobsListContent() {
               style={{ fontWeight: 700 }}
               title="Present Status"
             >
-              <option value="ALL">⚡ Status: All</option>
+              <option value="ALL">Status: All</option>
               {presentStatusOptions.map(s => (
                 <option key={s} value={s}>{s}</option>
               ))}
@@ -523,20 +517,21 @@ function JobsListContent() {
               style={{ fontWeight: 700 }}
               title="Buyer"
             >
-              <option value="ALL">🏷️ Buyer: All</option>
+              <option value="ALL">Buyer: All</option>
               {buyerOptions.map(b => (
                 <option key={b} value={b}>{b}</option>
               ))}
             </select>
 
-            {/* Permanent Apply Button */}
+            {/* Apply Button */}
             <button
-              type="submit"
+              type="button"
+              onClick={() => setCurrentPage(1)}
               className="reg-btn-compact"
-              style={{ background: '#2563eb', color: '#fff', borderColor: '#2563eb', fontWeight: 800, minWidth: '95px' }}
-              title="Apply selected filters (or press Enter)"
+              style={{ background: '#2563eb', color: '#fff', borderColor: '#2563eb', fontWeight: 800, minWidth: '75px' }}
+              title="Apply filters"
             >
-              Apply Filter ⏎
+              Apply
             </button>
 
             {/* Reset Filters Button */}
@@ -572,7 +567,7 @@ function JobsListContent() {
               <span>📥</span> Export
             </button>
           </div>
-        </form>
+        </div>
 
         {/* SUMMARY PANEL FOR CURRENTLY FILTERED JOBS */}
         <div style={{
@@ -591,7 +586,7 @@ function JobsListContent() {
             </div>
             <div>
               <span style={{ fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', fontWeight: 800, display: 'block' }}>
-                Total Order Quantity
+                Order Volume
               </span>
               <strong style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a' }}>
                 {n(totalVolume)} <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748b' }}>pcs</span>
@@ -605,7 +600,7 @@ function JobsListContent() {
             </div>
             <div>
               <span style={{ fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', fontWeight: 800, display: 'block' }}>
-                Active Buyers Count
+                Active Buyers
               </span>
               <strong style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a' }}>
                 {buyersCount} <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748b' }}>accounts</span>
@@ -619,7 +614,7 @@ function JobsListContent() {
             </div>
             <div>
               <span style={{ fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', fontWeight: 800, display: 'block' }}>
-                Total Lines Involved
+                Assigned Lines
               </span>
               <strong style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a' }}>
                 {linesCount} <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748b' }}>lines</span>
@@ -643,7 +638,7 @@ function JobsListContent() {
                 <th>Ex-Factory</th>
                 <th>Present Status</th>
                 <th style={{ textAlign: 'center' }}>Section Status</th>
-                <th style={{ textAlign: 'center' }}>360 ভিউ</th>
+                <th style={{ textAlign: 'center' }}>360 View</th>
               </tr>
             </thead>
             <tbody>
@@ -709,7 +704,7 @@ function JobsListContent() {
                         className="btn btn-primary"
                         style={{ padding: '3px 9px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', whiteSpace: 'nowrap', textDecoration: 'none' }}
                       >
-                        360 ভিউ ↗
+                        360 View ↗
                       </Link>
                     </td>
                   </tr>
