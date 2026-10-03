@@ -1,9 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import demo2000DataRaw from '../../../data/demo-2000-master.json';
 import factoryDataRaw from '../../../data/dyeing-factory-data.json';
+import factoryKpiMasterRaw from '../../../data/factory-kpi-master.json';
 
 const masterJobs = (demo2000DataRaw as any)?.jobs || [];
 const factoryData = factoryDataRaw as any;
+const factoryKpi = factoryKpiMasterRaw as any;
+
+// In-memory Kaizen and manual KPI store
+let memoryKaizenProjects = [
+  { id: 'kz-1', kaizenNo: 'KZ-2026-001', title: 'Folder Attachment on Feed-off-the-Arm Seam', category: 'Productivity', employeeName: 'Md. Al-Amin', department: 'IE', section: 'Sewing', floorCode: 'NFL-FL1', lineCode: 'Line 04A', monthlySaving: 48000, annualSaving: 576000, status: 'IMPLEMENTED', costBenefit: 'Folder cost 3,500 Tk', technicalBenefit: 'Eliminates puckering', safetyBenefit: 'Reduces operator hand fatigue' },
+  { id: 'kz-2', kaizenNo: 'KZ-2026-002', title: 'Pneumatic Thread Trimmer on Overlock Table', category: 'Method', employeeName: 'Sufia Begum', department: 'Sewing', section: 'Sewing', floorCode: 'NFL-FL2', lineCode: 'Line 11B', monthlySaving: 32000, annualSaving: 384000, status: 'SUSTAINED', costBenefit: 'In-house fabrication 1,200 Tk', technicalBenefit: 'Reduces 2.1 sec/pc cycle time', safetyBenefit: 'Hands stay 10cm from knife' },
+  { id: 'kz-3', kaizenNo: 'KZ-2026-003', title: 'Laser Guideline for Front Placket Notch Alignment', category: 'Quality', employeeName: 'Kamrul Hassan', department: 'Quality', section: 'Sewing', floorCode: 'NCL-FL1', lineCode: 'Line 18A', monthlySaving: 65000, annualSaving: 780000, status: 'APPROVED', costBenefit: 'Laser diode 800 Tk', technicalBenefit: 'Reduces placket DHU from 4.2 to 0.8', safetyBenefit: 'Class 1 eye-safe' },
+  { id: 'kz-4', kaizenNo: 'KZ-2026-004', title: 'Gravity Chute Bundle Transfer from Cutting to Sewing Prep', category: 'Space', employeeName: 'Tariqul Islam', department: 'Cutting', section: 'Cutting', floorCode: 'NFL-FL1', lineCode: 'Prep-1', monthlySaving: 41000, annualSaving: 492000, status: 'REVIEW', costBenefit: 'Sheet metal 4,000 Tk', technicalBenefit: 'Saves 35 min transport per batch', safetyBenefit: 'Eliminates heavy lifting' },
+  { id: 'kz-5', kaizenNo: 'KZ-2026-005', title: 'Circular Knitting Lycra Feeder Stop Motion Sensor', category: 'Cost Saving', employeeName: 'Abdul Mannan', department: 'Knitting', section: 'Knitting', floorCode: 'NFL-KNIT', lineCode: 'Knit-M12', monthlySaving: 88000, annualSaving: 1056000, status: 'IMPLEMENTED', costBenefit: 'Sensor 2,500 Tk', technicalBenefit: 'Eliminates Lycra run-out fabric defect', safetyBenefit: 'Automatic stop' }
+];
+
+let memoryManualKpis: any[] = [];
 
 function formatDetailFromMaster(j: any) {
   return {
@@ -296,17 +309,43 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     ]);
   }
 
-  // 10. /api/masters/references
-  if (pathStr === 'masters/references') {
-    const cat = request.nextUrl.searchParams.get('category') || 'BUYER';
-    if (cat === 'BUYER') {
+  // 10. /api/masters/references and /api/masters/references/:category
+  if (pathStr === 'masters/references' || pathStr.startsWith('masters/references/')) {
+    const subCat = pathStr.split('/')[2];
+    const cat = (subCat ? decodeURIComponent(subCat) : request.nextUrl.searchParams.get('category')) || 'BUYER';
+    const cUpper = cat.toUpperCase();
+
+    if (cUpper === 'BUYER') {
       return NextResponse.json([
         { id: 'b-1', value: 'Name It' }, { id: 'b-2', value: 'ONLY' }, { id: 'b-3', value: 'OVS' },
         { id: 'b-4', value: 'UTG' }, { id: 'b-5', value: 'Only & Sons' }, { id: 'b-6', value: 'New Look' },
         { id: 'b-7', value: 'T.M Lewin' }, { id: 'b-8', value: 'Miss Selfridge' }, { id: 'b-9', value: 'Maurices' }
       ]);
     }
-    if (cat === 'SEWING_LINE') {
+    if (cUpper === 'MERCHANDISER') {
+      return NextResponse.json([
+        { id: 'm-1', value: 'Md. Jahidul Islam' },
+        { id: 'm-2', value: 'Tanvir Ahmed' },
+        { id: 'm-3', value: 'Kazi Masud' },
+        { id: 'm-4', value: 'Shah Alam' },
+        { id: 'm-5', value: 'Rashedul Hasan' },
+        { id: 'm-6', value: 'Naimur Rahman' }
+      ]);
+    }
+    if (cUpper === 'PRESENT_STATUS') {
+      return NextResponse.json([
+        { id: 'ps-1', value: 'Order Confirmed' },
+        { id: 'ps-2', value: 'Running' },
+        { id: 'ps-3', value: 'Fabric In-House' },
+        { id: 'ps-4', value: 'PP Approved' },
+        { id: 'ps-5', value: 'Cut in Progress' },
+        { id: 'ps-6', value: 'Sewing Running' },
+        { id: 'ps-7', value: 'Finishing' },
+        { id: 'ps-8', value: 'Hold / Attention' },
+        { id: 'ps-9', value: 'Shipped' }
+      ]);
+    }
+    if (cUpper === 'SEWING_LINE') {
       const lines = [];
       for (let i = 1; i <= 26; i++) {
         lines.push({ id: `l-${i}A`, value: `Line ${i}A (NFL)` });
@@ -508,6 +547,122 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     });
   }
 
+  // 17. /api/ie-ops/kpi
+  if (pathStr === 'ie-ops/kpi') {
+    const yr = Number(request.nextUrl.searchParams.get('year') || 2026);
+    const mo = Number(request.nextUrl.searchParams.get('month') || 8);
+    const monthKeys = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+    const key = monthKeys[mo - 1] || 'aug';
+
+    const autoKpis = [
+      { section: 'Sewing', kpiKey: 'SEWING_EFFICIENCY', kpiName: 'Factory Sewing Efficiency', value: factoryKpi.departmentKpis?.sewing?.[3]?.[key] ?? 70.36, unit: '%', source: 'AUTO_SEWING' },
+      { section: 'Sewing', kpiKey: 'SEWING_PRODUCTION', kpiName: 'Sewing Output (Monthly Pcs)', value: factoryKpi.departmentKpis?.sewing?.[2]?.[key] ?? 1477799, unit: 'Pcs', source: 'AUTO_SEWING' },
+      { section: 'Sewing', kpiKey: 'SEWING_SMV', kpiName: 'Average Sewing SMV', value: factoryKpi.departmentKpis?.sewing?.[0]?.[key] ?? 9.60, unit: 'min', source: 'AUTO_IE' },
+      { section: 'Sewing', kpiKey: 'SEWING_NPT_CAPTURING', kpiName: 'Sewing Capturing NPT', value: factoryKpi.departmentKpis?.sewing?.[6]?.[key] ?? 73.84, unit: '%', source: 'AUTO_SEWING' },
+      { section: 'Sewing', kpiKey: 'CUT_TO_SHIP_LOSS', kpiName: 'Cut to Ship Loss %', value: factoryKpi.departmentKpis?.sewing?.[7]?.[key] ?? 2.59, unit: '%', source: 'AUTO_SEWING' },
+      { section: 'Cutting', kpiKey: 'CUTTING_PRODUCTION', kpiName: 'Monthly Cutting Production', value: factoryKpi.departmentKpis?.cutting?.[0]?.[key] ?? 1427113, unit: 'Pcs', source: 'AUTO_CUTTING' },
+      { section: 'Cutting', kpiKey: 'CUTTING_EFFICIENCY', kpiName: 'Cutting Efficiency', value: factoryKpi.departmentKpis?.cutting?.[1]?.[key] ?? 80.30, unit: '%', source: 'AUTO_CUTTING' },
+      { section: 'Cutting', kpiKey: 'FABRIC_WASTAGE', kpiName: 'Fabric Wastage %', value: factoryKpi.departmentKpis?.cutting?.[2]?.[key] ?? 2.66, unit: '%', source: 'AUTO_CUTTING' },
+      { section: 'Quality', kpiKey: 'IN_LINE_DHU', kpiName: 'In-Line DHU (Internal)', value: factoryKpi.departmentKpis?.quality?.[0]?.[key] ?? 9.46, unit: 'DHU', source: 'AUTO_QUALITY' },
+      { section: 'Quality', kpiKey: 'FINAL_DHU', kpiName: 'Final Inspection DHU', value: factoryKpi.departmentKpis?.quality?.[4]?.[key] ?? 5.94, unit: 'DHU', source: 'AUTO_QUALITY' },
+      { section: 'Quality', kpiKey: 'END_LINE_OQL', kpiName: 'End Line Audit OQL', value: factoryKpi.departmentKpis?.quality?.[1]?.[key] ?? 8.05, unit: '%', source: 'AUTO_QUALITY' },
+      { section: 'Printing', kpiKey: 'PRINTING_PANELS', kpiName: 'Printing Production Panels', value: factoryKpi.departmentKpis?.printing?.[0]?.[key] ?? 826632, unit: 'Pcs', source: 'AUTO_PRINT' },
+      { section: 'Printing', kpiKey: 'PRINTING_EFFICIENCY', kpiName: 'Printing Efficiency', value: factoryKpi.departmentKpis?.printing?.[1]?.[key] ?? 91.69, unit: '%', source: 'AUTO_PRINT' },
+      { section: 'Printing', kpiKey: 'PRINTING_LOST_TIME', kpiName: 'Printing Lost Time', value: factoryKpi.departmentKpis?.printing?.[2]?.[key] ?? 8.31, unit: '%', source: 'AUTO_PRINT' },
+      { section: 'Knitting', kpiKey: 'KNITTING_PRODUCTION', kpiName: 'Knitting Production', value: factoryKpi.departmentKpis?.knitting?.[0]?.[key] ?? 206159, unit: 'kg', source: 'AUTO_KNITTING' },
+      { section: 'Knitting', kpiKey: 'KNITTING_OTD', kpiName: 'Knitting T&A On-Time Delivery', value: factoryKpi.departmentKpis?.knitting?.[1]?.[key] ?? 72.1, unit: '%', source: 'AUTO_KNITTING' },
+      { section: 'Dyeing', kpiKey: 'DYEING_PRODUCTION', kpiName: 'Dyeing Production', value: factoryKpi.departmentKpis?.dyeing?.[0]?.[key] ?? 293310, unit: 'kg', source: 'AUTO_DYEING' },
+      { section: 'Dyeing', kpiKey: 'DYEING_RFT', kpiName: 'Dyeing Right First Time (RFT)', value: factoryKpi.departmentKpis?.dyeing?.[1]?.[key] ?? 68.3, unit: '%', source: 'AUTO_DYEING' },
+      { section: 'HR', kpiKey: 'ABSENTEEISM_RATE', kpiName: 'Worker Absenteeism Rate', value: factoryKpi.departmentKpis?.hr?.[0]?.[key] ?? 6.10, unit: '%', source: 'AUTO_HR' },
+      { section: 'HR', kpiKey: 'WORKER_HAPPINESS', kpiName: 'Worker Happiness Index', value: factoryKpi.departmentKpis?.hr?.[2]?.[key] ?? 71.36, unit: '%', source: 'AUTO_HR' }
+    ];
+
+    const manualForMonth = memoryManualKpis.filter(m => Number(m.year) === yr && Number(m.month) === mo);
+    return NextResponse.json({ auto: autoKpis, manual: manualForMonth });
+  }
+
+  // 18. /api/ie-ops/kpi/yearly
+  if (pathStr === 'ie-ops/kpi/yearly') {
+    const lines = [
+      { lineCode: 'Line 01A', floorCode: 'NFL-FL1', avgSmv: 9.20, avgEfficiency: 74.5, avgPerformance: 85.0, production: 54200, avgManpower: 28, otHours: 42, productivity: 4.8 },
+      { lineCode: 'Line 02A', floorCode: 'NFL-FL1', avgSmv: 8.80, avgEfficiency: 76.2, avgPerformance: 88.4, production: 58900, avgManpower: 30, otHours: 38, productivity: 5.1 },
+      { lineCode: 'Line 03A', floorCode: 'NFL-FL1', avgSmv: 9.60, avgEfficiency: 71.0, avgPerformance: 82.0, production: 51200, avgManpower: 29, otHours: 46, productivity: 4.5 },
+      { lineCode: 'Line 04B', floorCode: 'NFL-FL2', avgSmv: 10.40, avgEfficiency: 68.4, avgPerformance: 79.5, production: 48300, avgManpower: 32, otHours: 52, productivity: 4.1 },
+      { lineCode: 'Line 05B', floorCode: 'NFL-FL2', avgSmv: 9.50, avgEfficiency: 72.8, avgPerformance: 83.2, production: 53100, avgManpower: 28, otHours: 40, productivity: 4.7 },
+      { lineCode: 'Line 06B', floorCode: 'NFL-FL2', avgSmv: 8.90, avgEfficiency: 75.0, avgPerformance: 86.8, production: 56400, avgManpower: 30, otHours: 44, productivity: 4.9 },
+      { lineCode: 'Line 11A', floorCode: 'NCL-FL1', avgSmv: 9.80, avgEfficiency: 69.5, avgPerformance: 80.4, production: 49700, avgManpower: 31, otHours: 48, productivity: 4.3 },
+      { lineCode: 'Line 12A', floorCode: 'NCL-FL1', avgSmv: 9.10, avgEfficiency: 73.4, avgPerformance: 84.6, production: 54800, avgManpower: 29, otHours: 36, productivity: 4.8 }
+    ];
+    return NextResponse.json({ lines, overall: { avgEfficiency: 72.6, avgSmv: 9.41, totalProduction: 426600 } });
+  }
+
+  // 19. /api/ie-ops/kaizen
+  if (pathStr === 'ie-ops/kaizen') {
+    const st = request.nextUrl.searchParams.get('status') || 'ALL';
+    const list = st === 'ALL' ? memoryKaizenProjects : memoryKaizenProjects.filter(k => k.status === st);
+    return NextResponse.json(list);
+  }
+
+  // 20. /api/ie-ops/overview
+  if (pathStr === 'ie-ops/overview') {
+    return NextResponse.json({
+      date: '2026-09-05',
+      requestedDate: '2026-09-05',
+      cards: {
+        todayTarget: 68500,
+        actualOutput: 71200,
+        achievementPct: 103.9,
+        efficiencyPct: 74.7,
+        avgSmv: 9.85,
+        manpower: 1420,
+        otHours: 2.5,
+        nptMinutes: 18.4,
+        avgQcoMinutes: 38.5,
+        pendingBulletin: 4,
+        openShort: 2
+      },
+      floorRows: [
+        { floor: 'NFL Floor 1', target: 24000, actual: 24800, efficiency: 75.4, smv: 9.2, manpower: 480, ot: 2.0 },
+        { floor: 'NFL Floor 2', target: 22500, actual: 23600, efficiency: 74.8, smv: 9.6, manpower: 460, ot: 2.5 },
+        { floor: 'NCL Floor 1', target: 22000, actual: 22800, efficiency: 73.9, smv: 10.4, manpower: 480, ot: 3.0 }
+      ]
+    });
+  }
+
+  // 21. /api/ie-ops/line-performance
+  if (pathStr === 'ie-ops/line-performance') {
+    const sampleLine = (code: string) => ({
+      lineCode: code,
+      points: [
+        { date: '2026-09-01', lineCode: code, jobNo: '48085', smv: 9.2, target: 2200, actual: 2280, performancePct: 103.6, efficiencyPct: 75.4, manpower: 28, otHours: 2, nptMinutes: 14, majorNpt: { type: 'Machine', minutes: 8 }, qcoMinutes: 0, productivity: 4.8 },
+        { date: '2026-09-02', lineCode: code, jobNo: '48085', smv: 9.2, target: 2200, actual: 2310, performancePct: 105.0, efficiencyPct: 76.2, manpower: 28, otHours: 2, nptMinutes: 10, majorNpt: null, qcoMinutes: 0, productivity: 4.9 },
+        { date: '2026-09-03', lineCode: code, jobNo: '48061', smv: 9.8, target: 2000, actual: 2050, performancePct: 102.5, efficiencyPct: 74.0, manpower: 29, otHours: 2, nptMinutes: 18, majorNpt: { type: 'Style Change', minutes: 15 }, qcoMinutes: 35, productivity: 4.6 }
+      ]
+    });
+    return NextResponse.json({ lines: [sampleLine('Line 01A'), sampleLine('Line 02A'), sampleLine('Line 04B'), sampleLine('Line 11A')] });
+  }
+
+  // 22. /api/planning/quota
+  if (pathStr === 'planning/quota') {
+    return NextResponse.json({
+      reportDate: factoryKpi.reportDate,
+      buyerQuota: factoryKpi.buyerQuota || [],
+      sampleCapacity: factoryKpi.sampleCapacity || []
+    });
+  }
+
+  // 23. /api/management/fob
+  if (pathStr === 'management/fob') {
+    return NextResponse.json({
+      analytics: factoryKpi.fobAnalytics || []
+    });
+  }
+
+  // 24. /api/kpi-tracker/full
+  if (pathStr === 'kpi-tracker/full') {
+    return NextResponse.json(factoryKpi);
+  }
+
   // Default fallback for any other GET
   return NextResponse.json({ status: 'ok', path: pathStr, totalJobs: masterJobs.length });
 }
@@ -577,4 +732,20 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   }
 
   return NextResponse.json({ success: true });
+}
+
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+  const { path } = await params;
+  const pathStr = path.join('/');
+  const body = await request.json().catch(() => ({}));
+
+  if (pathStr.includes('/merchandising-followup')) {
+    return NextResponse.json({ success: true, message: 'Merchandising follow-up updated', ...body });
+  }
+
+  if (pathStr.includes('/quantity')) {
+    return NextResponse.json({ success: true, message: 'Order quantity revised successfully', newQuantity: body.newQuantity, warning: null });
+  }
+
+  return NextResponse.json({ success: true, ...body });
 }

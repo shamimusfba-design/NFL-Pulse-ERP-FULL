@@ -500,8 +500,8 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
 
   const group = MODULE_GROUPS.find(g => g.overviewSlug === overview.slug);
 
-  // 1. FILTERED ROWS (Based on Week, Month, Merchandiser, Floor/Line, Status, Buyer, Search)
-  const filteredRows = useMemo(() => {
+  // 1. BASE FILTERED ROWS (Based on Week, Month, Merchandiser, Floor/Line, Status, Buyer, Search)
+  const baseFilteredRows = useMemo(() => {
     return allRows.filter(r => {
       if (weekFilter !== 'ALL' && r.shipmentWeek !== weekFilter) return false;
       if (monthFilter !== 'ALL' && weekFilter === 'ALL' && r.shipmentMonth !== monthFilter) return false;
@@ -526,43 +526,43 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
   const buyerOptions = useMemo(() => Array.from(new Set(allRows.map(r => r.buyer))).filter(Boolean).sort(), [allRows]);
   const floorUnitOptions = ['NCL1', 'NCL2', 'NCL3', 'NFL1', 'NFL2', 'NFL3'];
 
-  // Summary Metrics calculated for the currently filtered jobs
+  // Summary Metrics calculated for base filtered rows
   const filteredTotalQty = useMemo(() => {
-    return filteredRows.reduce((sum: number, r: any) => sum + Number(r.orderQty || 0), 0);
-  }, [filteredRows]);
+    return baseFilteredRows.reduce((sum: number, r: any) => sum + Number(r.orderQty || 0), 0);
+  }, [baseFilteredRows]);
 
   const filteredBuyersCount = useMemo(() => {
-    return new Set(filteredRows.map((r: any) => r.buyerCode || r.buyer).filter(Boolean)).size;
-  }, [filteredRows]);
+    return new Set(baseFilteredRows.map((r: any) => r.buyerCode || r.buyer).filter(Boolean)).size;
+  }, [baseFilteredRows]);
 
   const filteredLinesCount = useMemo(() => {
-    return new Set(filteredRows.map((r: any) => r.floorLine || r.line).filter(Boolean)).size;
-  }, [filteredRows]);
+    return new Set(baseFilteredRows.map((r: any) => r.floorLine || r.line).filter(Boolean)).size;
+  }, [baseFilteredRows]);
 
-  // Facts & KPIs (Dynamically calculated based on active filters!)
+  // Facts & KPIs (Dynamically calculated based on base filtered rows)
   const facts = useMemo(() => {
-    const totalQty = filteredRows.reduce((s, o) => s + scalar(o.orderQty), 0);
+    const totalQty = baseFilteredRows.reduce((s, o) => s + scalar(o.orderQty), 0);
     const critical = tasks.filter(t => ['HIGH', 'CRITICAL'].includes(String(t.priority).toUpperCase())).length;
-    const attention = filteredRows.filter(r => /hold|attention|late|fail|preparing/i.test(String(r.sectionStatus || ''))).length;
+    const attention = baseFilteredRows.filter(r => /hold|attention|late|fail|preparing/i.test(String(r.sectionStatus || ''))).length;
 
     if (overview.slug === 'central-planning') {
-      const approved = filteredRows.filter(x => /released|approved/i.test(x.sectionStatus)).length;
+      const approved = baseFilteredRows.filter(x => /released|approved/i.test(x.sectionStatus)).length;
       return {
         cards: [
-          ['T&A Queue', filteredRows.length, 'Filtered jobs in queue'],
+          ['T&A Queue', baseFilteredRows.length, 'Jobs in queue'],
           ['Approved T&A', approved, 'Released to lines'],
-          ['Draft / Planning', filteredRows.length - approved, 'Planning work'],
+          ['Draft / Planning', baseFilteredRows.length - approved, 'Planning work'],
           ['Total Order Qty', `${n(totalQty)} pcs`, 'Scope volume']
         ]
       };
     }
     if (overview.slug === 'garment-production') {
-      const totalCut = filteredRows.reduce((s, r) => s + scalar(r.orderQty), 0);
-      const totalSewn = filteredRows.reduce((s, r) => s + scalar(r.rawJob?.sewing?.sewingActualQty || r.orderQty), 0);
-      const totalPacked = filteredRows.reduce((s, r) => s + scalar(r.rawJob?.finishing?.packingQty || r.orderQty), 0);
+      const totalCut = baseFilteredRows.reduce((s, r) => s + scalar(r.orderQty), 0);
+      const totalSewn = baseFilteredRows.reduce((s, r) => s + scalar(r.rawJob?.sewing?.sewingActualQty || r.orderQty), 0);
+      const totalPacked = baseFilteredRows.reduce((s, r) => s + scalar(r.rawJob?.finishing?.packingQty || r.orderQty), 0);
       return {
         cards: [
-          ['Order Qty', `${n(totalQty)} pcs`, `${filteredRows.length} active jobs`],
+          ['Order Qty', `${n(totalQty)} pcs`, `${baseFilteredRows.length} active jobs`],
           ['Cutting Output', `${n(totalCut)} pcs`, 'Spread & cut'],
           ['Sewing Output', `${n(totalSewn)} pcs`, 'Line produced'],
           ['Packed & Ready', `${n(totalPacked)} pcs`, 'Cartons ready']
@@ -570,22 +570,22 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
       };
     }
     if (overview.slug === 'quality-stores') {
-      const clear = filteredRows.filter(r => /passed|released|clear/i.test(r.sectionStatus)).length;
+      const clear = baseFilteredRows.filter(r => /passed|released|clear/i.test(r.sectionStatus)).length;
       return {
         cards: [
-          ['Jobs Monitored', filteredRows.length, 'Filtered scope'],
+          ['Jobs Monitored', baseFilteredRows.length, 'Monitored scope'],
           ['Released / Clear', clear, 'Passed inspection'],
           ['Hold / Attention', attention, 'Under observation'],
-          ['Active QC Tasks', tasks.length, 'Action items']
+          ['Pending QC Tasks', tasks.length, 'Action items']
         ]
       };
     }
     if (overview.slug === 'yarn-fabric') {
-      const reqKg = filteredRows.reduce((s, r) => s + scalar(r.rawJob?.yarn?.yarnReqKg || 2500), 0);
-      const recKg = filteredRows.reduce((s, r) => s + scalar(r.rawJob?.yarn?.yarnReceivedKg || 2500), 0);
+      const reqKg = baseFilteredRows.reduce((s, r) => s + scalar(r.rawJob?.yarn?.yarnReqKg || 2500), 0);
+      const recKg = baseFilteredRows.reduce((s, r) => s + scalar(r.rawJob?.yarn?.yarnReceivedKg || 2500), 0);
       return {
         cards: [
-          ['Tracked Jobs', filteredRows.length, 'Filtered jobs'],
+          ['Tracked Jobs', baseFilteredRows.length, 'Active jobs'],
           ['Yarn Required', `${n(reqKg)} KG`, 'Requirement total'],
           ['Yarn In-House', `${n(recKg)} KG`, 'Received stock'],
           ['Material Gap', attention, 'Pending clearance']
@@ -594,13 +594,40 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
     }
     return {
       cards: [
-        ['Active Jobs', filteredRows.length, 'Filtered records'],
-        ['Total Order Qty', `${n(totalQty)} pcs`, 'Selected volume'],
+        ['Active Jobs', baseFilteredRows.length, 'Active records'],
+        ['Total Order Qty', `${n(totalQty)} pcs`, 'Scope volume'],
         ['Critical Items', attention, 'Attention required'],
-        ['Section Readiness', `${filteredRows.length ? pct(filteredRows.length - attention, filteredRows.length) : 100}%`, 'On-track rate']
+        ['Section Readiness', `${baseFilteredRows.length ? pct(baseFilteredRows.length - attention, baseFilteredRows.length) : 100}%`, 'Readiness rate']
       ]
     };
-  }, [overview.slug, filteredRows, tasks]);
+  }, [overview.slug, baseFilteredRows, tasks]);
+
+  // 2. DISPLAY FILTERED ROWS (Filters table when user clicks on a KPI card!)
+  const filteredRows = useMemo(() => {
+    if (cardFilterIndex === null) return baseFilteredRows;
+
+    return baseFilteredRows.filter(r => {
+      if (overview.slug === 'central-planning') {
+        if (cardFilterIndex === 0) return true;
+        if (cardFilterIndex === 1) return /released|approved/i.test(r.sectionStatus);
+        if (cardFilterIndex === 2) return !/released|approved/i.test(r.sectionStatus);
+        if (cardFilterIndex === 3) return true;
+      } else if (overview.slug === 'garment-production') {
+        if (cardFilterIndex === 1) return Boolean(r.rawJob?.cutting?.cuttingQty || r.orderQty);
+        if (cardFilterIndex === 2) return Boolean(r.isSewingRunning || r.rawJob?.sewing?.sewingActualQty);
+        if (cardFilterIndex === 3) return Boolean(r.rawJob?.finishing?.packingQty);
+      } else if (overview.slug === 'quality-stores') {
+        if (cardFilterIndex === 1) return /passed|released|clear/i.test(r.sectionStatus);
+        if (cardFilterIndex === 2) return /hold|attention|late|fail|preparing/i.test(String(r.sectionStatus || ''));
+        if (cardFilterIndex === 3) return r.isCritical;
+      } else if (overview.slug === 'yarn-fabric') {
+        if (cardFilterIndex === 3) return /hold|attention|late|fail|preparing/i.test(String(r.sectionStatus || ''));
+      } else {
+        if (cardFilterIndex === 2) return /hold|attention|late|fail|preparing/i.test(String(r.sectionStatus || '')) || r.isCritical;
+      }
+      return true;
+    });
+  }, [baseFilteredRows, cardFilterIndex, overview.slug]);
 
   // Chart Data Calculations (Dynamically recalculates on filter change!)
   const donutData = useMemo(() => {
@@ -1104,13 +1131,17 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
                   <tr
                     key={r.orderId}
                     style={{ background: idx % 2 === 0 ? '#fff' : '#fcfdfe', cursor: 'pointer' }}
-                    onClick={() => router.push(jobUrl)}
-                    title={`Click to open full details page for Job ${r.jobNo}`}
+                    onClick={() => { setSelectedJob(r); setModalTab('sizes'); }}
+                    title={`Click to open 360 View for Job ${r.jobNo}`}
                   >
-                    <td style={{ whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
-                      <Link href={jobUrl} className="job-link">
+                    <td style={{ whiteSpace: 'nowrap' }} onClick={e => { e.stopPropagation(); setSelectedJob(r); setModalTab('sizes'); }}>
+                      <button
+                        type="button"
+                        className="job-link"
+                        style={{ background: 'none', border: 0, padding: 0, font: 'inherit', cursor: 'pointer', textAlign: 'left' }}
+                      >
                         {displayJob}
-                      </Link>
+                      </button>
                     </td>
                     <td style={{ whiteSpace: 'nowrap', color: '#334155' }}>
                       {r.buyer}
@@ -1147,13 +1178,14 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
                       </span>
                     </td>
                     <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
-                      <Link
-                        href={jobUrl}
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedJob(r); setModalTab('sizes'); }}
                         className="btn btn-primary"
-                        style={{ padding: '3px 9px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', whiteSpace: 'nowrap', textDecoration: 'none' }}
+                        style={{ padding: '3px 9px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', whiteSpace: 'nowrap', cursor: 'pointer' }}
                       >
                         360 View ↗
-                      </Link>
+                      </button>
                     </td>
                   </tr>
                 );
@@ -1244,7 +1276,17 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
                   Buyer: <strong>{selectedJob.buyer}</strong> · Total Order: <strong>{n(selectedJob.orderQty)} pcs</strong> · Ex-Factory: <strong>{d2(selectedJob.exFactoryDate)}</strong> (Week {selectedJob.shipmentWeek}) · Merchandiser: <strong>{selectedJob.merchandiser}</strong>
                 </span>
               </div>
-              <button className="modal-close-btn" onClick={() => setSelectedJob(null)}>✕</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Link
+                  href={`/jobs/${encodeURIComponent(selectedJob.jobNo)}`}
+                  className="btn btn-secondary"
+                  style={{ fontSize: '11px', padding: '5px 11px', fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}
+                  target="_blank"
+                >
+                  Full Page ↗
+                </Link>
+                <button className="modal-close-btn" onClick={() => setSelectedJob(null)}>✕</button>
+              </div>
             </div>
 
             {/* TAB NAVIGATION */}

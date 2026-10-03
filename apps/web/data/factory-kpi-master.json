@@ -1,0 +1,365 @@
+{
+  "reportDate": "05.09.2026",
+  "buyerQuota": [
+    {
+      "team": "Team 1 (Ayub)",
+      "buyer": "ONLY - Carmakoma, Maternity",
+      "brand": "ONLY",
+      "subBrand": "Carmakoma / Maternity",
+      "monthlySalesQuotaPcs": 40000,
+      "offerDevQuota": 10,
+      "smsQuota": 15,
+      "othersQuota": 15,
+      "totalStyles": 40
+    },
+    {
+      "team": "Team 1 (Ayub)",
+      "buyer": "ONLY-OSB",
+      "brand": "ONLY",
+      "subBrand": "OSB",
+      "monthlySalesQuotaPcs": 100000,
+      "offerDevQuota": 20,
+      "smsQuota": 10,
+      "othersQuota": 35,
+      "totalStyles": 65
+    },
+    {
+      "team": "Team 1 (Ayub)",
+      "buyer": "ONLY-Play",
+      "brand": "ONLY",
+      "subBrand": "Play",
+      "monthlySalesQuotaPcs": 25000,
+      "offerDevQuota": 10,
+      "smsQuota": 10,
+      "othersQuota": 10,
+      "totalStyles": 30
+    },
+    {
+      "team": "Team 1 (Ayub)",
+      "buyer": "UTG-Even & Odd, Bonprix",
+      "brand": "UTG",
+      "subBrand": "Even & Odd, Bonprix, Carmakoma",
+      "monthlySalesQuotaPcs": 90000,
+      "offerDevQuota": 0,
+      "smsQuota": 0,
+      "othersQuota": 30,
+      "totalStyles": 30
+    },
+    {
+      "team": "Team 1 (Ayub)",
+      "buyer": "UTG-Anna Field, Zalando",
+      "brand": "UTG",
+      "subBrand": "Anna Field, Zalando, Hummel",
+      "monthlySalesQuotaPcs": 90000,
+      "offerDevQuota": 0,
+      "smsQuota": 0,
+      "othersQuota": 30,
+      "totalStyles": 30
+    },
+    {
+      "team": "Team 1 (Ayub)",
+      "buyer": "New Buyer-Stylent Global",
+      "brand": "Stylent Global",
+      "subBrand": "Kaporal, Fred Mello",
+      "monthlySalesQuotaPcs": 25000,
+      "offerDevQuota": 5,
+      "smsQuota": 0,
+      "othersQuota": 5,
+      "totalStyles": 10
+    },
+    {
+      "team": "Team 2 (Mahmud, Rizu)",
+      "buyer": "Name It - Basic Needs",
+      "brand": "Name It",
+      "subBrand": "Basic Needs",
+      "monthlySalesQuotaPcs": 130000,
+      "offerDevQuota": 10,
+      "smsQuota": 10,
+      "othersQuota": 40,
+      "totalStyles": 60
+    },
+    {
+      "team": "Team 2 (Mahmud, Rizu)",
+      "buyer": "Name It - LMTD, Boy",
+      "brand": "Name It",
+      "subBrand": "LMTD, Boy",
+      "monthlySalesQuotaPcs": 45000,
+      "offerDevQuota": 15,
+      "smsQuota": 10,
+      "othersQuota": 15,
+      "totalStyles": 40
+    },
+    {
+      "team": "Team 2 (Mahmud, Rizu)",
+      "buyer": "Name It - Express + Campaign",
+      "brand": "Name It",
+      "subBrand": "Express + Campaign",
+      "monthlySalesQuotaPcs": 80000,
+      "offerDevQuota": 20,
+      "smsQuota": 20,
+      "othersQuota": 30,
+      "totalStyles": 70
+    },
+    {
+      "team": "Team 2 (Mahmud, Rizu)",
+      "buyer": "Name It - NOOS",
+      "brand": "Name It",
+      "subBrand": "NOOS",
+      "monthlySalesQuotaPcs": 120000,
+      "offerDevQuota": 15,
+      "smsQuota": 20,
+      "othersQuota": 40,
+      "totalStyles": 75
+    },
+    {
+      "team": "Team 2 (Mahmud, Rizu)",
+      "buyer": "Name It - Baby + Girl + Guppy",
+      "brand": "Name It",
+      "subBrand": "Baby + Girl + Guppy",
+      "monthlySalesQuotaPcs": 125000,
+      "offerDevQuota": 55,
+      "smsQuota": 55,
+      "othersQuota": 50,
+      "totalStyles": 160
+    },
+    {
+      "team": "Team 4 (Pavel)",
+      "buyer": "Only&Sons - NOOS, VD, D2D",
+      "brand": "Only&Sons",
+      "subBrand": "NOOS, VD, D2D, License",
+      "monthlySalesQuotaPcs": 75000,
+      "offerDevQuota": 15,
+      "smsQuota": 20,
+      "othersQuota": 15,
+      "totalStyles": 50
+    },
+    {
+      "team": "Team 4 (Pavel)",
+      "buyer": "Only&Sons - Jersey/Sweat",
+      "brand": "Only&Sons",
+      "subBrand": "Jersey/Sweat - Main + Express",
+      "monthlySalesQuotaPcs": 50000,
+      "offerDevQuota": 15,
+      "smsQuota": 20,
+      "othersQuota": 20,
+      "totalStyles": 55
+    },
+    {
+      "team": "Team 4 (Pavel)",
+      "buyer": "Only&Sons Junior",
+      "brand": "Only&Sons",
+      "subBrand": "Junior",
+      "monthlySalesQuotaPcs": 15000,
+      "offerDevQuota": 5,
+      "smsQuota": 10,
+      "othersQuota": 5,
+      "totalStyles": 20
+    },
+    {
+      "team": "Team 5 (Russel)",
+      "buyer": "ONL - Jersey & Sweat",
+      "brand": "ONLY",
+      "subBrand": "Jersey & Sweat",
+      "monthlySalesQuotaPcs": 210000,
+      "offerDevQuota": 60,
+      "smsQuota": 60,
+      "othersQuota": 70,
+      "totalStyles": 190
+    },
+    {
+      "team": "Team 5 (Russel)",
+      "buyer": "ONLY - NOOS",
+      "brand": "ONLY",
+      "subBrand": "NOOS",
+      "monthlySalesQuotaPcs": 70000,
+      "offerDevQuota": 20,
+      "smsQuota": 15,
+      "othersQuota": 25,
+      "totalStyles": 60
+    },
+    {
+      "team": "Team 5 (Russel)",
+      "buyer": "ONLY - CS, Express",
+      "brand": "ONLY",
+      "subBrand": "CS, Express",
+      "monthlySalesQuotaPcs": 95000,
+      "offerDevQuota": 20,
+      "smsQuota": 20,
+      "othersQuota": 30,
+      "totalStyles": 70
+    },
+    {
+      "team": "Team 5 (Russel)",
+      "buyer": "ONLY - KIDS",
+      "brand": "ONLY",
+      "subBrand": "KIDS",
+      "monthlySalesQuotaPcs": 40000,
+      "offerDevQuota": 10,
+      "smsQuota": 30,
+      "othersQuota": 15,
+      "totalStyles": 55
+    },
+    {
+      "team": "Team 6 (Ismail Shahin)",
+      "buyer": "OVS - Woman Dept",
+      "brand": "OVS",
+      "subBrand": "Woman Dept-6198, 6140",
+      "monthlySalesQuotaPcs": 50000,
+      "offerDevQuota": 0,
+      "smsQuota": 0,
+      "othersQuota": 15,
+      "totalStyles": 15
+    },
+    {
+      "team": "Team 6 (Ismail Shahin)",
+      "buyer": "OVS - Girl Dept",
+      "brand": "OVS",
+      "subBrand": "Girl Dep-222, 6154",
+      "monthlySalesQuotaPcs": 20000,
+      "offerDevQuota": 0,
+      "smsQuota": 0,
+      "othersQuota": 10,
+      "totalStyles": 10
+    },
+    {
+      "team": "Team 6 (Ismail Shahin)",
+      "buyer": "OVS - UPIM",
+      "brand": "OVS",
+      "subBrand": "UPIM (Girl & Boy)",
+      "monthlySalesQuotaPcs": 60000,
+      "offerDevQuota": 0,
+      "smsQuota": 0,
+      "othersQuota": 20,
+      "totalStyles": 20
+    },
+    {
+      "team": "Team 6 (Ismail Shahin)",
+      "buyer": "OVS - Kids/Boy/Girl",
+      "brand": "OVS",
+      "subBrand": "Dept 903, 901, 227",
+      "monthlySalesQuotaPcs": 50000,
+      "offerDevQuota": 0,
+      "smsQuota": 0,
+      "othersQuota": 15,
+      "totalStyles": 15
+    },
+    {
+      "team": "Team 7 (Nazrul)",
+      "buyer": "New Look & T.M. Lewin",
+      "brand": "New Look",
+      "subBrand": "Womens, Mens, Leggings",
+      "monthlySalesQuotaPcs": 70000,
+      "offerDevQuota": 20,
+      "smsQuota": 0,
+      "othersQuota": 25,
+      "totalStyles": 45
+    },
+    {
+      "team": "Team 7 (Nazrul)",
+      "buyer": "GBX - Maurices & Guess",
+      "brand": "Maurices",
+      "subBrand": "Guess / Women's",
+      "monthlySalesQuotaPcs": 125000,
+      "offerDevQuota": 25,
+      "smsQuota": 0,
+      "othersQuota": 45,
+      "totalStyles": 70
+    },
+    {
+      "team": "Team 7 (Nazrul)",
+      "buyer": "ASOS - Miss Selfridge",
+      "brand": "Miss Selfridge",
+      "subBrand": "ASOS / Miss Selfridge",
+      "monthlySalesQuotaPcs": 30000,
+      "offerDevQuota": 10,
+      "smsQuota": 0,
+      "othersQuota": 10,
+      "totalStyles": 20
+    }
+  ],
+  "sampleCapacity": [
+    { "particular": "Salesman Sample", "capacityMonthPcs": 20000, "capacityMonthStyles": 325, "avgRcvd24": 20506, "avgAchieved24": 14423, "avgRcvd25": 18100 },
+    { "particular": "Development Sample", "capacityMonthPcs": 1000, "capacityMonthStyles": 350, "avgRcvd24": 320, "avgAchieved24": 345, "avgRcvd25": 419 },
+    { "particular": "Pre-Production Sample", "capacityMonthPcs": 1875, "capacityMonthStyles": 375, "avgRcvd24": 2464, "avgAchieved24": 1428, "avgRcvd25": 1958 },
+    { "particular": "Others (Fit/BPS/TOP/Size set)", "capacityMonthPcs": 1125, "capacityMonthStyles": 250, "avgRcvd24": 1963, "avgAchieved24": 1063, "avgRcvd25": 1744 }
+  ],
+  "departmentKpis": {
+    "hr": [
+      { "particular": "Worker Absenteeism Rate", "unit": "%", "avg2025": 6.16, "jan": 6.24, "feb": 4.86, "mar": 4.92, "apr": 5.46, "may": 5.16, "jun": 7.70, "jul": 7.46, "aug": 6.97, "avg2026": 6.10 },
+      { "particular": "Worker Migration Rate", "unit": "%", "avg2025": 3.04, "jan": 2.88, "feb": 1.48, "mar": 1.99, "apr": 2.88, "may": 1.25, "jun": 6.09, "jul": 4.36, "aug": 2.40, "avg2026": 2.92 },
+      { "particular": "Worker Happiness Index", "unit": "%", "avg2025": 65.65, "jan": 71.53, "feb": 70.00, "mar": 70.00, "apr": 68.03, "may": 70.00, "jun": 71.10, "jul": 76.07, "aug": 74.17, "avg2026": 71.36 }
+    ],
+    "sewing": [
+      { "particular": "Average Sewing SMV", "unit": "min", "avg2025": 9.92, "jan": 9.33, "feb": 9.05, "mar": 8.76, "apr": 9.84, "may": 9.69, "jun": 9.87, "jul": 10.44, "aug": 9.85, "avg2026": 9.60 },
+      { "particular": "Average MMR", "unit": "ratio", "avg2025": 2.66, "jan": 2.67, "feb": 2.59, "mar": 2.61, "apr": 2.63, "may": 2.59, "jun": 2.83, "jul": 2.76, "aug": 2.94, "avg2026": 2.70 },
+      { "particular": "Factory Sewing Production", "unit": "Pcs", "avg2025": 1570376, "jan": 1943268, "feb": 1455747, "mar": 1110512, "apr": 1644528, "may": 1528272, "jun": 1475853, "jul": 1490306, "aug": 1173904, "avg2026": 1477799 },
+      { "particular": "Factory Sewing Efficiency", "unit": "%", "avg2025": 69.63, "jan": 72.10, "feb": 75.70, "mar": 69.10, "apr": 69.70, "may": 66.20, "jun": 67.50, "jul": 67.90, "aug": 74.70, "avg2026": 70.36 },
+      { "particular": "Productivity / person / hour", "unit": "Pcs", "avg2025": 4.61, "jan": 4.71, "feb": 5.05, "mar": 4.58, "apr": 4.37, "may": 4.22, "jun": 4.11, "jul": 3.98, "aug": 4.75, "avg2026": 4.47 },
+      { "particular": "Productivity / machine / day", "unit": "Pcs", "avg2025": 56.66, "jan": 59.52, "feb": 59.45, "mar": 56.65, "apr": 54.23, "may": 59.01, "jun": 59.41, "jul": 53.39, "aug": 54.99, "avg2026": 57.08 },
+      { "particular": "Sewing Capturing NPT", "unit": "%", "avg2025": 62.40, "jan": 65.88, "feb": 71.94, "mar": 69.09, "apr": 75.09, "may": 70.57, "jun": 76.94, "jul": 76.27, "aug": 84.94, "avg2026": 73.84 },
+      { "particular": "Cut to Ship Loss (Garments)", "unit": "%", "avg2025": 2.83, "jan": 3.12, "feb": 2.47, "mar": 2.78, "apr": 2.20, "may": 2.41, "jun": 2.51, "jul": 2.56, "aug": 2.63, "avg2026": 2.59 }
+    ],
+    "cutting": [
+      { "particular": "Monthly Production", "unit": "Pcs", "avg2025": 1586299, "jan": 1869828, "feb": 1261951, "mar": 914807, "apr": 1810340, "may": 1417017, "jun": 1452892, "jul": 1354859, "aug": 1335210, "avg2026": 1427113 },
+      { "particular": "Monthly Efficiency", "unit": "%", "avg2025": 77.20, "jan": 80.22, "feb": 81.16, "mar": 78.47, "apr": 80.12, "may": 81.04, "jun": 79.52, "jul": 79.68, "aug": 82.17, "avg2026": 80.30 },
+      { "particular": "Fabric Wastage", "unit": "%", "avg2025": 2.73, "jan": 2.79, "feb": 2.71, "mar": 2.89, "apr": 2.75, "may": 2.55, "jun": 2.60, "jul": 2.50, "aug": 2.49, "avg2026": 2.66 }
+    ],
+    "quality": [
+      { "particular": "In-Line DHU (Internal)", "unit": "DHU", "avg2025": 10.86, "jan": 11.49, "feb": 9.17, "mar": 9.98, "apr": 10.29, "may": 9.69, "jun": 9.58, "jul": 6.38, "aug": 9.12, "avg2026": 9.46 },
+      { "particular": "End Line Audit OQL", "unit": "%", "avg2025": 9.74, "jan": 9.74, "feb": 8.07, "mar": 7.78, "apr": 7.78, "may": 7.72, "jun": 7.54, "jul": 7.85, "aug": 7.88, "avg2026": 8.05 },
+      { "particular": "End Line Sewing DHU", "unit": "DHU", "avg2025": 3.50, "jan": 3.37, "feb": 3.41, "mar": 3.43, "apr": 3.54, "may": 3.45, "jun": 3.21, "jul": 3.22, "aug": 3.41, "avg2026": 3.37 },
+      { "particular": "Pre-Final DHU", "unit": "DHU", "avg2025": 6.63, "jan": 4.92, "feb": 4.70, "mar": 4.45, "apr": 4.53, "may": 4.22, "jun": 4.13, "jul": 4.41, "aug": 5.61, "avg2026": 4.62 },
+      { "particular": "Final DHU", "unit": "DHU", "avg2025": 6.86, "jan": 5.68, "feb": 5.27, "mar": 6.39, "apr": 6.41, "may": 5.54, "jun": 5.74, "jul": 5.85, "aug": 6.63, "avg2026": 5.94 },
+      { "particular": "Styles Checked (FRI)", "unit": "Styles", "avg2025": 402, "jan": 575, "feb": 311, "mar": 281, "apr": 461, "may": 484, "jun": 414, "jul": 420, "aug": 274, "avg2026": 403 }
+    ],
+    "printing": [
+      { "particular": "Printing Production (Panels)", "unit": "Pcs", "avg2025": 931945, "jan": 1071481, "feb": 890903, "mar": 519224, "apr": 856781, "may": 809874, "jun": 732383, "jul": 876129, "aug": 856283, "avg2026": 826632 },
+      { "particular": "Printing Efficiency", "unit": "%", "avg2025": 84.93, "jan": 91.29, "feb": 91.47, "mar": 91.75, "apr": 90.00, "may": 91.00, "jun": 92.00, "jul": 92.00, "aug": 94.00, "avg2026": 91.69 },
+      { "particular": "Printing Lost Time", "unit": "%", "avg2025": 15.07, "jan": 8.71, "feb": 8.53, "mar": 8.25, "apr": 10.00, "may": 9.00, "jun": 8.00, "jul": 8.00, "aug": 6.00, "avg2026": 8.31 },
+      { "particular": "Defective %", "unit": "%", "avg2025": 0.69, "jan": 0.51, "feb": 0.79, "mar": 0.81, "apr": 0.83, "may": 0.72, "jun": 0.72, "jul": 0.65, "aug": 0.65, "avg2026": 0.71 }
+    ],
+    "knitting": [
+      { "particular": "Knitting Production", "unit": "kg", "avg2025": 214988, "jan": 205705, "feb": 168736, "mar": 240894, "apr": 208842, "may": 161661, "jun": 198577, "jul": 241206, "aug": 223647, "avg2026": 206159 },
+      { "particular": "On Time Delivery (T&A)", "unit": "%", "avg2025": 73.08, "jan": 81.0, "feb": 75.0, "mar": 68.0, "apr": 61.0, "may": 68.0, "jun": 71.0, "jul": 78.0, "aug": 75.0, "avg2026": 72.1 },
+      { "particular": "Knitting Efficiency", "unit": "%", "avg2025": 38.0, "jan": 40.0, "feb": 32.0, "mar": 37.0, "apr": 37.0, "may": 29.0, "jun": 39.0, "jul": 36.0, "aug": 41.0, "avg2026": 36.4 }
+    ],
+    "dyeing": [
+      { "particular": "Dyeing Production", "unit": "kg", "avg2025": 279034, "jan": 305104, "feb": 228776, "mar": 352006, "apr": 332185, "may": 253719, "jun": 268688, "jul": 314004, "aug": 292001, "avg2026": 293310 },
+      { "particular": "Right First Time (R.F.T)", "unit": "%", "avg2025": 69.42, "jan": 68.50, "feb": 68.00, "mar": 65.00, "apr": 69.00, "may": 68.00, "jun": 81.00, "jul": 68.00, "aug": 59.00, "avg2026": 68.3 },
+      { "particular": "Average Load Percentage", "unit": "%", "avg2025": 64.67, "jan": 64.0, "feb": 65.0, "mar": 67.0, "apr": 64.0, "may": 66.0, "jun": 67.0, "jul": 68.0, "aug": 67.0, "avg2026": 66.0 },
+      { "particular": "On Time Delivery (T&A)", "unit": "%", "avg2025": 31.92, "jan": 32.0, "feb": 30.0, "mar": 30.0, "apr": 22.0, "may": 24.0, "jun": 22.0, "jul": 20.0, "aug": 27.0, "avg2026": 25.9 }
+    ],
+    "sample": [
+      { "particular": "Sample Production", "unit": "Pcs", "avg2025": 18218, "jan": 20637, "feb": 12742, "mar": 14485, "apr": 17438, "may": 14674, "jun": 15106, "jul": 16431, "aug": 12584, "avg2026": 15512 },
+      { "particular": "Sample Rejection", "unit": "%", "avg2025": 0.94, "jan": 1.04, "feb": 2.37, "mar": 0.32, "apr": 0.82, "may": 0.23, "jun": 0.36, "jul": 0.41, "aug": 0.55, "avg2026": 0.76 },
+      { "particular": "On Time Delivery", "unit": "%", "avg2025": 43.33, "jan": 64.0, "feb": 55.0, "mar": 42.0, "apr": 36.0, "may": 40.0, "jun": 40.0, "jul": 47.0, "aug": 46.0, "avg2026": 46.25 }
+    ],
+    "kaizen": [
+      { "particular": "No. of Kaizen Projects", "unit": "Projects", "avg2025": 9, "jan": 34, "feb": 20, "mar": 18, "apr": 33, "may": 29, "jun": 59, "jul": 35, "aug": 59, "avg2026": 35.88 }
+    ]
+  },
+  "knittingLostTimeReasons": [
+    { "reason": "Program N/A", "percentage": 33.7 },
+    { "reason": "Design Change", "percentage": 7.5 },
+    { "reason": "Program Change", "percentage": 3.6 },
+    { "reason": "Machine Clean", "percentage": 3.4 },
+    { "reason": "Yarn Breakage", "percentage": 2.6 },
+    { "reason": "M/C Servicing", "percentage": 2.1 },
+    { "reason": "M/c Problem", "percentage": 1.9 },
+    { "reason": "Decision Pending", "percentage": 1.0 },
+    { "reason": "Yarn N/A", "percentage": 0.4 },
+    { "reason": "Power Problem", "percentage": 0.3 },
+    { "reason": "Quality Issue", "percentage": 0.3 },
+    { "reason": "Needle/Sinker Broken", "percentage": 0.1 }
+  ],
+  "fobAnalytics": [
+    { "buyer": "ONLY", "avgFob": 5.40, "totalQty": 540000, "totalValue": 2916000, "topItem": "Sweatshirt / Hoodie", "itemFob": 5.85 },
+    { "buyer": "Name It", "avgFob": 4.65, "totalQty": 500000, "totalValue": 2325000, "topItem": "T-Shirt / Tee", "itemFob": 4.10 },
+    { "buyer": "OVS", "avgFob": 4.90, "totalQty": 200000, "totalValue": 980000, "topItem": "Jersey Top", "itemFob": 4.75 },
+    { "buyer": "UTG", "avgFob": 5.15, "totalQty": 180000, "totalValue": 927000, "topItem": "Pants / Joggers", "itemFob": 5.90 },
+    { "buyer": "Only&Sons", "avgFob": 5.60, "totalQty": 140000, "totalValue": 784000, "topItem": "Heavyweight Sweat", "itemFob": 6.20 },
+    { "buyer": "New Look", "avgFob": 4.35, "totalQty": 70000, "totalValue": 304500, "topItem": "Leggings / Tops", "itemFob": 4.25 },
+    { "buyer": "Maurices", "avgFob": 5.25, "totalQty": 125000, "totalValue": 656250, "topItem": "Dress / Romper", "itemFob": 5.70 },
+    { "buyer": "Miss Selfridge", "avgFob": 5.80, "totalQty": 30000, "totalValue": 174000, "topItem": "Fashion Top", "itemFob": 5.80 }
+  ]
+}

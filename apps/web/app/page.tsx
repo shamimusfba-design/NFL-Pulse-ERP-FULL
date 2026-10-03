@@ -265,11 +265,16 @@ export default function Dashboard() {
 
   // Filtered rows for the Management Register
   const filteredRows = useMemo(() => {
-    return allManagementRows.filter((r: any) => {
+    const list = allManagementRows.filter((r: any) => {
       // Card selection filter
       if (selectedFilterType === 'CRITICAL' && !r.isCritical) return false;
       if (selectedFilterType === 'RISK' && !r.isShipmentRisk) return false;
       if (selectedFilterType === 'SEWING' && !r.isSewingRunning) return false;
+      if (selectedFilterType === 'PENDING_WORK') {
+        const pendingJobNos = new Set(tasks.map(t => String(t.order?.jobNo || '')));
+        const hasPendingStatus = r.presentStatus?.includes('Hold') || r.presentStatus?.includes('Preparing') || r.presentStatus?.includes('Not Ready') || r.isCritical;
+        if (!pendingJobNos.has(String(r.jobNo)) && !hasPendingStatus) return false;
+      }
       if (selectedFilterType.startsWith('BUYER:') && r.buyer !== selectedFilterType.replace('BUYER:', '')) return false;
 
       // Table controls filter (if week is set, prioritize week to prevent 0-result month conflict)
@@ -286,7 +291,12 @@ export default function Dashboard() {
       }
       return true;
     });
-  }, [allManagementRows, selectedFilterType, weekFilter, monthFilter, floorUnitFilter, merchFilter, presentStatusFilter, buyerFilter, searchQuery]);
+
+    if (selectedFilterType === 'ORDER_QTY') {
+      return [...list].sort((a: any, b: any) => Number(b.orderQty || 0) - Number(a.orderQty || 0));
+    }
+    return list;
+  }, [allManagementRows, selectedFilterType, weekFilter, monthFilter, floorUnitFilter, merchFilter, presentStatusFilter, buyerFilter, searchQuery, tasks]);
 
   // Options for filter selects
   const weekOptions = useMemo(() => (Array.from(new Set(allManagementRows.map((r: any) => r.shipmentWeek))).filter(Boolean) as string[]).sort(), []);
@@ -373,17 +383,17 @@ export default function Dashboard() {
   }, [selectedJob]);
 
   return (
-    <Shell title="Management Overview" eyebrow="Executive dashboard · connected operational data">
+    <Shell title="Management Overview" eyebrow="Executive Overview">
       {/* Dashboard Hero */}
       <section className="dashboard-hero">
         <div>
-          <div className="hero-kicker">Factory control at a glance</div>
-          <h2>Orders, capacity, production, quality and critical actions — one view.</h2>
-          <p>Every chart is driven by the same operational records used by the working modules.</p>
+          <div className="hero-kicker">Operations Dashboard</div>
+          <h2>Factory Overview & Order Register</h2>
+          <p>Real-time order pipeline, floor execution, and risk tracking.</p>
         </div>
         <div className="hero-actions">
-          <Link className="btn btn-primary" href="/modules/job-360">Open Job 360</Link>
-          <Link className="btn btn-ghost" href="/tasks">Open My Tasks</Link>
+          <Link className="btn btn-primary" href="/modules/job-360">Job 360</Link>
+          <Link className="btn btn-ghost" href="/tasks">Tasks Board</Link>
         </div>
       </section>
 
@@ -396,40 +406,47 @@ export default function Dashboard() {
           style={{ cursor: 'pointer', transition: 'all .2s ease', display: 'flex', flexDirection: 'column' }}
           title="Click to view all confirmed jobs"
         >
-          <div className="metric-label">
+          <div className="metric-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>Confirmed Jobs</span>
+            {selectedFilterType === 'ALL' && <span style={{ fontSize: '10px', background: '#2563eb', color: '#fff', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>}
           </div>
           <div className="metric-value">{loading ? '…' : activeOrdersCount}</div>
-          <div className="metric-foot">Click to filter all</div>
+          <div className="metric-foot">All active orders</div>
         </div>
 
         {/* Card 2: Order Qty */}
         <div
-          onClick={() => handleSelectCardFilter('ALL', 'Total Order Volume')}
-          className="metric-card"
+          onClick={() => handleSelectCardFilter('ORDER_QTY', 'Orders by Volume')}
+          className={`metric-card ${selectedFilterType === 'ORDER_QTY' ? 'selected-kpi-card' : ''}`}
           style={{ cursor: 'pointer', transition: 'all .2s ease', display: 'flex', flexDirection: 'column' }}
-          title="Total order volume"
+          title="Click to sort by order volume"
         >
-          <div className="metric-label">
+          <div className="metric-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>Order Qty</span>
+            {selectedFilterType === 'ORDER_QTY' && <span style={{ fontSize: '10px', background: '#0284c7', color: '#fff', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>SORTED</span>}
           </div>
           <div className="metric-value">{loading ? '…' : totalQty.toLocaleString()}</div>
-          <div className="metric-foot">pcs total volume</div>
+          <div className="metric-foot">Total volume (pcs)</div>
         </div>
 
-        {/* Card 3: Pending Tasks */}
-        <Link
-          href="/tasks"
-          className="metric-card accent-amber"
-          style={{ cursor: 'pointer', transition: 'all .2s ease', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column' }}
-          title="Click to open My Tasks"
+        {/* Card 3: Pending Work (Click to filter list to pending items) */}
+        <div
+          onClick={() => handleSelectCardFilter('PENDING_WORK', 'Pending Work & Tasks')}
+          className={`metric-card accent-amber ${selectedFilterType === 'PENDING_WORK' ? 'selected-kpi-card' : ''}`}
+          style={{ cursor: 'pointer', transition: 'all .2s ease', display: 'flex', flexDirection: 'column', boxShadow: selectedFilterType === 'PENDING_WORK' ? '0 0 0 2px #d97706' : undefined }}
+          title="Click to filter 5 pending work items"
         >
-          <div className="metric-label">
-            <span>My Pending Tasks</span>
+          <div className="metric-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>Pending Work</span>
+            {selectedFilterType === 'PENDING_WORK' ? (
+              <span style={{ fontSize: '10px', background: '#d97706', color: '#fff', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>
+            ) : (
+              <span style={{ fontSize: '10px', background: '#fef3c7', color: '#92400e', padding: '1px 5px', borderRadius: '4px', fontWeight: 700 }}>5 items</span>
+            )}
           </div>
-          <div className="metric-value">{tasks.length}</div>
-          <div className="metric-foot">Role-based actions</div>
-        </Link>
+          <div className="metric-value" style={{ color: '#d97706' }}>{tasks.length}</div>
+          <div className="metric-foot">Action items queue</div>
+        </div>
 
         {/* Card 4: High / Critical Attention */}
         <div
@@ -438,11 +455,12 @@ export default function Dashboard() {
           style={{ cursor: 'pointer', transition: 'all .2s ease', display: 'flex', flexDirection: 'column', boxShadow: selectedFilterType === 'CRITICAL' ? '0 0 0 2px #dc2626' : undefined }}
           title="Click to filter High / Critical Risk Jobs"
         >
-          <div className="metric-label">
-            <span>High / Critical</span>
+          <div className="metric-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>Critical Items</span>
+            {selectedFilterType === 'CRITICAL' && <span style={{ fontSize: '10px', background: '#dc2626', color: '#fff', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>}
           </div>
           <div className="metric-value" style={{ color: '#dc2626' }}>{urgent.length || 3}</div>
-          <div className="metric-foot">Click to filter critical</div>
+          <div className="metric-foot">Immediate attention</div>
         </div>
 
         {/* Card 5: Shipment Risk Jobs */}
@@ -452,11 +470,12 @@ export default function Dashboard() {
           style={{ cursor: 'pointer', transition: 'all .2s ease', display: 'flex', flexDirection: 'column', boxShadow: selectedFilterType === 'RISK' ? '0 0 0 2px #ea580c' : undefined }}
           title="Click to filter delivery risk jobs"
         >
-          <div className="metric-label">
-            <span>Shipment Risk</span>
+          <div className="metric-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>Delivery Risk</span>
+            {selectedFilterType === 'RISK' && <span style={{ fontSize: '10px', background: '#ea580c', color: '#fff', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>}
           </div>
           <div className="metric-value" style={{ color: riskCount ? '#e11d48' : '#10b981' }}>{riskCount || '48'}</div>
-          <div className="metric-foot">Click to filter risk</div>
+          <div className="metric-foot">Shipment watch</div>
         </div>
 
         {/* Card 6: Sewing Achievement */}
@@ -466,11 +485,12 @@ export default function Dashboard() {
           style={{ cursor: 'pointer', transition: 'all .2s ease', display: 'flex', flexDirection: 'column', boxShadow: selectedFilterType === 'SEWING' ? '0 0 0 2px #16a34a' : undefined }}
           title="Click to filter sewing floor jobs"
         >
-          <div className="metric-label">
+          <div className="metric-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>Sewing Output</span>
+            {selectedFilterType === 'SEWING' && <span style={{ fontSize: '10px', background: '#16a34a', color: '#fff', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>}
           </div>
           <div className="metric-value" style={{ color: '#16a34a' }}>{sewingProd.toLocaleString()} pcs</div>
-          <div className="metric-foot">{achievement}% efficiency rate</div>
+          <div className="metric-foot">{achievement}% efficiency</div>
         </div>
       </section>
 
@@ -480,10 +500,10 @@ export default function Dashboard() {
         <div className="panel">
           <div className="panel-head">
             <div>
-              <div className="panel-title">Buyer-wise Order Position</div>
-              <div className="panel-sub">Click any buyer bar to filter the dashboard and table below</div>
+              <div className="panel-title">Buyer Order Position</div>
+              <div className="panel-sub">Volume breakdown by customer</div>
             </div>
-            <span className="status-pill neutral">Click to Filter</span>
+            <span className="status-pill neutral">Select Buyer</span>
           </div>
           <div className="buyer-bars">
             {buyers.map(([name, value]: [string, number]) => {
@@ -515,10 +535,10 @@ export default function Dashboard() {
         <div className="panel">
           <div className="panel-head">
             <div>
-              <div className="panel-title">Capacity Heatmap</div>
-              <div className="panel-sub">Configured unit by section · Slot 1 / 2 / 3</div>
+              <div className="panel-title">Section Capacity</div>
+              <div className="panel-sub">Line loading by department</div>
             </div>
-            <Link className="text-link" href="/modules/capacity">Open planning →</Link>
+            <Link className="text-link" href="/modules/capacity">Planning →</Link>
           </div>
           {heat ? (
             <div className="heatmap-table">
@@ -535,7 +555,7 @@ export default function Dashboard() {
               ))}
             </div>
           ) : (
-            <div className="empty-state compact"><strong>Heatmap loads for Planning / Management access</strong></div>
+            <div className="empty-state compact"><strong>Heatmap loading…</strong></div>
           )}
         </div>
       </section>
@@ -549,19 +569,70 @@ export default function Dashboard() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontSize: '13px' }}>🎯</span>
             <span style={{ fontSize: '12px', color: '#1e40af', fontWeight: 700 }}>
-              Filtered by Card: <u>{selectedFilterLabel}</u> ({filteredRows.length.toLocaleString()} matching jobs)
+              Filtered by: <u>{selectedFilterLabel}</u> ({filteredRows.length.toLocaleString()} matching jobs)
             </span>
           </div>
           <button
+            type="button"
             onClick={() => { setSelectedFilterType('ALL'); setSelectedFilterLabel('All Confirmed Jobs'); }}
             style={{
               border: 0, background: '#2563eb', color: '#fff', fontSize: '11px',
-              fontWeight: 700, padding: '3px 10px', borderRadius: '5px', cursor: 'pointer'
+              fontWeight: 700, padding: '4px 12px', borderRadius: '5px', cursor: 'pointer'
             }}
           >
-            Clear Card Filter ✕
+            Clear Filter ✕
           </button>
         </div>
+      )}
+
+      {/* INTERACTIVE PENDING WORK LIST (Shown when Pending Work is selected) */}
+      {selectedFilterType === 'PENDING_WORK' && (
+        <section className="panel" style={{ margin: '8px 0 14px', border: '1px solid #fbbf24', borderRadius: '12px', background: '#fffbeb', padding: '14px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '16px' }}>⚡</span>
+              <strong style={{ fontSize: '13px', color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Pending Work Queue ({tasks.length} Action Items)</strong>
+            </div>
+            <Link href="/tasks" className="btn btn-secondary btn-compact" style={{ background: '#fff', borderColor: '#d97706', color: '#b45309' }}>View All Tasks →</Link>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '10px' }}>
+            {tasks.map((t: any) => (
+              <div key={t.id} style={{ background: '#fff', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '10px', fontWeight: 800, padding: '2px 6px', borderRadius: '4px', background: t.priority === 'CRITICAL' ? '#fee2e2' : '#fef3c7', color: t.priority === 'CRITICAL' ? '#991b1b' : '#92400e' }}>
+                    {t.priority}
+                  </span>
+                  <span style={{ fontSize: '10px', color: '#64748b' }}>Due: {t.dueAt}</span>
+                </div>
+                <strong style={{ fontSize: '12px', color: '#0f172a' }}>{t.title}</strong>
+                <div style={{ fontSize: '11px', color: '#475569', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Job #{t.order?.jobNo} · {t.order?.buyer?.name}</span>
+                  <span style={{ textTransform: 'capitalize', color: '#2563eb', fontWeight: 600 }}>{t.module}</span>
+                </div>
+                <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const found = allManagementRows.find((r: any) => r.jobNo === t.order?.jobNo);
+                      if (found) setSelectedJob(found);
+                    }}
+                    className="btn btn-secondary btn-compact"
+                    style={{ flex: 1, padding: '4px 6px', fontSize: '11px' }}
+                  >
+                    360 View
+                  </button>
+                  <Link
+                    href={`/modules/${t.module}`}
+                    className="btn btn-primary btn-compact"
+                    style={{ flex: 1, padding: '4px 6px', fontSize: '11px', textAlign: 'center', textDecoration: 'none' }}
+                  >
+                    Open Section
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
       {/* FULL OPERATIONAL REGISTER & MASTER DATA TABLE */}
@@ -800,13 +871,17 @@ export default function Dashboard() {
                   <tr
                     key={r.orderId}
                     style={{ background: idx % 2 === 0 ? '#fff' : '#fcfdfe', cursor: 'pointer' }}
-                    onClick={() => router.push(jobUrl)}
-                    title={`Click to open 360 view for Job ${r.jobNo}`}
+                    onClick={() => { setSelectedJob(r); setModalTab('sizes'); }}
+                    title={`Click to open 360 View for Job ${r.jobNo}`}
                   >
-                    <td style={{ whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
-                      <Link href={jobUrl} className="job-link">
+                    <td style={{ whiteSpace: 'nowrap' }} onClick={e => { e.stopPropagation(); setSelectedJob(r); setModalTab('sizes'); }}>
+                      <button
+                        type="button"
+                        className="job-link"
+                        style={{ background: 'none', border: 0, padding: 0, font: 'inherit', cursor: 'pointer', textAlign: 'left' }}
+                      >
                         {displayJob}
-                      </Link>
+                      </button>
                     </td>
                     <td style={{ whiteSpace: 'nowrap', color: '#334155' }}>
                       {r.buyer}
@@ -843,13 +918,14 @@ export default function Dashboard() {
                       </span>
                     </td>
                     <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
-                      <Link
-                        href={jobUrl}
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedJob(r); setModalTab('sizes'); }}
                         className="btn btn-primary"
-                        style={{ padding: '3px 9px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', whiteSpace: 'nowrap', textDecoration: 'none' }}
+                        style={{ padding: '3px 9px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', whiteSpace: 'nowrap', cursor: 'pointer' }}
                       >
                         360 View ↗
-                      </Link>
+                      </button>
                     </td>
                   </tr>
                 );
@@ -958,7 +1034,17 @@ export default function Dashboard() {
                   Buyer: <strong>{selectedJob.buyer}</strong> · Total Order: <strong>{n(selectedJob.orderQty)} pcs</strong> · Ex-Factory: <strong>{d2(selectedJob.exFactoryDate)}</strong> (Week {selectedJob.shipmentWeek}) · Merchandiser: <strong>{selectedJob.merchandiser}</strong>
                 </span>
               </div>
-              <button className="modal-close-btn" onClick={() => setSelectedJob(null)}>✕</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Link
+                  href={`/jobs/${encodeURIComponent(selectedJob.jobNo)}`}
+                  className="btn btn-secondary"
+                  style={{ fontSize: '11px', padding: '5px 11px', fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}
+                  target="_blank"
+                >
+                  Full Page ↗
+                </Link>
+                <button className="modal-close-btn" onClick={() => setSelectedJob(null)}>✕</button>
+              </div>
             </div>
 
             {/* TAB NAVIGATION */}

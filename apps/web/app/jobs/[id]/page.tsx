@@ -413,20 +413,20 @@ function JobDetailContent() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
                 <h2 style={{ fontSize: '17px', fontWeight: 900, color: '#0f172a', margin: '0 0 2px' }}>
-                  📏 Size-Wise Order Breakdown & Destination PO Allocation
+                  📏 Size & Destination PO Allocation
                 </h2>
                 <span style={{ fontSize: '11.5px', color: '#64748b' }}>
-                  Imported from Buyer PO Pack Sheet · Size breakdown is captured at Order Entry and verified upon Ex-Factory Shipment
+                  PO breakdown and destination allocation
                 </span>
               </div>
               <span className="status-pill ok" style={{ fontWeight: 800 }}>Total Order: {n(job.orderQty)} pcs</span>
             </div>
 
             {/* Standard Factory Operating Flow Notice */}
-            <div style={{ padding: '10px 14px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', fontSize: '12px', color: '#1e40af', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '18px' }}>ℹ️</span>
+            <div style={{ padding: '8px 12px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', fontSize: '11.5px', color: '#1e40af', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '15px' }}>ℹ️</span>
               <div>
-                <strong style={{ fontWeight: 800 }}>Factory Standard Flow:</strong> Size-wise breakdown is imported during PO Order Entry and finalized at Ex-Factory packing list. Intermediate floors (Cutting, Sewing, Finishing) record aggregate daily/shift batch totals.
+                <strong>PO Allocation:</strong> Captured from buyer pack sheet; verified against ex-factory packing list.
               </div>
             </div>
 

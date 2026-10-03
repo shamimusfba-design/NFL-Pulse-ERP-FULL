@@ -118,49 +118,121 @@ export default function MerchandisingFollowUp(){
     }catch(e:any){setError(e.message);}finally{setRevisionSaving(false);}
   }
 
-  return <Shell title="Bulk Merchandising Follow-up" eyebrow="One follow-up sheet · merchandising actions + production progress">
-    <section className="module-hero merchandising-hero"><div><span className="status-pill">Live foundation</span><h2>My Job Follow-up</h2><p>Merchandising checkpoints, approved planning dates and section-wise production quantities stay in one sheet. Merchandising updates only its own action fields; production quantities come from source sections.</p></div><div className="module-actions"><a className="btn btn-primary" href="/orders/new">+ Order Entry / PO Import</a><a className="btn btn-secondary" href="/modules/production-lots">PO / Market Lots</a><a className="btn btn-secondary" href="/modules/forms-print">Company Forms</a><a className="btn btn-secondary" href="/tasks">My Pending Tasks</a></div></section>
+  return <Shell title="Bulk Merchandising Follow-up" eyebrow="Merchandising Operations">
+    <section className="module-hero merchandising-hero">
+      <div>
+        <span className="status-pill">Order Execution</span>
+        <h2>Bulk Merchandising Follow-up</h2>
+        <p>Production milestones, approved T&A dates, and section execution quantities.</p>
+      </div>
+      <div className="module-actions">
+        <a className="btn btn-primary" href="/orders/new">+ Order Entry</a>
+        <a className="btn btn-secondary" href="/modules/production-lots">Production Lots</a>
+        <a className="btn btn-secondary" href="/modules/forms-print">Company Forms</a>
+        <a className="btn btn-secondary" href="/tasks">Pending Tasks</a>
+      </div>
+    </section>
 
-    <div className="followup-legend"><span><i className="action-dot done"/> Done / OK</span><span><i className="action-dot pending"/> Pending</span><span><i className="action-dot overdue"/> Overdue / Issue</span><span><i className="action-dot na"/> N/A</span><strong>File Handover, Trims In-house and Sewing Start plan dates will auto-flow from approved Time & Action.</strong></div>
-    {saved&&<div className="notice success-notice">{saved}</div>}{error&&<div className="notice">{error}</div>}
+    <div className="followup-legend">
+      <span><i className="action-dot done"/> Done</span>
+      <span><i className="action-dot pending"/> Pending</span>
+      <span><i className="action-dot overdue"/> Late</span>
+      <span><i className="action-dot na"/> N/A</span>
+      <strong>T&A Milestones Auto-Synced</strong>
+    </div>
+    {saved&&<div className="notice success-notice">{saved}</div>}
+    {error&&<div className="notice">{error}</div>}
 
     <section className="panel followup-panel">
-      <div className="panel-head"><div><div className="panel-title">Merchandising Follow-up Sheet</div><div className="panel-sub">Buyer short code stays inside Job No; all other fields remain narrow, separate columns.</div></div><span className="status-pill neutral">{loading?'Loading…':`${rows.length}/${allRows.length} style rows`}</span></div>
-      <div className="section-filter-bar merch-filter-bar"><label><span>Buyer</span><select value={buyerFilter} onChange={e=>setBuyerFilter(e.target.value)}><option value="ALL">All</option>{buyerOptions.map(x=><option key={x} value={x}>{x}</option>)}</select></label><label className="filter-grow"><span>Job / Style / Item</span><input value={jobQuery} onChange={e=>setJobQuery(e.target.value)} placeholder="Search…"/></label><label><span>Present Status</span><select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="ALL">All</option>{statusOptions.map(x=><option key={x}>{x}</option>)}</select></label></div>
+      <div className="panel-head">
+        <div>
+          <div className="panel-title">Bulk Merchandising Sheet</div>
+          <div className="panel-sub">Order breakdown & live section balances</div>
+        </div>
+        <span className="status-pill neutral">{loading?'Loading…':`${rows.length}/${allRows.length} Styles`}</span>
+      </div>
+      <div className="section-filter-bar merch-filter-bar">
+        <label><span>Buyer</span><select value={buyerFilter} onChange={e=>setBuyerFilter(e.target.value)}><option value="ALL">All Buyers</option>{buyerOptions.map(x=><option key={x} value={x}>{x}</option>)}</select></label>
+        <label className="filter-grow"><span>Job / Style / Item</span><input value={jobQuery} onChange={e=>setJobQuery(e.target.value)} placeholder="Search job, style, or item…"/></label>
+        <label><span>Status</span><select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="ALL">All Status</option>{statusOptions.map(x=><option key={x}>{x}</option>)}</select></label>
+      </div>
       <div className="wide-table-wrap merch-followup-wrap">
         <table className="table merch-followup-table">
           <thead><tr>
-            <th className="sticky-col c1">Buyer Job No</th><th className="sticky-col c2">Style No</th><th className="sticky-col c3">Item Picture</th>
-            <th>Order Qty</th><th>Color × Size</th><th>FOB Price</th><th>CCD / Shipment</th>
-            <th>File Handover Date</th><th>Trims In-house Date</th><th>Sewing Start Date</th>
-            <th>Merchandising Actions</th><th>Documents / Print</th><th>Actions</th>
-            <th>Fabric Required</th><th>Knitting Qty</th><th>Knitting Balance</th><th>Dyeing Qty</th><th>Dyeing Balance</th><th>Cutting Qty</th><th>Cutting Balance</th><th>Print Qty</th><th>Print Balance</th><th>Embroidery Qty</th><th>Embroidery Balance</th><th>Input Qty</th><th>Input Balance</th><th>Sewing Qty</th><th>Sewing Balance</th>
-            <th>Present Status</th><th>Remarks</th>
+            <th className="sticky-col c1">Buyer<br />Job No</th>
+            <th className="sticky-col c2">Style<br />No</th>
+            <th className="sticky-col c3">Item<br />Image</th>
+            <th>Order<br />Qty</th>
+            <th>Color ×<br />Size</th>
+            <th>FOB<br />Price</th>
+            <th>CCD /<br />Shipment</th>
+            <th>File Handover<br />Plan</th>
+            <th>Trims In-house<br />Plan</th>
+            <th>Sewing Start<br />Plan</th>
+            <th>Merchandising<br />Actions</th>
+            <th>Documents<br />& Forms</th>
+            <th>Row<br />Actions</th>
+            <th>Fabric<br />Req (kg)</th>
+            <th>Knitting<br />Qty</th>
+            <th>Knitting<br />Balance</th>
+            <th>Dyeing<br />Qty</th>
+            <th>Dyeing<br />Balance</th>
+            <th>Cutting<br />Qty</th>
+            <th>Cutting<br />Balance</th>
+            <th>Print<br />Qty</th>
+            <th>Print<br />Balance</th>
+            <th>Emb.<br />Qty</th>
+            <th>Emb.<br />Balance</th>
+            <th>Input<br />Qty</th>
+            <th>Input<br />Balance</th>
+            <th>Sewing<br />Qty</th>
+            <th>Sewing<br />Balance</th>
+            <th>Present<br />Status</th>
+            <th>Remarks</th>
           </tr></thead>
           <tbody>{rows.map((row:any)=>{const {order,style,sm,f,p,planning,planningRaw,ccd,outside}=row;return <tr key={`${order.id}-${style.id}`}>
             <td className="sticky-col c1"><strong>{displayJobNo(order.jobNo,order.buyer)}</strong>{order.sourceMetadata?.demoData&&<span className="demo-badge">DEMO</span>}</td>
             <td className="sticky-col c2">{style.styleNo}</td>
-            <td className="sticky-col c3">{sm.itemImageUrl?<img className="followup-thumb" src={sm.itemImageUrl} alt={style.itemDescription||style.styleNo}/>:<div className="followup-thumb empty">No image</div>}</td>
-            <td><div className="qty-cell"><strong>{num(style.quantity)}</strong>{sm.qtyRevisionHistory?.length?<span className="qty-revised-badge">Revised {sm.qtyRevisionHistory.length}×</span>:null}{sm.qtyRevisionReviewRequired?<span className="qty-review-badge">Review PO / Size</span>:null}</div></td><td><button className="btn btn-secondary btn-compact" onClick={()=>setBreakdownView(row)}>View Size-wise</button></td><td>{sm.fobPrice!==null&&sm.fobPrice!==undefined?Number(sm.fobPrice).toFixed(2):'—'}</td><td>{fmtDate(ccd)}</td>
-            <td>{fmtDate(planning.fileHandoverDate)}</td><td>{fmtDate(planning.trimsInhouseDate)}</td><td>{fmtDate(planning.sewingStartDate)}</td>
-            <td><div className="action-stack"><ActionDot label="Fabric Order Sheet" state={f.fabricOrderSheetStatus}/><ActionDot label="Lab Dip" state={f.labDipStatus}/><ActionDot label="Print Strike-off" state={f.printStrikeOffStatus}/><ActionDot label="Trims Ordering" state={f.trimsOrderingStatus}/><ActionDot label="File Handover" state={f.fileHandoverStatus}/><ActionDot label="Work Order" state={outside?(f.workOrderStatus||'PENDING'):'NA'}/></div></td>
-            <td><div className="document-stack"><a className="doc-link ready" href={`/modules/production-lots`}>PO / Market · Color × Size Lots</a><a className="doc-link ready" href={`/modules/forms-print?job=${encodeURIComponent(order.jobNo)}`}>Company Forms · SMS / T&A / Fabric</a>{outside?<a className="doc-link" target="_blank" href={`/print/work-order/${order.id}`}>Work Order</a>:<span className="doc-link disabled">Work Order · N/A</span>}</div></td>
+            <td className="sticky-col c3">{sm.itemImageUrl?<img className="followup-thumb" src={sm.itemImageUrl} alt={style.itemDescription||style.styleNo}/>:<div className="followup-thumb empty">No img</div>}</td>
+            <td style={{ textAlign: 'right' }}><div className="qty-cell"><strong>{num(style.quantity)}</strong>{sm.qtyRevisionHistory?.length?<span className="qty-revised-badge">Rev {sm.qtyRevisionHistory.length}×</span>:null}{sm.qtyRevisionReviewRequired?<span className="qty-review-badge">Review</span>:null}</div></td>
+            <td style={{ textAlign: 'center' }}><button className="btn btn-secondary btn-compact" onClick={()=>setBreakdownView(row)}>Size Breakdown</button></td>
+            <td style={{ textAlign: 'right' }}>{sm.fobPrice!==null&&sm.fobPrice!==undefined?`$${Number(sm.fobPrice).toFixed(2)}`:'—'}</td>
+            <td style={{ textAlign: 'center' }}>{fmtDate(ccd)}</td>
+            <td style={{ textAlign: 'center' }}>{fmtDate(planning.fileHandoverDate)}</td>
+            <td style={{ textAlign: 'center' }}>{fmtDate(planning.trimsInhouseDate)}</td>
+            <td style={{ textAlign: 'center' }}>{fmtDate(planning.sewingStartDate)}</td>
+            <td><div className="action-stack"><ActionDot label="Fabric Sheet" state={f.fabricOrderSheetStatus}/><ActionDot label="Lab Dip" state={f.labDipStatus}/><ActionDot label="Strike-off" state={f.printStrikeOffStatus}/><ActionDot label="Trims Order" state={f.trimsOrderingStatus}/><ActionDot label="File Handover" state={f.fileHandoverStatus}/><ActionDot label="Work Order" state={outside?(f.workOrderStatus||'PENDING'):'NA'}/></div></td>
+            <td><div className="document-stack"><a className="doc-link ready" href={`/modules/production-lots`}>Color × Size Lots</a><a className="doc-link ready" href={`/modules/forms-print?job=${encodeURIComponent(order.jobNo)}`}>Print Forms</a>{outside?<a className="doc-link" target="_blank" href={`/print/work-order/${order.id}`}>Work Order</a>:<span className="doc-link disabled">WO: N/A</span>}</div></td>
             <td><div className="row-actions"><button className="btn btn-secondary btn-compact" onClick={()=>openEdit(row)}>Edit Actions</button><button className="btn btn-secondary btn-compact" onClick={()=>openRevision(row)}>Revise Qty</button></div></td>
-            <td>{num(p.fabricRequired)}</td><td>{num(p.knittingQty)}</td><td>{num(p.knittingBalance)}</td><td>{num(p.dyeingQty)}</td><td>{num(p.dyeingBalance)}</td><td>{num(p.cuttingQty)}</td><td>{num(p.cuttingBalance)}</td><td>{num(p.printQty)}</td><td>{num(p.printBalance)}</td><td>{num(p.embroideryQty)}</td><td>{num(p.embroideryBalance)}</td><td>{num(p.inputQty)}</td><td>{num(p.inputBalance)}</td><td>{num(p.sewingQty)}</td><td>{num(p.sewingBalance)}</td>
-            <td><span className="status-pill neutral">{f.presentStatus||'Order Confirmed'}</span></td><td>{f.remarks||'—'}</td>
+            <td style={{ textAlign: 'right' }}>{num(p.fabricRequired)}</td>
+            <td style={{ textAlign: 'right' }}>{num(p.knittingQty)}</td>
+            <td style={{ textAlign: 'right' }}>{num(p.knittingBalance)}</td>
+            <td style={{ textAlign: 'right' }}>{num(p.dyeingQty)}</td>
+            <td style={{ textAlign: 'right' }}>{num(p.dyeingBalance)}</td>
+            <td style={{ textAlign: 'right' }}>{num(p.cuttingQty)}</td>
+            <td style={{ textAlign: 'right' }}>{num(p.cuttingBalance)}</td>
+            <td style={{ textAlign: 'right' }}>{num(p.printQty)}</td>
+            <td style={{ textAlign: 'right' }}>{num(p.printBalance)}</td>
+            <td style={{ textAlign: 'right' }}>{num(p.embroideryQty)}</td>
+            <td style={{ textAlign: 'right' }}>{num(p.embroideryBalance)}</td>
+            <td style={{ textAlign: 'right' }}>{num(p.inputQty)}</td>
+            <td style={{ textAlign: 'right' }}>{num(p.inputBalance)}</td>
+            <td style={{ textAlign: 'right' }}>{num(p.sewingQty)}</td>
+            <td style={{ textAlign: 'right' }}>{num(p.sewingBalance)}</td>
+            <td style={{ textAlign: 'center' }}><span className="status-pill neutral">{f.presentStatus||'Confirmed'}</span></td>
+            <td>{f.remarks||'—'}</td>
           </tr>})}</tbody>
         </table>
-        {!loading&&!rows.length&&!error&&<div className="empty-state compact"><strong>No assigned jobs yet</strong><span>Confirmed jobs will appear here automatically.</span></div>}
+        {!loading&&!rows.length&&!error&&<div className="empty-state compact"><strong>No matching jobs</strong><span>No records match selected filters.</span></div>}
       </div>
     </section>
 
-
-    {breakdownView&&<div className="size-modal-backdrop" role="presentation" onMouseDown={e=>{if(e.currentTarget===e.target)setBreakdownView(null);}}><div className="size-modal" style={{maxWidth:1180}}><div className="size-modal-head"><div><div className="eyebrow">{displayJobNo(breakdownView.order.jobNo,breakdownView.order.buyer)}</div><h3>{breakdownView.style.styleNo} — Color × Size Breakdown</h3><p className="muted">Overall order breakdown and each PO / Country-Market breakdown from Order Entry.</p></div><button className="icon-close" onClick={()=>setBreakdownView(null)}>×</button></div><div className="subsection-title">Overall Style · {num(breakdownView.style.quantity)} pcs</div><BreakdownMatrix rows={breakdownView.style.breakdowns||[]}/><div style={{marginTop:18}} className="subsection-title">PO / Market breakdown</div>{!(breakdownView.style.purchaseOrders||[]).length?<div className="notice">No PO / Market references stored.</div>:(breakdownView.style.purchaseOrders||[]).map((po:any)=><details key={po.id||po.poNumber} className="sequence-box" style={{marginTop:8}} open><summary><strong>{po.poNumber}</strong> · {num(po.totalQty)} pcs {po.market?` · ${po.market}`:''}</summary><div className="sequence-inner"><BreakdownMatrix rows={po.breakdowns||[]}/></div></details>)}</div></div>}
+    {breakdownView&&<div className="size-modal-backdrop" role="presentation" onMouseDown={e=>{if(e.currentTarget===e.target)setBreakdownView(null);}}><div className="size-modal" style={{maxWidth:1180}}><div className="size-modal-head"><div><div className="eyebrow">{displayJobNo(breakdownView.order.jobNo,breakdownView.order.buyer)}</div><h3>{breakdownView.style.styleNo} — Color × Size Breakdown</h3><p className="muted">Order breakdown and PO market allocations.</p></div><button className="icon-close" onClick={()=>setBreakdownView(null)}>×</button></div><div className="subsection-title">Style Total · {num(breakdownView.style.quantity)} pcs</div><BreakdownMatrix rows={breakdownView.style.breakdowns||[]}/><div style={{marginTop:18}} className="subsection-title">PO / Market Breakdown</div>{!(breakdownView.style.purchaseOrders||[]).length?<div className="notice">No PO references recorded.</div>:(breakdownView.style.purchaseOrders||[]).map((po:any)=><details key={po.id||po.poNumber} className="sequence-box" style={{marginTop:8}} open><summary><strong>{po.poNumber}</strong> · {num(po.totalQty)} pcs {po.market?` · ${po.market}`:''}</summary><div className="sequence-inner"><BreakdownMatrix rows={po.breakdowns||[]}/></div></details>)}</div></div>}
 
     {editing&&<div className="drawer-backdrop" role="presentation" onMouseDown={e=>{if(e.currentTarget===e.target)closeEdit();}}>
       <aside className="followup-drawer" role="dialog" aria-modal="true" aria-label="Edit merchandising follow-up">
         <div className="drawer-head"><div><div className="eyebrow">{displayJobNo(editing.order.jobNo,editing.order.buyer)}</div><h3>{editing.style.styleNo} — Merchandising Actions</h3></div><button className="drawer-close" onClick={closeEdit} aria-label="Close">×</button></div>
-        <div className="drawer-note">Planning dates are read-only here. Update only merchandising-owned actions and remarks.</div>
+        <div className="drawer-note">Update merchandising-owned milestones and order remarks.</div>
         <div className="drawer-grid planning-readonly"><div><label>File Handover Plan</label><strong>{fmtDate(editing.planning.fileHandoverDate)}</strong></div><div><label>Trims In-house Plan</label><strong>{fmtDate(editing.planning.trimsInhouseDate)}</strong></div><div><label>Sewing Start Plan</label><strong>{fmtDate(editing.planning.sewingStartDate)}</strong></div></div>
         <div className="action-edit-list">
           <ActionEditor label="Fabric Order Sheet" status={form.fabricOrderSheetStatus} date={form.fabricOrderSheetActualDate} setStatus={v=>setField('fabricOrderSheetStatus',v)} setDate={v=>setField('fabricOrderSheetActualDate',v)}/>
@@ -172,7 +244,7 @@ export default function MerchandisingFollowUp(){
         </div>
         <div className="drawer-form-row"><label>Merchandiser</label><ReferenceSelect category="MERCHANDISER" value={form.merchandiser} onChange={v=>setField('merchandiser',v)} placeholder="Select merchandiser"/></div>
         <div className="drawer-form-row"><label>Present Status</label><ReferenceSelect category="PRESENT_STATUS" value={form.presentStatus} onChange={v=>setField('presentStatus',v)} placeholder="Select factory status"/></div>
-        <div className="drawer-form-row"><label>Remarks</label><textarea className="form-control textarea" value={form.remarks} onChange={e=>setField('remarks',e.target.value)} placeholder="Only useful follow-up remarks"/></div>
+        <div className="drawer-form-row"><label>Remarks</label><textarea className="form-control textarea" value={form.remarks} onChange={e=>setField('remarks',e.target.value)} placeholder="Enter follow-up remarks"/></div>
         <div className="drawer-actions"><button className="btn btn-secondary" onClick={closeEdit} disabled={saving}>Cancel</button><button className="btn btn-primary" onClick={saveFollowUp} disabled={saving}>{saving?'Saving…':'Save Follow-up'}</button></div>
       </aside>
     </div>}
@@ -180,7 +252,7 @@ export default function MerchandisingFollowUp(){
     {revising&&<div className="drawer-backdrop" role="presentation" onMouseDown={e=>{if(e.currentTarget===e.target)closeRevision();}}>
       <aside className="followup-drawer qty-revision-drawer" role="dialog" aria-modal="true" aria-label="Revise order quantity">
         <div className="drawer-head"><div><div className="eyebrow">{displayJobNo(revising.order.jobNo,revising.order.buyer)}</div><h3>{revising.style.styleNo} — Revise Order Qty</h3></div><button className="drawer-close" onClick={closeRevision} aria-label="Close">×</button></div>
-        <div className="drawer-note">Quantity revision keeps the old value in history and automatically creates a CAD consumption re-check task. It does not silently redistribute PO or color-size quantities.</div>
+        <div className="drawer-note">Updates order quantity and logs revision history.</div>
         <div className="revision-summary-grid">
           <div><label>Current Order Qty</label><strong>{num(revising.style.quantity)}</strong></div>
           <div><label>Color × Size Total</label><strong>{num((revising.style.breakdowns||[]).reduce((sum:number,x:any)=>sum+Number(x.qty||0),0))}</strong></div>
