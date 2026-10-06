@@ -107,7 +107,7 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
 
         <nav className="nav">
           {!query && <>
-            <Link className={active('/') ? 'nav-link active' : 'nav-link'} href="/"><span className="nav-icon">OV</span><span>Overview</span></Link>
+            <Link className={active('/') ? 'nav-link active' : 'nav-link'} href="/"><span className="nav-icon">👑</span><span>Executive KPI Board</span></Link>
             <Link className={active('/tasks') ? 'nav-link active' : 'nav-link'} href="/tasks"><span className="nav-icon">TK</span><span>My Pending Tasks</span></Link>
             {canEnterOrders && <Link className={active('/orders/new') ? 'nav-link active' : 'nav-link'} href="/orders/new"><span className="nav-icon">PO</span><span>Order Entry / PO Import</span></Link>}
           </>}

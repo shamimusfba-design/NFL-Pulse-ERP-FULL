@@ -75,8 +75,8 @@ export const MODULE_GROUPS: ModuleGroup[] = [
     label: 'Yarn & Fabric',
     overviewSlug: 'yarn-fabric',
     items: [
-      { slug: 'yarn', name: 'Yarn Management & Purchasing (ইয়ার্ন ম্যানেজমেন্ট)', short: 'YM', status: 'Live', description: 'Merchandising requisition receipt, spinning mill PO purchasing, safety stock buffer monitoring, GRN receive and issue to knitting.' },
-      { slug: 'yarn-store', name: 'Yarn Store & Receive-Delivery (ইয়ার্ন স্টক ও ডেলিভারি)', short: 'YS', status: 'Live', description: 'Warehouse Godown A/B stock ledger, lot/location tracking, GRN vehicle intake and Knitting delivery challan.' },
+      { slug: 'yarn', name: 'Yarn Management & Purchasing ', short: 'YM', status: 'Live', description: 'Merchandising requisition receipt, spinning mill PO purchasing, safety stock buffer monitoring, GRN receive and issue to knitting.' },
+      { slug: 'yarn-store', name: 'Yarn Store & Receive-Delivery ', short: 'YS', status: 'Live', description: 'Warehouse Godown A/B stock ledger, lot/location tracking, GRN vehicle intake and Knitting delivery challan.' },
       { slug: 'knitting', name: 'Knitting Operations', short: 'KN', status: 'Live', description: 'Circular and flat knitting programs, machine programs, greige roll production and yarn leftover returns.' },
       { slug: 'greige-store', name: 'Greige Fabric Store', short: 'GS', status: 'Live', description: 'Greige roll receipt, 4-point inspection, fabric aging, daily machine plan matching and issue to Dyeing Winches.' },
       { slug: 'dyeing', name: 'Dyeing Floor & Winches', short: 'DY', status: 'Live', description: '23 Winch & HTHP machines, batching, multi-process (Peach, Brush, AOP), RFT quality, stenter & compactor finishing.' },

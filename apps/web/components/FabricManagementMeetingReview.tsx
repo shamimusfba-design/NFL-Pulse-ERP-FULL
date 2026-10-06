@@ -518,7 +518,7 @@ export function FabricManagementMeetingReview() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
               <div>
                 <div style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a' }}>
-                  🧶 Yarn Management, Purchasing, Safety Stock &amp; Flow Control (ইয়ার্ন ম্যানেজমেন্ট)
+                  🧶 Yarn Management, Purchasing, Safety Stock &amp; Flow Control
                 </div>
                 <div style={{ fontSize: '11px', color: '#64748b' }}>
                   Total Godown Stock: {num(YARN_EXECUTIVE_SUMMARY.totalGodownStock)} kg · Pipeline under PO/LC: {num(YARN_EXECUTIVE_SUMMARY.scmPipelineKg)} kg · Floor Safety Buffer Target: {num(YARN_EXECUTIVE_SUMMARY.safetyBufferTarget)} kg
@@ -566,7 +566,7 @@ export function FabricManagementMeetingReview() {
             {/* Subsection 1: Yarn Safety Stock Buffer Matrix */}
             <div style={{ marginBottom: '16px' }}>
               <div style={{ fontSize: '12px', fontWeight: 800, color: '#0f172a', marginBottom: '6px' }}>
-                🛡️ Yarn Safety Stock Maintaining &amp; Buffer Alerts (ইয়ার্ন সেফটি স্টক মনিটরিং)
+                🛡️ Yarn Safety Stock Maintaining &amp; Buffer Alerts
               </div>
               <div style={{ overflowX: 'auto' }}>
                 <table className="data-table compact-table" style={{ width: '100%', fontSize: '11px' }}>
@@ -617,7 +617,7 @@ export function FabricManagementMeetingReview() {
               {/* Merchandising Yarn Requisitions */}
               <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', background: '#fafafa' }}>
                 <div style={{ fontSize: '12px', fontWeight: 800, color: '#0f172a', marginBottom: '6px' }}>
-                  📋 Requisitions from Merchandising (মার্চেন্ডাইজিং রিকুইজিশন)
+                  📋 Requisitions from Merchandising
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   {YARN_EXECUTIVE_REQUISITIONS.map((r, i) => (
@@ -644,7 +644,7 @@ export function FabricManagementMeetingReview() {
               {/* Yarn Purchasing & Spinning Mill POs */}
               <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', background: '#fafafa' }}>
                 <div style={{ fontSize: '12px', fontWeight: 800, color: '#0f172a', marginBottom: '6px' }}>
-                  🏭 Yarn Purchasing &amp; Spinning Mill POs (ইয়ার্ন পারচেজিং)
+                  🏭 Yarn Purchasing &amp; Spinning Mill POs
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   {YARN_EXECUTIVE_POS.map((po, i) => (

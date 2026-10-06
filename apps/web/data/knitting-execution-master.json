@@ -1,0 +1,28 @@
+{
+  "reportDate": "2026-09-25",
+  "productionDate": "2026-09-24",
+  "summary": {
+    "totalKnittingPlanKg": 468678,
+    "totalKnittingPlanTons": 468.68,
+    "totalKnittingProductionKg": 468625,
+    "totalKnittingProductionTons": 468.63,
+    "totalMachinesRunning": 107,
+    "totalActiveJobs": 48,
+    "bookedCapacityPct": 94,
+    "loadedCapacityPct": 89
+  },
+  "slotDeliveryComparison": [
+    { "slot": "Slot 1 (D01-08)", "requiredDeliveryTons": 118.5, "deliveredTons": 121.2, "status": "ON_TRACK" },
+    { "slot": "Slot 2 (D09-16)", "requiredDeliveryTons": 115.0, "deliveredTons": 112.4, "status": "SLIGHT_DELAY" },
+    { "slot": "Slot 3 (D17-24)", "requiredDeliveryTons": 122.0, "deliveredTons": 119.8, "status": "ON_TRACK" },
+    { "slot": "Slot 4 (D25-30)", "requiredDeliveryTons": 113.1, "deliveredTons": 115.2, "status": "ON_TRACK" }
+  ],
+  "yarnShortageDelayedJobs": [
+    { "jobNo": "48085", "buyer": "BS-NMT", "count": "28/1 Cotton Melange", "shortageKg": 3400, "delayDays": 4 },
+    { "jobNo": "48002", "buyer": "ONLY", "count": "34/1 Combed Cotton", "shortageKg": 4200, "delayDays": 3 },
+    { "jobNo": "46755", "buyer": "OVS", "count": "26/1 CVC 60/40", "shortageKg": 2800, "delayDays": 5 },
+    { "jobNo": "46758", "buyer": "UTG", "count": "30/1 Lycra 5%", "shortageKg": 1950, "delayDays": 2 },
+    { "jobNo": "48061", "buyer": "Name It", "count": "24/1 Organic Cotton", "shortageKg": 5100, "delayDays": 6 },
+    { "jobNo": "48110", "buyer": "Only&Sons", "count": "32/2 Dyed Yarn", "shortageKg": 2350, "delayDays": 3 }
+  ]
+}

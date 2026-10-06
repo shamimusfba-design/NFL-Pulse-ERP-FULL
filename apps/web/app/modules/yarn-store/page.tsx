@@ -857,7 +857,7 @@ export default function YarnStorePage() {
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <span className="status-pill good">Comprehensive Yarn Operations</span>
             <span style={{ fontSize: '10px', background: '#38bdf8', color: '#0f172a', padding: '2px 8px', borderRadius: '12px', fontWeight: 800 }}>
-              ইয়ার্ন ম্যানেজমেন্ট ও স্টক কন্ট্রোল
+              Yarn Management & Inventory Control
             </span>
           </div>
           <h2>Yarn Management, Purchasing &amp; Safety Stock Control Tower</h2>
@@ -983,7 +983,7 @@ export default function YarnStorePage() {
                   onClick={() => setShowInlineReqForm(!showInlineReqForm)}
                   style={{ fontSize: '11px', padding: '6px 14px', background: showInlineReqForm ? '#0f172a' : '#2563eb', border: 'none', fontWeight: 700 }}
                 >
-                  {showInlineReqForm ? '✕ Close Requisition Form' : '+ New Yarn Requisition (মার্চেন্ডাইজিং রিকুইজিশন)'}
+                  {showInlineReqForm ? '✕ Close Requisition Form' : '+ New Yarn Requisition '}
                 </button>
                 <button
                   type="button"
@@ -1214,7 +1214,7 @@ export default function YarnStorePage() {
                     🛡️ Automated Yarn Safety Stock &amp; Reorder Point Threshold Engine
                   </span>
                   <span style={{ fontSize: '10px', background: '#e0f2fe', color: '#0369a1', padding: '2px 8px', borderRadius: '10px', fontWeight: 800 }}>
-                    অটোমেটেড সেফটি স্টক অ্যালার্ট
+                    Automated Safety Stock Alert
                   </span>
                 </div>
                 <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>

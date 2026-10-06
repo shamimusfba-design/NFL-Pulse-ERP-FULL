@@ -268,7 +268,7 @@ export default function YarnDepletionDashboard() {
                 📊 Top 5 Yarn Counts: 6-Month Stock Depletion &amp; Consumption Dashboard
               </span>
               <span style={{ fontSize: '10px', background: '#e0f2fe', color: '#0369a1', padding: '2px 8px', borderRadius: '12px', fontWeight: 800 }}>
-                ইয়ার্ন স্টক ডিপ্লীশন ট্রেন্ড
+                Yarn Stock Depletion Trend
               </span>
               <span style={{ fontSize: '10px', background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
                 Recharts Visual Engine

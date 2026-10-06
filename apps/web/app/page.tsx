@@ -9,6 +9,7 @@ import { ItemIcon } from '../components/ItemIcon';
 import { BuyerQuotaBoard } from '../components/BuyerQuotaBoard';
 import { FactoryKpiPhysicalBoard } from '../components/FactoryKpiPhysicalBoard';
 import { FabricManagementMeetingReview } from '../components/FabricManagementMeetingReview';
+import { ExecutiveKpiDashboard } from '../components/ExecutiveKpiDashboard';
 import demo2000DataRaw from '../data/demo-2000-master.json';
 
 function pct(a: number, b: number) { return b ? Math.round((a / b) * 100) : 0; }
@@ -227,7 +228,7 @@ export default function Dashboard() {
   const [sewing, setSewing] = useState<any[]>(initialSewing);
   const [loading, setLoading] = useState(false);
 
-  const [mainView, setMainView] = useState<'REGISTER' | 'PHYSICAL_BOARD' | 'BUYER_QUOTA' | 'FABRIC_MEETING'>('REGISTER');
+  const [mainView, setMainView] = useState<'EXECUTIVE_KPI' | 'REGISTER' | 'PHYSICAL_BOARD' | 'BUYER_QUOTA' | 'FABRIC_MEETING'>('EXECUTIVE_KPI');
 
   // Interactive Card & Buyer Selection Filter state
   const [selectedFilterType, setSelectedFilterType] = useState<string>('ALL');
@@ -413,6 +414,26 @@ export default function Dashboard() {
       <section style={{ display: 'flex', gap: '8px', margin: '14px 0 16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px', flexWrap: 'wrap' }}>
         <button
           type="button"
+          onClick={() => setMainView('EXECUTIVE_KPI')}
+          style={{
+            padding: '8px 16px',
+            borderRadius: '8px',
+            border: 'none',
+            background: mainView === 'EXECUTIVE_KPI' ? '#2563eb' : '#f1f5f9',
+            color: mainView === 'EXECUTIVE_KPI' ? '#fff' : '#475569',
+            fontWeight: 800,
+            fontSize: '12px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            transition: 'all .15s ease'
+          }}
+        >
+          <span>👑</span> Executive Section KPIs
+        </button>
+        <button
+          type="button"
           onClick={() => setMainView('REGISTER')}
           style={{
             padding: '8px 16px',
@@ -489,6 +510,12 @@ export default function Dashboard() {
           <span>🧵</span> Fabric &amp; Dyeing Meeting
         </button>
       </section>
+
+      {mainView === 'EXECUTIVE_KPI' && (
+        <section style={{ margin: '8px 0 20px' }}>
+          <ExecutiveKpiDashboard />
+        </section>
+      )}
 
       {mainView === 'PHYSICAL_BOARD' && (
         <section style={{ margin: '8px 0 20px' }}>

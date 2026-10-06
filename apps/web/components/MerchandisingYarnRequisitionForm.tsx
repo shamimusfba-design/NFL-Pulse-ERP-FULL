@@ -175,7 +175,7 @@ export default function MerchandisingYarnRequisitionForm({
                 📋 Merchandising Yarn Requisition Creation
               </span>
               <span style={{ fontSize: '10px', background: '#e0f2fe', color: '#0369a1', padding: '2px 8px', borderRadius: '10px', fontWeight: 700 }}>
-                মার্চেন্ডাইজিং ইয়ার্ন রিকুইজিশন
+                Merchandising Yarn Requisition
               </span>
             </div>
             <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
@@ -532,7 +532,7 @@ export default function MerchandisingYarnRequisitionForm({
             borderRadius: '6px'
           }}
         >
-          ✓ Submit Merchandising Yarn Requisition (জমা দিন)
+          ✓ Submit Merchandising Yarn Requisition 
         </button>
       </div>
     </form>

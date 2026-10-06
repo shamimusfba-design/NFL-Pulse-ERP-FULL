@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import demo2000DataRaw from '../../../data/demo-2000-master.json';
 import factoryDataRaw from '../../../data/dyeing-factory-data.json';
 import factoryKpiMasterRaw from '../../../data/factory-kpi-master.json';
+import yarnStockMasterRaw from '../../../data/yarn-stock-master.json';
+import knittingExecutionMasterRaw from '../../../data/knitting-execution-master.json';
 
 const masterJobs = (demo2000DataRaw as any)?.jobs || [];
 const factoryData = factoryDataRaw as any;
 const factoryKpi = factoryKpiMasterRaw as any;
+const yarnStock = yarnStockMasterRaw as any;
+const knittingExecution = knittingExecutionMasterRaw as any;
 
 // In-memory Kaizen and manual KPI store
 let memoryKaizenProjects = [
@@ -17,6 +21,47 @@ let memoryKaizenProjects = [
 ];
 
 let memoryManualKpis: any[] = [];
+
+// In-memory maintenance machines master
+let maintenanceMachines = [
+  { id: 'm-1', machineType: 'SNLS (Single Needle Lockstitch)', totalQty: 420, breakdownQty: 12, rentQty: 0, actualUtilizedQty: 385, reportedUnusedQty: 23, workingQty: 408, remarks: 'Normal fleet' },
+  { id: 'm-2', machineType: '4-Thread Overlock', totalQty: 310, breakdownQty: 8, rentQty: 10, actualUtilizedQty: 295, reportedUnusedQty: 17, workingQty: 302, remarks: '10 rented for peak bulk' },
+  { id: 'm-3', machineType: '5-Thread Overlock', totalQty: 110, breakdownQty: 4, rentQty: 0, actualUtilizedQty: 98, reportedUnusedQty: 8, workingQty: 106, remarks: 'Woven & fleece edges' },
+  { id: 'm-4', machineType: 'Flatlock (Cylinder Bed)', totalQty: 140, breakdownQty: 5, rentQty: 0, actualUtilizedQty: 128, reportedUnusedQty: 7, workingQty: 135, remarks: 'Hemming & binding' },
+  { id: 'm-5', machineType: 'Flatlock (Flat Bed)', totalQty: 95, breakdownQty: 3, rentQty: 0, actualUtilizedQty: 88, reportedUnusedQty: 4, workingQty: 92, remarks: 'Topstitch & join' },
+  { id: 'm-6', machineType: 'Feed-off-the-Arm (FOA)', totalQty: 35, breakdownQty: 1, rentQty: 0, actualUtilizedQty: 32, reportedUnusedQty: 2, workingQty: 34, remarks: 'Fleece shoulder & side' },
+  { id: 'm-7', machineType: 'Button Hole (Computerized)', totalQty: 22, breakdownQty: 1, rentQty: 0, actualUtilizedQty: 18, reportedUnusedQty: 3, workingQty: 21, remarks: 'Polo & placket' },
+  { id: 'm-8', machineType: 'Button Attach', totalQty: 24, breakdownQty: 0, rentQty: 0, actualUtilizedQty: 20, reportedUnusedQty: 4, workingQty: 24, remarks: '4-hole & shank' },
+  { id: 'm-9', machineType: 'Bar Tack (Electronic)', totalQty: 45, breakdownQty: 2, rentQty: 0, actualUtilizedQty: 40, reportedUnusedQty: 3, workingQty: 43, remarks: 'Pocket mouth & loop' },
+  { id: 'm-10', machineType: 'Rib Collar Attaching', totalQty: 40, breakdownQty: 2, rentQty: 0, actualUtilizedQty: 36, reportedUnusedQty: 2, workingQty: 38, remarks: 'Neck ring attaching' }
+];
+
+let memoryNptRecords = [
+  { id: 'npt-1', date: '2026-09-24', lineCode: 'Line 01A', recordKind: 'LINE_NPT', nptType: 'Mechanical Breakdown', totalMinutes: 45, waitingMinutes: 15, repairMinutes: 30, responsiblePerson: 'Maintenance (R. Karim)', ieName: 'S. Ahmed' },
+  { id: 'npt-2', date: '2026-09-24', lineCode: 'Line 04B', recordKind: 'LINE_NPT', nptType: 'Input Wait (Cut Panels)', totalMinutes: 60, waitingMinutes: 60, repairMinutes: 0, responsiblePerson: 'Cutting Prep', ieName: 'M. Ali' },
+  { id: 'npt-3', date: '2026-09-24', lineCode: 'Line 11A', recordKind: 'LINE_NPT', nptType: 'Thread Breakage / Trims', totalMinutes: 25, waitingMinutes: 10, repairMinutes: 15, responsiblePerson: 'Trims Store', ieName: 'S. Ahmed' },
+  { id: 'npt-4', date: '2026-09-23', lineCode: 'Line 02A', recordKind: 'MACHINE_BREAKDOWN', nptType: 'Motor Inverter Fault', machineType: '4T OL', processName: 'Side Seam', totalMinutes: 40, waitingMinutes: 10, repairMinutes: 30, responsiblePerson: 'Maintenance', ieName: 'T. Hossain' }
+];
+
+let memorySkills = [
+  { id: 'sk-1', employeeId: 'EMP-1042', employeeName: 'Fatema Begum', floorCode: 'Sewing-01', lineCode: 'Line 01A', operation: 'Rib Neck Join', machineType: '4T OL', skillLevel: 4, proficiencyPct: 88, remarks: 'Grade A operator' },
+  { id: 'sk-2', employeeId: 'EMP-1088', employeeName: 'Md. Shahidul', floorCode: 'Sewing-01', lineCode: 'Line 01A', operation: 'Bottom Hemming', machineType: 'Flatlock', skillLevel: 5, proficiencyPct: 94, remarks: 'Multi-skilled mentor' },
+  { id: 'sk-3', employeeId: 'EMP-2031', employeeName: 'Nasrin Akhter', floorCode: 'Sewing-02', lineCode: 'Line 04B', operation: 'Sleeve Attach', machineType: 'SNLS', skillLevel: 4, proficiencyPct: 82, remarks: 'Critical seam certified' },
+  { id: 'sk-4', employeeId: 'EMP-2095', employeeName: 'Jahangir Alam', floorCode: 'Sewing-02', lineCode: 'Line 05B', operation: 'Feed-off-the-Arm', machineType: 'FOA', skillLevel: 5, proficiencyPct: 91, remarks: 'Heavy fleece specialist' }
+];
+
+let memoryResponsibilities = [
+  { id: 'resp-1', floorCode: 'Sewing-01', areaCode: 'Area A', lineCode: 'Line 01A', department: 'Production', role: 'Line In-Charge', personName: 'Kabir Hossain', effectiveFrom: '2026-01-01', effectiveTo: '', source: 'Master' },
+  { id: 'resp-2', floorCode: 'Sewing-01', areaCode: 'Area A', lineCode: 'Line 01A', department: 'Quality', role: 'Line QC Supervisor', personName: 'Faruk Ahmed', effectiveFrom: '2026-01-01', effectiveTo: '', source: 'Master' },
+  { id: 'resp-3', floorCode: 'Sewing-02', areaCode: 'Area B', lineCode: 'Line 04B', department: 'Production', role: 'Line In-Charge', personName: 'Mizanur Rahman', effectiveFrom: '2026-01-01', effectiveTo: '', source: 'Master' }
+];
+
+let memoryQcoRecords = [
+  { id: 'qco-1', date: '2026-09-24', lineCode: 'Line 02A', jobNo: '48085', styleNo: '13251506', smv: 9.2, actualStartTime: '08:00', firstGoodOutputTime: '08:35', actualMinutes: 35, failureReason: 'Folder setup alignment', responsibleDeptPerson: 'IE & Maintenance', remarks: 'First piece approved' },
+  { id: 'qco-2', date: '2026-09-23', lineCode: 'Line 11B', jobNo: '46755', styleNo: '13251509', smv: 10.4, actualStartTime: '08:00', firstGoodOutputTime: '08:42', actualMinutes: 42, failureReason: 'Lycra rib tension balancing', responsibleDeptPerson: 'Line QC', remarks: 'Completed' }
+];
+
+let memoryTargets: any[] = [];
 
 function formatDetailFromMaster(j: any) {
   return {
@@ -165,13 +210,38 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   // 3. /api/planning/capacity/heatmap
   if (pathStr === 'planning/capacity/heatmap') {
     return NextResponse.json({
+      thresholds: { greenMax: 85, amberMax: 100 },
       rows: [
-        { section: 'knitting', label: 'Knitting', slots: [{ slot: 'Slot 1', loadPct: 92 }, { slot: 'Slot 2', loadPct: 88 }, { slot: 'Slot 3', loadPct: 94 }] },
-        { section: 'dyeing', label: 'Dyeing', slots: [{ slot: 'Slot 1', loadPct: 96 }, { slot: 'Slot 2', loadPct: 91 }, { slot: 'Slot 3', loadPct: 89 }] },
-        { section: 'cutting', label: 'Cutting', slots: [{ slot: 'Slot 1', loadPct: 85 }, { slot: 'Slot 2', loadPct: 90 }, { slot: 'Slot 3', loadPct: 84 }] },
-        { section: 'sewing', label: 'Sewing', slots: [{ slot: 'Slot 1', loadPct: 94 }, { slot: 'Slot 2', loadPct: 98 }, { slot: 'Slot 3', loadPct: 95 }] },
-        { section: 'finishing', label: 'Finishing', slots: [{ slot: 'Slot 1', loadPct: 89 }, { slot: 'Slot 2', loadPct: 86 }, { slot: 'Slot 3', loadPct: 92 }] }
+        { section: 'knitting', label: 'Knitting', unit: 'KG/day', slots: [{ slot: 'Slot 1', loadPct: 92, demand: 18400, capacity: 20000, jobs: 42, status: 'ATTENTION' }, { slot: 'Slot 2', loadPct: 88, demand: 17600, capacity: 20000, jobs: 38, status: 'NORMAL' }, { slot: 'Slot 3', loadPct: 94, demand: 18800, capacity: 20000, jobs: 46, status: 'ATTENTION' }] },
+        { section: 'dyeing', label: 'Dyeing', unit: 'KG/day', slots: [{ slot: 'Slot 1', loadPct: 96, demand: 19200, capacity: 20000, jobs: 35, status: 'ATTENTION' }, { slot: 'Slot 2', loadPct: 91, demand: 18200, capacity: 20000, jobs: 31, status: 'NORMAL' }, { slot: 'Slot 3', loadPct: 89, demand: 17800, capacity: 20000, jobs: 29, status: 'NORMAL' }] },
+        { section: 'cutting', label: 'Cutting', unit: 'Pcs/day', slots: [{ slot: 'Slot 1', loadPct: 85, demand: 51000, capacity: 60000, jobs: 24, status: 'NORMAL' }, { slot: 'Slot 2', loadPct: 90, demand: 54000, capacity: 60000, jobs: 26, status: 'ATTENTION' }, { slot: 'Slot 3', loadPct: 84, demand: 50400, capacity: 60000, jobs: 22, status: 'NORMAL' }] },
+        { section: 'sewing', label: 'Sewing', unit: 'Pcs/day', slots: [{ slot: 'Slot 1', loadPct: 94, demand: 56400, capacity: 60000, jobs: 48, status: 'ATTENTION' }, { slot: 'Slot 2', loadPct: 98, demand: 58800, capacity: 60000, jobs: 52, status: 'ATTENTION' }, { slot: 'Slot 3', loadPct: 95, demand: 57000, capacity: 60000, jobs: 49, status: 'ATTENTION' }] },
+        { section: 'finishing', label: 'Finishing', unit: 'Pcs/day', slots: [{ slot: 'Slot 1', loadPct: 89, demand: 53400, capacity: 60000, jobs: 38, status: 'NORMAL' }, { slot: 'Slot 2', loadPct: 86, demand: 51600, capacity: 60000, jobs: 36, status: 'NORMAL' }, { slot: 'Slot 3', loadPct: 92, demand: 55200, capacity: 60000, jobs: 40, status: 'ATTENTION' }] }
+      ],
+      sampleRows: [
+        { section: 'sample_knitting', label: 'Sample Knitting', unit: 'KG/day', slots: [{ slot: 'Slot 1', loadPct: 75, demandText: '45 KG', capacityText: '60 KG', status: 'NORMAL' }, { slot: 'Slot 2', loadPct: 80, demandText: '48 KG', capacityText: '60 KG', status: 'NORMAL' }, { slot: 'Slot 3', loadPct: 70, demandText: '42 KG', capacityText: '60 KG', status: 'NORMAL' }] },
+        { section: 'sample_dyeing', label: 'Sample Dyeing', unit: 'Batch', slots: [{ slot: 'Slot 1', loadPct: 82, demandText: '14 Batch', capacityText: '17 Batch', status: 'NORMAL' }, { slot: 'Slot 2', loadPct: 85, demandText: '15 Batch', capacityText: '17 Batch', status: 'NORMAL' }, { slot: 'Slot 3', loadPct: 78, demandText: '13 Batch', capacityText: '17 Batch', status: 'NORMAL' }] }
       ]
+    });
+  }
+
+  // 3b. /api/planning/capacity/policies
+  if (pathStr === 'planning/capacity/policies') {
+    return NextResponse.json({
+      bulk: {
+        knitting: { label: 'Knitting Bulk Capacity', unit: 'KG', dailyCapacity: 18500 },
+        dyeing: { label: 'Dyeing Bulk Capacity', unit: 'KG', dailyCapacity: 18500 },
+        cutting: { label: 'Cutting Bulk Capacity', unit: 'Pcs', dailyCapacity: 58000 },
+        sewing: { label: 'Sewing Bulk Capacity', unit: 'Pcs', dailyCapacity: 55000 },
+        finishing: { label: 'Finishing Bulk Capacity', unit: 'Pcs', dailyCapacity: 55000 }
+      },
+      sample: {
+        knitting: { dailyKg: 60, dailyColors: 8 },
+        dyeing: { slotCapacity: 18, ppDevelopmentSlot: 10, smsSlot: 8 },
+        printing: { dailyStyles: 6, dailyPcs: 120 },
+        making: { monthlyStyles: 90 }
+      },
+      thresholds: { greenMax: 85, amberMax: 100 }
     });
   }
 
@@ -273,23 +343,23 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         isSystem: true
       },
       {
-        id: 'batch-finish-fabric',
-        createdAt: '2026-10-01T05:41:00.000Z',
-        moduleSlug: 'report:FINISH_FABRIC_DYEING',
-        sourceFileName: 'Finish_Fabric_Plan_Execution_Status.xls',
-        totalRows: 1387,
-        validRows: 1387,
+        id: 'batch-yarn-stock',
+        createdAt: '2026-09-28T08:00:00.000Z',
+        moduleSlug: 'report:YARN_STOCK_SUMMARY',
+        sourceFileName: 'Northern_Fashion_Yarn_Stock_Summary_28Sep26.csv',
+        totalRows: 198,
+        validRows: 198,
         errorRows: 0,
         status: 'COMMITTED',
         isSystem: true
       },
       {
-        id: 'batch-quality-rft',
-        createdAt: '2026-10-01T05:41:00.000Z',
-        moduleSlug: 'report:BULK_TO_BULK_RFT_QUALITY',
-        sourceFileName: 'Bulk_to_Bulk_RFT.xlsx',
-        totalRows: 225,
-        validRows: 225,
+        id: 'batch-knitting-execution',
+        createdAt: '2026-09-25T08:00:00.000Z',
+        moduleSlug: 'report:KNITTING_EXECUTION_SUMMARY',
+        sourceFileName: 'Knitting_Production_Execution_Summary_Aug2026.csv',
+        totalRows: 400,
+        validRows: 400,
         errorRows: 0,
         status: 'COMMITTED',
         isSystem: true
@@ -309,7 +379,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     ]);
   }
 
-  // 10. /api/masters/references and /api/masters/references/:category
+  // 10. /api/masters/references
   if (pathStr === 'masters/references' || pathStr.startsWith('masters/references/')) {
     const subCat = pathStr.split('/')[2];
     const cat = (subCat ? decodeURIComponent(subCat) : request.nextUrl.searchParams.get('category')) || 'BUYER';
@@ -324,12 +394,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
     if (cUpper === 'MERCHANDISER') {
       return NextResponse.json([
-        { id: 'm-1', value: 'Md. Jahidul Islam' },
-        { id: 'm-2', value: 'Tanvir Ahmed' },
-        { id: 'm-3', value: 'Kazi Masud' },
-        { id: 'm-4', value: 'Shah Alam' },
-        { id: 'm-5', value: 'Rashedul Hasan' },
-        { id: 'm-6', value: 'Naimur Rahman' }
+        { id: 'm-1', value: 'Alamgir' },
+        { id: 'm-2', value: 'Rokon' },
+        { id: 'm-3', value: 'Mohibur' },
+        { id: 'm-4', value: 'Mahamud' },
+        { id: 'm-5', value: 'Elias' },
+        { id: 'm-6', value: 'Utpal' }
       ]);
     }
     if (cUpper === 'PRESENT_STATUS') {
@@ -361,12 +431,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   // 11. /api/masters/buyers
   if (pathStr === 'masters/buyers') {
     return NextResponse.json([
-      { id: 'b-1', name: 'Name It', code: 'NMT' },
-      { id: 'b-2', name: 'ONLY', code: 'ONL' },
-      { id: 'b-3', name: 'OVS', code: 'OVS' },
-      { id: 'b-4', name: 'UTG', code: 'UTG' },
-      { id: 'b-5', name: 'Only & Sons', code: 'ONS' },
-      { id: 'b-6', name: 'New Look', code: 'NWL' }
+      { id: 'b-1', name: 'BS-NMT', code: 'BS-NMT' },
+      { id: 'b-2', name: 'BS-ONS', code: 'BS-ONS' },
+      { id: 'b-3', name: 'BS-ONLY', code: 'BS-ONLY' },
+      { id: 'b-4', name: 'GBX-New Look', code: 'NWL' },
+      { id: 'b-5', name: 'GBX-Maurices', code: 'MAU' },
+      { id: 'b-6', name: 'GBX-T.M Lewin', code: 'TML' },
+      { id: 'b-7', name: 'UTG', code: 'UTG' },
+      { id: 'b-8', name: 'OVS SPA', code: 'OVS' }
     ]);
   }
 
@@ -419,7 +491,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json(lines);
   }
 
-  // /api/planning/gantt
+  // 12b. /api/planning/gantt
   if (pathStr === 'planning/gantt') {
     const list = masterJobs.map((j: any) => {
       const fac = j.lineAllocation?.factory || 'NFL';
@@ -510,8 +582,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (pathStr === 'cad/workqueue') {
     const cadList = masterJobs.slice(0, 30).map((j: any) => ({
       id: j.id,
+      orderId: j.id,
+      title: `Consumption Preparation for Style ${j.styleNo}`,
       jobNo: j.jobNo,
       buyer: j.buyer,
+      order: {
+        id: j.id,
+        jobNo: j.jobNo,
+        buyer: { name: j.buyer, code: j.buyer }
+      },
       styleNo: j.styleNo,
       orderQty: j.orderQty,
       patternStatus: 'RELEASED',
@@ -524,16 +603,58 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json(cadList);
   }
 
+  // 14b. /api/cad/orders/:id/consumption
+  if (pathStr.startsWith('cad/orders/') && pathStr.endsWith('/consumption')) {
+    const orderId = pathStr.split('/')[2];
+    const found = masterJobs.find((x: any) => x.id === orderId || x.jobNo === orderId) || masterJobs[0];
+    return NextResponse.json({
+      order: {
+        id: found.id,
+        jobNo: found.jobNo,
+        buyer: { name: found.buyer, code: found.buyer },
+        totalQty: found.orderQty,
+        styles: [
+          {
+            id: `s-${found.jobNo}`,
+            styleNo: found.styleNo,
+            quantity: found.orderQty,
+            breakdowns: [
+              { color: 'Black', qty: Math.round(found.orderQty * 0.4) },
+              { color: 'White', qty: Math.round(found.orderQty * 0.3) },
+              { color: 'Navy', qty: Math.round(found.orderQty * 0.3) }
+            ]
+          }
+        ]
+      },
+      cadConsumption: {
+        remarks: 'Confirmed based on standard marker efficiency 85.4%',
+        rows: [
+          {
+            styleId: `s-${found.jobNo}`,
+            color: 'Black',
+            orderQty: Math.round(found.orderQty * 0.4),
+            fabricDescription: '100% Combed Cotton Single Jersey',
+            fabricType: 'Single Jersey',
+            gsm: 180,
+            dia: '76" Open Width',
+            consumptionValue: 2.45,
+            consumptionBasis: 'KG_DOZ',
+            wastagePct: 5,
+            requiredKg: Math.round((found.orderQty * 0.4 / 12) * 2.45 * 1.05),
+            remarks: 'Standard body fabric'
+          }
+        ]
+      }
+    });
+  }
+
   // 15. /api/knitting/data
   if (pathStr === 'knitting/data') {
     return NextResponse.json({
-      orders: factoryData?.executionRows?.slice(0, 50) || [],
-      summary: {
-        totalReqKg: 248900,
-        producedKg: 194200,
-        balanceKg: 54700,
-        runningMachines: 18
-      }
+      orders: knittingExecution.rows || [],
+      summary: knittingExecution.summary || {},
+      slots: knittingExecution.slots || [],
+      yarnNilAlerts: knittingExecution.yarnNilAlerts || []
     });
   }
 
@@ -542,32 +663,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json(factoryData);
   }
 
-  // 16b. /api/yarn-store/data
-  if (pathStr === 'yarn-store/data') {
-    return NextResponse.json({
-      summary: {
-        totalStock: 148200,
-        rcvdMonth: 58400,
-        issueMonth: 52100,
-        closingStock: 148200,
-        reservedStock: 112000,
-        pipeline: 84000,
-        safetyStockGap: -7800,
-        shortage: 12400,
-        deadStock: 4200
-      },
-      safetyRows: [
-        { yarnCount: '30/1 Ne Combed Cotton', physicalStock: 38400, safetyStock: 25000, dailyBurnKg: 1800, leadTimeDays: 14, reorderPoint: 28000, status: 'SAFE' },
-        { yarnCount: '26/1 Ne Carded Cotton', physicalStock: 14200, safetyStock: 18000, dailyBurnKg: 1200, leadTimeDays: 14, reorderPoint: 20000, status: 'BELOW_SAFETY' },
-        { yarnCount: '24/1 Ne Cotton Slub', physicalStock: 3400, safetyStock: 8000, dailyBurnKg: 650, leadTimeDays: 18, reorderPoint: 9500, status: 'CRITICAL' },
-        { yarnCount: '20/1 Ne Carded Cotton', physicalStock: 15600, safetyStock: 12000, dailyBurnKg: 850, leadTimeDays: 14, reorderPoint: 14000, status: 'SAFE' },
-        { yarnCount: '30/1 Ne CVC 60/40 Melange', physicalStock: 9500, safetyStock: 15000, dailyBurnKg: 950, leadTimeDays: 21, reorderPoint: 16500, status: 'BELOW_SAFETY' },
-        { yarnCount: '34/1 Ne Combed Cotton', physicalStock: 18200, safetyStock: 14000, dailyBurnKg: 1100, leadTimeDays: 14, reorderPoint: 15500, status: 'SAFE' },
-        { yarnCount: '40/1 Ne Combed (Interlock/Rib)', physicalStock: 7400, safetyStock: 6000, dailyBurnKg: 400, leadTimeDays: 14, reorderPoint: 7000, status: 'SAFE' },
-        { yarnCount: '40D Spandex / Elastane', physicalStock: 4100, safetyStock: 3000, dailyBurnKg: 220, leadTimeDays: 10, reorderPoint: 3200, status: 'SAFE' },
-        { yarnCount: '70D Spandex / Elastane', physicalStock: 1800, safetyStock: 2500, dailyBurnKg: 180, leadTimeDays: 10, reorderPoint: 2800, status: 'BELOW_SAFETY' }
-      ]
-    });
+  // 16b. /api/yarn-store/data or /api/yarn-stock/summary
+  if (pathStr === 'yarn-store/data' || pathStr === 'yarn-stock/summary') {
+    return NextResponse.json(yarnStock);
+  }
+
+  // 16c. /api/knitting-execution/summary
+  if (pathStr === 'knitting-execution/summary') {
+    return NextResponse.json(knittingExecution);
   }
 
   // 17. /api/ie-ops/kpi
@@ -629,8 +732,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   // 20. /api/ie-ops/overview
   if (pathStr === 'ie-ops/overview') {
     return NextResponse.json({
-      date: '2026-09-05',
-      requestedDate: '2026-09-05',
+      date: '2026-09-24',
+      requestedDate: '2026-09-24',
       cards: {
         todayTarget: 68500,
         actualOutput: 71200,
@@ -665,7 +768,314 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ lines: [sampleLine('Line 01A'), sampleLine('Line 02A'), sampleLine('Line 04B'), sampleLine('Line 11A')] });
   }
 
-  // 22. /api/planning/quota
+  // 22. /api/ie/workqueue (used by ie-bulletin and ie-readiness)
+  if (pathStr === 'ie/workqueue') {
+    const list = masterJobs.slice(0, 30).map((j: any) => ({
+      jobNo: j.jobNo,
+      status: j.ie?.bulletinStatus || 'RELEASED',
+      buyer: { id: `b-${j.buyer}`, name: j.buyer, code: j.buyer },
+      style: {
+        id: `style-${j.jobNo}`,
+        styleNo: j.styleNo,
+        itemDescription: j.itemDescription,
+        orderQty: j.orderQty,
+        ieBulletin: {
+          bulletinDate: '2026-08-15',
+          releaseDate: '2026-08-15',
+          updatedAt: '2026-08-15',
+          revision: 1,
+          smv: j.ie?.smv || 9.2,
+          dailyTarget: j.ie?.dailyTarget || 1800,
+          operator: 22,
+          helper: 6,
+          finishingManpower: 2,
+          manpower: j.ie?.manpower || 30,
+          machineQty: j.ie?.machineQty || 19,
+          achievableEfficiencyPct: j.ie?.efficiencyPct || 75,
+          remarks: 'Released for Gantt production line',
+          machineRequirements: [
+            { machineType: 'SNLS', qty: 10 },
+            { machineType: '4T OL', qty: 6 },
+            { machineType: 'Flatlock', qty: 3 }
+          ]
+        },
+        readiness: [
+          { key: 'PRODUCTION_LOT', label: 'Production Lot', status: 'READY', note: 'Lot staged' },
+          { key: 'COLOR_SIZE', label: 'Color×Size Ratio', status: 'READY', note: 'Approved pack sheet' },
+          { key: 'SAMPLE', label: 'PP Sample', status: 'READY', note: 'Approved by buyer' },
+          { key: 'FILE', label: 'Production File', status: 'READY', note: 'Handed to line' },
+          { key: 'PP', label: 'Pre-Production Meeting', status: 'READY', note: 'PP meeting signed' },
+          { key: 'FABRIC', label: 'Bulk Fabric Delivery', status: 'READY', note: '100% delivered to cutting' },
+          { key: 'TRIMS', label: 'Trims In-House', status: 'READY', note: 'All trims verified in-house' }
+        ]
+      },
+      followUp: {
+        status: 'DONE',
+        line: j.lineAllocation?.line || 'Line 01A',
+        planMonth: j.planMonth || 'Aug-26',
+        bulletinDate: '2026-08-15',
+        revision: 1,
+        sourceFileName: 'IE_BULLETIN_AUG_2026.xlsx',
+        pendingDays: 0
+      }
+    }));
+    return NextResponse.json(list);
+  }
+
+  // 23. /api/maintenance/weekly-requirement
+  if (pathStr === 'maintenance/weekly-requirement') {
+    const days = [
+      {
+        date: '2026-09-24',
+        dayLabel: 'Thu (Today)',
+        shortageQty: 0,
+        rows: [
+          { normalizedKey: 'snls', machineType: 'SNLS', requiredQty: 385, totalQty: 420, breakdownQty: 12, rentQty: 0, netAvailableQty: 408, shortageQty: 0, surplusQty: 23, status: 'AVAILABLE', jobs: [{ line: 'Line 01A', jobNo: '48085', styleNo: '13251506' }] },
+          { normalizedKey: '4t-ol', machineType: '4-Thread Overlock', requiredQty: 295, totalQty: 310, breakdownQty: 8, rentQty: 10, netAvailableQty: 312, shortageQty: 0, surplusQty: 17, status: 'AVAILABLE', jobs: [{ line: 'Line 02A', jobNo: '48085', styleNo: '13251506' }] },
+          { normalizedKey: 'flatlock', machineType: 'Flatlock', requiredQty: 135, totalQty: 140, breakdownQty: 5, rentQty: 0, netAvailableQty: 135, shortageQty: 0, surplusQty: 0, status: 'AVAILABLE', jobs: [{ line: 'Line 04B', jobNo: '46755', styleNo: '13251509' }] }
+        ]
+      },
+      {
+        date: '2026-09-25',
+        dayLabel: 'Fri',
+        shortageQty: 0,
+        rows: [
+          { normalizedKey: 'snls', machineType: 'SNLS', requiredQty: 390, totalQty: 420, breakdownQty: 10, rentQty: 0, netAvailableQty: 410, shortageQty: 0, surplusQty: 20, status: 'AVAILABLE', jobs: [] },
+          { normalizedKey: '4t-ol', machineType: '4-Thread Overlock', requiredQty: 298, totalQty: 310, breakdownQty: 8, rentQty: 10, netAvailableQty: 312, shortageQty: 0, surplusQty: 14, status: 'AVAILABLE', jobs: [] }
+        ]
+      }
+    ];
+    return NextResponse.json({
+      summary: {
+        shortageTypes: 0,
+        peakShortageQty: 0,
+        daysWithShortage: 0,
+        affectedLines: 0,
+        affectedJobs: 0
+      },
+      days
+    });
+  }
+
+  // 24. /api/maintenance/dashboard
+  if (pathStr === 'maintenance/dashboard') {
+    const runningJobs = masterJobs.slice(0, 15).map((j: any) => ({
+      styleId: `s-${j.jobNo}`,
+      line: j.lineAllocation?.line || 'Line 01A',
+      jobNo: j.jobNo,
+      styleNo: j.styleNo,
+      floor: j.lineAllocation?.floor || 'Floor 1',
+      status: 'RUNNING',
+      totalMachine: j.ie?.machineQty || 19,
+      machineRequirements: [
+        { machineType: 'SNLS', qty: 10 },
+        { machineType: '4T OL', qty: 6 },
+        { machineType: 'Flatlock', qty: 3 }
+      ]
+    }));
+    return NextResponse.json({
+      summary: {
+        total: 1221,
+        breakdown: 35,
+        available: 1196,
+        required: 1140,
+        idle: 56,
+        shortage: 0
+      },
+      rows: maintenanceMachines,
+      runningJobs,
+      changeovers: [
+        {
+          date: '2026-09-26',
+          line: 'Line 02A',
+          oldJob: '48085',
+          oldStyle: '13251506',
+          newJob: '48061',
+          newStyle: '13251509',
+          changes: [
+            { machineType: '4T OL', delta: 2, action: 'ADD' },
+            { machineType: 'Flatlock', delta: -1, action: 'REMOVE' }
+          ]
+        }
+      ]
+    });
+  }
+
+  // 25. /api/ie-ops/target-context
+  if (pathStr === 'ie-ops/target-context') {
+    const lines = [
+      {
+        code: 'Line 01A',
+        jobs: [
+          { jobNo: '48085', styleNo: '13251506', styleId: 's-48085', smv: 9.2, manpower: 28, workingHours: 8 }
+        ]
+      },
+      {
+        code: 'Line 02A',
+        jobs: [
+          { jobNo: '48061', styleNo: '13251509', styleId: 's-48061', smv: 9.8, manpower: 30, workingHours: 8 }
+        ]
+      },
+      {
+        code: 'Line 03A',
+        jobs: [
+          { jobNo: '48002', styleNo: '13251512', styleId: 's-48002', smv: 8.6, manpower: 28, workingHours: 8 }
+        ]
+      }
+    ];
+    return NextResponse.json({
+      lines,
+      existing: memoryTargets,
+      lineActuals: [
+        { lineCode: 'Line 01A', employee: 28, operator: 22, targetEfficiencyPct: 75.4 },
+        { lineCode: 'Line 02A', employee: 30, operator: 24, targetEfficiencyPct: 76.2 },
+        { lineCode: 'Line 03A', employee: 28, operator: 22, targetEfficiencyPct: 71.0 }
+      ],
+      summary: {
+        todayActual: { employee: 86 },
+        previousDay: { target: 68500, output: 71200, efficiency: 74.7 }
+      }
+    });
+  }
+
+  // 26. /api/ie-ops/jobs/search
+  if (pathStr === 'ie-ops/jobs/search') {
+    const q = (request.nextUrl.searchParams.get('q') || '').toLowerCase();
+    const found = masterJobs
+      .filter((j: any) => `${j.jobNo} ${j.styleNo} ${j.buyer}`.toLowerCase().includes(q))
+      .slice(0, 10)
+      .map((j: any) => ({
+        jobNo: j.jobNo,
+        styleNo: j.styleNo,
+        styleId: `s-${j.jobNo}`,
+        smv: j.ie?.smv || 9.2,
+        manpower: j.ie?.manpower || 30
+      }));
+    return NextResponse.json(found);
+  }
+
+  // 27. /api/ie-ops/npt/summary and /api/ie-ops/npt
+  if (pathStr === 'ie-ops/npt/summary') {
+    return NextResponse.json({
+      totalMinutes: 485,
+      lostMoney: 58200,
+      breakdownMinutes: 165,
+      byType: [
+        { name: 'Mechanical Breakdown', value: 165 },
+        { name: 'Input Wait (Cut Panels)', value: 140 },
+        { name: 'Thread Breakage / Trims', value: 85 },
+        { name: 'Pattern / Size Correction', value: 55 },
+        { name: 'Electricity / Air Pressure', value: 40 }
+      ],
+      byLine: [
+        { name: 'Line 04B', value: 110 },
+        { name: 'Line 01A', value: 85 },
+        { name: 'Line 11A', value: 65 },
+        { name: 'Line 02A', value: 60 }
+      ],
+      machineBreakdown: [
+        { name: '4T Overlock (Side Seam)', total: 65, waiting: 20, repair: 45 },
+        { name: 'Flatlock (Hemming)', total: 55, waiting: 15, repair: 40 },
+        { name: 'SNLS (Collar Stitch)', total: 45, waiting: 10, repair: 35 }
+      ],
+      byDate: [
+        { name: '2026-09-20', value: 95, efficiency: 74.2 },
+        { name: '2026-09-21', value: 80, efficiency: 75.8 },
+        { name: '2026-09-22', value: 70, efficiency: 76.5 },
+        { name: '2026-09-23', value: 110, efficiency: 73.1 },
+        { name: '2026-09-24', value: 65, efficiency: 77.2 }
+      ]
+    });
+  }
+
+  if (pathStr === 'ie-ops/npt') {
+    return NextResponse.json(memoryNptRecords);
+  }
+
+  // 28. /api/ie-ops/checkpoints
+  if (pathStr === 'ie-ops/checkpoints') {
+    const list = [
+      { id: 'cp-1', lineCode: 'Line 01A', jobNo: '48085', smv: 9.2, firstHourTarget: 220, firstHourActual: 215, fourHourTarget: 880, fourHourActual: 905, eightHourTarget: 1760, eightHourActual: 1810, otActual: 240, dailyTarget: 2000, dailyActual: 2050, efficiencyPct: 76.5 },
+      { id: 'cp-2', lineCode: 'Line 02A', jobNo: '48061', smv: 9.8, firstHourTarget: 200, firstHourActual: 195, fourHourTarget: 800, fourHourActual: 820, eightHourTarget: 1600, eightHourActual: 1640, otActual: 210, dailyTarget: 1800, dailyActual: 1850, efficiencyPct: 75.2 },
+      { id: 'cp-3', lineCode: 'Line 03A', jobNo: '48002', smv: 8.6, firstHourTarget: 240, firstHourActual: 230, fourHourTarget: 960, fourHourActual: 980, eightHourTarget: 1920, eightHourActual: 1950, otActual: 260, dailyTarget: 2200, dailyActual: 2210, efficiencyPct: 72.8 }
+    ];
+    return NextResponse.json(list);
+  }
+
+  // 29. /api/ie-ops/qco
+  if (pathStr === 'ie-ops/qco') {
+    return NextResponse.json(memoryQcoRecords);
+  }
+
+  if (pathStr === 'ie-ops/qco/rules') {
+    return NextResponse.json([
+      { id: 'r-1', styleCategory: 'Basic T-Shirt', standardQcoMinutes: 25, benchmarkEfficiencyPct: 75 },
+      { id: 'r-2', styleCategory: 'Polo Shirt', standardQcoMinutes: 35, benchmarkEfficiencyPct: 70 },
+      { id: 'r-3', styleCategory: 'Hooded Sweatshirt (Fleece)', standardQcoMinutes: 45, benchmarkEfficiencyPct: 65 }
+    ]);
+  }
+
+  // 30. /api/ie-ops/skill-matrix
+  if (pathStr === 'ie-ops/skill-matrix') {
+    return NextResponse.json(memorySkills);
+  }
+
+  // 31. /api/ie-ops/responsibility
+  if (pathStr === 'ie-ops/responsibility') {
+    return NextResponse.json(memoryResponsibilities);
+  }
+
+  // 32. /api/documents/styles
+  if (pathStr === 'documents/styles') {
+    const q = (request.nextUrl.searchParams.get('q') || '').toLowerCase();
+    const rows = masterJobs
+      .filter((j: any) => !q || `${j.jobNo} ${j.styleNo} ${j.buyer} ${j.itemDescription || ''}`.toLowerCase().includes(q))
+      .slice(0, 20)
+      .map((j: any) => ({
+        id: `style-${j.jobNo}`,
+        styleNo: j.styleNo,
+        itemDescription: j.itemDescription,
+        quantity: j.orderQty,
+        order: {
+          id: j.id,
+          jobNo: j.jobNo,
+          buyer: { id: `b-${j.buyer}`, name: j.buyer, code: j.buyer }
+        },
+        productionLots: [
+          { id: `lot-${j.jobNo}-1`, code: 'LOT-01', name: 'Main Bulk', totalQty: j.orderQty, status: 'IN_PRODUCTION' }
+        ]
+      }));
+    return NextResponse.json(rows);
+  }
+
+  // 32b. /api/documents/styles/:id/forms
+  if (pathStr.startsWith('documents/styles/') && pathStr.endsWith('/forms')) {
+    const styleId = pathStr.split('/')[2];
+    const jobNo = styleId.replace('style-', '');
+    return NextResponse.json({
+      forms: [
+        {
+          id: `doc-${jobNo}-tna`,
+          type: 'TNA_PLAN',
+          templateVersion: 'v1.2 Company Standard',
+          status: 'APPROVED',
+          revision: 1,
+          createdAt: '2026-08-01T10:00:00.000Z',
+          updatedAt: '2026-08-05T14:00:00.000Z',
+          data: {
+            jobNo,
+            buyer: 'BS-NMT',
+            styleNo: '13251506',
+            garmentDescription: 'Men Heavyweight Fleece Hoodie',
+            totalOrderQty: 3000,
+            merchandiser: 'Alamgir'
+          }
+        }
+      ]
+    });
+  }
+
+  // 33. /api/planning/quota
   if (pathStr === 'planning/quota') {
     return NextResponse.json({
       reportDate: factoryKpi.reportDate,
@@ -674,19 +1084,22 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     });
   }
 
-  // 23. /api/management/fob
+  // 34. /api/management/fob
   if (pathStr === 'management/fob') {
     return NextResponse.json({
       analytics: factoryKpi.fobAnalytics || []
     });
   }
 
-  // 24. /api/kpi-tracker/full
+  // 35. /api/kpi-tracker/full
   if (pathStr === 'kpi-tracker/full') {
     return NextResponse.json(factoryKpi);
   }
 
-  // Default fallback for any other GET
+  // Default fallback for any other GET: return array or safe object
+  if (pathStr.includes('search') || pathStr.includes('list') || pathStr.includes('rows') || pathStr.includes('batches')) {
+    return NextResponse.json([]);
+  }
   return NextResponse.json({ status: 'ok', path: pathStr, totalJobs: masterJobs.length });
 }
 
@@ -700,8 +1113,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const user = {
       id: 'u-admin-1',
       email,
-      name: email.split('@')[0] === 'admin' ? 'NFL Administrator' : 'Authorized User',
-      roles: ['ADMIN']
+      name: email.split('@')[0] === 'admin' ? 'NFL Administrator' : 'Executive User',
+      roles: ['ADMIN', 'MANAGEMENT']
     };
     return NextResponse.json({
       success: true,
@@ -711,20 +1124,69 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     });
   }
 
+  if (pathStr === 'ie-ops/npt') {
+    const body = await request.json().catch(() => ({}));
+    const record = { id: `npt-${Date.now()}`, recordKind: 'LINE_NPT', ...body };
+    memoryNptRecords = [record, ...memoryNptRecords];
+    return NextResponse.json(record);
+  }
+
+  if (pathStr === 'ie-ops/targets') {
+    const body = await request.json().catch(() => ({}));
+    const target = { id: `tgt-${Date.now()}`, ...body };
+    memoryTargets = [target, ...memoryTargets];
+    return NextResponse.json(target);
+  }
+
+  if (pathStr === 'ie-ops/skill-matrix') {
+    const body = await request.json().catch(() => ({}));
+    const skill = { id: `sk-${Date.now()}`, ...body };
+    memorySkills = [skill, ...memorySkills];
+    return NextResponse.json(skill);
+  }
+
+  if (pathStr === 'ie-ops/responsibility') {
+    const body = await request.json().catch(() => ({}));
+    const resp = { id: `resp-${Date.now()}`, ...body };
+    memoryResponsibilities = [resp, ...memoryResponsibilities];
+    return NextResponse.json(resp);
+  }
+
+  if (pathStr === 'ie-ops/qco') {
+    const body = await request.json().catch(() => ({}));
+    const qco = { id: `qco-${Date.now()}`, ...body };
+    memoryQcoRecords = [qco, ...memoryQcoRecords];
+    return NextResponse.json(qco);
+  }
+
+  if (pathStr === 'ie-ops/kaizen') {
+    const body = await request.json().catch(() => ({}));
+    const kaizen = { id: `kz-${Date.now()}`, kaizenNo: `KZ-${Date.now().toString().slice(-4)}`, ...body };
+    memoryKaizenProjects = [kaizen, ...memoryKaizenProjects];
+    return NextResponse.json(kaizen);
+  }
+
+  if (pathStr === 'maintenance/master') {
+    const body = await request.json().catch(() => ({}));
+    const machine = { id: `m-${Date.now()}`, breakdownQty: 0, rentQty: 0, actualUtilizedQty: 0, reportedUnusedQty: body.totalQty || 0, workingQty: body.totalQty || 0, remarks: 'Added to fleet', ...body };
+    maintenanceMachines = [machine, ...maintenanceMachines];
+    return NextResponse.json(machine);
+  }
+
+  if (pathStr === 'maintenance/daily/import') {
+    return NextResponse.json({ success: true, message: 'Daily machine utilization imported successfully.' });
+  }
+
+  if (pathStr === 'imports/preview') {
+    return NextResponse.json({ batchId: `preview-${Date.now()}`, reportType: 'IE_BULLETIN', totalRows: 24, validRows: 24, errorRows: 0 });
+  }
+
+  if (pathStr.includes('/commit')) {
+    return NextResponse.json({ success: true, message: 'Batch committed to system records.' });
+  }
+
   if (pathStr === 'demo/load') {
     return NextResponse.json({ createdOrders: 2000, message: 'All 2,000 jobs loaded and active' });
-  }
-
-  if (pathStr === 'planning/gantt/approve') {
-    return NextResponse.json({ success: true, message: 'Selected line plans approved for floor execution' });
-  }
-
-  if (pathStr === 'planning/gantt/generate') {
-    return NextResponse.json({ success: true, message: 'Line plan simulation re-generated from T&A dates' });
-  }
-
-  if (pathStr.endsWith('/undo')) {
-    return NextResponse.json({ success: true, message: 'Previous baseline plan restored' });
   }
 
   return NextResponse.json({ success: true, message: `Action on ${pathStr} recorded successfully` });
@@ -735,40 +1197,32 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   const pathStr = path.join('/');
   const body = await request.json().catch(() => ({}));
 
-  if (pathStr.startsWith('planning/gantt/styles/')) {
-    return NextResponse.json({ ...body, status: body.status || 'REVIEWED' });
+  if (pathStr.startsWith('maintenance/master/')) {
+    const id = pathStr.split('/')[2];
+    maintenanceMachines = maintenanceMachines.map(m => m.id === id ? { ...m, ...body } : m);
+    return NextResponse.json({ success: true });
   }
 
-  if (pathStr.startsWith('masters/lines/')) {
-    return NextResponse.json({ success: true, message: 'Line machines updated' });
+  if (pathStr.startsWith('maintenance/daily/')) {
+    return NextResponse.json({ success: true });
+  }
+
+  if (pathStr.startsWith('ie-ops/targets/') && pathStr.endsWith('/close')) {
+    return NextResponse.json({ success: true, status: 'CLOSED', ...body });
+  }
+
+  if (pathStr.startsWith('ie/styles/')) {
+    return NextResponse.json({ success: true, message: 'IE Bulletin updated and released' });
   }
 
   return NextResponse.json({ success: true, ...body });
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
-  const { path } = await params;
-  const pathStr = path.join('/');
-
-  if (pathStr === 'demo/clear') {
-    return NextResponse.json({ deletedOrders: 0, message: 'Demo jobs preserved' });
-  }
-
   return NextResponse.json({ success: true });
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
-  const { path } = await params;
-  const pathStr = path.join('/');
   const body = await request.json().catch(() => ({}));
-
-  if (pathStr.includes('/merchandising-followup')) {
-    return NextResponse.json({ success: true, message: 'Merchandising follow-up updated', ...body });
-  }
-
-  if (pathStr.includes('/quantity')) {
-    return NextResponse.json({ success: true, message: 'Order quantity revised successfully', newQuantity: body.newQuantity, warning: null });
-  }
-
   return NextResponse.json({ success: true, ...body });
 }
