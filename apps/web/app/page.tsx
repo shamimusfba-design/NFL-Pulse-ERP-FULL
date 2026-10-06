@@ -1202,104 +1202,65 @@ export default function Dashboard() {
               className="tab-nav-360"
               style={{
                 display: 'flex',
-                gap: '10px',
-                padding: '14px 24px',
+                flexWrap: 'wrap',
+                gap: '8px 10px',
+                padding: '12px 20px',
                 background: '#f1f5f9',
                 borderTop: '1px solid #e2e8f0',
                 borderBottom: '2px solid #cbd5e1',
-                overflowX: 'auto',
                 flexShrink: 0,
-                alignItems: 'center'
+                alignItems: 'center',
+                minHeight: '56px',
+                overflow: 'visible'
               }}
             >
               <button
                 type="button"
                 className={`tab-btn-360 ${modalTab === 'sizes' ? 'active' : ''}`}
                 onClick={() => setModalTab('sizes')}
-                style={{
-                  padding: '10px 18px',
-                  borderRadius: '8px',
-                  fontSize: '12.5px',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  whiteSpace: 'nowrap',
-                  flexShrink: 0,
-                  border: modalTab === 'sizes' ? '2px solid #1d4ed8' : '1.5px solid #94a3b8',
-                  background: modalTab === 'sizes' ? '#2563eb' : '#ffffff',
-                  color: modalTab === 'sizes' ? '#ffffff' : '#0f172a',
-                  boxShadow: modalTab === 'sizes' ? '0 3px 8px rgba(37,99,235,0.35)' : '0 1px 3px rgba(0,0,0,0.06)'
-                }}
               >
-                <span style={{ fontSize: '15px' }}>📏</span>
+                <span>📏</span>
                 <span>Size-Wise &amp; PO / Qty Breakdown</span>
               </button>
               <button
                 type="button"
                 className={`tab-btn-360 ${modalTab === 'material' ? 'active' : ''}`}
                 onClick={() => setModalTab('material')}
-                style={{
-                  padding: '9px 16px',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  cursor: 'pointer'
-                }}
               >
-                🧵 Fabric &amp; Trims
+                <span>🧵</span>
+                <span>Fabric &amp; Trims</span>
               </button>
               <button
                 type="button"
                 className={`tab-btn-360 ${modalTab === 'production' ? 'active' : ''}`}
                 onClick={() => setModalTab('production')}
-                style={{
-                  padding: '9px 16px',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  cursor: 'pointer'
-                }}
               >
-                🏭 Stage Production
+                <span>🏭</span>
+                <span>Stage Production</span>
               </button>
               <button
                 type="button"
                 className={`tab-btn-360 ${modalTab === 'quality' ? 'active' : ''}`}
                 onClick={() => setModalTab('quality')}
-                style={{
-                  padding: '9px 16px',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  cursor: 'pointer'
-                }}
               >
-                🔍 Quality Log
+                <span>🔍</span>
+                <span>Quality Log</span>
               </button>
               <button
                 type="button"
                 className={`tab-btn-360 ${modalTab === 'leadtime' ? 'active' : ''}`}
                 onClick={() => setModalTab('leadtime')}
-                style={{
-                  padding: '9px 16px',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  cursor: 'pointer'
-                }}
               >
-                ⏱️ T&amp;A Schedule
+                <span>⏱️</span>
+                <span>T&amp;A Schedule</span>
               </button>
               <button
                 type="button"
                 className={`tab-btn-360 ${modalTab === 'reports' ? 'active' : ''}`}
                 onClick={() => setModalTab('reports')}
-                style={{
-                  padding: '9px 16px',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  cursor: 'pointer'
-                }}
               >
-                🧪 Lab Tests
+                <span>🧪</span>
+                <span>Lab Tests</span>
               </button>
             </div>
 
