@@ -747,6 +747,24 @@ export function ExecutiveKpiDashboard() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <Link
+              href="/modules/kpi-board"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '7px 12px',
+                borderRadius: '6px',
+                border: '1px solid #2563eb',
+                background: '#eff6ff',
+                fontSize: '12px',
+                fontWeight: 700,
+                color: '#1d4ed8',
+                textDecoration: 'none'
+              }}
+            >
+              <span>✍️</span> Factory 2026 KPI Tracker &amp; Entry
+            </Link>
             <button
               type="button"
               onClick={() => window.print()}

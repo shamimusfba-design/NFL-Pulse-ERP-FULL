@@ -2,11 +2,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import Shell from '../../../components/Shell';
 import { api } from '../../../lib/api';
+import { KPI_DEPARTMENTS, KPI_METRICS_BY_DEPARTMENT, MONTH_OPTIONS } from '../../../lib/factoryKpiMaster';
 
 const now = new Date();
 const num = (v: any) => (v === null || v === undefined || v === '' ? '—' : Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 }));
 
-const SECTIONS = ['ALL', 'Knitting', 'Dyeing', 'Cutting', 'Sewing', 'Printing', 'Quality', 'HR'];
+const SECTIONS = ['ALL', ...KPI_DEPARTMENTS];
 
 export default function KpiBoardPage() {
   const [year, setYear] = useState(now.getFullYear());
@@ -18,16 +19,42 @@ export default function KpiBoardPage() {
   const [msg, setMsg] = useState('');
   const [error, setError] = useState('');
 
-  // Manual entry form
+  // Manual entry form with synchronized dropdowns
+  const [formDept, setFormDept] = useState<string>('Production');
+  const deptMetrics = useMemo(() => KPI_METRICS_BY_DEPARTMENT[formDept] || [], [formDept]);
+  const [formParticular, setFormParticular] = useState<string>(deptMetrics[0]?.particular || 'Factory Sewing Efficiency (%)');
+
   const [form, setForm] = useState<any>({
-    section: 'Sewing',
-    kpiKey: '',
-    kpiName: '',
     value: '',
     unit: '%',
     target: '',
     remarks: ''
   });
+
+  function handleDeptChange(dept: string) {
+    setFormDept(dept);
+    const metrics = KPI_METRICS_BY_DEPARTMENT[dept] || [];
+    if (metrics.length > 0) {
+      setFormParticular(metrics[0].particular);
+      setForm((prev: any) => ({
+        ...prev,
+        unit: metrics[0].unit,
+        target: metrics[0].defaultTarget ? String(metrics[0].defaultTarget) : ''
+      }));
+    }
+  }
+
+  function handleParticularChange(part: string) {
+    setFormParticular(part);
+    const m = deptMetrics.find(x => x.particular === part);
+    if (m) {
+      setForm((prev: any) => ({
+        ...prev,
+        unit: m.unit,
+        target: m.defaultTarget ? String(m.defaultTarget) : ''
+      }));
+    }
+  }
 
   async function load() {
     setLoading(true);
@@ -51,23 +78,30 @@ export default function KpiBoardPage() {
   }, [year, month]);
 
   async function saveManual() {
-    if (!form.kpiName || !form.value) {
-      setError('Please provide KPI Name and Value');
+    if (!formParticular || form.value === '') {
+      setError('Please select a KPI metric and enter a valid value.');
       return;
     }
     try {
       setError('');
       setMsg('');
-      const generatedKey = form.kpiKey.trim() || form.kpiName.toUpperCase().replace(/[^A-Z0-9]/g, '_');
+      const generatedKey = `${formDept}_${formParticular}`.toUpperCase().replace(/[^A-Z0-9]/g, '_');
       await api('/ie-ops/kpi/manual', {
         method: 'POST',
-        body: JSON.stringify({ ...form, kpiKey: generatedKey, year, month })
+        body: JSON.stringify({
+          section: formDept,
+          kpiKey: generatedKey,
+          kpiName: formParticular,
+          value: Number(form.value),
+          unit: form.unit || '%',
+          target: form.target ? Number(form.target) : undefined,
+          remarks: form.remarks,
+          year,
+          month
+        })
       });
-      setMsg(`Saved KPI "${form.kpiName}" for ${form.section}`);
+      setMsg(`✓ Successfully saved KPI: ${formDept} · ${formParticular} = ${form.value} ${form.unit}`);
       setForm({
-        section: form.section,
-        kpiKey: '',
-        kpiName: '',
         value: '',
         unit: form.unit || '%',
         target: '',
@@ -311,27 +345,31 @@ export default function KpiBoardPage() {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px', alignItems: 'end' }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '11px', fontWeight: 700, color: '#334155' }}>
-            Section
+            Department / Section *
             <select
-              value={form.section}
-              onChange={e => setForm({ ...form, section: e.target.value })}
+              value={formDept}
+              onChange={e => handleDeptChange(e.target.value)}
               style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff' }}
             >
-              {SECTIONS.filter(s => s !== 'ALL').map(s => (
+              {KPI_DEPARTMENTS.map(s => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>
           </label>
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '11px', fontWeight: 700, color: '#334155' }}>
-            KPI Name
-            <input
-              type="text"
-              placeholder="e.g. Sewing DHU, RFT %"
-              value={form.kpiName}
-              onChange={e => setForm({ ...form, kpiName: e.target.value })}
+            Particular / Metric Name *
+            <select
+              value={formParticular}
+              onChange={e => handleParticularChange(e.target.value)}
               style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff' }}
-            />
+            >
+              {deptMetrics.map(m => (
+                <option key={m.particular} value={m.particular}>
+                  {m.particular} ({m.unit})
+                </option>
+              ))}
+            </select>
           </label>
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '11px', fontWeight: 700, color: '#334155' }}>

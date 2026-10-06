@@ -345,7 +345,7 @@ function JobDetailContent() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', borderBottom: '2px solid #e2e8f0', paddingBottom: '10px', marginBottom: '16px' }}>
         <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', flexWrap: 'wrap' }}>
           {[
-            { id: 'sizes', label: '📏 Size & PO Breakdown', desc: 'Order breakdown & PO details' },
+            { id: 'sizes', label: '📏 Size-Wise & PO / Qty Breakdown', desc: 'Order breakdown & PO details' },
             { id: 'material', label: '🧵 Fabric & Trims', desc: 'Yarn, fabric & accessories BOM' },
             { id: 'production', label: '🏭 Stage Production & IE', desc: 'Lines, SMV & stage runs' },
             { id: 'quality', label: '🔍 Quality & Inspection', desc: 'Audit log & defect control' },

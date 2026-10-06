@@ -1261,8 +1261,16 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
 
       {/* 5. JOB 360 MODAL WITH COMPREHENSIVE GARMENT MANUFACTURING BREAKDOWN */}
       {selectedJob && jobProfile && (
-        <div className="modal-backdrop-360" onClick={() => setSelectedJob(null)}>
-          <div className="modal-dialog-360" onClick={e => e.stopPropagation()} style={{ maxWidth: '1040px' }}>
+        <div
+          className="modal-backdrop-360"
+          onClick={() => setSelectedJob(null)}
+          style={{ alignItems: 'flex-start', paddingTop: '56px', paddingBottom: '36px', overflowY: 'auto', zIndex: 9999 }}
+        >
+          <div
+            className="modal-dialog-360"
+            onClick={e => e.stopPropagation()}
+            style={{ maxWidth: '1060px', marginTop: '16px', marginBottom: '24px', maxHeight: 'calc(100vh - 96px)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}
+          >
             {/* Modal Header */}
             <div className="modal-header-360">
               <div>
@@ -1290,18 +1298,54 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
             </div>
 
             {/* TAB NAVIGATION */}
-            <div style={{ display: 'flex', gap: '6px', padding: '10px 22px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', overflowX: 'auto' }}>
+            <div
+              className="tab-nav-360"
+              style={{
+                display: 'flex',
+                gap: '10px',
+                padding: '14px 24px',
+                background: '#f1f5f9',
+                borderTop: '1px solid #e2e8f0',
+                borderBottom: '2px solid #cbd5e1',
+                overflowX: 'auto',
+                flexShrink: 0,
+                alignItems: 'center'
+              }}
+            >
               <button
                 type="button"
                 className={`tab-btn-360 ${modalTab === 'sizes' ? 'active' : ''}`}
                 onClick={() => setModalTab('sizes')}
+                style={{
+                  padding: '10px 18px',
+                  borderRadius: '8px',
+                  fontSize: '12.5px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                  border: modalTab === 'sizes' ? '2px solid #1d4ed8' : '1.5px solid #94a3b8',
+                  background: modalTab === 'sizes' ? '#2563eb' : '#ffffff',
+                  color: modalTab === 'sizes' ? '#ffffff' : '#0f172a',
+                  boxShadow: modalTab === 'sizes' ? '0 3px 8px rgba(37,99,235,0.35)' : '0 1px 3px rgba(0,0,0,0.06)'
+                }}
               >
-                📏 Size &amp; PO Breakdown
+                <span style={{ fontSize: '15px' }}>📏</span>
+                <span>Size-Wise &amp; PO / Qty Breakdown</span>
               </button>
               <button
                 type="button"
                 className={`tab-btn-360 ${modalTab === 'material' ? 'active' : ''}`}
                 onClick={() => setModalTab('material')}
+                style={{
+                  padding: '9px 16px',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  cursor: 'pointer'
+                }}
               >
                 🧵 Fabric &amp; Trims Spec
               </button>
@@ -1309,6 +1353,12 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
                 type="button"
                 className={`tab-btn-360 ${modalTab === 'production' ? 'active' : ''}`}
                 onClick={() => setModalTab('production')}
+                style={{
+                  padding: '9px 16px',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  cursor: 'pointer'
+                }}
               >
                 🏭 Production &amp; IE Target
               </button>
@@ -1316,6 +1366,12 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
                 type="button"
                 className={`tab-btn-360 ${modalTab === 'quality' ? 'active' : ''}`}
                 onClick={() => setModalTab('quality')}
+                style={{
+                  padding: '9px 16px',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  cursor: 'pointer'
+                }}
               >
                 🔍 Quality Audit Log
               </button>
@@ -1323,6 +1379,12 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
                 type="button"
                 className={`tab-btn-360 ${modalTab === 'leadtime' ? 'active' : ''}`}
                 onClick={() => setModalTab('leadtime')}
+                style={{
+                  padding: '9px 16px',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  cursor: 'pointer'
+                }}
               >
                 ⏱️ T&amp;A Schedule
               </button>
@@ -1330,6 +1392,12 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
                 type="button"
                 className={`tab-btn-360 ${modalTab === 'reports' ? 'active' : ''}`}
                 onClick={() => setModalTab('reports')}
+                style={{
+                  padding: '9px 16px',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  cursor: 'pointer'
+                }}
               >
                 🧪 Lab Reports
               </button>
@@ -1340,8 +1408,24 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
               {/* TAB 1: SIZE-WISE & PO COUNTRY BREAKDOWN */}
               {modalTab === 'sizes' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {/* Quick Section Indicators */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', background: '#f8fafc', padding: '10px 16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '.04em' }}>Breakdown Views:</span>
+                      <a href="#matrix-size-sec" style={{ textDecoration: 'none', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', padding: '4px 10px', borderRadius: '6px', fontSize: '11.5px', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        📏 Size-Wise Ratio Matrix
+                      </a>
+                      <a href="#matrix-po-sec" style={{ textDecoration: 'none', background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', padding: '4px 10px', borderRadius: '6px', fontSize: '11.5px', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        📦 PO &amp; Country Allocation
+                      </a>
+                    </div>
+                    <span style={{ fontSize: '11.5px', color: '#64748b' }}>
+                      Order Total: <strong style={{ color: '#0f172a' }}>{n(selectedJob.orderQty)} pcs</strong>
+                    </span>
+                  </div>
+
                   {/* Size Matrix Table */}
-                  <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
+                  <div id="matrix-size-sec" style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
                     <div style={{ padding: '10px 14px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <strong style={{ fontSize: '12px', color: '#0f172a' }}>Size-Wise Manufacturing Breakdown Matrix (Total: {n(selectedJob.orderQty)} pcs)</strong>
                       <span className="status-pill" style={{ background: '#ecfdf5', color: '#047857' }}>Ratio: 1:2:3:3:2:1:0.5</span>
@@ -1404,7 +1488,7 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
                   </div>
 
                   {/* PO & Country-Wise Breakdown */}
-                  <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
+                  <div id="matrix-po-sec" style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
                     <div style={{ padding: '10px 14px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <strong style={{ fontSize: '12px', color: '#0f172a' }}>PO & Destination Country-Wise Shipment Allocation</strong>
                       <span className="status-pill" style={{ background: '#dbeafe', color: '#1e40af' }}>5 Export Ports</span>

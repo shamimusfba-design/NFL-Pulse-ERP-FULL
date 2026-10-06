@@ -680,31 +680,45 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const monthKeys = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
     const key = monthKeys[mo - 1] || 'aug';
 
-    const autoKpis = [
-      { section: 'Sewing', kpiKey: 'SEWING_EFFICIENCY', kpiName: 'Factory Sewing Efficiency', value: factoryKpi.departmentKpis?.sewing?.[3]?.[key] ?? 70.36, unit: '%', source: 'AUTO_SEWING' },
-      { section: 'Sewing', kpiKey: 'SEWING_PRODUCTION', kpiName: 'Sewing Output (Monthly Pcs)', value: factoryKpi.departmentKpis?.sewing?.[2]?.[key] ?? 1477799, unit: 'Pcs', source: 'AUTO_SEWING' },
-      { section: 'Sewing', kpiKey: 'SEWING_SMV', kpiName: 'Average Sewing SMV', value: factoryKpi.departmentKpis?.sewing?.[0]?.[key] ?? 9.60, unit: 'min', source: 'AUTO_IE' },
-      { section: 'Sewing', kpiKey: 'SEWING_NPT_CAPTURING', kpiName: 'Sewing Capturing NPT', value: factoryKpi.departmentKpis?.sewing?.[6]?.[key] ?? 73.84, unit: '%', source: 'AUTO_SEWING' },
-      { section: 'Sewing', kpiKey: 'CUT_TO_SHIP_LOSS', kpiName: 'Cut to Ship Loss %', value: factoryKpi.departmentKpis?.sewing?.[7]?.[key] ?? 2.59, unit: '%', source: 'AUTO_SEWING' },
-      { section: 'Cutting', kpiKey: 'CUTTING_PRODUCTION', kpiName: 'Monthly Cutting Production', value: factoryKpi.departmentKpis?.cutting?.[0]?.[key] ?? 1427113, unit: 'Pcs', source: 'AUTO_CUTTING' },
-      { section: 'Cutting', kpiKey: 'CUTTING_EFFICIENCY', kpiName: 'Cutting Efficiency', value: factoryKpi.departmentKpis?.cutting?.[1]?.[key] ?? 80.30, unit: '%', source: 'AUTO_CUTTING' },
-      { section: 'Cutting', kpiKey: 'FABRIC_WASTAGE', kpiName: 'Fabric Wastage %', value: factoryKpi.departmentKpis?.cutting?.[2]?.[key] ?? 2.66, unit: '%', source: 'AUTO_CUTTING' },
-      { section: 'Quality', kpiKey: 'IN_LINE_DHU', kpiName: 'In-Line DHU (Internal)', value: factoryKpi.departmentKpis?.quality?.[0]?.[key] ?? 9.46, unit: 'DHU', source: 'AUTO_QUALITY' },
-      { section: 'Quality', kpiKey: 'FINAL_DHU', kpiName: 'Final Inspection DHU', value: factoryKpi.departmentKpis?.quality?.[4]?.[key] ?? 5.94, unit: 'DHU', source: 'AUTO_QUALITY' },
-      { section: 'Quality', kpiKey: 'END_LINE_OQL', kpiName: 'End Line Audit OQL', value: factoryKpi.departmentKpis?.quality?.[1]?.[key] ?? 8.05, unit: '%', source: 'AUTO_QUALITY' },
-      { section: 'Printing', kpiKey: 'PRINTING_PANELS', kpiName: 'Printing Production Panels', value: factoryKpi.departmentKpis?.printing?.[0]?.[key] ?? 826632, unit: 'Pcs', source: 'AUTO_PRINT' },
-      { section: 'Printing', kpiKey: 'PRINTING_EFFICIENCY', kpiName: 'Printing Efficiency', value: factoryKpi.departmentKpis?.printing?.[1]?.[key] ?? 91.69, unit: '%', source: 'AUTO_PRINT' },
-      { section: 'Printing', kpiKey: 'PRINTING_LOST_TIME', kpiName: 'Printing Lost Time', value: factoryKpi.departmentKpis?.printing?.[2]?.[key] ?? 8.31, unit: '%', source: 'AUTO_PRINT' },
-      { section: 'Knitting', kpiKey: 'KNITTING_PRODUCTION', kpiName: 'Knitting Production', value: factoryKpi.departmentKpis?.knitting?.[0]?.[key] ?? 206159, unit: 'kg', source: 'AUTO_KNITTING' },
-      { section: 'Knitting', kpiKey: 'KNITTING_OTD', kpiName: 'Knitting T&A On-Time Delivery', value: factoryKpi.departmentKpis?.knitting?.[1]?.[key] ?? 72.1, unit: '%', source: 'AUTO_KNITTING' },
-      { section: 'Dyeing', kpiKey: 'DYEING_PRODUCTION', kpiName: 'Dyeing Production', value: factoryKpi.departmentKpis?.dyeing?.[0]?.[key] ?? 293310, unit: 'kg', source: 'AUTO_DYEING' },
-      { section: 'Dyeing', kpiKey: 'DYEING_RFT', kpiName: 'Dyeing Right First Time (RFT)', value: factoryKpi.departmentKpis?.dyeing?.[1]?.[key] ?? 68.3, unit: '%', source: 'AUTO_DYEING' },
-      { section: 'HR', kpiKey: 'ABSENTEEISM_RATE', kpiName: 'Worker Absenteeism Rate', value: factoryKpi.departmentKpis?.hr?.[0]?.[key] ?? 6.10, unit: '%', source: 'AUTO_HR' },
-      { section: 'HR', kpiKey: 'WORKER_HAPPINESS', kpiName: 'Worker Happiness Index', value: factoryKpi.departmentKpis?.hr?.[2]?.[key] ?? 71.36, unit: '%', source: 'AUTO_HR' }
-    ];
+    const kpiItems = factoryKpi.kpiTracker2026 || [];
+    const autoKpis = kpiItems.map((k: any) => {
+      const monthVal = k[key];
+      const val = monthVal !== null && monthVal !== undefined ? monthVal : k.average;
+      return {
+        section: k.department,
+        kpiKey: `${k.department}_${k.particular}`.toUpperCase().replace(/[^A-Z0-9]/g, '_'),
+        kpiName: k.particular,
+        value: val,
+        unit: k.unit || '',
+        avg2025: k.avg2025,
+        avg2026: k.average,
+        monthKey: key,
+        source: 'FACTORY_2026_MASTER'
+      };
+    });
 
     const manualForMonth = memoryManualKpis.filter(m => Number(m.year) === yr && Number(m.month) === mo);
-    return NextResponse.json({ auto: autoKpis, manual: manualForMonth });
+    return NextResponse.json({
+      reportDate: factoryKpi.reportDate || '05.09.2026',
+      month: key,
+      year: yr,
+      auto: autoKpis,
+      manual: manualForMonth,
+      skillUpgradation: factoryKpi.skillUpgradation || [],
+      knittingLostTimeReasons: factoryKpi.knittingLostTimeReasons || []
+    });
+  }
+
+  // 17b. /api/ie-ops/kpi/master
+  if (pathStr === 'ie-ops/kpi/master') {
+    return NextResponse.json({
+      reportDate: factoryKpi.reportDate || '05.09.2026',
+      factoryName: factoryKpi.factoryName || 'Northern Fashion Ltd.',
+      items: factoryKpi.kpiTracker2026 || [],
+      skillUpgradation: factoryKpi.skillUpgradation || [],
+      knittingLostTimeReasons: factoryKpi.knittingLostTimeReasons || [],
+      manualOverrides: memoryManualKpis
+    });
   }
 
   // 18. /api/ie-ops/kpi/yearly
@@ -1263,11 +1277,29 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json(qco);
   }
 
-  if (pathStr === 'ie-ops/kaizen') {
+  if (pathStr === 'ie-ops/kpi/manual') {
     const body = await request.json().catch(() => ({}));
-    const kaizen = { id: `kz-${Date.now()}`, kaizenNo: `KZ-${Date.now().toString().slice(-4)}`, ...body };
-    memoryKaizenProjects = [kaizen, ...memoryKaizenProjects];
-    return NextResponse.json(kaizen);
+    const kpiKey = body.kpiKey || `${body.section}_${body.kpiName}`.toUpperCase().replace(/[^A-Z0-9]/g, '_');
+    const entry = {
+      id: `manual-kpi-${Date.now()}`,
+      section: body.section || 'Sewing',
+      kpiKey,
+      kpiName: body.kpiName || body.particular || '',
+      value: Number(body.value || 0),
+      unit: body.unit || '%',
+      year: Number(body.year || 2026),
+      month: Number(body.month || 8),
+      target: body.target ? Number(body.target) : undefined,
+      remarks: body.remarks || '',
+      createdAt: new Date().toISOString()
+    };
+    const existingIdx = memoryManualKpis.findIndex(m => m.kpiKey === entry.kpiKey && m.year === entry.year && m.month === entry.month);
+    if (existingIdx >= 0) {
+      memoryManualKpis[existingIdx] = { ...memoryManualKpis[existingIdx], ...entry };
+    } else {
+      memoryManualKpis = [entry, ...memoryManualKpis];
+    }
+    return NextResponse.json({ success: true, item: entry });
   }
 
   if (pathStr === 'maintenance/master') {
