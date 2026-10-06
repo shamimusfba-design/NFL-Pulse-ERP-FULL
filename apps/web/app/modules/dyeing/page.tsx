@@ -123,9 +123,10 @@ export default function DyeingProductionPage() {
           </p>
         </div>
         <div className="module-actions">
+          <a className="btn btn-primary" href="/modules/lab">🧪 Testing Lab Pipeline</a>
+          <a className="btn btn-secondary" href="/?view=FABRIC_MEETING">🧵 Management Meeting</a>
           <a className="btn btn-secondary" href="/modules/greige-store">Greige Fabric Store</a>
           <a className="btn btn-secondary" href="/modules/knitting">Knitting Module</a>
-          <a className="btn btn-secondary" href="/modules/forms-print">Company FOS</a>
         </div>
       </section>
 

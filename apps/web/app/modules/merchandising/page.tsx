@@ -127,6 +127,7 @@ export default function MerchandisingFollowUp(){
       </div>
       <div className="module-actions">
         <a className="btn btn-primary" href="/orders/new">+ Order Entry</a>
+        <a className="btn btn-secondary" href="/modules/yarn-store">🧶 Yarn Requisitions</a>
         <a className="btn btn-secondary" href="/modules/production-lots">Production Lots</a>
         <a className="btn btn-secondary" href="/modules/forms-print">Company Forms</a>
         <a className="btn btn-secondary" href="/tasks">Pending Tasks</a>

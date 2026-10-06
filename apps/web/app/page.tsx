@@ -5,6 +5,10 @@ import { useEffect, useMemo, useState } from 'react';
 import Shell from '../components/Shell';
 import { api } from '../lib/api';
 import { displayJobNo, formatFloorLine } from '../lib/display';
+import { ItemIcon } from '../components/ItemIcon';
+import { BuyerQuotaBoard } from '../components/BuyerQuotaBoard';
+import { FactoryKpiPhysicalBoard } from '../components/FactoryKpiPhysicalBoard';
+import { FabricManagementMeetingReview } from '../components/FabricManagementMeetingReview';
 import demo2000DataRaw from '../data/demo-2000-master.json';
 
 function pct(a: number, b: number) { return b ? Math.round((a / b) * 100) : 0; }
@@ -64,11 +68,11 @@ const initialTasks = [
 
 const initialHeat = {
   rows: [
-    { section: 'knitting', label: 'Knitting (Circular + Flat)', slots: [{ slot: 'Slot 1', loadPct: 92 }, { slot: 'Slot 2', loadPct: 88 }, { slot: 'Slot 3', loadPct: 94 }] },
-    { section: 'dyeing', label: 'Dyeing & Finishing Winches', slots: [{ slot: 'Slot 1', loadPct: 96 }, { slot: 'Slot 2', loadPct: 91 }, { slot: 'Slot 3', loadPct: 89 }] },
-    { section: 'cutting', label: 'Automated Cutting & Spreading', slots: [{ slot: 'Slot 1', loadPct: 85 }, { slot: 'Slot 2', loadPct: 90 }, { slot: 'Slot 3', loadPct: 84 }] },
-    { section: 'sewing', label: 'Sewing Lines (91 physical lines)', slots: [{ slot: 'Slot 1', loadPct: 94 }, { slot: 'Slot 2', loadPct: 98 }, { slot: 'Slot 3', loadPct: 95 }] },
-    { section: 'finishing', label: 'Finishing & Steam Tunnel', slots: [{ slot: 'Slot 1', loadPct: 89 }, { slot: 'Slot 2', loadPct: 86 }, { slot: 'Slot 3', loadPct: 92 }] }
+    { section: 'knitting', label: 'Knitting', slots: [{ slot: 'Slot 1', loadPct: 92 }, { slot: 'Slot 2', loadPct: 88 }, { slot: 'Slot 3', loadPct: 94 }] },
+    { section: 'dyeing', label: 'Dyeing', slots: [{ slot: 'Slot 1', loadPct: 96 }, { slot: 'Slot 2', loadPct: 91 }, { slot: 'Slot 3', loadPct: 89 }] },
+    { section: 'cutting', label: 'Cutting', slots: [{ slot: 'Slot 1', loadPct: 85 }, { slot: 'Slot 2', loadPct: 90 }, { slot: 'Slot 3', loadPct: 84 }] },
+    { section: 'sewing', label: 'Sewing', slots: [{ slot: 'Slot 1', loadPct: 94 }, { slot: 'Slot 2', loadPct: 98 }, { slot: 'Slot 3', loadPct: 95 }] },
+    { section: 'finishing', label: 'Finishing', slots: [{ slot: 'Slot 1', loadPct: 89 }, { slot: 'Slot 2', loadPct: 86 }, { slot: 'Slot 3', loadPct: 92 }] }
   ]
 };
 
@@ -223,6 +227,8 @@ export default function Dashboard() {
   const [sewing, setSewing] = useState<any[]>(initialSewing);
   const [loading, setLoading] = useState(false);
 
+  const [mainView, setMainView] = useState<'REGISTER' | 'PHYSICAL_BOARD' | 'BUYER_QUOTA' | 'FABRIC_MEETING'>('REGISTER');
+
   // Interactive Card & Buyer Selection Filter state
   const [selectedFilterType, setSelectedFilterType] = useState<string>('ALL');
   const [selectedFilterLabel, setSelectedFilterLabel] = useState<string>('All Confirmed Jobs');
@@ -260,6 +266,13 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search);
+      const v = p.get('view');
+      if (v === 'FABRIC_MEETING' || v === 'BUYER_QUOTA' || v === 'PHYSICAL_BOARD') {
+        setMainView(v as any);
+      }
+    }
     refresh().finally(() => setLoading(false));
   }, []);
 
@@ -272,8 +285,7 @@ export default function Dashboard() {
       if (selectedFilterType === 'SEWING' && !r.isSewingRunning) return false;
       if (selectedFilterType === 'PENDING_WORK') {
         const pendingJobNos = new Set(tasks.map(t => String(t.order?.jobNo || '')));
-        const hasPendingStatus = r.presentStatus?.includes('Hold') || r.presentStatus?.includes('Preparing') || r.presentStatus?.includes('Not Ready') || r.isCritical;
-        if (!pendingJobNos.has(String(r.jobNo)) && !hasPendingStatus) return false;
+        if (!pendingJobNos.has(String(r.jobNo))) return false;
       }
       if (selectedFilterType.startsWith('BUYER:') && r.buyer !== selectedFilterType.replace('BUYER:', '')) return false;
 
@@ -397,6 +409,107 @@ export default function Dashboard() {
         </div>
       </section>
 
+      {/* MANAGEMENT VIEW SWITCHER TABS */}
+      <section style={{ display: 'flex', gap: '8px', margin: '14px 0 16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          onClick={() => setMainView('REGISTER')}
+          style={{
+            padding: '8px 16px',
+            borderRadius: '8px',
+            border: 'none',
+            background: mainView === 'REGISTER' ? '#2563eb' : '#f1f5f9',
+            color: mainView === 'REGISTER' ? '#fff' : '#475569',
+            fontWeight: 800,
+            fontSize: '12px',
+            cursor: 'pointer',
+            transition: 'all .15s ease'
+          }}
+        >
+          Executive Order Register
+        </button>
+        <button
+          type="button"
+          onClick={() => setMainView('PHYSICAL_BOARD')}
+          style={{
+            padding: '8px 16px',
+            borderRadius: '8px',
+            border: 'none',
+            background: mainView === 'PHYSICAL_BOARD' ? '#2563eb' : '#f1f5f9',
+            color: mainView === 'PHYSICAL_BOARD' ? '#fff' : '#475569',
+            fontWeight: 800,
+            fontSize: '12px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            transition: 'all .15s ease'
+          }}
+        >
+          <span>📋</span> Factory Physical KPI Board
+        </button>
+        <button
+          type="button"
+          onClick={() => setMainView('BUYER_QUOTA')}
+          style={{
+            padding: '8px 16px',
+            borderRadius: '8px',
+            border: 'none',
+            background: mainView === 'BUYER_QUOTA' ? '#2563eb' : '#f1f5f9',
+            color: mainView === 'BUYER_QUOTA' ? '#fff' : '#475569',
+            fontWeight: 800,
+            fontSize: '12px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            transition: 'all .15s ease'
+          }}
+        >
+          <span>📊</span> Buyer Quota (Bulk & Sample)
+        </button>
+        <button
+          type="button"
+          onClick={() => setMainView('FABRIC_MEETING')}
+          style={{
+            padding: '8px 16px',
+            borderRadius: '8px',
+            border: 'none',
+            background: mainView === 'FABRIC_MEETING' ? '#2563eb' : '#f1f5f9',
+            color: mainView === 'FABRIC_MEETING' ? '#fff' : '#475569',
+            fontWeight: 800,
+            fontSize: '12px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            transition: 'all .15s ease'
+          }}
+        >
+          <span>🧵</span> Fabric &amp; Dyeing Meeting
+        </button>
+      </section>
+
+      {mainView === 'PHYSICAL_BOARD' && (
+        <section style={{ margin: '8px 0 20px' }}>
+          <FactoryKpiPhysicalBoard />
+        </section>
+      )}
+
+      {mainView === 'BUYER_QUOTA' && (
+        <section style={{ margin: '8px 0 20px' }}>
+          <BuyerQuotaBoard jobs={allManagementRows} />
+        </section>
+      )}
+
+      {mainView === 'FABRIC_MEETING' && (
+        <section style={{ margin: '8px 0 20px' }}>
+          <FabricManagementMeetingReview />
+        </section>
+      )}
+
+      {mainView === 'REGISTER' && (
+        <>
       {/* CLICKABLE KPI STAT CARDS (Click card to filter dashboard in-place) */}
       <section className="kpi-grid">
         {/* Card 1: Confirmed Jobs */}
@@ -606,7 +719,10 @@ export default function Dashboard() {
                 </div>
                 <strong style={{ fontSize: '12px', color: '#0f172a' }}>{t.title}</strong>
                 <div style={{ fontSize: '11px', color: '#475569', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>Job #{t.order?.jobNo} · {t.order?.buyer?.name}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <ItemIcon item={t.title} size={16} />
+                    <span>Job #{t.order?.jobNo} · {t.order?.buyer?.name}</span>
+                  </span>
                   <span style={{ textTransform: 'capitalize', color: '#2563eb', fontWeight: 600 }}>{t.module}</span>
                 </div>
                 <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
@@ -737,17 +853,6 @@ export default function Dashboard() {
                 <option key={b} value={b}>{b}</option>
               ))}
             </select>
-
-            {/* Apply Button */}
-            <button
-              type="button"
-              onClick={() => setCurrentPage(1)}
-              className="reg-btn-compact"
-              style={{ background: '#2563eb', color: '#fff', borderColor: '#2563eb', fontWeight: 800, minWidth: '75px' }}
-              title="Apply filters"
-            >
-              Apply
-            </button>
 
             {/* Reset Filters Button */}
             {(weekFilter !== 'ALL' || monthFilter !== 'ALL' || floorUnitFilter !== 'ALL' || merchFilter !== 'ALL' || presentStatusFilter !== 'ALL' || buyerFilter !== 'ALL' || searchQuery !== '' || selectedFilterType !== 'ALL') && (
@@ -999,6 +1104,7 @@ export default function Dashboard() {
           </div>
         </div>
       </section>
+      </>)}
 
       {/* QUICK WORKSPACES */}
       <section className="panel quick-panel" style={{ marginTop: '16px' }}>
@@ -1023,16 +1129,25 @@ export default function Dashboard() {
         <div className="modal-backdrop-360" onClick={() => setSelectedJob(null)}>
           <div className="modal-dialog-360" onClick={e => e.stopPropagation()} style={{ maxWidth: '1040px' }}>
             <div className="modal-header-360">
-              <div>
-                <span style={{ fontSize: '10px', fontWeight: 800, color: '#2563eb', textTransform: 'uppercase', letterSpacing: '.06em' }}>
-                  Garment Manufacturing 360 Profile · {selectedJob.floor}
-                </span>
-                <h3>
-                  Job {displayJobNo(selectedJob.jobNo, selectedJob.buyerCode || selectedJob.buyer)} · {selectedJob.styleNo}
-                </h3>
-                <span style={{ fontSize: '11px', color: '#64748b' }}>
-                  Buyer: <strong>{selectedJob.buyer}</strong> · Total Order: <strong>{n(selectedJob.orderQty)} pcs</strong> · Ex-Factory: <strong>{d2(selectedJob.exFactoryDate)}</strong> (Week {selectedJob.shipmentWeek}) · Merchandiser: <strong>{selectedJob.merchandiser}</strong>
-                </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                {selectedJob.rawJob?.itemImageUrl ? (
+                  <img src={selectedJob.rawJob.itemImageUrl} alt="Item" style={{ width: 54, height: 54, objectFit: 'cover', borderRadius: 8, border: '1px solid #cbd5e1' }} />
+                ) : (
+                  <div style={{ width: 54, height: 54, display: 'grid', placeItems: 'center', borderRadius: 8, background: '#f1f5f9', border: '1px solid #e2e8f0', color: '#475569' }}>
+                    <ItemIcon item={selectedJob.itemDescription || selectedJob.styleNo} size={34} />
+                  </div>
+                )}
+                <div>
+                  <span style={{ fontSize: '10px', fontWeight: 800, color: '#2563eb', textTransform: 'uppercase', letterSpacing: '.06em' }}>
+                    Garment Manufacturing 360 Profile · {selectedJob.floor}
+                  </span>
+                  <h3>
+                    Job {displayJobNo(selectedJob.jobNo, selectedJob.buyerCode || selectedJob.buyer)} · {selectedJob.styleNo}
+                  </h3>
+                  <span style={{ fontSize: '11px', color: '#64748b' }}>
+                    Buyer: <strong>{selectedJob.buyer}</strong> · Total Order: <strong>{n(selectedJob.orderQty)} pcs</strong> · Ex-Factory: <strong>{d2(selectedJob.exFactoryDate)}</strong> (Week {selectedJob.shipmentWeek}) · Merchandiser: <strong>{selectedJob.merchandiser}</strong>
+                  </span>
+                </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Link

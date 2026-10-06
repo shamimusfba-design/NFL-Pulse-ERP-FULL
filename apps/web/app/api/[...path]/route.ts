@@ -166,11 +166,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (pathStr === 'planning/capacity/heatmap') {
     return NextResponse.json({
       rows: [
-        { section: 'knitting', label: 'Knitting (Circular + Flat)', slots: [{ slot: 'Slot 1', loadPct: 92 }, { slot: 'Slot 2', loadPct: 88 }, { slot: 'Slot 3', loadPct: 94 }] },
-        { section: 'dyeing', label: 'Dyeing & Finishing Winches', slots: [{ slot: 'Slot 1', loadPct: 96 }, { slot: 'Slot 2', loadPct: 91 }, { slot: 'Slot 3', loadPct: 89 }] },
-        { section: 'cutting', label: 'Automated Cutting & Spreading', slots: [{ slot: 'Slot 1', loadPct: 85 }, { slot: 'Slot 2', loadPct: 90 }, { slot: 'Slot 3', loadPct: 84 }] },
-        { section: 'sewing', label: 'Sewing Lines (91 physical lines)', slots: [{ slot: 'Slot 1', loadPct: 94 }, { slot: 'Slot 2', loadPct: 98 }, { slot: 'Slot 3', loadPct: 95 }] },
-        { section: 'finishing', label: 'Finishing & Steam Tunnel', slots: [{ slot: 'Slot 1', loadPct: 89 }, { slot: 'Slot 2', loadPct: 86 }, { slot: 'Slot 3', loadPct: 92 }] }
+        { section: 'knitting', label: 'Knitting', slots: [{ slot: 'Slot 1', loadPct: 92 }, { slot: 'Slot 2', loadPct: 88 }, { slot: 'Slot 3', loadPct: 94 }] },
+        { section: 'dyeing', label: 'Dyeing', slots: [{ slot: 'Slot 1', loadPct: 96 }, { slot: 'Slot 2', loadPct: 91 }, { slot: 'Slot 3', loadPct: 89 }] },
+        { section: 'cutting', label: 'Cutting', slots: [{ slot: 'Slot 1', loadPct: 85 }, { slot: 'Slot 2', loadPct: 90 }, { slot: 'Slot 3', loadPct: 84 }] },
+        { section: 'sewing', label: 'Sewing', slots: [{ slot: 'Slot 1', loadPct: 94 }, { slot: 'Slot 2', loadPct: 98 }, { slot: 'Slot 3', loadPct: 95 }] },
+        { section: 'finishing', label: 'Finishing', slots: [{ slot: 'Slot 1', loadPct: 89 }, { slot: 'Slot 2', loadPct: 86 }, { slot: 'Slot 3', loadPct: 92 }] }
       ]
     });
   }
@@ -539,11 +539,34 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   // 16. /api/greige-store/data
   if (pathStr === 'greige-store/data') {
+    return NextResponse.json(factoryData);
+  }
+
+  // 16b. /api/yarn-store/data
+  if (pathStr === 'yarn-store/data') {
     return NextResponse.json({
-      stockKg: 124500,
-      allocatedKg: 98000,
-      availableKg: 26500,
-      recentRolls: factoryData?.executionRows?.slice(0, 25) || []
+      summary: {
+        totalStock: 148200,
+        rcvdMonth: 58400,
+        issueMonth: 52100,
+        closingStock: 148200,
+        reservedStock: 112000,
+        pipeline: 84000,
+        safetyStockGap: -7800,
+        shortage: 12400,
+        deadStock: 4200
+      },
+      safetyRows: [
+        { yarnCount: '30/1 Ne Combed Cotton', physicalStock: 38400, safetyStock: 25000, dailyBurnKg: 1800, leadTimeDays: 14, reorderPoint: 28000, status: 'SAFE' },
+        { yarnCount: '26/1 Ne Carded Cotton', physicalStock: 14200, safetyStock: 18000, dailyBurnKg: 1200, leadTimeDays: 14, reorderPoint: 20000, status: 'BELOW_SAFETY' },
+        { yarnCount: '24/1 Ne Cotton Slub', physicalStock: 3400, safetyStock: 8000, dailyBurnKg: 650, leadTimeDays: 18, reorderPoint: 9500, status: 'CRITICAL' },
+        { yarnCount: '20/1 Ne Carded Cotton', physicalStock: 15600, safetyStock: 12000, dailyBurnKg: 850, leadTimeDays: 14, reorderPoint: 14000, status: 'SAFE' },
+        { yarnCount: '30/1 Ne CVC 60/40 Melange', physicalStock: 9500, safetyStock: 15000, dailyBurnKg: 950, leadTimeDays: 21, reorderPoint: 16500, status: 'BELOW_SAFETY' },
+        { yarnCount: '34/1 Ne Combed Cotton', physicalStock: 18200, safetyStock: 14000, dailyBurnKg: 1100, leadTimeDays: 14, reorderPoint: 15500, status: 'SAFE' },
+        { yarnCount: '40/1 Ne Combed (Interlock/Rib)', physicalStock: 7400, safetyStock: 6000, dailyBurnKg: 400, leadTimeDays: 14, reorderPoint: 7000, status: 'SAFE' },
+        { yarnCount: '40D Spandex / Elastane', physicalStock: 4100, safetyStock: 3000, dailyBurnKg: 220, leadTimeDays: 10, reorderPoint: 3200, status: 'SAFE' },
+        { yarnCount: '70D Spandex / Elastane', physicalStock: 1800, safetyStock: 2500, dailyBurnKg: 180, leadTimeDays: 10, reorderPoint: 2800, status: 'BELOW_SAFETY' }
+      ]
     });
   }
 
