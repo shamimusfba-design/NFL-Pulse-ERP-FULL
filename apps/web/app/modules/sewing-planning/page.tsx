@@ -82,7 +82,16 @@ export default function SewingPlanningPage(){
   return true;
  }
  const buyerOptions=useMemo(()=>Array.from(new Set(planned.map(r=>buyerShortCode(r.buyerCode||r.buyer)))).sort(),[planned]);
- const filteredRows=useMemo(()=>planned.filter(r=>(factory==='ALL'||(r.ganttPlan?.factoryCode||'NFL')===factory)&&(buyer==='ALL'||buyerShortCode(r.buyerCode||r.buyer)===buyer)&&(risk==='ALL'||r.ganttPlan?.risk===risk)&&(planStatus==='ALL'||r.ganttPlan?.status===planStatus)&&matchesItem(`${r.itemDescription||''} ${r.styleNo||''}`,itemCategory)&&(!query.trim()||`${displayJobNo(r.jobNo,r.buyerCode||r.buyer)} ${r.styleNo} ${r.itemDescription}`.toLowerCase().includes(query.trim().toLowerCase()))),[planned,factory,buyer,risk,planStatus,itemCategory,query]);
+ const filteredRows=useMemo(()=>planned.filter(r=>{
+   if(factory!=='ALL'&&(r.ganttPlan?.factoryCode||'NFL')!==factory)return false;
+   if(buyer!=='ALL'&&buyerShortCode(r.buyerCode||r.buyer)!==buyer)return false;
+   if(risk!=='ALL'&&r.ganttPlan?.risk!==risk)return false;
+   if(view==='RISK'&&(r.ganttPlan?.risk==='ON_TRACK'||!r.ganttPlan?.risk))return false;
+   if(planStatus!=='ALL'&&r.ganttPlan?.status!==planStatus)return false;
+   if(!matchesItem(`${r.itemDescription||''} ${r.styleNo||''}`,itemCategory))return false;
+   if(query.trim()&&!`${displayJobNo(r.jobNo,r.buyerCode||r.buyer)} ${r.styleNo} ${r.itemDescription}`.toLowerCase().includes(query.trim().toLowerCase()))return false;
+   return true;
+ }),[planned,factory,buyer,risk,planStatus,itemCategory,query,view]);
  const wStart=useMemo(()=>d(windowStart)||new Date(),[windowStart]);
  const dates=useMemo(()=>Array.from({length:windowDays},(_,i)=>addDays(wStart,i)),[wStart,windowDays]);
  const DAY_W=50; const timelineWidth=dates.length*DAY_W;

@@ -903,7 +903,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   // 25. /api/ie-ops/target-context
   if (pathStr === 'ie-ops/target-context') {
-    const lines = [
+    const floor = request.nextUrl.searchParams.get('floor') || 'Sewing-01';
+    let lines = [
       {
         code: 'Line 01A',
         jobs: [
@@ -921,20 +922,97 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         jobs: [
           { jobNo: '48002', styleNo: '13251512', styleId: 's-48002', smv: 8.6, manpower: 28, workingHours: 8 }
         ]
+      },
+      {
+        code: 'Line 04A',
+        jobs: [
+          { jobNo: '48092', styleNo: '13251520', styleId: 's-48092', smv: 10.4, manpower: 32, workingHours: 8 }
+        ]
       }
     ];
+
+    let lineActuals = [
+      { lineCode: 'Line 01A', employee: 28, operator: 22, targetEfficiencyPct: 75.4 },
+      { lineCode: 'Line 02A', employee: 30, operator: 24, targetEfficiencyPct: 76.2 },
+      { lineCode: 'Line 03A', employee: 28, operator: 22, targetEfficiencyPct: 71.0 },
+      { lineCode: 'Line 04A', employee: 32, operator: 26, targetEfficiencyPct: 74.5 }
+    ];
+
+    let summary = {
+      todayActual: { employee: 118 },
+      previousDay: { target: 68500, output: 71200, efficiency: 74.7 }
+    };
+
+    if (floor === 'Sewing-02') {
+      lines = [
+        {
+          code: 'Line 05B',
+          jobs: [
+            { jobNo: '46755', styleNo: '13251480', styleId: 's-46755', smv: 11.2, manpower: 32, workingHours: 8 }
+          ]
+        },
+        {
+          code: 'Line 06B',
+          jobs: [
+            { jobNo: '46758', styleNo: '13251495', styleId: 's-46758', smv: 8.9, manpower: 28, workingHours: 8 }
+          ]
+        },
+        {
+          code: 'Line 07B',
+          jobs: [
+            { jobNo: '48110', styleNo: '13251532', styleId: 's-48110', smv: 9.5, manpower: 30, workingHours: 8 }
+          ]
+        }
+      ];
+      lineActuals = [
+        { lineCode: 'Line 05B', employee: 32, operator: 25, targetEfficiencyPct: 73.0 },
+        { lineCode: 'Line 06B', employee: 28, operator: 22, targetEfficiencyPct: 77.5 },
+        { lineCode: 'Line 07B', employee: 30, operator: 24, targetEfficiencyPct: 72.8 }
+      ];
+      summary = {
+        todayActual: { employee: 90 },
+        previousDay: { target: 54000, output: 55800, efficiency: 75.1 }
+      };
+    } else if (floor === 'Sewing-03') {
+      lines = [
+        {
+          code: 'Line 11A',
+          jobs: [
+            { jobNo: '48115', styleNo: '13251540', styleId: 's-48115', smv: 12.0, manpower: 34, workingHours: 8 }
+          ]
+        },
+        {
+          code: 'Line 12A',
+          jobs: [
+            { jobNo: '48120', styleNo: '13251545', styleId: 's-48120', smv: 7.8, manpower: 26, workingHours: 8 }
+          ]
+        },
+        {
+          code: 'Line 13A',
+          jobs: [
+            { jobNo: '48085', styleNo: '13251506', styleId: 's-48085', smv: 9.2, manpower: 28, workingHours: 8 }
+          ]
+        }
+      ];
+      lineActuals = [
+        { lineCode: 'Line 11A', employee: 34, operator: 28, targetEfficiencyPct: 71.5 },
+        { lineCode: 'Line 12A', employee: 26, operator: 20, targetEfficiencyPct: 78.0 },
+        { lineCode: 'Line 13A', employee: 28, operator: 22, targetEfficiencyPct: 75.0 }
+      ];
+      summary = {
+        todayActual: { employee: 88 },
+        previousDay: { target: 52000, output: 53900, efficiency: 73.9 }
+      };
+    }
+
+    const currentLineCodes = lines.map(l => l.code);
+    const existingForFloor = memoryTargets.filter(t => !t.floorCode || t.floorCode === floor || currentLineCodes.includes(t.lineCode));
+
     return NextResponse.json({
       lines,
-      existing: memoryTargets,
-      lineActuals: [
-        { lineCode: 'Line 01A', employee: 28, operator: 22, targetEfficiencyPct: 75.4 },
-        { lineCode: 'Line 02A', employee: 30, operator: 24, targetEfficiencyPct: 76.2 },
-        { lineCode: 'Line 03A', employee: 28, operator: 22, targetEfficiencyPct: 71.0 }
-      ],
-      summary: {
-        todayActual: { employee: 86 },
-        previousDay: { target: 68500, output: 71200, efficiency: 74.7 }
-      }
+      existing: existingForFloor,
+      lineActuals,
+      summary
     });
   }
 
@@ -1096,8 +1174,28 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json(factoryKpi);
   }
 
+  // 36. /api/imports/running/:slug
+  if (pathStr.startsWith('imports/running')) {
+    const slug = pathStr.split('/')[2] || 'general';
+    const rows = masterJobs.slice(0, 30).map((j: any, i: number) => ({
+      id: `imp-${slug}-${i}`,
+      jobNo: j.jobNo,
+      buyer: j.buyer,
+      styleNo: j.styleNo,
+      itemDescription: j.itemDescription,
+      date: j.dates?.orderReceive || '2026-09-01',
+      status: j.presentStatus || 'Running',
+      productionQty: j.orderQty,
+      balanceQty: 0,
+      file: `${slug.toUpperCase()}_PRODUCTION_DATA.xlsx`,
+      sheet: 'Active',
+      rowNumber: i + 2
+    }));
+    return NextResponse.json(rows);
+  }
+
   // Default fallback for any other GET: return array or safe object
-  if (pathStr.includes('search') || pathStr.includes('list') || pathStr.includes('rows') || pathStr.includes('batches')) {
+  if (pathStr.includes('search') || pathStr.includes('list') || pathStr.includes('rows') || pathStr.includes('batches') || pathStr.includes('running')) {
     return NextResponse.json([]);
   }
   return NextResponse.json({ status: 'ok', path: pathStr, totalJobs: masterJobs.length });
@@ -1133,8 +1231,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   if (pathStr === 'ie-ops/targets') {
     const body = await request.json().catch(() => ({}));
-    const target = { id: `tgt-${Date.now()}`, ...body };
-    memoryTargets = [target, ...memoryTargets];
+    const targetId = body.id || `tgt-${Date.now()}`;
+    const target = { ...body, id: targetId, updatedAt: new Date().toISOString() };
+    const existingIndex = memoryTargets.findIndex(t => t.id === targetId || (t.date === body.date && t.lineCode === body.lineCode && t.jobNo === body.jobNo));
+    if (existingIndex >= 0) {
+      memoryTargets[existingIndex] = { ...memoryTargets[existingIndex], ...target };
+    } else {
+      memoryTargets = [target, ...memoryTargets];
+    }
     return NextResponse.json(target);
   }
 

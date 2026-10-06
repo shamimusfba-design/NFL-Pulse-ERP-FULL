@@ -1736,10 +1736,10 @@ export function ExecutiveKpiDashboard() {
               </div>
             </div>
             <Link
-              href="/modules/job-360"
+              href="/modules/printing"
               style={{ fontSize: '11px', fontWeight: 700, color: '#2563eb', textDecoration: 'none', background: '#f8fafc', padding: '6px 12px', borderRadius: '6px', border: '1px solid #e2e8f0' }}
             >
-              Job 360 Tracking &rarr;
+              Open Printing Module &rarr;
             </Link>
           </div>
 

@@ -75,8 +75,8 @@ export const MODULE_GROUPS: ModuleGroup[] = [
     label: 'Yarn & Fabric',
     overviewSlug: 'yarn-fabric',
     items: [
-      { slug: 'yarn', name: 'Yarn Management & Purchasing ', short: 'YM', status: 'Live', description: 'Merchandising requisition receipt, spinning mill PO purchasing, safety stock buffer monitoring, GRN receive and issue to knitting.' },
-      { slug: 'yarn-store', name: 'Yarn Store & Receive-Delivery ', short: 'YS', status: 'Live', description: 'Warehouse Godown A/B stock ledger, lot/location tracking, GRN vehicle intake and Knitting delivery challan.' },
+      { slug: 'yarn', name: 'Yarn Management & Purchasing', short: 'YM', status: 'Live', description: 'Merchandising requisition receipt, spinning mill PO purchasing, safety stock buffer monitoring, GRN receive and issue to knitting.' },
+      { slug: 'yarn-store', name: 'Yarn Store & Inventory', short: 'YS', status: 'Live', description: 'Warehouse Godown A/B stock ledger, lot/location tracking, GRN vehicle intake and Knitting delivery challan.' },
       { slug: 'knitting', name: 'Knitting Operations', short: 'KN', status: 'Live', description: 'Circular and flat knitting programs, machine programs, greige roll production and yarn leftover returns.' },
       { slug: 'greige-store', name: 'Greige Fabric Store', short: 'GS', status: 'Live', description: 'Greige roll receipt, 4-point inspection, fabric aging, daily machine plan matching and issue to Dyeing Winches.' },
       { slug: 'dyeing', name: 'Dyeing Floor & Winches', short: 'DY', status: 'Live', description: '23 Winch & HTHP machines, batching, multi-process (Peach, Brush, AOP), RFT quality, stenter & compactor finishing.' },
@@ -90,8 +90,8 @@ export const MODULE_GROUPS: ModuleGroup[] = [
     overviewSlug: 'garment-production',
     items: [
       { slug: 'cutting', name: 'Cutting & Input Management', short: 'CT', status: 'Planned', description: 'Cuttable, daily cut plan, cutting execution and input follow-up.' },
-      { slug: 'printing', name: 'Printing', short: 'PT', status: 'Planned', description: 'Bulk/sample print send, receive, balance and production follow-up.' },
-      { slug: 'embroidery', name: 'Embroidery', short: 'EM', status: 'Planned', description: 'Bulk/sample embroidery send, receive, balance and production follow-up.' },
+      { slug: 'printing', name: 'Printing Operations', short: 'PT', status: 'Live', description: 'In-house screen & rotary print tables, multi-vendor outsource challan dispatch, return and strike-off quality.' },
+      { slug: 'embroidery', name: 'Embroidery Operations', short: 'EM', status: 'Live', description: 'In-house multi-head embroidery machines, outsource vendor challan dispatch, return and stitch counters.' },
       { slug: 'special-process', name: 'Special Processes', short: 'SP', status: 'Planned', description: 'Sequins, wash and other configurable garment processes.' },
       { slug: 'sewing', name: 'Sewing', short: 'SW', status: 'Planned', description: 'Input, line production, execution and production status.' },
       { slug: 'finishing', name: 'Finishing & Packing', short: 'FP', status: 'Planned', description: 'Finishing, packing, poly/carton status and shipment readiness.' },

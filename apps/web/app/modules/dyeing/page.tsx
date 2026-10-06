@@ -211,8 +211,8 @@ export default function DyeingProductionPage() {
                       }}
                       style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid #cbd5e1' }}
                     >
-                      {initialExecution.slice(0, 15).map((r: any) => (
-                        <option key={r.jobNo} value={r.jobNo}>Job {r.jobNo} ({r.buyer} - {r.colour})</option>
+                      {initialExecution.slice(0, 15).map((r: any, idx: number) => (
+                        <option key={`${r.jobNo}-${r.colour || ''}-${idx}`} value={r.jobNo}>Job {r.jobNo} ({r.buyer} - {r.colour})</option>
                       ))}
                     </select>
                   </div>
