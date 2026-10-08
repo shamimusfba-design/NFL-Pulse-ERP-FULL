@@ -107,6 +107,16 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
 
         <nav className="nav">
           {!query && <>
+            <Link className={active('/merchandising') ? 'nav-link active' : 'nav-link'} href="/merchandising" style={{ background: 'linear-gradient(90deg, rgba(37,99,235,0.28), rgba(30,64,175,0.12))', border: '1px solid rgba(59,130,246,0.35)', borderRadius: '9px', marginBottom: '6px' }}>
+              <span className="nav-icon" style={{ background: '#2563eb', color: '#fff', fontWeight: 900 }}>⚡</span>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <strong style={{ fontSize: '12px', color: '#93c5fd' }}>NOS Command Center</strong>
+                  <span style={{ fontSize: '8.5px', background: '#2563eb', color: '#fff', padding: '1px 5px', borderRadius: '3px', fontWeight: 900 }}>NEW</span>
+                </div>
+                <span style={{ fontSize: '10px', color: '#94a3b8', display: 'block' }}>Merchandising Control Tower</span>
+              </div>
+            </Link>
             <Link className={active('/') ? 'nav-link active' : 'nav-link'} href="/"><span className="nav-icon">👑</span><span>Executive KPI Board</span></Link>
             <Link className={active('/tasks') ? 'nav-link active' : 'nav-link'} href="/tasks"><span className="nav-icon">TK</span><span>My Pending Tasks</span></Link>
             {canEnterOrders && <Link className={active('/orders/new') ? 'nav-link active' : 'nav-link'} href="/orders/new"><span className="nav-icon">PO</span><span>Order Entry / PO Import</span></Link>}

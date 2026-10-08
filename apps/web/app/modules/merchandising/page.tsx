@@ -4,6 +4,8 @@ import Shell from '../../../components/Shell';
 import { api } from '../../../lib/api';
 import { buyerShortCode, displayJobNo } from '../../../lib/display';
 import ReferenceSelect from '../../../components/ReferenceSelect';
+import NosTopNav from '../../../components/NosTopNav';
+import NosCommandCenter from '../../../components/NosCommandCenter';
 
 type ActionState='DONE'|'PENDING'|'OVERDUE'|'NA'|undefined;
 type FollowUpForm = {
@@ -57,6 +59,7 @@ function StatusSelect({value,onChange}:{value:ActionState;onChange:(v:ActionStat
 }
 
 export default function MerchandisingFollowUp(){
+  const [viewMode, setViewMode] = useState<'NOS_COMMAND_CENTER' | 'LEGACY_REGISTER'>('NOS_COMMAND_CENTER');
   const [orders,setOrders]=useState<any[]>([]),[error,setError]=useState(''),[loading,setLoading]=useState(true);
   const [editing,setEditing]=useState<any|null>(null),[saving,setSaving]=useState(false),[saved,setSaved]=useState('');
   const [revising,setRevising]=useState<any|null>(null),[revisionQty,setRevisionQty]=useState(''),[revisionReason,setRevisionReason]=useState(''),[revisionSaving,setRevisionSaving]=useState(false);
@@ -118,7 +121,62 @@ export default function MerchandisingFollowUp(){
     }catch(e:any){setError(e.message);}finally{setRevisionSaving(false);}
   }
 
+  if (viewMode === 'NOS_COMMAND_CENTER') {
+    return (
+      <div style={{ minHeight: '100vh', background: '#f3f6fb', color: '#0f172a' }}>
+        <NosTopNav />
+        <div style={{ padding: '14px 24px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+          <div style={{ fontSize: '12px', color: '#64748b' }}>
+            <span>NOS Merchandising Command Center</span>
+            <span style={{ margin: '0 6px' }}>·</span>
+            <span style={{ color: '#16a34a', fontWeight: 700 }}>● Active Production View</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setViewMode('LEGACY_REGISTER')}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '6px',
+              background: '#ffffff',
+              border: '1px solid #cbd5e1',
+              fontSize: '11px',
+              fontWeight: 700,
+              color: '#334155',
+              cursor: 'pointer'
+            }}
+          >
+            📋 Open Detailed Follow-up Sheet & Form Drawer
+          </button>
+        </div>
+        <div style={{ padding: '14px 24px 40px' }}>
+          <NosCommandCenter />
+        </div>
+      </div>
+    );
+  }
+
   return <Shell title="Bulk Merchandising Follow-up" eyebrow="Merchandising Operations">
+    <div style={{ margin: '0 0 14px', display: 'flex', justifyContent: 'flex-end' }}>
+      <button
+        type="button"
+        onClick={() => setViewMode('NOS_COMMAND_CENTER')}
+        style={{
+          padding: '6px 14px',
+          borderRadius: '6px',
+          background: '#2563eb',
+          color: '#ffffff',
+          border: 'none',
+          fontSize: '11.5px',
+          fontWeight: 800,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px'
+        }}
+      >
+        <span>⚡ Switch to NOS Command Center</span>
+      </button>
+    </div>
     <section className="module-hero merchandising-hero">
       <div>
         <span className="status-pill">Order Execution</span>

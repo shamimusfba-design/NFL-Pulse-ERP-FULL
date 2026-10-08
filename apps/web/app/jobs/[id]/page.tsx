@@ -150,14 +150,14 @@ function JobDetailContent() {
   const idParam = decodeURIComponent(String(params?.id || ''));
 
   const initialTab = searchParams.get('tab') || 'sizes';
-  const [activeTab, setActiveTab] = useState<'sizes' | 'material' | 'production' | 'quality' | 'leadtime' | 'reports'>(
-    ['sizes', 'material', 'production', 'quality', 'leadtime', 'reports'].includes(initialTab) ? (initialTab as any) : 'sizes'
+  const [activeTab, setActiveTab] = useState<'sizes' | 'po' | 'material' | 'production' | 'quality' | 'leadtime' | 'reports'>(
+    ['sizes', 'po', 'material', 'production', 'quality', 'leadtime', 'reports'].includes(initialTab) ? (initialTab as any) : 'sizes'
   );
   const [viewMode, setViewMode] = useState<'tab' | 'all'>('tab');
 
   useEffect(() => {
     const t = searchParams?.get('tab');
-    if (t && ['sizes', 'material', 'production', 'quality', 'leadtime', 'reports'].includes(t)) {
+    if (t && ['sizes', 'po', 'material', 'production', 'quality', 'leadtime', 'reports'].includes(t)) {
       setActiveTab(t as any);
       setViewMode('tab');
     }
@@ -345,7 +345,8 @@ function JobDetailContent() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', borderBottom: '2px solid #e2e8f0', paddingBottom: '10px', marginBottom: '16px' }}>
         <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', flexWrap: 'wrap' }}>
           {[
-            { id: 'sizes', label: '📏 Size-Wise & PO / Qty Breakdown', desc: 'Order breakdown & PO details' },
+            { id: 'sizes', label: '📏 Size Breakdown', desc: 'Order ratio & size matrix' },
+            { id: 'po', label: '📦 PO Breakdown', desc: 'Destination allocation & export ports' },
             { id: 'material', label: '🧵 Fabric & Trims', desc: 'Yarn, fabric & accessories BOM' },
             { id: 'production', label: '🏭 Stage Production & IE', desc: 'Lines, SMV & stage runs' },
             { id: 'quality', label: '🔍 Quality & Inspection', desc: 'Audit log & defect control' },
@@ -501,7 +502,27 @@ function JobDetailContent() {
               </div>
             </div>
 
-            {/* PO Number & Destination Country Allocation */}
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB: PO NUMBER & DESTINATION COUNTRY ALLOCATION */}
+        {/* ========================================================================= */}
+        {(viewMode === 'all' || activeTab === 'po') && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <h2 style={{ fontSize: '17px', fontWeight: 900, color: '#0f172a', margin: '0 0 2px' }}>
+                  📦 PO Number &amp; Destination Country Allocation
+                </h2>
+                <span style={{ fontSize: '11.5px', color: '#64748b' }}>
+                  Export port discharge, delivery terms, cartons and shipment status
+                </span>
+              </div>
+              <span className="status-pill ok" style={{ fontWeight: 800 }}>5 Export Ports · {n(job.orderQty)} pcs</span>
+            </div>
+
+            {/* PO Number & Destination Country Allocation Table */}
             <div className="panel" style={{ padding: 0, overflow: 'hidden', border: '1px solid #cbd5e1' }}>
               <div style={{ padding: '12px 18px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <strong style={{ fontSize: '13.5px', fontWeight: 900, color: '#0f172a' }}>PO Number & Destination Country Allocation</strong>

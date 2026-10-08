@@ -249,7 +249,8 @@ export default function Dashboard() {
 
   // Job 360 Modal State
   const [selectedJob, setSelectedJob] = useState<any | null>(null);
-  const [modalTab, setModalTab] = useState<'sizes' | 'material' | 'production' | 'quality' | 'leadtime' | 'reports'>('sizes');
+  const [modalTab, setModalTab] = useState<'sizes' | 'po' | 'material' | 'production' | 'quality' | 'leadtime' | 'reports'>('sizes');
+  const [sizeSubView, setSizeSubView] = useState<'both' | 'sizes' | 'po'>('both');
 
   async function refresh() {
     try {
@@ -409,6 +410,53 @@ export default function Dashboard() {
           <Link className="btn btn-ghost" href="/tasks">Tasks Board</Link>
         </div>
       </section>
+
+      {/* NOS MERCHANDISING PROMINENT CALLOUT BANNER */}
+      <div style={{
+        background: 'linear-gradient(90deg, #091224 0%, #1e293b 100%)',
+        borderRadius: '12px',
+        padding: '14px 20px',
+        margin: '16px 0',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '12px',
+        border: '1px solid #334155',
+        boxShadow: '0 4px 14px rgba(0,0,0,0.12)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span className="nos-brand-badge" style={{ fontSize: '13px', padding: '4px 10px' }}>NOS</span>
+          <div>
+            <div style={{ color: '#ffffff', fontWeight: 800, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>Northern Operating System — Merchandising Command Center</span>
+              <span style={{ fontSize: '9.5px', background: '#3b82f6', color: '#fff', padding: '1px 6px', borderRadius: '4px', fontWeight: 900 }}>PHASE 01 READY</span>
+            </div>
+            <div style={{ color: '#94a3b8', fontSize: '11.5px', marginTop: '2px' }}>
+              Control tower with strict merchandiser-buyer access, 8 colorful KPI cards, 9-stage live pipeline &amp; brand quota matrix.
+            </div>
+          </div>
+        </div>
+        <Link
+          href="/merchandising"
+          style={{
+            background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+            color: '#ffffff',
+            padding: '8px 18px',
+            borderRadius: '8px',
+            fontSize: '12px',
+            fontWeight: 800,
+            textDecoration: 'none',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            boxShadow: '0 2px 8px rgba(37,99,235,0.4)'
+          }}
+        >
+          <span>⚡ Launch NOS Command Center</span>
+          <span>→</span>
+        </Link>
+      </div>
 
       {/* MANAGEMENT VIEW SWITCHER TABS */}
       <section style={{ display: 'flex', gap: '8px', margin: '14px 0 16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px', flexWrap: 'wrap' }}>
@@ -1197,7 +1245,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* TAB NAVIGATION */}
+            {/* TAB NAVIGATION - FULL DISTINCT BUTTONS FOR ALL MODULES */}
             <div
               className="tab-nav-360"
               style={{
@@ -1205,22 +1253,30 @@ export default function Dashboard() {
                 flexWrap: 'wrap',
                 gap: '8px 10px',
                 padding: '12px 20px',
-                background: '#f1f5f9',
+                background: '#f8fafc',
                 borderTop: '1px solid #e2e8f0',
                 borderBottom: '2px solid #cbd5e1',
                 flexShrink: 0,
                 alignItems: 'center',
                 minHeight: '56px',
-                overflow: 'visible'
+                boxSizing: 'border-box'
               }}
             >
               <button
                 type="button"
                 className={`tab-btn-360 ${modalTab === 'sizes' ? 'active' : ''}`}
-                onClick={() => setModalTab('sizes')}
+                onClick={() => { setModalTab('sizes'); setSizeSubView('both'); }}
               >
                 <span>📏</span>
-                <span>Size-Wise &amp; PO / Qty Breakdown</span>
+                <span>Size Breakdown</span>
+              </button>
+              <button
+                type="button"
+                className={`tab-btn-360 ${modalTab === 'po' ? 'active' : ''}`}
+                onClick={() => { setModalTab('po'); setSizeSubView('po'); }}
+              >
+                <span>📦</span>
+                <span>PO Breakdown</span>
               </button>
               <button
                 type="button"
@@ -1266,118 +1322,152 @@ export default function Dashboard() {
 
             {/* MODAL BODY */}
             <div className="view360-body">
-              {/* TAB 1: SIZE-WISE & PO COUNTRY BREAKDOWN */}
-              {modalTab === 'sizes' && (
+              {/* TAB 1 & 2: SIZE-WISE & PO COUNTRY BREAKDOWN */}
+              {(modalTab === 'sizes' || modalTab === 'po') && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {/* Quick Section Indicators */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', background: '#f8fafc', padding: '10px 16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                  {/* FULL BUTTON VIEW SWITCHER */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', background: '#f8fafc', padding: '10px 16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '.04em' }}>Breakdown Views:</span>
-                      <a href="#size-matrix-sec" style={{ textDecoration: 'none', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', padding: '4px 10px', borderRadius: '6px', fontSize: '11.5px', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        📏 Size-Wise Ratio Matrix
-                      </a>
-                      <a href="#po-country-sec" style={{ textDecoration: 'none', background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', padding: '4px 10px', borderRadius: '6px', fontSize: '11.5px', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        📦 PO &amp; Country Allocation
-                      </a>
+                      <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '.04em' }}>Breakdown View:</span>
+                      <button
+                        type="button"
+                        className={`breakdown-view-btn ${sizeSubView === 'sizes' || modalTab === 'sizes' && sizeSubView !== 'po' && sizeSubView !== 'both' ? 'active' : ''}`}
+                        onClick={() => { setModalTab('sizes'); setSizeSubView('sizes'); }}
+                      >
+                        <span>📏</span>
+                        <span>Size-Wise Ratio Matrix</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`breakdown-view-btn ${sizeSubView === 'po' || modalTab === 'po' && sizeSubView !== 'both' ? 'active' : ''}`}
+                        onClick={() => { setModalTab('po'); setSizeSubView('po'); }}
+                      >
+                        <span>📦</span>
+                        <span>PO &amp; Country Allocation</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`breakdown-view-btn ${sizeSubView === 'both' ? 'active' : ''}`}
+                        onClick={() => { setModalTab('sizes'); setSizeSubView('both'); }}
+                      >
+                        <span>📑</span>
+                        <span>View Both Matrices</span>
+                      </button>
                     </div>
-                    <span style={{ fontSize: '11.5px', color: '#64748b' }}>
-                      Order Total: <strong style={{ color: '#0f172a' }}>{n(selectedJob.orderQty)} pcs</strong>
+                    <span style={{ fontSize: '12px', color: '#64748b' }}>
+                      Order Total: <strong style={{ color: '#0f172a', fontWeight: 900 }}>{n(selectedJob.orderQty)} pcs</strong>
                     </span>
                   </div>
 
-                  <div id="size-matrix-sec" style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
-                    <div style={{ padding: '10px 14px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <strong style={{ fontSize: '12px', color: '#0f172a' }}>Size-Wise Manufacturing Breakdown Matrix (Total: {n(selectedJob.orderQty)} pcs)</strong>
-                      <span className="status-pill" style={{ background: '#ecfdf5', color: '#047857' }}>Ratio: 1:2:3:3:2:1:0.5</span>
+                  {/* 1. SIZE-WISE MATRIX (SHOWN IF BOTH OR SIZES) */}
+                  {(sizeSubView === 'both' || sizeSubView === 'sizes' || modalTab === 'sizes' && sizeSubView !== 'po') && (
+                    <div className="matrix-table-container">
+                      <div style={{ padding: '12px 16px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                          <strong style={{ fontSize: '13px', color: '#0f172a' }}>📏 Size-Wise Manufacturing Breakdown Matrix</strong>
+                          <span style={{ fontSize: '11px', color: '#64748b', marginLeft: '8px' }}>(Total: {n(selectedJob.orderQty)} pcs)</span>
+                        </div>
+                        <span className="status-pill" style={{ background: '#ecfdf5', color: '#047857', fontWeight: 800 }}>Pack Ratio: 1:2:3:3:2:1:0.5</span>
+                      </div>
+                      <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%' }}>
+                        <table className="matrix-table">
+                          <thead>
+                            <tr>
+                              <th style={{ minWidth: '150px' }}>Parameter</th>
+                              {jobProfile.sizeBreakdown.map(s => (
+                                <th key={s.size} style={{ textAlign: 'center', minWidth: '70px' }}>{s.size}</th>
+                              ))}
+                              <th style={{ textAlign: 'right', minWidth: '90px' }}>Total</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td style={{ fontWeight: 700, color: '#475569' }}>Order Ratio</td>
+                              {jobProfile.sizeBreakdown.map(s => (
+                                <td key={s.size} style={{ textAlign: 'center', color: '#64748b' }}>{s.ratio}</td>
+                              ))}
+                              <td style={{ textAlign: 'right', fontWeight: 800 }}>12.5</td>
+                            </tr>
+                            <tr>
+                              <td style={{ fontWeight: 800, color: '#1e40af' }}>Order Qty (pcs)</td>
+                              {jobProfile.sizeBreakdown.map(s => (
+                                <td key={s.size} style={{ textAlign: 'center', fontWeight: 900, color: '#0f172a' }}>{n(s.orderQty)}</td>
+                              ))}
+                              <td style={{ textAlign: 'right', fontWeight: 900, color: '#2563eb' }}>{n(selectedJob.orderQty)}</td>
+                            </tr>
+                            <tr>
+                              <td style={{ fontWeight: 700, color: '#475569' }}>Actual Cut (pcs)</td>
+                              {jobProfile.sizeBreakdown.map(s => (
+                                <td key={s.size} style={{ textAlign: 'center', color: '#475569' }}>{n(s.cutQty)}</td>
+                              ))}
+                              <td style={{ textAlign: 'right', fontWeight: 800 }}>{n(Math.round(selectedJob.orderQty * 1.025))}</td>
+                            </tr>
+                            <tr>
+                              <td style={{ fontWeight: 700, color: '#16a34a' }}>Sewing Output</td>
+                              {jobProfile.sizeBreakdown.map(s => (
+                                <td key={s.size} style={{ textAlign: 'center', color: '#16a34a', fontWeight: 700 }}>{n(s.sewingQty)}</td>
+                              ))}
+                              <td style={{ textAlign: 'right', fontWeight: 800, color: '#16a34a' }}>{n(selectedJob.orderQty)}</td>
+                            </tr>
+                            <tr>
+                              <td style={{ fontWeight: 700, color: '#2563eb' }}>Carton Packed</td>
+                              {jobProfile.sizeBreakdown.map(s => (
+                                <td key={s.size} style={{ textAlign: 'center', color: '#2563eb', fontWeight: 700 }}>{n(s.packedQty)}</td>
+                              ))}
+                              <td style={{ textAlign: 'right', fontWeight: 800, color: '#2563eb' }}>{n(selectedJob.orderQty)}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                    <table className="matrix-table">
-                      <thead>
-                        <tr>
-                          <th>Parameter</th>
-                          {jobProfile.sizeBreakdown.map(s => (
-                            <th key={s.size} style={{ textAlign: 'center' }}>{s.size}</th>
-                          ))}
-                          <th style={{ textAlign: 'right' }}>Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td style={{ fontWeight: 700 }}>Order Ratio</td>
-                          {jobProfile.sizeBreakdown.map(s => (
-                            <td key={s.size} style={{ textAlign: 'center', color: '#64748b' }}>{s.ratio}</td>
-                          ))}
-                          <td style={{ textAlign: 'right', fontWeight: 800 }}>12.5</td>
-                        </tr>
-                        <tr>
-                          <td style={{ fontWeight: 700 }}>Order Qty (pcs)</td>
-                          {jobProfile.sizeBreakdown.map(s => (
-                            <td key={s.size} style={{ textAlign: 'center', fontWeight: 800, color: '#0f172a' }}>{n(s.orderQty)}</td>
-                          ))}
-                          <td style={{ textAlign: 'right', fontWeight: 900, color: '#2563eb' }}>{n(selectedJob.orderQty)}</td>
-                        </tr>
-                        <tr>
-                          <td style={{ fontWeight: 700 }}>Actual Cut (pcs)</td>
-                          {jobProfile.sizeBreakdown.map(s => (
-                            <td key={s.size} style={{ textAlign: 'center', color: '#475569' }}>{n(s.cutQty)}</td>
-                          ))}
-                          <td style={{ textAlign: 'right', fontWeight: 800 }}>{n(Math.round(selectedJob.orderQty * 1.025))}</td>
-                        </tr>
-                        <tr>
-                          <td style={{ fontWeight: 700 }}>Sewing Output</td>
-                          {jobProfile.sizeBreakdown.map(s => (
-                            <td key={s.size} style={{ textAlign: 'center', color: '#16a34a', fontWeight: 700 }}>{n(s.sewingQty)}</td>
-                          ))}
-                          <td style={{ textAlign: 'right', fontWeight: 800, color: '#16a34a' }}>{n(selectedJob.orderQty)}</td>
-                        </tr>
-                        <tr>
-                          <td style={{ fontWeight: 700 }}>Carton Packed</td>
-                          {jobProfile.sizeBreakdown.map(s => (
-                            <td key={s.size} style={{ textAlign: 'center', color: '#2563eb', fontWeight: 700 }}>{n(s.packedQty)}</td>
-                          ))}
-                          <td style={{ textAlign: 'right', fontWeight: 800, color: '#2563eb' }}>{n(selectedJob.orderQty)}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
+                  )}
 
-                  <div id="po-country-sec" style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
-                    <div style={{ padding: '10px 14px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <strong style={{ fontSize: '12px', color: '#0f172a' }}>PO & Destination Country-Wise Shipment Allocation</strong>
-                      <span className="status-pill" style={{ background: '#dbeafe', color: '#1e40af' }}>5 Export Ports</span>
+                  {/* 2. PO & DESTINATION MATRIX (SHOWN IF BOTH OR PO) */}
+                  {(sizeSubView === 'both' || sizeSubView === 'po' || modalTab === 'po' && sizeSubView !== 'sizes') && (
+                    <div className="matrix-table-container">
+                      <div style={{ padding: '12px 16px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                          <strong style={{ fontSize: '13px', color: '#0f172a' }}>📦 PO &amp; Destination Country-Wise Shipment Allocation</strong>
+                          <span style={{ fontSize: '11px', color: '#64748b', marginLeft: '8px' }}>({jobProfile.poBreakdown.length} PO lots allocated)</span>
+                        </div>
+                        <span className="status-pill" style={{ background: '#dbeafe', color: '#1e40af', fontWeight: 800 }}>5 Export Ports</span>
+                      </div>
+                      <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%' }}>
+                        <table className="matrix-table">
+                          <thead>
+                            <tr>
+                              <th style={{ minWidth: '150px' }}>Destination Country</th>
+                              <th style={{ minWidth: '110px' }}>PO Number</th>
+                              <th style={{ minWidth: '120px' }}>Port of Discharge</th>
+                              <th style={{ minWidth: '110px' }}>Delivery Terms</th>
+                              <th style={{ minWidth: '120px' }}>Packaging Mode</th>
+                              <th style={{ textAlign: 'right', minWidth: '90px' }}>Cartons</th>
+                              <th style={{ textAlign: 'right', minWidth: '110px' }}>Order Qty</th>
+                              <th style={{ textAlign: 'center', minWidth: '100px' }}>Ship Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {jobProfile.poBreakdown.map((po, i) => (
+                              <tr key={i}>
+                                <td style={{ fontWeight: 800, color: '#0f172a' }}>
+                                  <span style={{ marginRight: '6px' }}>{po.flag}</span> {po.country}
+                                </td>
+                                <td style={{ fontWeight: 700, color: '#2563eb' }}>{po.poNo}</td>
+                                <td>{po.port}</td>
+                                <td><span style={{ background: '#f1f5f9', padding: '3px 7px', borderRadius: '4px', fontWeight: 700, fontSize: '10.5px' }}>{po.terms}</span></td>
+                                <td>{po.packType}</td>
+                                <td style={{ textAlign: 'right', fontWeight: 600 }}>{po.cartons} ctn</td>
+                                <td style={{ textAlign: 'right', fontWeight: 800, color: '#0f172a' }}>{n(po.qty)} pcs</td>
+                                <td style={{ textAlign: 'center' }}>
+                                  <span className="view360-badge ok">{po.status}</span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                    <table className="matrix-table">
-                      <thead>
-                        <tr>
-                          <th>Destination Country</th>
-                          <th>PO Number</th>
-                          <th>Port of Discharge</th>
-                          <th>Delivery Terms</th>
-                          <th>Packaging Mode</th>
-                          <th style={{ textAlign: 'right' }}>Cartons</th>
-                          <th style={{ textAlign: 'right' }}>Order Qty</th>
-                          <th style={{ textAlign: 'center' }}>Ship Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {jobProfile.poBreakdown.map((po, i) => (
-                          <tr key={i}>
-                            <td style={{ fontWeight: 800, color: '#0f172a' }}>
-                              <span style={{ marginRight: '6px' }}>{po.flag}</span> {po.country}
-                            </td>
-                            <td style={{ fontWeight: 700, color: '#2563eb' }}>{po.poNo}</td>
-                            <td>{po.port}</td>
-                            <td><span style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>{po.terms}</span></td>
-                            <td>{po.packType}</td>
-                            <td style={{ textAlign: 'right', fontWeight: 600 }}>{po.cartons} ctn</td>
-                            <td style={{ textAlign: 'right', fontWeight: 800, color: '#0f172a' }}>{n(po.qty)} pcs</td>
-                            <td style={{ textAlign: 'center' }}>
-                              <span className="view360-badge ok">{po.status}</span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  )}
                 </div>
               )}
 

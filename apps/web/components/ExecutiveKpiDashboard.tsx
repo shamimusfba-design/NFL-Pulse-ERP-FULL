@@ -325,7 +325,7 @@ export function ExecutiveKpiDashboard() {
   const [dateRange, setDateRange] = useState<'today' | 'yesterday' | '7days' | '30days' | 'custom'>('30days');
   const [customStart, setCustomStart] = useState('2026-09-01');
   const [customEnd, setCustomEnd] = useState('2026-09-30');
-  const [factoryScope, setFactoryScope] = useState<'ALL' | 'NFL1' | 'NFL2' | 'NCL'>('ALL');
+  const [factoryScope, setFactoryScope] = useState<'ALL' | 'NFL' | 'NCL'>('ALL');
   const [activeQuickTab, setActiveQuickTab] = useState<'ALL' | 'BOTTLENECKS' | 'QUALITY'>('ALL');
 
   // Master Data Source Bindings
@@ -554,18 +554,19 @@ export function ExecutiveKpiDashboard() {
 
   // Section 6: Cutting Section Data
   const cuttingData = useMemo(() => {
-    const rawProd = Math.round(1427113 * multiplier);
-    const efficiencyPct = 80.3;
+    const factoryFactor = factoryScope === 'NFL' ? 0.67 : factoryScope === 'NCL' ? 0.33 : 1.0;
+    const rawProd = Math.round(1427113 * multiplier * factoryFactor);
+    const efficiencyPct = factoryScope === 'NCL' ? 82.1 : 80.3;
     const markerEfficiencyPct = 85.2;
     const fabricWastagePct = 2.66;
-    const inputAvailabilityPct = 98.1;
+    const inputAvailabilityPct = factoryScope === 'NCL' ? 97.5 : 98.1;
     const cuttingDhuPct = 1.12;
 
     const slotPlanVsAchieve = [
-      { label: 'Slot 1 (D01-08)', value1: 360000 * multiplier, value2: 368000 * multiplier, name1: 'Plan Pcs', name2: 'Actual Pcs', color1: '#64748b', color2: '#10b981' },
-      { label: 'Slot 2 (D09-16)', value1: 355000 * multiplier, value2: 351000 * multiplier, name1: 'Plan Pcs', name2: 'Actual Pcs', color1: '#64748b', color2: '#10b981' },
-      { label: 'Slot 3 (D17-24)', value1: 370000 * multiplier, value2: 364000 * multiplier, name1: 'Plan Pcs', name2: 'Actual Pcs', color1: '#64748b', color2: '#10b981' },
-      { label: 'Slot 4 (D25-30)', value1: 342000 * multiplier, value2: 344113 * multiplier, name1: 'Plan Pcs', name2: 'Actual Pcs', color1: '#64748b', color2: '#10b981' }
+      { label: 'Slot 1 (D01-08)', value1: Math.round(360000 * multiplier * factoryFactor), value2: Math.round(368000 * multiplier * factoryFactor), name1: 'Plan Pcs', name2: 'Actual Pcs', color1: '#64748b', color2: '#10b981' },
+      { label: 'Slot 2 (D09-16)', value1: Math.round(355000 * multiplier * factoryFactor), value2: Math.round(351000 * multiplier * factoryFactor), name1: 'Plan Pcs', name2: 'Actual Pcs', color1: '#64748b', color2: '#10b981' },
+      { label: 'Slot 3 (D17-24)', value1: Math.round(370000 * multiplier * factoryFactor), value2: Math.round(364000 * multiplier * factoryFactor), name1: 'Plan Pcs', name2: 'Actual Pcs', color1: '#64748b', color2: '#10b981' },
+      { label: 'Slot 4 (D25-30)', value1: Math.round(342000 * multiplier * factoryFactor), value2: Math.round(344113 * multiplier * factoryFactor), name1: 'Plan Pcs', name2: 'Actual Pcs', color1: '#64748b', color2: '#10b981' }
     ];
 
     const wasteDonut = [
@@ -585,7 +586,7 @@ export function ExecutiveKpiDashboard() {
       slotPlanVsAchieve,
       wasteDonut
     };
-  }, [multiplier]);
+  }, [multiplier, factoryScope]);
 
   // Section 7: Printing Section Data
   const printData = useMemo(() => {
@@ -677,26 +678,44 @@ export function ExecutiveKpiDashboard() {
 
   // Section 9: Sewing Section Data
   const sewingData = useMemo(() => {
-    const rawProd = Math.round(1477799 * multiplier);
-    const efficiencyPct = 70.4;
-    const dhuPct = 3.37;
-    const weeklyLoadBooked = Math.round(420000 * multiplier);
-    const weeklyCapacity = Math.round(450000 * multiplier);
+    const factoryFactor = factoryScope === 'NFL' ? 0.67 : factoryScope === 'NCL' ? 0.33 : 1.0;
+    const rawProd = Math.round(1477799 * multiplier * factoryFactor);
+    const efficiencyPct = factoryScope === 'NCL' ? 71.8 : 70.4;
+    const dhuPct = factoryScope === 'NCL' ? 3.12 : 3.37;
+    const weeklyLoadBooked = Math.round(420000 * multiplier * factoryFactor);
+    const weeklyCapacity = Math.round(450000 * multiplier * factoryFactor);
     const loadPct = pct(weeklyLoadBooked, weeklyCapacity);
 
-    const floorProdColumn = [
-      { label: 'NFL Floor 1', value1: Math.round(520000 * multiplier), name1: 'Pcs', color1: '#2563eb' },
-      { label: 'NFL Floor 2', value1: Math.round(465000 * multiplier), name1: 'Pcs', color1: '#3b82f6' },
-      { label: 'NCL Floor 3', value1: Math.round(492799 * multiplier), name1: 'Pcs', color1: '#0ea5e9' }
-    ];
+    let floorProdColumn = [];
+    if (factoryScope === 'NFL') {
+      floorProdColumn = [
+        { label: 'NFL Sewing 1', value1: Math.round(520000 * multiplier), name1: 'Pcs', color1: '#2563eb' },
+        { label: 'NFL Sewing 2', value1: Math.round(465000 * multiplier), name1: 'Pcs', color1: '#3b82f6' }
+      ];
+    } else if (factoryScope === 'NCL') {
+      floorProdColumn = [
+        { label: 'NCL Sewing 1', value1: Math.round(260000 * multiplier), name1: 'Pcs', color1: '#0ea5e9' },
+        { label: 'NCL Sewing 2', value1: Math.round(232799 * multiplier), name1: 'Pcs', color1: '#0284c7' }
+      ];
+    } else {
+      floorProdColumn = [
+        { label: 'NFL Sewing 1', value1: Math.round(520000 * multiplier), name1: 'Pcs', color1: '#2563eb' },
+        { label: 'NFL Sewing 2', value1: Math.round(465000 * multiplier), name1: 'Pcs', color1: '#3b82f6' },
+        { label: 'NCL Sewing 1', value1: Math.round(260000 * multiplier), name1: 'Pcs', color1: '#0ea5e9' },
+        { label: 'NCL Sewing 2', value1: Math.round(232799 * multiplier), name1: 'Pcs', color1: '#0284c7' }
+      ];
+    }
 
     const weeklyLoadComparison = [
-      { label: 'W38', value1: 410000, value2: 450000, name1: 'Booked', name2: 'Capacity', color1: '#f59e0b', color2: '#cbd5e1' },
-      { label: 'W39', value1: 435000, value2: 450000, name1: 'Booked', name2: 'Capacity', color1: '#f59e0b', color2: '#cbd5e1' },
-      { label: 'W40', value1: 445000, value2: 450000, name1: 'Booked', name2: 'Capacity', color1: '#ef4444', color2: '#cbd5e1' },
-      { label: 'W41', value1: 420000, value2: 450000, name1: 'Booked', name2: 'Capacity', color1: '#10b981', color2: '#cbd5e1' },
-      { label: 'W42', value1: 395000, value2: 450000, name1: 'Booked', name2: 'Capacity', color1: '#10b981', color2: '#cbd5e1' }
+      { label: 'W38', value1: Math.round(410000 * factoryFactor), value2: Math.round(450000 * factoryFactor), name1: 'Booked', name2: 'Capacity', color1: '#f59e0b', color2: '#cbd5e1' },
+      { label: 'W39', value1: Math.round(435000 * factoryFactor), value2: Math.round(450000 * factoryFactor), name1: 'Booked', name2: 'Capacity', color1: '#f59e0b', color2: '#cbd5e1' },
+      { label: 'W40', value1: Math.round(445000 * factoryFactor), value2: Math.round(450000 * factoryFactor), name1: 'Booked', name2: 'Capacity', color1: '#ef4444', color2: '#cbd5e1' },
+      { label: 'W41', value1: Math.round(420000 * factoryFactor), value2: Math.round(450000 * factoryFactor), name1: 'Booked', name2: 'Capacity', color1: '#10b981', color2: '#cbd5e1' },
+      { label: 'W42', value1: Math.round(395000 * factoryFactor), value2: Math.round(450000 * factoryFactor), name1: 'Booked', name2: 'Capacity', color1: '#10b981', color2: '#cbd5e1' }
     ];
+
+    const allocationLabel = factoryScope === 'NFL' ? 'NFL Composite' : factoryScope === 'NCL' ? 'NCL Garments' : 'NFL + NCL';
+    const allocationSub = factoryScope === 'NFL' ? 'NFL: 100% (Composite)' : factoryScope === 'NCL' ? 'NCL: 100% (Garments)' : 'NFL: 67% | NCL: 33%';
 
     return {
       monthlyProd: rawProd,
@@ -707,9 +726,49 @@ export function ExecutiveKpiDashboard() {
       loadPct,
       cutToShipLoss: 2.59,
       floorProdColumn,
-      weeklyLoadComparison
+      weeklyLoadComparison,
+      allocationLabel,
+      allocationSub
     };
-  }, [multiplier]);
+  }, [multiplier, factoryScope]);
+
+  // Section 10: Finishing & Packing Section Data
+  const finishingData = useMemo(() => {
+    const factoryFactor = factoryScope === 'NFL' ? 0.67 : factoryScope === 'NCL' ? 0.33 : 1.0;
+    const rawPacked = Math.round(1415200 * multiplier * factoryFactor);
+    const finishingDhu = factoryScope === 'NCL' ? 1.05 : 1.18;
+    const packingAuditPass = 98.6;
+    const avgDailyPacked = Math.round(47173 * multiplier * factoryFactor);
+
+    let floorPacked = [];
+    if (factoryScope === 'NFL') {
+      floorPacked = [
+        { label: 'NFL Finishing 1', value1: Math.round(510000 * multiplier), name1: 'Pcs', color1: '#16a34a' },
+        { label: 'NFL Finishing 2', value1: Math.round(438184 * multiplier), name1: 'Pcs', color1: '#22c55e' }
+      ];
+    } else if (factoryScope === 'NCL') {
+      floorPacked = [
+        { label: 'NCL Finishing 1', value1: Math.round(255000 * multiplier), name1: 'Pcs', color1: '#059669' },
+        { label: 'NCL Finishing 2', value1: Math.round(212016 * multiplier), name1: 'Pcs', color1: '#10b981' }
+      ];
+    } else {
+      floorPacked = [
+        { label: 'NFL Finishing 1', value1: Math.round(510000 * multiplier), name1: 'Pcs', color1: '#16a34a' },
+        { label: 'NFL Finishing 2', value1: Math.round(438184 * multiplier), name1: 'Pcs', color1: '#22c55e' },
+        { label: 'NCL Finishing 1', value1: Math.round(255000 * multiplier), name1: 'Pcs', color1: '#059669' },
+        { label: 'NCL Finishing 2', value1: Math.round(212016 * multiplier), name1: 'Pcs', color1: '#10b981' }
+      ];
+    }
+
+    return {
+      monthlyPacked: rawPacked,
+      finishingDhu,
+      packingAuditPass,
+      avgDailyPacked,
+      cartonsPacked: Math.ceil(rawPacked / 24),
+      floorPacked
+    };
+  }, [multiplier, factoryScope]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
