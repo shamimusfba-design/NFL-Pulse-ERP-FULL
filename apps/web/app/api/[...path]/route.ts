@@ -26,6 +26,8 @@ let memoryCreatedOrders: any[] = [];
 let memoryStyleFollowUps: Record<string, any> = {};
 let memoryQtyRevisions: Record<string, any[]> = {};
 let memoryCompletedActionIds: Set<string> = new Set();
+let memoryCustomStyles: any[] = [];
+let memoryUpdatedStyles: Record<string, any> = {};
 
 // In-memory maintenance machines master
 let maintenanceMachines = [
@@ -225,6 +227,121 @@ function calculateJobRisk(j: any) {
   }
   if (reasons.length > 0) return { level: 'WATCH', reasons };
   return { level: 'ON_TRACK', reasons };
+}
+
+function inferCategory(item?: string, desc?: string): string {
+  const text = `${item || ''} ${desc || ''}`.toLowerCase();
+  if (text.includes('polo')) return 'Polo';
+  if (text.includes('hood') || text.includes('fleece')) return 'Hoodie';
+  if (text.includes('swt') || text.includes('sweat')) return 'Sweatshirt';
+  if (text.includes('jacket') || text.includes('cardigan')) return 'Jacket';
+  if (text.includes('trouser') || text.includes('pant') || text.includes('jogger')) return 'Trouser';
+  if (text.includes('leg') || text.includes('legging')) return 'Legging';
+  if (text.includes('kid') || text.includes('infant') || text.includes('baby')) return 'Kidswear';
+  if (text.includes('tank') || text.includes('vest')) return 'Tank Top';
+  return 'T-Shirt';
+}
+
+function getAllConsolidatedStyles(): any[] {
+  const styleMap = new Map<string, any>();
+
+  for (const j of masterJobs) {
+    const key = `${j.styleNo}__${j.buyer}`;
+    if (!styleMap.has(key)) {
+      const cat = inferCategory(j.item, j.itemDescription);
+      const isKid = j.buyer === 'Name It';
+      const isWomen = j.buyer === 'ONLY' || j.buyer === 'Miss Selfridge' || j.buyer === 'Maurices';
+      const dept = isKid ? 'Kids' : isWomen ? 'Womenswear' : 'Menswear';
+      const brand = j.buyer === 'ONLY' ? 'ONLY Blue' : j.buyer === 'Name It' ? 'Name It Kids' : j.buyer === 'OVS' ? 'OVS Italian' : j.buyer;
+
+      styleMap.set(key, {
+        id: `sty-${j.styleNo}`,
+        styleNo: j.styleNo,
+        buyer: j.buyer,
+        styleName: j.itemDescription || j.item || `Style ${j.styleNo}`,
+        buyerStyleNo: `BY-${j.styleNo}`,
+        product: j.item || 'Apparel',
+        category: cat,
+        season: j.planMonth ? `AW ${j.planMonth.slice(-4)}` : 'AW 2026',
+        brand,
+        department: dept,
+        customerReference: `REF-${j.styleNo}`,
+        status: (j.presentStatus === 'Completed' || j.overallStage === 'Shipment') ? 'COMPLETED' :
+                (j.presentStatus === 'In Production' || j.presentStatus === 'Sewing') ? 'RUNNING' :
+                (j.presentStatus === 'Cut OK') ? 'CONFIRMED' : 'ACTIVE',
+        orderQty: Number(j.orderQty || 0),
+        fobPrice: 5.25,
+        fobValue: Math.round(Number(j.orderQty || 0) * 5.25),
+        smv: Number(j.ie?.smv || 8.5),
+        fabricType: j.fabric?.fabricType ? `${j.fabric.fabricType} ${j.fabric.gsm || '180'} GSM` : '100% Cotton Single Jersey 180 GSM',
+        gsm: j.fabric?.gsm || '180',
+        colors: j.fabric?.colors ? [j.fabric.colors] : ['Optical White', 'Black Beauty'],
+        sizes: isKid ? ['92', '98', '104', '110', '116', '122', '128'] : ['XS', 'S', 'M', 'L', 'XL', '2XL'],
+        sizeRatio: isKid ? [1, 2, 2, 3, 3, 2, 1] : [1, 2, 3, 3, 2, 1],
+        linkedJobs: [{
+          jobNo: j.jobNo,
+          poNo: `PO-${j.jobNo}`,
+          orderQty: j.orderQty,
+          shipmentDate: j.dates?.exFactory || '21-Oct-2026',
+          status: j.presentStatus || 'Running',
+          factory: j.lineAllocation?.factory || 'NFL'
+        }],
+        techPackStatus: 'APPROVED',
+        cadPatternStatus: 'APPROVED',
+        sampleStatus: { proto: 'APPROVED', fit: 'APPROVED', pp: (j.presentStatus?.includes('Sewing') || j.presentStatus?.includes('Cut')) ? 'APPROVED' : 'SUBMITTED' },
+        revisions: [
+          { revNo: 'Rev 0', date: j.dates?.poReceived || '01-Aug-2026', by: j.merchandiser || 'Shamim Hossain', remarks: 'Initial Tech Pack Release' },
+          { revNo: 'Rev 1', date: j.dates?.cuttingStart || '15-Aug-2026', by: 'Pattern Master', remarks: 'Neck drop and sleeve hem grading adjustment' }
+        ],
+        specMeasurements: [
+          { pom: 'Chest Width (1" below armhole)', tol: '±0.5 cm', xs: 48, s: 50, m: 53, l: 56, xl: 59, xxl: 62 },
+          { pom: 'Body Length (HPS to bottom)', tol: '±1.0 cm', xs: 68, s: 70, m: 72, l: 74, xl: 76, xxl: 78 },
+          { pom: 'Across Shoulder', tol: '±0.5 cm', xs: 41, s: 43, m: 45, l: 47, xl: 49, xxl: 51 },
+          { pom: 'Sleeve Length from shoulder', tol: '±0.5 cm', xs: 61, s: 62.5, m: 64, l: 65.5, xl: 67, xxl: 68.5 },
+          { pom: 'Bottom Hem Width', tol: '±0.5 cm', xs: 47, s: 49, m: 52, l: 55, xl: 58, xxl: 61 },
+          { pom: 'Neck Width (seam to seam)', tol: '±0.3 cm', xs: 17, s: 17.5, m: 18, l: 18.5, xl: 19, xxl: 19.5 },
+          { pom: 'Front Neck Drop', tol: '±0.3 cm', xs: 8.5, s: 9, m: 9.5, l: 10, xl: 10.5, xxl: 11 }
+        ],
+        bomItems: [
+          { category: 'Main Fabric', item: j.fabric?.fabricType || '100% Cotton Single Jersey', supplier: 'In-House (NFL Knitting & Dyeing)', consumption: '0.24 kg/pc', color: 'Matching Ground', status: 'IN_HOUSE' },
+          { category: 'Sewing Thread', item: '100% Spun Polyester 40/2 & 50/2', supplier: 'Coats Bangladesh', consumption: '110 m/pc', color: 'Dyed to Match', status: 'IN_HOUSE' },
+          { category: 'Labels', item: 'Heat Transfer Satin Main Neck Label', supplier: 'Avery Dennison', consumption: '1 pc/pc', color: 'White/Navy', status: 'APPROVED' },
+          { category: 'Labels', item: 'Printed Care & Composition Label', supplier: 'Paxar / Checkpoint', consumption: '1 pc/pc', color: 'White/Black', status: 'APPROVED' },
+          { category: 'Packaging', item: 'Self-Adhesive Recycled Polybag', supplier: 'Local Certified', consumption: '1 pc/pc', color: 'Clear / Printed Warning', status: 'IN_HOUSE' },
+          { category: 'Packaging', item: '5-Ply Master Carton Box (60x40x30cm)', supplier: 'Sonali Paper & Board', consumption: '0.02 ctn/pc', color: 'Brown Kraft', status: 'IN_HOUSE' }
+        ],
+        samples: [
+          { type: 'Proto Sample', submissionDate: '15-Jul-2026', approvalDate: '22-Jul-2026', status: 'APPROVED', comments: 'Body fit approved. Proceed to fit sample.' },
+          { type: 'Fit Sample', submissionDate: '01-Aug-2026', approvalDate: '08-Aug-2026', status: 'APPROVED', comments: 'Minor adjustment to neck rib height accepted.' },
+          { type: 'Size Set', submissionDate: '15-Aug-2026', approvalDate: '20-Aug-2026', status: 'APPROVED', comments: 'Grading across sizes verified and approved.' },
+          { type: 'Pre-Production (PP)', submissionDate: '28-Aug-2026', approvalDate: '02-Sep-2026', status: 'APPROVED', comments: 'Bulk production cut authorized.' }
+        ]
+      });
+    } else {
+      const existing = styleMap.get(key);
+      existing.orderQty += Number(j.orderQty || 0);
+      existing.fobValue += Math.round(Number(j.orderQty || 0) * 5.25);
+      existing.linkedJobs.push({
+        jobNo: j.jobNo,
+        poNo: `PO-${j.jobNo}`,
+        orderQty: j.orderQty,
+        shipmentDate: j.dates?.exFactory || '21-Oct-2026',
+        status: j.presentStatus || 'Running',
+        factory: j.lineAllocation?.factory || 'NFL'
+      });
+      if (j.fabric?.colors && !existing.colors.includes(j.fabric.colors)) {
+        existing.colors.push(j.fabric.colors);
+      }
+    }
+  }
+
+  const allStyles: any[] = [...memoryCustomStyles];
+  for (const [, item] of styleMap.entries()) {
+    const updated = memoryUpdatedStyles[item.styleNo] || {};
+    allStyles.push({ ...item, ...updated });
+  }
+
+  return allStyles;
 }
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
@@ -584,6 +701,196 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       headers: {
         'Content-Type': 'text/csv; charset=utf-8',
         'Content-Disposition': 'attachment; filename="bulk_merchandising_export.csv"'
+      }
+    });
+  }
+
+  // 0d. /api/merchandising/styles
+  if (pathStr === 'merchandising/styles') {
+    const role = (url.searchParams.get('role') || 'MERCHANDISER').toUpperCase();
+    const assignedBuyer = url.searchParams.get('assignedBuyer') || 'ONLY';
+    const isHead = role === 'HEAD_MERCHANDISER' || role === 'ADMIN';
+
+    let effectiveBuyer = isHead ? (url.searchParams.get('buyer') || 'ALL') : assignedBuyer;
+    const statusFilter = url.searchParams.get('status') || 'ALL';
+    const categoryFilter = url.searchParams.get('category') || 'ALL';
+    const seasonFilter = url.searchParams.get('season') || 'ALL';
+    const deptFilter = url.searchParams.get('department') || 'ALL';
+    const search = (url.searchParams.get('search') || '').trim().toLowerCase();
+    const page = Math.max(1, Number(url.searchParams.get('page') || 1));
+    const limit = Math.max(1, Math.min(100, Number(url.searchParams.get('limit') || 25)));
+
+    const allStyles = getAllConsolidatedStyles();
+
+    // 1. Authorization & Buyer Filter
+    let filtered = allStyles.filter((s: any) => {
+      const b = String(s.buyer || '').toUpperCase();
+      if (!isHead) {
+        const assigned = assignedBuyer.toUpperCase();
+        if (assigned === 'ONLY') return b.includes('ONLY') || b.includes('CARMA');
+        return b.includes(assigned) || assigned.includes(b);
+      }
+      if (effectiveBuyer === 'ALL') return true;
+      const eb = effectiveBuyer.toUpperCase();
+      if (eb === 'ONLY') return b.includes('ONLY') || b.includes('CARMA');
+      return b.includes(eb) || eb.includes(b);
+    });
+
+    // 2. Status Filter
+    if (statusFilter !== 'ALL') {
+      filtered = filtered.filter((s: any) => s.status?.toUpperCase() === statusFilter.toUpperCase());
+    }
+
+    // 3. Category Filter
+    if (categoryFilter !== 'ALL') {
+      filtered = filtered.filter((s: any) => s.category?.toUpperCase() === categoryFilter.toUpperCase());
+    }
+
+    // 4. Season Filter
+    if (seasonFilter !== 'ALL') {
+      filtered = filtered.filter((s: any) => s.season?.toUpperCase().includes(seasonFilter.toUpperCase()));
+    }
+
+    // 5. Department Filter
+    if (deptFilter !== 'ALL') {
+      filtered = filtered.filter((s: any) => s.department?.toUpperCase() === deptFilter.toUpperCase());
+    }
+
+    // 6. Global Search
+    if (search) {
+      filtered = filtered.filter((s: any) => {
+        const sNo = String(s.styleNo || '').toLowerCase();
+        const sName = String(s.styleName || '').toLowerCase();
+        const bySNo = String(s.buyerStyleNo || '').toLowerCase();
+        const buyer = String(s.buyer || '').toLowerCase();
+        const product = String(s.product || '').toLowerCase();
+        const cat = String(s.category || '').toLowerCase();
+        const season = String(s.season || '').toLowerCase();
+        const brand = String(s.brand || '').toLowerCase();
+        const ref = String(s.customerReference || '').toLowerCase();
+        const colors = (s.colors || []).join(' ').toLowerCase();
+        const jobs = (s.linkedJobs || []).map((j: any) => j.jobNo + ' ' + (j.poNo || '')).join(' ').toLowerCase();
+
+        return sNo.includes(search) ||
+          sName.includes(search) ||
+          bySNo.includes(search) ||
+          buyer.includes(search) ||
+          product.includes(search) ||
+          cat.includes(search) ||
+          season.includes(search) ||
+          brand.includes(search) ||
+          ref.includes(search) ||
+          colors.includes(search) ||
+          jobs.includes(search);
+      });
+    }
+
+    // Calculate High-Level KPIs
+    const totalStyles = filtered.length;
+    const activeBulkStyles = filtered.filter((s: any) => s.status === 'RUNNING' || s.status === 'ACTIVE' || s.status === 'CONFIRMED').length;
+    const developmentStyles = filtered.filter((s: any) => s.status === 'DEVELOPMENT').length;
+    const totalLinkedJobs = filtered.reduce((acc: number, s: any) => acc + (s.linkedJobs?.length || 0), 0);
+    const totalOrderPcs = filtered.reduce((acc: number, s: any) => acc + (s.orderQty || 0), 0);
+    const techPackApprovedCount = filtered.filter((s: any) => s.techPackStatus === 'APPROVED').length;
+    const techPackApprovedPct = totalStyles > 0 ? Math.round((techPackApprovedCount / totalStyles) * 100) : 100;
+    const sampleApprovedCount = filtered.filter((s: any) => s.sampleStatus?.fit === 'APPROVED').length;
+    const protoFitApprovedPct = totalStyles > 0 ? Math.round((sampleApprovedCount / totalStyles) * 100) : 95;
+
+    // Distinct Category & Season lists for filters
+    const availableCategories = Array.from(new Set(allStyles.map((s: any) => s.category))).filter(Boolean);
+    const availableSeasons = Array.from(new Set(allStyles.map((s: any) => s.season))).filter(Boolean);
+
+    // Pagination
+    const totalPages = Math.ceil(filtered.length / limit) || 1;
+    const paginated = filtered.slice((page - 1) * limit, page * limit);
+
+    return NextResponse.json({
+      success: true,
+      role,
+      assignedBuyer,
+      effectiveBuyer,
+      isHead,
+      kpis: {
+        totalStyles,
+        activeBulkStyles,
+        developmentStyles,
+        totalLinkedJobs,
+        totalOrderPcs,
+        techPackApprovedPct,
+        protoFitApprovedPct
+      },
+      availableCategories,
+      availableSeasons,
+      pagination: {
+        page,
+        limit,
+        totalPages,
+        totalRecords: totalStyles
+      },
+      styles: paginated
+    });
+  }
+
+  // 0e. /api/merchandising/styles/:id
+  if (pathStr.startsWith('merchandising/styles/') && !pathStr.endsWith('/export')) {
+    const targetIdOrNo = pathStr.replace('merchandising/styles/', '').trim();
+    const allStyles = getAllConsolidatedStyles();
+    const found = allStyles.find((s: any) =>
+      s.id === targetIdOrNo ||
+      s.styleNo === targetIdOrNo ||
+      s.id === `sty-${targetIdOrNo}`
+    );
+
+    if (!found) {
+      return NextResponse.json({ success: false, error: 'Style not found' }, { status: 404 });
+    }
+    return NextResponse.json({ success: true, style: found });
+  }
+
+  // 0f. /api/merchandising/styles/export
+  if (pathStr === 'merchandising/styles/export') {
+    const role = (url.searchParams.get('role') || 'MERCHANDISER').toUpperCase();
+    const assignedBuyer = url.searchParams.get('assignedBuyer') || 'ONLY';
+    const isHead = role === 'HEAD_MERCHANDISER' || role === 'ADMIN';
+    let effectiveBuyer = isHead ? (url.searchParams.get('buyer') || 'ALL') : assignedBuyer;
+
+    const allStyles = getAllConsolidatedStyles();
+    let exportStyles = allStyles.filter((s: any) => {
+      const b = String(s.buyer || '').toUpperCase();
+      if (!isHead) {
+        const assigned = assignedBuyer.toUpperCase();
+        if (assigned === 'ONLY') return b.includes('ONLY') || b.includes('CARMA');
+        return b.includes(assigned) || assigned.includes(b);
+      }
+      if (effectiveBuyer === 'ALL') return true;
+      const eb = effectiveBuyer.toUpperCase();
+      return b.includes(eb) || eb.includes(b);
+    }).slice(0, 1000);
+
+    const headers = ['Style No', 'Style Name', 'Buyer Style No', 'Buyer', 'Category', 'Season', 'Status', 'Order Qty', 'FOB Price', 'FOB Value', 'SMV', 'Fabric', 'GSM', 'Colors', 'Linked Jobs'];
+    const rows = exportStyles.map((s: any) => [
+      `"${s.styleNo}"`,
+      `"${(s.styleName || '').replace(/"/g, '""')}"`,
+      `"${s.buyerStyleNo}"`,
+      `"${s.buyer}"`,
+      `"${s.category}"`,
+      `"${s.season}"`,
+      `"${s.status}"`,
+      s.orderQty,
+      s.fobPrice,
+      s.fobValue,
+      s.smv,
+      `"${(s.fabricType || '').replace(/"/g, '""')}"`,
+      `"${s.gsm}"`,
+      `"${(s.colors || []).join('; ')}"`,
+      `"${(s.linkedJobs || []).map((j: any) => j.jobNo).join('; ')}"`
+    ]);
+
+    const csv = [headers.join(','), ...rows.map((r: any) => r.join(','))].join('\n');
+    return new NextResponse(csv, {
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': 'attachment; filename="nos_style_product_master.csv"'
       }
     });
   }
@@ -1703,6 +2010,140 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       memoryCompletedActionIds.add(String(body.actionId));
     }
     return NextResponse.json({ success: true, actionId: body.actionId, completedActionIds: Array.from(memoryCompletedActionIds) });
+  }
+
+  // 0d-POST. /api/merchandising/styles (Create new master style)
+  if (pathStr === 'merchandising/styles') {
+    const body = await request.json().catch(() => ({}));
+    const styleNo = String(body.styleNo || `STY-${Math.floor(100000 + Math.random() * 900000)}`).trim();
+    const buyer = String(body.buyer || 'ONLY').trim();
+    const styleName = String(body.styleName || `New Style ${styleNo}`).trim();
+    const category = String(body.category || 'T-Shirt').trim();
+    const season = String(body.season || 'Autumn/Winter 2026').trim();
+    const orderQty = Number(body.orderQty || 20000);
+    const fobPrice = Number(body.fobPrice || 5.25);
+    const smv = Number(body.smv || 8.5);
+
+    const newStyle = {
+      id: `sty-${styleNo}`,
+      styleNo,
+      buyer,
+      styleName,
+      buyerStyleNo: body.buyerStyleNo || `BY-${styleNo}`,
+      product: body.product || category,
+      category,
+      season,
+      brand: body.brand || `${buyer} Brand`,
+      department: body.department || (buyer === 'Name It' ? 'Kids' : 'Womenswear'),
+      customerReference: body.customerReference || `REF-${styleNo}`,
+      status: body.status || 'DEVELOPMENT',
+      orderQty,
+      fobPrice,
+      fobValue: Math.round(orderQty * fobPrice),
+      smv,
+      fabricType: body.fabricType || '100% Cotton Single Jersey 180 GSM',
+      gsm: body.gsm || '180',
+      colors: Array.isArray(body.colors) && body.colors.length > 0 ? body.colors : ['Optical White', 'Navy Blazer'],
+      sizes: Array.isArray(body.sizes) && body.sizes.length > 0 ? body.sizes : ['XS', 'S', 'M', 'L', 'XL', '2XL'],
+      sizeRatio: Array.isArray(body.sizeRatio) && body.sizeRatio.length > 0 ? body.sizeRatio : [1, 2, 3, 3, 2, 1],
+      linkedJobs: [],
+      techPackStatus: body.techPackStatus || 'APPROVED',
+      cadPatternStatus: 'APPROVED',
+      sampleStatus: { proto: 'APPROVED', fit: 'SUBMITTED', pp: 'PENDING' },
+      revisions: [
+        { revNo: 'Rev 0', date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }), by: body.merchandiser || 'Merchandiser', remarks: 'New Master Style created' }
+      ],
+      specMeasurements: [
+        { pom: 'Chest Width (1" below armhole)', tol: '±0.5 cm', xs: 48, s: 50, m: 53, l: 56, xl: 59, xxl: 62 },
+        { pom: 'Body Length (HPS to bottom)', tol: '±1.0 cm', xs: 68, s: 70, m: 72, l: 74, xl: 76, xxl: 78 },
+        { pom: 'Across Shoulder', tol: '±0.5 cm', xs: 41, s: 43, m: 45, l: 47, xl: 49, xxl: 51 },
+        { pom: 'Sleeve Length from shoulder', tol: '±0.5 cm', xs: 61, s: 62.5, m: 64, l: 65.5, xl: 67, xxl: 68.5 },
+        { pom: 'Bottom Hem Width', tol: '±0.5 cm', xs: 47, s: 49, m: 52, l: 55, xl: 58, xxl: 61 }
+      ],
+      bomItems: [
+        { category: 'Main Fabric', item: body.fabricType || '100% Cotton Single Jersey', supplier: 'In-House (NFL)', consumption: '0.24 kg/pc', color: 'Dyed to Match', status: 'IN_HOUSE' },
+        { category: 'Sewing Thread', item: '100% Spun Polyester 40/2', supplier: 'Coats', consumption: '110 m/pc', color: 'Matching Ground', status: 'IN_HOUSE' },
+        { category: 'Labels', item: 'Heat Transfer Satin Main Neck Label', supplier: 'Avery Dennison', consumption: '1 pc/pc', color: 'Multi', status: 'APPROVED' },
+        { category: 'Labels', item: 'Printed Care & Composition Label', supplier: 'Paxar', consumption: '1 pc/pc', color: 'Black/White', status: 'APPROVED' }
+      ],
+      samples: [
+        { type: 'Proto Sample', submissionDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }), approvalDate: 'Pending', status: 'IN_PROGRESS', comments: 'Sample development under review.' }
+      ]
+    };
+
+    memoryCustomStyles.unshift(newStyle);
+    return NextResponse.json({ success: true, style: newStyle });
+  }
+
+  // 0d-IMPORT. /api/merchandising/styles/import (Batch import)
+  if (pathStr === 'merchandising/styles/import') {
+    const body = await request.json().catch(() => ({}));
+    const rawList = Array.isArray(body.styles) ? body.styles : [];
+    let count = 0;
+
+    for (const item of rawList) {
+      if (!item.styleNo) continue;
+      const sNo = String(item.styleNo).trim();
+      const newSty = {
+        id: `sty-${sNo}`,
+        styleNo: sNo,
+        buyer: item.buyer || 'ONLY',
+        styleName: item.styleName || `Imported Style ${sNo}`,
+        buyerStyleNo: item.buyerStyleNo || `BY-${sNo}`,
+        product: item.product || 'T-Shirt',
+        category: item.category || 'T-Shirt',
+        season: item.season || 'Autumn/Winter 2026',
+        brand: item.brand || 'Core',
+        department: item.department || 'Menswear',
+        customerReference: item.customerReference || `REF-${sNo}`,
+        status: item.status || 'ACTIVE',
+        orderQty: Number(item.orderQty || 15000),
+        fobPrice: Number(item.fobPrice || 5.25),
+        fobValue: Math.round(Number(item.orderQty || 15000) * Number(item.fobPrice || 5.25)),
+        smv: Number(item.smv || 8.5),
+        fabricType: item.fabricType || '100% Cotton Single Jersey 180 GSM',
+        gsm: item.gsm || '180',
+        colors: item.colors ? (Array.isArray(item.colors) ? item.colors : String(item.colors).split(/[,;]/).map(c => c.trim())) : ['Black Beauty'],
+        sizes: item.sizes ? (Array.isArray(item.sizes) ? item.sizes : String(item.sizes).split(/[,;]/).map(s => s.trim())) : ['S', 'M', 'L', 'XL'],
+        sizeRatio: [1, 2, 2, 1],
+        linkedJobs: [],
+        techPackStatus: 'APPROVED',
+        cadPatternStatus: 'APPROVED',
+        sampleStatus: { proto: 'APPROVED', fit: 'APPROVED', pp: 'APPROVED' },
+        revisions: [{ revNo: 'Rev 0', date: new Date().toLocaleDateString('en-GB'), by: 'Excel Import', remarks: 'Batch imported from Excel' }]
+      };
+      memoryCustomStyles.unshift(newSty);
+      count++;
+    }
+
+    return NextResponse.json({ success: true, importedCount: count });
+  }
+
+  // 0d-UPDATE. /api/merchandising/styles/update
+  if (pathStr === 'merchandising/styles/update') {
+    const body = await request.json().catch(() => ({}));
+    const styleNo = String(body.styleNo || '').trim();
+    if (!styleNo) {
+      return NextResponse.json({ success: false, error: 'styleNo is required' }, { status: 400 });
+    }
+
+    const prev = memoryUpdatedStyles[styleNo] || {};
+    const updated = {
+      ...prev,
+      ...body,
+      revisions: [
+        ...(prev.revisions || []),
+        {
+          revNo: `Rev ${(prev.revisions?.length || 1) + 1}`,
+          date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+          by: body.merchandiser || 'Merchandiser',
+          remarks: body.updateRemarks || 'Style details updated'
+        }
+      ]
+    };
+    memoryUpdatedStyles[styleNo] = updated;
+
+    return NextResponse.json({ success: true, style: updated });
   }
 
   if (pathStr === 'orders/job-sequence') {
