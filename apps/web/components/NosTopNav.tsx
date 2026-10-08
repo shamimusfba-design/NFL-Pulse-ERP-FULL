@@ -81,7 +81,7 @@ export const PRESET_PERSONAS: MerchandiserPersona[] = [
 ];
 
 export const NOS_NAV_ITEMS = [
-  { no: '01', label: 'Command Center', href: '/merchandising', short: 'CC', icon: '⚡' },
+  { no: '01', label: 'Bulk Merchandising', href: '/merchandising', short: 'BM', icon: '⚡' },
   { no: '02', label: 'Order & PO Management', href: '/merchandising/order-po', short: 'PO', icon: '📦' },
   { no: '03', label: 'Style & Product Management', href: '/merchandising/styles', short: 'ST', icon: '👕' },
   { no: '04', label: 'Costing & Commercial', href: '/merchandising/costing', short: 'CS', icon: '💵' },

@@ -11,14 +11,16 @@ function roleFilteredGroups(groups: ModuleGroup[], roles: string[]): ModuleGroup
   const allowed: Record<string, string[]> = {};
   const add = (group: string, slugs: string[]) => { allowed[group] = [...(allowed[group] || []), ...slugs]; };
 
-  if (roles.includes('MERCH_BULK')) add('Merchandising', ['merchandising', 'production-lots', 'forms-print']);
-  if (roles.includes('MERCH_SAMPLE')) add('Merchandising', ['sample-merchandising', 'forms-print']);
-  if (roles.includes('MERCH_BOTH')) add('Merchandising', ['merchandising', 'production-lots', 'sample-merchandising', 'forms-print']);
-  if (roles.includes('MERCH_HEAD')) { add('Merchandising', ['merchandising', 'production-lots', 'projection', 'sample-merchandising', 'forms-print']); add('Sample / CAD / Technical', ['central-sample', 'sample-fabric-store', 'cad', 'technical']); }
-  if (roles.includes('IE')) { add('Merchandising', ['production-lots']); add('Industrial Production Engineering', ['ie-overview', 'ie-bulletin', 'ie-daily-target', 'ie-mis-import', 'ie-npt', 'ie-qco', 'ie-line-performance', 'ie-responsibility', 'ie-skill-matrix', 'ie-production-checkpoints', 'ie-reports']); add('Management', ['kpi-board','kaizen']); }
+  const hasRole = (targets: string[]) => roles.some(r => targets.includes(String(r).toUpperCase()));
+
+  if (hasRole(['MERCH_BULK', 'MERCHANDISER', 'MERCH', 'MERCH_USER'])) add('Merchandising', ['merchandising', 'order-entry', 'bulk-followup', 'production-lots', 'forms-print']);
+  if (hasRole(['MERCH_SAMPLE'])) add('Merchandising', ['merchandising', 'order-entry', 'sample-merchandising', 'forms-print']);
+  if (hasRole(['MERCH_BOTH'])) add('Merchandising', ['merchandising', 'order-entry', 'bulk-followup', 'production-lots', 'sample-merchandising', 'forms-print']);
+  if (hasRole(['MERCH_HEAD', 'HEAD_MERCHANDISER'])) { add('Merchandising', ['merchandising', 'order-entry', 'bulk-followup', 'production-lots', 'projection', 'sample-merchandising', 'forms-print']); add('Sample / CAD / Technical', ['central-sample', 'sample-fabric-store', 'cad', 'technical']); }
+  if (roles.includes('IE')) { add('Merchandising', ['merchandising', 'production-lots']); add('Industrial Production Engineering', ['ie-overview', 'ie-bulletin', 'ie-daily-target', 'ie-mis-import', 'ie-npt', 'ie-qco', 'ie-line-performance', 'ie-responsibility', 'ie-skill-matrix', 'ie-production-checkpoints', 'ie-reports']); add('Management', ['kpi-board','kaizen']); }
   if (roles.includes('CAD')) add('Sample / CAD / Technical', ['cad', 'technical']);
   if (roles.includes('SAMPLE')) add('Sample / CAD / Technical', ['central-sample', 'sample-fabric-store']);
-  if (roles.includes('PLANNING')) { add('Merchandising', ['production-lots', 'forms-print']); add('Central Planning', ['ta', 'capacity', 'sewing-planning', 'subcontract', 'lead-time-history']); add('Management', ['job-360']); }
+  if (roles.includes('PLANNING')) { add('Merchandising', ['merchandising', 'order-entry', 'production-lots', 'forms-print']); add('Central Planning', ['ta', 'capacity', 'sewing-planning', 'subcontract', 'lead-time-history']); add('Management', ['job-360']); }
   if (roles.includes('MANAGEMENT')) { add('Management', ['management', 'job-360', 'kpi-board', 'kaizen']); add('Central Planning', ['capacity', 'lead-time-history']); add('Quality & Stores', ['quality', 'quality-history']); add('Shipment & System', ['reports']); }
   if (roles.includes('QUALITY')) { add('Management', ['job-360']); add('Yarn & Fabric', ['lab']); add('Quality & Stores', ['quality', 'quality-history']); }
   if (roles.includes('YARN_MANAGEMENT')) add('Yarn & Fabric', ['yarn', 'yarn-store', 'yarn-dyeing', 'knitting']);
@@ -107,25 +109,14 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
 
         <nav className="nav">
           {!query && <>
-            <Link className={active('/merchandising') ? 'nav-link active' : 'nav-link'} href="/merchandising" style={{ background: 'linear-gradient(90deg, rgba(37,99,235,0.28), rgba(30,64,175,0.12))', border: '1px solid rgba(59,130,246,0.35)', borderRadius: '9px', marginBottom: '6px' }}>
-              <span className="nav-icon" style={{ background: '#2563eb', color: '#fff', fontWeight: 900 }}>⚡</span>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <strong style={{ fontSize: '12px', color: '#93c5fd' }}>NOS Command Center</strong>
-                  <span style={{ fontSize: '8.5px', background: '#2563eb', color: '#fff', padding: '1px 5px', borderRadius: '3px', fontWeight: 900 }}>NEW</span>
-                </div>
-                <span style={{ fontSize: '10px', color: '#94a3b8', display: 'block' }}>Merchandising Control Tower</span>
-              </div>
-            </Link>
             <Link className={active('/') ? 'nav-link active' : 'nav-link'} href="/"><span className="nav-icon">👑</span><span>Executive KPI Board</span></Link>
             <Link className={active('/tasks') ? 'nav-link active' : 'nav-link'} href="/tasks"><span className="nav-icon">TK</span><span>My Pending Tasks</span></Link>
-            {canEnterOrders && <Link className={active('/orders/new') ? 'nav-link active' : 'nav-link'} href="/orders/new"><span className="nav-icon">PO</span><span>Order Entry / PO Import</span></Link>}
           </>}
 
           {groups.map((group) => {
             const isOpen = query.length > 0 || !!openGroups[group.label];
             const overviewHref = `/modules/${group.overviewSlug}`;
-            const hasActive = active(overviewHref) || group.items.some((item) => active(`/modules/${item.slug}`));
+            const hasActive = active(overviewHref) || group.items.some((item) => active(item.slug === 'merchandising' ? '/merchandising' : item.slug === 'order-entry' ? '/merchandising/order-po' : `/modules/${item.slug}`));
             return <div className={`nav-group ${isOpen ? 'open' : ''}`} key={group.label}>
               <div className={`nav-group-toggle ${hasActive ? 'has-active' : ''}`}>
                 <Link className="nav-group-overview" href={overviewHref} title={`${group.label} overview`} onClick={() => setOpenGroups((prev) => ({ ...prev, [group.label]: true }))}>
@@ -137,9 +128,17 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
               </div>
               <div className={`nav-group-items ${isOpen ? 'open' : ''}`}>
                 {group.items.map((item) => {
-                  const href = `/modules/${item.slug}`;
-                  return <Link className={active(href) ? 'nav-link active' : 'nav-link'} href={href} key={item.slug} title={item.description}>
-                    <span className="nav-icon">{item.short}</span><span className="nav-text">{item.name}</span>
+                  const href = item.slug === 'merchandising' ? '/merchandising' : item.slug === 'order-entry' ? '/merchandising/order-po' : item.slug === 'bulk-followup' ? '/modules/merchandising?view=LEGACY_REGISTER' : `/modules/${item.slug}`;
+                  const isControlTower = item.slug === 'merchandising';
+                  const isOrderEntry = item.slug === 'order-entry';
+                  return <Link className={active(href) ? 'nav-link active' : 'nav-link'} href={href} key={item.slug} title={item.description} style={isControlTower ? { background: 'linear-gradient(90deg, rgba(37,99,235,0.18), rgba(30,64,175,0.06))', borderLeft: '3px solid #3b82f6' } : isOrderEntry ? { background: 'rgba(245,158,11,0.08)', borderLeft: '3px solid #f59e0b' } : undefined}>
+                    <span className="nav-icon" style={isControlTower ? { background: '#2563eb', color: '#fff', fontWeight: 900 } : isOrderEntry ? { background: '#f59e0b', color: '#000', fontWeight: 900 } : undefined}>
+                      {isControlTower ? '⚡' : isOrderEntry ? 'PO' : item.short}
+                    </span>
+                    <span className="nav-text" style={isControlTower ? { fontWeight: 700, color: '#93c5fd' } : isOrderEntry ? { fontWeight: 700, color: '#fde68a' } : undefined}>
+                      {item.name}
+                    </span>
+                    {isControlTower && <span style={{ marginLeft: 'auto', fontSize: '8px', background: '#2563eb', color: '#fff', padding: '1px 5px', borderRadius: '3px', fontWeight: 900 }}>DASHBOARD</span>}
                   </Link>;
                 })}
               </div>

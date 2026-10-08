@@ -14,8 +14,31 @@ function num(v: any) {
 }
 function dt(v: any) {
   if (!v) return '—';
-  const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? String(v) : d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' });
+  let s = String(v).trim();
+  if (s.includes('+')) {
+    s = s.split('+')[0].trim();
+  }
+  const parts = s.split(/[-/]/);
+  if (parts.length === 3 && parts[0].length <= 2 && parts[2].length === 4) {
+    const d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+    if (!Number.isNaN(d.getTime())) {
+      return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' });
+    }
+  }
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? String(s) : d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' });
+}
+
+function normalizeBuyerName(b: any): string {
+  if (!b) return 'ONLY';
+  const s = String(b).trim();
+  if (s.includes('NMT') || s.includes('Name It')) return 'Name It';
+  if (s.includes('ONLY') || s.includes('ONS')) return 'ONLY';
+  if (s.includes('OVS')) return 'OVS';
+  if (s.includes('UTG')) return 'UTG';
+  if (s.includes('NWL') || s.includes('New Look') || s.includes('Selfridge')) return 'New Look';
+  if (s.includes('MAU') || s.includes('Maurices')) return 'Maurices';
+  return s;
 }
 
 export default function DyeingProductionPage() {
@@ -161,8 +184,8 @@ export default function DyeingProductionPage() {
           <div className="panel">
             <div className="panel-head">
               <div>
-                <div className="panel-title">Northern Fashion Ltd. — Dyeing Floor Machine Profile</div>
-                <div className="panel-sub">Plot # 16-18, Dakhin Panishail, Kashimpur, Gazipur · HTHP Winch &amp; Finishing Fleet</div>
+                <div className="panel-title">Northern Fashions Limited (NFL) — In-House Dyeing Floor Machine Profile</div>
+                <div className="panel-sub">NFL Knitting &amp; Dyeing In-House Facility · HTHP Winch &amp; Finishing Fleet</div>
               </div>
             </div>
 
@@ -348,7 +371,7 @@ export default function DyeingProductionPage() {
                       <tr key={b.batchNo || i}>
                         <td><strong>{b.batchNo}</strong></td>
                         <td>{b.jobNo}</td>
-                        <td>{b.buyer}</td>
+                        <td>{normalizeBuyerName(b.buyer)}</td>
                         <td>{b.color}</td>
                         <td><small>{b.targetMachine || b.machine}</small></td>
                         <td><strong>{num(b.greigeIssuedQty || b.greigeQty)}</strong></td>
@@ -510,7 +533,7 @@ export default function DyeingProductionPage() {
                 {deliveries.slice(0, 30).map((d: any, i: number) => (
                   <tr key={`${d.jobNo}-${d.challanNo}-${i}`}>
                     <td><strong>{d.jobNo}</strong></td>
-                    <td>{d.buyer}</td>
+                    <td>{normalizeBuyerName(d.buyer)}</td>
                     <td><strong>{d.challanNo}</strong></td>
                     <td><span className="status-pill neutral">{d.slotNo || '1st Slot'}</span></td>
                     <td>{num(d.bodyDelivery)}</td>
@@ -564,8 +587,8 @@ export default function DyeingProductionPage() {
                 </tr>
               </thead>
               <tbody>
-                {initialExecution.slice(0, 20).map((r: any) => (
-                  <tr key={`${r.jobNo}-${r.colour}`}>
+                {initialExecution.slice(0, 20).map((r: any, idx: number) => (
+                  <tr key={`${r.jobNo}-${r.colour || ''}-${idx}`}>
                     <td><strong>{r.jobNo}</strong></td>
                     <td>{r.buyer}</td>
                     <td>{r.colour}</td>
@@ -674,7 +697,7 @@ export default function DyeingProductionPage() {
                     return (
                       <tr key={`${q.jobNo}-${q.batchNo}-${idx}`}>
                         <td>{dt(q.date)}</td>
-                        <td><strong>{q.buyer}</strong></td>
+                        <td><strong>{normalizeBuyerName(q.buyer)}</strong></td>
                         <td>{q.jobNo}</td>
                         <td>{q.color}</td>
                         <td><strong>{q.batchNo || '—'}</strong></td>

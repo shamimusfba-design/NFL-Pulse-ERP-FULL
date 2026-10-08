@@ -2,15 +2,15 @@
 
 import React from 'react';
 import NosShell from '../../components/NosShell';
-import NosCommandCenter from '../../components/NosCommandCenter';
+import BulkMerchandisingDashboard from '../../components/BulkMerchandisingDashboard';
 
-export default function MerchandisingCommandCenterPage() {
+export default function BulkMerchandisingPage() {
   return (
     <NosShell
-      title="01. Command Center"
-      subtitle="Enterprise Merchandising Control Tower · Authorized Buyer Data Isolation · Live Production & Capacity Pipeline"
+      title="Bulk Merchandising Dashboard"
+      subtitle="Operational Control Center · Authorized Buyer Data Isolation · Live Production & Exceptions"
     >
-      <NosCommandCenter />
+      <BulkMerchandisingDashboard />
     </NosShell>
   );
 }

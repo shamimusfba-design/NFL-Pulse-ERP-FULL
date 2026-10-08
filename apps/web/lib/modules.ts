@@ -26,7 +26,9 @@ export const MODULE_GROUPS: ModuleGroup[] = [
     label: 'Merchandising',
     overviewSlug: 'merchandising-overview',
     items: [
-      { slug: 'merchandising', name: 'Bulk Merchandising', short: 'ME', status: 'Live', description: 'Buyer PO/Market order foundation, follow-up, production-lot links, documents and production status.' },
+      { slug: 'merchandising', name: 'Bulk Merchandising Dashboard', short: 'BM', status: 'Live', description: 'Enterprise operational dashboard, real-time job monitoring, priority actions, and live production pipeline.' },
+      { slug: 'order-entry', name: 'Order Entry & PO Import', short: 'OE', status: 'Live', description: 'Direct buyer order creation, Bestseller & OVS PO import, color × size matrix, and job sequence allocation.' },
+      { slug: 'bulk-followup', name: 'Bulk Follow-up & Revisions', short: 'BF', status: 'Live', description: 'Buyer PO/Market order foundation, follow-up, production-lot links, documents and production status.' },
       { slug: 'production-lots', name: 'PO / Market Production Lots', short: 'PL', status: 'Live', description: 'Select PO or OVS market scope, combine Color × Size, reserve quantity and release production lots.' },
       { slug: 'projection', name: 'Merchandising Projection', short: 'PR', status: 'Planned', description: 'Pre-order projection and yarn forecast requirements.' },
       { slug: 'sample-merchandising', name: 'Sample Merchandising', short: 'SM', status: 'Planned', description: 'Costing, lab dip, sample follow-up, buyer comments and approvals.' },

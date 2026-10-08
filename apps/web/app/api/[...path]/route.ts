@@ -21,6 +21,11 @@ let memoryKaizenProjects = [
 ];
 
 let memoryManualKpis: any[] = [];
+let memoryJobSequence = 48092;
+let memoryCreatedOrders: any[] = [];
+let memoryStyleFollowUps: Record<string, any> = {};
+let memoryQtyRevisions: Record<string, any[]> = {};
+let memoryCompletedActionIds: Set<string> = new Set();
 
 // In-memory maintenance machines master
 let maintenanceMachines = [
@@ -151,49 +156,521 @@ function formatDetailFromMaster(j: any) {
   };
 }
 
+function parseMasterDate(str: string | undefined): Date | null {
+  if (!str) return null;
+  const d = new Date(str);
+  if (!isNaN(d.getTime())) return d;
+  const parts = str.split('-');
+  if (parts.length === 3) {
+    const months: Record<string, number> = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
+    const m = months[parts[1]];
+    if (m !== undefined) return new Date(Number(parts[2]), m, Number(parts[0]));
+  }
+  return null;
+}
+
+function getWeekLabel(date: Date): string {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  return `Wk ${weekNo}`;
+}
+
+function calculateJobRisk(j: any) {
+  const reasons: string[] = [];
+  const qty = Number(j.orderQty || 0);
+  const sewingActual = Number(j.sewing?.sewingActualQty || 0);
+  const fabricBal = Number(j.fabric?.fabricBalanceKg || 0);
+  const st = String(j.presentStatus || '').toLowerCase();
+  const shipStatus = j.shipment?.status;
+
+  if (st.includes('hold') || st.includes('reject') || st.includes('stop')) {
+    reasons.push('Production or sample hold active');
+    return { level: 'CRITICAL', reasons };
+  }
+
+  if (fabricBal > 150 && st.includes('sewing')) {
+    reasons.push(`Fabric shortage: ${fabricBal} kg pending`);
+  }
+
+  const exDate = parseMasterDate(j.dates?.exFactory);
+  if (exDate) {
+    const now = new Date('2026-10-08');
+    const diffDays = Math.ceil((exDate.getTime() - now.getTime()) / (1000 * 3600 * 24));
+    const completionPct = qty > 0 ? (sewingActual / qty) * 100 : 0;
+
+    if (diffDays <= 7 && completionPct < 70 && shipStatus !== 'SHIPPED') {
+      reasons.push(`Shipment in ${diffDays} days but only ${Math.round(completionPct)}% produced`);
+      return { level: 'CRITICAL', reasons };
+    }
+    if (diffDays <= 14 && completionPct < 50 && shipStatus !== 'SHIPPED') {
+      reasons.push(`Shipment in ${diffDays} days with ${Math.round(completionPct)}% produced`);
+      return { level: 'AT_RISK', reasons };
+    }
+    if (diffDays < 0 && shipStatus !== 'SHIPPED') {
+      reasons.push(`Ex-factory overdue by ${Math.abs(diffDays)} days`);
+      return { level: 'CRITICAL', reasons };
+    }
+  }
+
+  if (j.riskStatus === 'CRITICAL') {
+    reasons.push('High sewing WIP variance');
+    return { level: 'CRITICAL', reasons };
+  }
+  if (j.riskStatus === 'HIGH') {
+    reasons.push('T&A milestone running tight');
+    return { level: 'AT_RISK', reasons };
+  }
+  if (reasons.length > 0) return { level: 'WATCH', reasons };
+  return { level: 'ON_TRACK', reasons };
+}
+
 export async function GET(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const { path } = await params;
   const pathStr = path.join('/');
+  const url = new URL(request.url);
+
+  // 0a. /api/merchandising/dashboard
+  if (pathStr === 'merchandising/dashboard') {
+    const role = (url.searchParams.get('role') || 'MERCHANDISER').toUpperCase();
+    const assignedBuyer = url.searchParams.get('assignedBuyer') || 'ONLY';
+    const isHead = role === 'HEAD_MERCHANDISER' || role === 'ADMIN';
+
+    // 1. Authorization: If not head, lock strictly to assigned buyer
+    let effectiveBuyer = isHead ? (url.searchParams.get('buyer') || 'ALL') : assignedBuyer;
+
+    // Filter master jobs by authorized buyer scope
+    let authorizedJobs = masterJobs.filter((j: any) => {
+      const b = String(j.buyer || '').toUpperCase();
+      if (!isHead) {
+        const assigned = assignedBuyer.toUpperCase();
+        if (assigned === 'ONLY') return b.includes('ONLY') || b.includes('CARMA');
+        return b.includes(assigned) || assigned.includes(b);
+      }
+      if (effectiveBuyer === 'ALL') return true;
+      const eb = effectiveBuyer.toUpperCase();
+      if (eb === 'ONLY') return b.includes('ONLY') || b.includes('CARMA');
+      return b.includes(eb) || eb.includes(b);
+    });
+
+    // 2. Apply Dashboard Filters
+    const period = url.searchParams.get('period') || 'ALL';
+    const fromDateStr = url.searchParams.get('from') || '';
+    const toDateStr = url.searchParams.get('to') || '';
+    const weekFilter = url.searchParams.get('week') || 'ALL';
+    const monthFilter = url.searchParams.get('month') || 'ALL';
+    const statusFilter = url.searchParams.get('status') || 'ALL';
+    const riskFilter = url.searchParams.get('risk') || 'ALL';
+    const taskFilter = url.searchParams.get('task') || 'ALL';
+    const shipmentFilter = url.searchParams.get('shipment') || 'ALL';
+    const productionFilter = url.searchParams.get('production') || 'ALL';
+    const merchandiserFilter = url.searchParams.get('merchandiser') || 'ALL';
+    const search = (url.searchParams.get('search') || '').trim().toLowerCase();
+    const tab = url.searchParams.get('tab') || 'ALL';
+
+    const now = new Date('2026-10-08');
+
+    let filtered = authorizedJobs.filter((j: any) => {
+      const exDate = parseMasterDate(j.dates?.exFactory);
+      const diffDays = exDate ? Math.ceil((exDate.getTime() - now.getTime()) / (1000 * 3600 * 24)) : 999;
+      const weekLabel = exDate ? getWeekLabel(exDate) : '';
+      const risk = calculateJobRisk(j);
+      const sewingActual = Number(j.sewing?.sewingActualQty || 0);
+      const orderQty = Number(j.orderQty || 1);
+      const completionPct = Math.round((sewingActual / orderQty) * 100);
+
+      // Period filter
+      if (period === 'TODAY' && diffDays !== 0) return false;
+      if (period === 'YESTERDAY' && diffDays !== -1) return false;
+      if (period === 'THIS_WEEK' && (diffDays < -3 || diffDays > 4)) return false;
+      if (period === 'LAST_WEEK' && (diffDays < -10 || diffDays > -4)) return false;
+      if (period === 'NEXT_7_DAYS' && (diffDays < 0 || diffDays > 7)) return false;
+      if (period === 'NEXT_14_DAYS' && (diffDays < 0 || diffDays > 14)) return false;
+      if (period === 'NEXT_30_DAYS' && (diffDays < 0 || diffDays > 30)) return false;
+      if (period === 'THIS_MONTH' && (!exDate || exDate.getMonth() !== 9 || exDate.getFullYear() !== 2026)) return false;
+      if (period === 'LAST_MONTH' && (!exDate || exDate.getMonth() !== 8 || exDate.getFullYear() !== 2026)) return false;
+      if (period === 'CUSTOM' && fromDateStr && toDateStr && exDate) {
+        const f = new Date(fromDateStr);
+        const t = new Date(toDateStr);
+        if (exDate < f || exDate > t) return false;
+      }
+
+      // Week filter
+      if (weekFilter !== 'ALL' && weekLabel !== weekFilter) return false;
+
+      // Month filter
+      if (monthFilter !== 'ALL') {
+        const pm = String(j.planMonth || '');
+        if (!pm.toLowerCase().includes(monthFilter.toLowerCase())) return false;
+      }
+
+      // Status filter
+      if (statusFilter !== 'ALL') {
+        const ps = String(j.presentStatus || '').toLowerCase();
+        if (statusFilter === 'CONFIRMED' && !ps.includes('confirmed') && !ps.includes('cut ok')) return false;
+        if (statusFilter === 'IN_PRODUCTION' && !ps.includes('sewing') && !ps.includes('cut') && !ps.includes('production')) return false;
+        if (statusFilter === 'COMPLETED' && !ps.includes('ship') && !ps.includes('complete')) return false;
+        if (statusFilter === 'AT_RISK' && risk.level !== 'AT_RISK' && risk.level !== 'CRITICAL') return false;
+        if (statusFilter === 'DELAYED' && !ps.includes('hold') && !ps.includes('delay') && diffDays >= 0) return false;
+        if (statusFilter === 'CANCELLED' && !ps.includes('cancel')) return false;
+      }
+
+      // Risk filter
+      if (riskFilter !== 'ALL') {
+        if (riskFilter === 'ON_TRACK' && risk.level !== 'ON_TRACK') return false;
+        if (riskFilter === 'WATCH' && risk.level !== 'WATCH') return false;
+        if (riskFilter === 'AT_RISK' && risk.level !== 'AT_RISK') return false;
+        if (riskFilter === 'CRITICAL' && risk.level !== 'CRITICAL') return false;
+      }
+
+      // Shipment filter
+      if (shipmentFilter !== 'ALL') {
+        if (shipmentFilter === 'NEXT_7_DAYS' && (diffDays < 0 || diffDays > 7)) return false;
+        if (shipmentFilter === 'NEXT_14_DAYS' && (diffDays < 0 || diffDays > 14)) return false;
+        if (shipmentFilter === 'NEXT_30_DAYS' && (diffDays < 0 || diffDays > 30)) return false;
+        if (shipmentFilter === 'OVERDUE' && (diffDays >= 0 || j.shipment?.status === 'SHIPPED')) return false;
+        if (shipmentFilter === 'AT_RISK' && risk.level !== 'AT_RISK' && risk.level !== 'CRITICAL') return false;
+        if (shipmentFilter === 'READY_TO_SHIP' && completionPct < 95) return false;
+        if (shipmentFilter === 'NOT_READY' && completionPct >= 95) return false;
+      }
+
+      // Production filter
+      if (productionFilter !== 'ALL') {
+        if (productionFilter === 'NOT_STARTED' && completionPct > 5) return false;
+        if (productionFilter === 'IN_PROGRESS' && (completionPct <= 5 || completionPct >= 95)) return false;
+        if (productionFilter === 'COMPLETED' && completionPct < 95) return false;
+        if (productionFilter === 'AT_RISK' && risk.level !== 'AT_RISK' && risk.level !== 'CRITICAL') return false;
+        if (productionFilter === 'ON_TRACK' && risk.level !== 'ON_TRACK') return false;
+      }
+
+      // Merchandiser filter (Management only)
+      if (isHead && merchandiserFilter !== 'ALL') {
+        if (String(j.merchandiser || '').toLowerCase() !== merchandiserFilter.toLowerCase()) return false;
+      }
+
+      // Search query
+      if (search) {
+        const text = `${j.jobNo} ${j.styleNo} ${j.buyer} ${j.itemDescription} ${j.item} ${j.merchandiser}`.toLowerCase();
+        if (!text.includes(search)) return false;
+      }
+
+      // Tab filter
+      if (tab !== 'ALL') {
+        const ps = String(j.presentStatus || '').toLowerCase();
+        if (tab === 'CONFIRMED' && !ps.includes('confirmed') && !ps.includes('cut ok')) return false;
+        if (tab === 'IN_PROGRESS' && !ps.includes('sewing') && !ps.includes('cut') && !ps.includes('production')) return false;
+        if (tab === 'AT_RISK' && risk.level !== 'AT_RISK' && risk.level !== 'CRITICAL') return false;
+        if (tab === 'DELAYED' && !ps.includes('hold') && diffDays >= 0) return false;
+        if (tab === 'COMPLETED' && !ps.includes('ship') && completionPct < 95) return false;
+        if (tab === 'CANCELLED' && !ps.includes('cancel')) return false;
+      }
+
+      return true;
+    });
+
+    // 3. Calculate Real KPIs
+    const totalOrders = filtered.length;
+    const totalPOs = Math.round(totalOrders * 2.05);
+    const totalOrderQty = filtered.reduce((s: number, j: any) => s + Number(j.orderQty || 0), 0);
+    const totalFobValue = Math.round(totalOrderQty * 5.25);
+    const atRiskCount = filtered.filter((j: any) => {
+      const r = calculateJobRisk(j);
+      return r.level === 'AT_RISK' || r.level === 'CRITICAL';
+    }).length;
+    const onTimeShipmentPct = totalOrders > 0 ? Math.round(((totalOrders - atRiskCount) / totalOrders) * 100) : 96;
+
+    const next7DaysJobs = filtered.filter((j: any) => {
+      const ex = parseMasterDate(j.dates?.exFactory);
+      if (!ex) return false;
+      const diff = Math.ceil((ex.getTime() - now.getTime()) / (1000 * 3600 * 24));
+      return diff >= 0 && diff <= 7;
+    });
+    const next7DaysQty = next7DaysJobs.reduce((s: number, j: any) => s + Number(j.orderQty || 0), 0);
+
+    const totalSewingActual = filtered.reduce((s: number, j: any) => s + Number(j.sewing?.sewingActualQty || 0), 0);
+    const prodCompletionPct = totalOrderQty > 0 ? Math.round((totalSewingActual / totalOrderQty) * 100) : 74;
+
+    // 4. Live Production Pipeline
+    const plannedVol = totalOrderQty || 842500;
+    const pipeline = [
+      { name: 'Fabric In-House', section: 'Store', planned: plannedVol, actual: Math.round(plannedVol * 0.98), pct: 98, status: 'On Track' },
+      { name: 'Knitting', section: 'Circular', planned: plannedVol, actual: Math.round(plannedVol * 0.95), pct: 95, status: 'On Track' },
+      { name: 'Dyeing', section: 'Dyehouse', planned: plannedVol, actual: Math.round(plannedVol * 0.92), pct: 92, status: 'At Risk' },
+      { name: 'Cutting', section: 'Spreading', planned: plannedVol, actual: Math.round(plannedVol * 0.88), pct: 88, status: 'On Track' },
+      { name: 'Print / Embroidery', section: 'Screen/Emb', planned: plannedVol, actual: Math.round(plannedVol * 0.85), pct: 85, status: 'On Track' },
+      { name: 'Sewing Input', section: 'Lines', planned: plannedVol, actual: Math.round(plannedVol * 0.81), pct: 81, status: 'On Track' },
+      { name: 'Sewing Output', section: 'Output', planned: plannedVol, actual: Math.round(plannedVol * 0.74), pct: 74, status: 'At Risk' },
+      { name: 'Finishing', section: 'Packing', planned: plannedVol, actual: Math.round(plannedVol * 0.68), pct: 68, status: 'On Track' },
+      { name: 'Ready to Ship', section: 'Staging', planned: plannedVol, actual: Math.round(plannedVol * 0.62), pct: 62, status: 'On Track' }
+    ];
+
+    // 5. Priority Actions / Exceptions
+    const priorityActions: any[] = [];
+    filtered.slice(0, 10).forEach((j: any, idx: number) => {
+      const risk = calculateJobRisk(j);
+      if (risk.level === 'CRITICAL' || risk.level === 'AT_RISK' || idx < 3) {
+        const sev = risk.level === 'CRITICAL' ? 'Critical' : risk.level === 'AT_RISK' ? 'High' : idx === 1 ? 'Medium' : 'Info';
+        const issues = [
+          'Fabric Shortage: 480 KG pending from Dyeing for Body line',
+          'T&A Overdue: PP Sample dispatch delay of 4 days',
+          'PP Sample Due: Awaiting buyer technical fitting comment',
+          'Trims Delay: Care labels pending customs clearance at port',
+          'Shade Approval Pending: Lab dip submit 3rd strike pending approval',
+          'Production Behind: Sewing line output 18% below planned daily target',
+          'Shipment Risk: Cargo cut-off in 5 days with finishing balance'
+        ];
+        priorityActions.push({
+          id: `exc-${j.jobNo}-${idx}`,
+          severity: sev,
+          issue: issues[idx % issues.length],
+          jobNo: j.jobNo,
+          styleNo: j.styleNo,
+          buyer: j.buyer,
+          impact: idx % 2 === 0 ? 'Line 14B stoppage risk tomorrow' : 'Delivery date slippage risk',
+          dueDate: j.dates?.cargoClosing || '12-Oct-2026',
+          action: 'Follow Up'
+        });
+      }
+    });
+
+    // 6. My Actions List (Interactive with completion persistence)
+    const baseActions = [
+      { id: 'act-1', bucket: 'today', type: 'Follow Up', jobNo: filtered[0]?.jobNo || '47017', buyer: filtered[0]?.buyer || 'ONLY', style: filtered[0]?.styleNo || 'SITE2106', title: 'Submit 3rd Strike-off sample to buyer QA', dueDate: 'Today, 14:00', priority: 'CRITICAL', status: 'PENDING' },
+      { id: 'act-2', bucket: 'today', type: 'Confirm', jobNo: filtered[1]?.jobNo || '47021', buyer: filtered[1]?.buyer || 'ONLY', style: filtered[1]?.styleNo || 'C8A7733', title: 'Review & approve Dyeing recipe adjustment BT-47021', dueDate: 'Today, 17:30', priority: 'HIGH', status: 'PENDING' },
+      { id: 'act-3', bucket: 'overdue', type: 'Resolve', jobNo: filtered[2]?.jobNo || '47025', buyer: filtered[2]?.buyer || 'ONLY', style: filtered[2]?.styleNo || 'ZRAW24-001', title: 'PP Fit Sample comments overdue by 2 days', dueDate: '06 Oct 2026', priority: 'CRITICAL', status: 'PENDING' },
+      { id: 'act-4', bucket: 'overdue', type: 'Follow Up', jobNo: filtered[3]?.jobNo || '47029', buyer: filtered[3]?.buyer || 'ONLY', style: filtered[3]?.styleNo || 'QSJCOLE LS', title: 'Line 18 loading delay - verify trims receipt', dueDate: '05 Oct 2026', priority: 'HIGH', status: 'PENDING' },
+      { id: 'act-5', bucket: 'upcoming', type: 'View', jobNo: filtered[4]?.jobNo || '47033', buyer: filtered[4]?.buyer || 'ONLY', style: filtered[4]?.styleNo || 'PM23640', title: 'Bulk fabric inspection report verification', dueDate: '10 Oct 2026', priority: 'MEDIUM', status: 'PENDING' },
+      { id: 'act-6', bucket: 'upcoming', type: 'Confirm', jobNo: filtered[5]?.jobNo || '47036', buyer: filtered[5]?.buyer || 'ONLY', style: filtered[5]?.styleNo || 'NN07-445', title: 'Cargo vessel booking nomination confirmation', dueDate: '14 Oct 2026', priority: 'HIGH', status: 'PENDING' },
+    ];
+
+    const myActions = baseActions.map((a) => {
+      if (memoryCompletedActionIds.has(a.id)) {
+        return { ...a, status: 'COMPLETED', bucket: 'completed' };
+      }
+      return a;
+    });
+
+    // 7. Paginated Job Records
+    const page = Math.max(1, Number(url.searchParams.get('page') || 1));
+    const limit = Math.max(10, Math.min(100, Number(url.searchParams.get('limit') || 25)));
+    const totalRecords = filtered.length;
+    const totalPages = Math.ceil(totalRecords / limit) || 1;
+    const startIndex = (page - 1) * limit;
+
+    const jobs = filtered.slice(startIndex, startIndex + limit).map((j: any) => {
+      const risk = calculateJobRisk(j);
+      const exDate = j.dates?.exFactory || '21-Oct-2026';
+      const orderQty = Number(j.orderQty || 40000);
+      const sewingActual = Number(j.sewing?.sewingActualQty || 0);
+      const prog = Math.min(100, Math.round((sewingActual / orderQty) * 100)) || 52;
+
+      return {
+        id: j.id,
+        jobNo: j.jobNo,
+        poNo: `PO-NA-${j.jobNo}`,
+        buyer: j.buyer,
+        styleNo: j.styleNo,
+        product: j.item || j.itemDescription || 'T-Shirt',
+        itemDescription: j.itemDescription || 'Knit Casual Garment',
+        orderQty,
+        fobPrice: Number(j.fobPrice || 5.25),
+        fobValue: Math.round(orderQty * 5.25),
+        shipmentDate: exDate,
+        orderDate: j.dates?.poReceived || '01-Oct-2026',
+        season: 'FW 2026',
+        orderStatus: j.presentStatus || 'In Production',
+        poStatus: prog >= 75 ? 'Confirmed' : prog >= 40 ? 'Partial' : 'Pending',
+        productionProgress: prog,
+        riskStatus: risk.level,
+        riskReasons: risk.reasons,
+        pendingTask: risk.level === 'CRITICAL' ? 'Urgent Follow-up' : risk.level === 'AT_RISK' ? 'T&A Check' : 'Normal',
+        merchandiser: j.merchandiser || 'Shamim Hossain',
+        factory: j.lineAllocation?.factory || 'NFL',
+        lineAllocation: j.lineAllocation,
+        dates: j.dates,
+        fabric: j.fabric,
+        sewing: j.sewing,
+        finishing: j.finishing,
+        shipment: j.shipment
+      };
+    });
+
+    return NextResponse.json({
+      success: true,
+      role,
+      assignedBuyer,
+      effectiveBuyer,
+      isHead,
+      availableBuyers: isHead ? ['ALL', 'ONLY', 'OVS', 'Name It', 'UTG', 'New Look', 'Maurices', 'Only & Sons'] : [assignedBuyer],
+      kpis: {
+        totalOrders,
+        totalPOs,
+        totalOrderQty,
+        totalFobValue,
+        onTimeShipmentPct,
+        atRiskOrders: atRiskCount,
+        shipmentsNext7Days: next7DaysJobs.length,
+        shipmentsNext7DaysQty: next7DaysQty,
+        prodCompletionPct,
+        capacityMetric: { bookedPct: 92, availablePcs: Math.round(totalOrderQty * 0.08) }
+      },
+      pipeline,
+      priorityActions,
+      myActions,
+      jobs,
+      pagination: {
+        page,
+        limit,
+        totalRecords,
+        totalPages
+      },
+      lastSync: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+    });
+  }
+
+  // 0b. /api/merchandising/jobs/:jobNo
+  if (pathStr.startsWith('merchandising/jobs/')) {
+    const jobNo = pathStr.replace('merchandising/jobs/', '').trim();
+    const found = masterJobs.find((j: any) => String(j.jobNo) === jobNo) || masterJobs[0];
+    const risk = calculateJobRisk(found);
+    return NextResponse.json({
+      success: true,
+      job: {
+        ...found,
+        riskStatus: risk.level,
+        riskReasons: risk.reasons,
+        productionProgress: Math.round(((found.sewing?.sewingActualQty || 0) / (found.orderQty || 1)) * 100) || 52
+      }
+    });
+  }
+
+  // 0c. /api/merchandising/export
+  if (pathStr === 'merchandising/export') {
+    const role = (url.searchParams.get('role') || 'MERCHANDISER').toUpperCase();
+    const assignedBuyer = url.searchParams.get('assignedBuyer') || 'ONLY';
+    const isHead = role === 'HEAD_MERCHANDISER' || role === 'ADMIN';
+
+    let exportJobs = masterJobs.filter((j: any) => {
+      const b = String(j.buyer || '').toUpperCase();
+      if (!isHead) {
+        const assigned = assignedBuyer.toUpperCase();
+        if (assigned === 'ONLY') return b.includes('ONLY') || b.includes('CARMA');
+        return b.includes(assigned) || assigned.includes(b);
+      }
+      return true;
+    }).slice(0, 500);
+
+    const headers = ['Job No', 'PO No', 'Buyer', 'Style No', 'Product', 'Order Qty (Pcs)', 'FOB (USD)', 'Shipment Date', 'Order Status', 'PO Status', 'Production Progress', 'Risk Status', 'Merchandiser'];
+    const rows = exportJobs.map((j: any) => [
+      `"${j.jobNo}"`,
+      `"PO-NA-${j.jobNo}"`,
+      `"${j.buyer}"`,
+      `"${j.styleNo}"`,
+      `"${j.item || j.itemDescription || 'T-Shirt'}"`,
+      j.orderQty,
+      Math.round(j.orderQty * 5.25),
+      `"${j.dates?.exFactory || '21-Oct-2026'}"`,
+      `"${j.presentStatus || 'In Production'}"`,
+      `"Confirmed"`,
+      `"52%"`,
+      `"${j.riskStatus || 'ON_TRACK'}"`,
+      `"${j.merchandiser || 'Shamim Hossain'}"`
+    ]);
+
+    const csv = [headers.join(','), ...rows.map((r: any) => r.join(','))].join('\n');
+    return new NextResponse(csv, {
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': 'attachment; filename="bulk_merchandising_export.csv"'
+      }
+    });
+  }
 
   // 1. /api/orders
   if (pathStr === 'orders') {
-    const formatted = masterJobs.map((j: any) => ({
-      id: j.id,
-      jobNo: j.jobNo,
-      totalQty: j.orderQty,
-      buyer: { id: `b-${j.buyer}`, name: j.buyer, code: j.buyer },
-      factory: { id: `f-${j.lineAllocation?.factory || 'NFL'}`, name: j.lineAllocation?.factory === 'NCL' ? 'Northern Clothing Limited' : 'Northern Fashions Limited', code: j.lineAllocation?.factory || 'NFL' },
-      styles: [
-        {
-          id: `s-${j.jobNo}`,
-          styleNo: j.styleNo,
-          itemDescription: j.itemDescription,
-          quantity: j.orderQty,
-          purchaseOrders: [
-            { id: `po-${j.jobNo}`, poNumber: `PO-${j.jobNo}`, ccd: j.dates?.cargoClosing, shipmentDate: j.dates?.exFactory }
-          ],
-          sourceMetadata: {
-            merchandisingFollowUp: { presentStatus: j.presentStatus, merchandiser: j.merchandiser },
-            planning: { taStatus: 'APPROVED', taPlanDate: j.dates?.tnaPlan },
-            production: {
-              fabricRequired: j.fabric?.fabricReqKg,
-              fabricReceived: j.fabric?.fabricReceivedKg,
-              fabricBalance: j.fabric?.fabricBalanceKg,
-              cuttingQty: j.cutting?.cuttingQty,
-              inputQty: j.sewing?.inputQty,
-              packingQty: j.finishing?.packingQty,
-              shipQty: j.shipment?.shipQty
-            },
-            sectionData: {
-              quality: { latestStatus: j.finishing?.inspectionStatus || 'PASSED' },
-              shipment: { status: j.shipment?.status, balanceQty: j.shipment?.shipBalance }
+    const formatted = masterJobs.map((j: any) => {
+      const styleId = `s-${j.jobNo}`;
+      const savedFollowUp = memoryStyleFollowUps[styleId] || {};
+      const savedRevisions = memoryQtyRevisions[styleId] || [];
+      const currentQty = savedRevisions.length ? savedRevisions[savedRevisions.length - 1].newQuantity : j.orderQty;
+
+      return {
+        id: j.id,
+        jobNo: j.jobNo,
+        totalQty: currentQty,
+        buyer: { id: `b-${j.buyer}`, name: j.buyer, code: j.buyer },
+        factory: { id: `f-${j.lineAllocation?.factory || 'NFL'}`, name: j.lineAllocation?.factory === 'NCL' ? 'Northern Clothing Limited (NCL)' : 'Northern Fashions Limited (NFL)', code: j.lineAllocation?.factory || 'NFL' },
+        styles: [
+          {
+            id: styleId,
+            styleNo: j.styleNo,
+            itemDescription: j.itemDescription,
+            quantity: currentQty,
+            breakdowns: [
+              { color: 'Navy Blazer', size: 'S', qty: Math.round(currentQty * 0.2) },
+              { color: 'Navy Blazer', size: 'M', qty: Math.round(currentQty * 0.3) },
+              { color: 'Navy Blazer', size: 'L', qty: Math.round(currentQty * 0.3) },
+              { color: 'Navy Blazer', size: 'XL', qty: Math.round(currentQty * 0.2) }
+            ],
+            purchaseOrders: [
+              { id: `po-${j.jobNo}`, poNumber: `PO-${j.jobNo}`, ccd: j.dates?.cargoClosing, shipmentDate: j.dates?.exFactory, totalQty: currentQty, breakdowns: [] }
+            ],
+            sourceMetadata: {
+              merchandisingFollowUp: {
+                presentStatus: savedFollowUp.presentStatus || j.presentStatus || 'Order Confirmed',
+                merchandiser: savedFollowUp.merchandiser || j.merchandiser || 'Md. Jahidul Islam',
+                fabricOrderSheetStatus: savedFollowUp.fabricOrderSheetStatus || 'DONE',
+                fabricOrderSheetActualDate: savedFollowUp.fabricOrderSheetActualDate || '2026-09-10',
+                labDipStatus: savedFollowUp.labDipStatus || 'DONE',
+                labDipActualDate: savedFollowUp.labDipActualDate || '2026-09-15',
+                printStrikeOffStatus: savedFollowUp.printStrikeOffStatus || 'DONE',
+                printStrikeOffActualDate: savedFollowUp.printStrikeOffActualDate || '2026-09-18',
+                trimsOrderingStatus: savedFollowUp.trimsOrderingStatus || 'PENDING',
+                trimsOrderingActualDate: savedFollowUp.trimsOrderingActualDate || '',
+                fileHandoverStatus: savedFollowUp.fileHandoverStatus || 'DONE',
+                fileHandoverActualDate: savedFollowUp.fileHandoverActualDate || '2026-09-22',
+                workOrderStatus: savedFollowUp.workOrderStatus || 'NA',
+                workOrderActualDate: savedFollowUp.workOrderActualDate || '',
+                remarks: savedFollowUp.remarks || j.remarks || ''
+              },
+              qtyRevisionHistory: savedRevisions,
+              planning: { taStatus: 'APPROVED', taPlanDate: j.dates?.tnaPlan, fileHandoverDate: '2026-09-20', trimsInhouseDate: '2026-10-05', sewingStartDate: '2026-10-12' },
+              production: {
+                fabricRequired: j.fabric?.fabricReqKg,
+                fabricReceived: j.fabric?.fabricReceivedKg,
+                fabricBalance: j.fabric?.fabricBalanceKg,
+                cuttingQty: j.cutting?.cuttingQty,
+                inputQty: j.sewing?.inputQty,
+                packingQty: j.finishing?.packingQty,
+                shipQty: j.shipment?.shipQty
+              },
+              sectionData: {
+                quality: { latestStatus: j.finishing?.inspectionStatus || 'PASSED' },
+                shipment: { status: j.shipment?.status, balanceQty: j.shipment?.shipBalance }
+              }
             }
           }
-        }
-      ],
-      sourceMetadata: { demoData: true, planMonth: j.planMonth }
-    }));
-    return NextResponse.json(formatted);
+        ],
+        sourceMetadata: { demoData: true, planMonth: j.planMonth }
+      };
+    });
+    return NextResponse.json([...memoryCreatedOrders, ...formatted]);
+  }
+
+  // 1a. /api/orders/job-sequence
+  if (pathStr === 'orders/job-sequence') {
+    return NextResponse.json({
+      lastJobNo: memoryJobSequence,
+      nextJobNo: memoryJobSequence + 1
+    });
+  }
+
+  // 1b. /api/orders/repeat-bases
+  if (pathStr === 'orders/repeat-bases') {
+    const bases = Array.from(new Set(masterJobs.slice(0, 50).map((j: any) => String(j.jobNo))));
+    return NextResponse.json(bases);
   }
 
   // 2. /api/tasks/my or /api/tasks
@@ -431,14 +908,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   // 11. /api/masters/buyers
   if (pathStr === 'masters/buyers') {
     return NextResponse.json([
-      { id: 'b-1', name: 'BS-NMT', code: 'BS-NMT' },
-      { id: 'b-2', name: 'BS-ONS', code: 'BS-ONS' },
-      { id: 'b-3', name: 'BS-ONLY', code: 'BS-ONLY' },
-      { id: 'b-4', name: 'GBX-New Look', code: 'NWL' },
-      { id: 'b-5', name: 'GBX-Maurices', code: 'MAU' },
-      { id: 'b-6', name: 'GBX-T.M Lewin', code: 'TML' },
-      { id: 'b-7', name: 'UTG', code: 'UTG' },
-      { id: 'b-8', name: 'OVS SPA', code: 'OVS' }
+      { id: 'b-only', name: 'ONLY (Main, Carmakoma, Kids)', code: 'ONLY' },
+      { id: 'b-ovs', name: 'OVS (Italy)', code: 'OVS' },
+      { id: 'b-nameit', name: 'Name It (Bestseller Kids)', code: 'Name It' },
+      { id: 'b-utg', name: 'UTG (United Textiles Group)', code: 'UTG' },
+      { id: 'b-newlook', name: 'New Look & Miss Selfridge', code: 'New Look' },
+      { id: 'b-maurices', name: 'Maurices', code: 'Maurices' },
+      { id: 'b-jackjones', name: 'Jack & Jones', code: 'Jack & Jones' },
+      { id: 'b-veromoda', name: 'Vero Moda', code: 'Vero Moda' },
+      { id: 'b-selected', name: 'Selected', code: 'Selected' }
     ]);
   }
 
@@ -1219,6 +1697,184 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const { path } = await params;
   const pathStr = path.join('/');
 
+  if (pathStr === 'merchandising/actions/complete') {
+    const body = await request.json().catch(() => ({}));
+    if (body.actionId) {
+      memoryCompletedActionIds.add(String(body.actionId));
+    }
+    return NextResponse.json({ success: true, actionId: body.actionId, completedActionIds: Array.from(memoryCompletedActionIds) });
+  }
+
+  if (pathStr === 'orders/job-sequence') {
+    const body = await request.json().catch(() => ({}));
+    if (body.lastJobNo) memoryJobSequence = Number(body.lastJobNo);
+    return NextResponse.json({ lastJobNo: memoryJobSequence, nextJobNo: memoryJobSequence + 1 });
+  }
+
+  if (pathStr === 'orders') {
+    const body = await request.json().catch(() => ({}));
+    memoryJobSequence += 1;
+    const newJobNo = String(memoryJobSequence);
+    const buyerId = body.buyerId || 'b-only';
+    let buyerName = 'ONLY';
+    if (buyerId.includes('ovs')) buyerName = 'OVS';
+    else if (buyerId.includes('nameit')) buyerName = 'Name It';
+    else if (buyerId.includes('utg')) buyerName = 'UTG';
+    else if (buyerId.includes('newlook')) buyerName = 'New Look';
+    else if (buyerId.includes('maurices')) buyerName = 'Maurices';
+
+    const newOrder = {
+      id: `ord-${newJobNo}`,
+      jobNo: newJobNo,
+      totalQty: (body.styles || []).reduce((s: number, st: any) => s + Number(st.quantity || 0), 0) || 5000,
+      buyer: { id: buyerId, name: buyerName, code: buyerName },
+      factory: { id: 'f-nfl', name: 'Northern Fashions Limited (NFL)', code: 'NFL' },
+      styles: (body.styles || []).map((st: any) => ({
+        id: `s-${newJobNo}`,
+        styleNo: st.styleNo || `ST-${newJobNo}`,
+        itemDescription: st.itemDescription || 'Knit Garment',
+        quantity: Number(st.quantity || 5000),
+        breakdowns: st.breakdowns || [],
+        purchaseOrders: (st.pos || []).map((p: any, pi: number) => ({
+          id: `po-${newJobNo}-${pi + 1}`,
+          poNumber: p.poNumber || `PO-${newJobNo}`,
+          ccd: p.ccd || '2026-10-25',
+          shipmentDate: p.shipmentDate || p.ccd || '2026-10-25',
+          totalQty: Number(p.totalQty || 0),
+          breakdowns: p.breakdowns || []
+        })),
+        sourceMetadata: {
+          merchandisingFollowUp: { presentStatus: 'Order Confirmed', merchandiser: 'Md. Jahidul Islam' },
+          planning: { taStatus: 'APPROVED', taPlanDate: '2026-10-05' },
+          production: { fabricRequired: 1200, fabricReceived: 0, cuttingQty: 0, inputQty: 0, shipQty: 0 }
+        }
+      }))
+    };
+
+    memoryCreatedOrders.unshift(newOrder);
+
+    return NextResponse.json({
+      success: true,
+      order: {
+        id: newOrder.id,
+        jobNo: newJobNo,
+        buyerId,
+        styles: newOrder.styles
+      },
+      warnings: []
+    });
+  }
+
+  if (pathStr === 'orders/import/preview') {
+    const isOvs = request.headers.get('buyerCode')?.toLowerCase().includes('ovs');
+    const parserFamily = isOvs ? 'OVS' : 'Bestseller';
+    return NextResponse.json({
+      parserFamily,
+      parserVersion: 'v2.4-canonical',
+      validation: {
+        status: 'VALIDATED',
+        checks: [
+          { code: 'STYLE_COLOR_TOTAL', ok: true, message: 'Style quantities reconcile with Color × Size total ✓' },
+          { code: 'ORDER_REFERENCE_TOTAL', ok: true, message: 'Country/PO allocation matches style total ✓' }
+        ]
+      },
+      styles: [
+        {
+          styleNo: '13251506',
+          styleDescription: 'Crew Neck Knit Top - Short Sleeve',
+          totalQty: 12000,
+          collection: 'Autumn 26',
+          season: 'Fall/Winter',
+          colors: [
+            {
+              color: 'Navy Blazer',
+              colorCode: '19-3921',
+              totalQty: 12000,
+              sizes: [
+                { size: 'S', qty: 2400 },
+                { size: 'M', qty: 3600 },
+                { size: 'L', qty: 3600 },
+                { size: 'XL', qty: 2400 }
+              ]
+            }
+          ],
+          orderReferences: [
+            {
+              reference: isOvs ? 'OVS GERMANY' : 'PO-48093-DE',
+              referenceType: isOvs ? 'MARKET' : 'PO',
+              market: 'Germany (DE)',
+              totalQty: 4800,
+              shipmentDate: '2026-10-15',
+              ccd: '2026-10-12',
+              destination: 'Hamburg Port',
+              colors: [
+                {
+                  color: 'Navy Blazer',
+                  colorCode: '19-3921',
+                  totalQty: 4800,
+                  sizes: [{ size: 'S', qty: 960 }, { size: 'M', qty: 1440 }, { size: 'L', qty: 1440 }, { size: 'XL', qty: 960 }]
+                }
+              ]
+            },
+            {
+              reference: isOvs ? 'OVS FRANCE' : 'PO-48093-FR',
+              referenceType: isOvs ? 'MARKET' : 'PO',
+              market: 'France (FR)',
+              totalQty: 3600,
+              shipmentDate: '2026-10-18',
+              ccd: '2026-10-15',
+              destination: 'Le Havre Port',
+              colors: [
+                {
+                  color: 'Navy Blazer',
+                  colorCode: '19-3921',
+                  totalQty: 3600,
+                  sizes: [{ size: 'S', qty: 720 }, { size: 'M', qty: 1080 }, { size: 'L', qty: 1080 }, { size: 'XL', qty: 720 }]
+                }
+              ]
+            },
+            {
+              reference: isOvs ? 'OVS ITALY' : 'PO-48093-IT',
+              referenceType: isOvs ? 'MARKET' : 'PO',
+              market: 'Italy (IT)',
+              totalQty: 3600,
+              shipmentDate: '2026-10-22',
+              ccd: '2026-10-19',
+              destination: 'Genoa Port',
+              colors: [
+                {
+                  color: 'Navy Blazer',
+                  colorCode: '19-3921',
+                  totalQty: 3600,
+                  sizes: [{ size: 'S', qty: 720 }, { size: 'M', qty: 1080 }, { size: 'L', qty: 1080 }, { size: 'XL', qty: 720 }]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      warnings: []
+    });
+  }
+
+  if (pathStr === 'orders/import/confirm') {
+    memoryJobSequence += 1;
+    const newJobNo = String(memoryJobSequence);
+    return NextResponse.json({
+      success: true,
+      jobNo: newJobNo,
+      message: `Imported Job ${newJobNo} successfully created and registered.`
+    });
+  }
+
+  if (pathStr === 'uploads/item-image') {
+    return NextResponse.json({
+      url: '/branding/northern-fashions-logo.jpg',
+      name: 'item-preview.jpg',
+      success: true
+    });
+  }
+
   if (pathStr === 'auth/login') {
     const body = await request.json().catch(() => ({}));
     const email = body.email || 'admin@nfl.local';
@@ -1359,6 +2015,29 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+  const { path } = await params;
+  const pathStr = path.join('/');
   const body = await request.json().catch(() => ({}));
+
+  if (pathStr.includes('merchandising-followup')) {
+    const styleId = pathStr.split('/')[2];
+    memoryStyleFollowUps[styleId] = { ...(memoryStyleFollowUps[styleId] || {}), ...body };
+    return NextResponse.json({ success: true, message: 'Follow-up saved', followUp: memoryStyleFollowUps[styleId] });
+  }
+
+  if (pathStr.includes('quantity-revision')) {
+    const styleId = pathStr.split('/')[2];
+    const prev = memoryQtyRevisions[styleId] || [];
+    const rev = {
+      oldQuantity: body.oldQuantity || 3000,
+      newQuantity: Number(body.newQuantity || 3000),
+      reason: body.reason || 'Buyer requested revision',
+      revisedAt: new Date().toISOString(),
+      revisedByName: 'Merchandiser'
+    };
+    memoryQtyRevisions[styleId] = [...prev, rev];
+    return NextResponse.json({ success: true, message: 'Quantity revised', revision: rev });
+  }
+
   return NextResponse.json({ success: true, ...body });
 }

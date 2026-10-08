@@ -395,9 +395,9 @@ export default function FabricComponentUsageChart({ executionRows }: Props) {
             <span className="status-pill neutral">{barChartData.length} Jobs Displayed</span>
           </div>
 
-          <div style={{ width: '100%', height: 350 }}>
+          <div style={{ width: '100%', height: 350, minWidth: 200 }}>
             {mounted ? (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={200}>
                 <BarChart
                   data={barChartData}
                   margin={{ top: 10, right: 15, left: 10, bottom: 25 }}
@@ -488,9 +488,9 @@ export default function FabricComponentUsageChart({ executionRows }: Props) {
             </div>
           </div>
 
-          <div style={{ width: '100%', height: 240 }}>
+          <div style={{ width: '100%', height: 240, minWidth: 200 }}>
             {mounted ? (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={200}>
                 <PieChart>
                   <Pie
                     data={pieChartData}

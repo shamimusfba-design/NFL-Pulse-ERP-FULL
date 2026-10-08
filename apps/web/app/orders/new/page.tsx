@@ -138,9 +138,53 @@ export default function NewOrder(){
   async function saveManual(){
     setMessage('');setWarnings([]);if(jobType==='REPEAT'&&(!repeatBaseJobNo||!repeatLotNo)){setMessage('Repeat Job requires Base Job No and Lot No');return}
     try{
-      const styles=rows.map(r=>{const pos=r.pos.filter(p=>p.poNumber.trim()&&p.totalQty>0&&p.ccd).map(p=>({...p,poNumber:p.poNumber.trim(),market:p.referenceType==='MARKET'?(p.market||p.poNumber):p.market||undefined,shipmentDate:p.shipmentDate||p.ccd}));const fromRefs=pos.flatMap(p=>p.breakdowns);const breakdowns=fromRefs.length?aggregateBreakdowns(fromRefs):r.breakdowns;return {styleNo:r.styleNo,itemDescription:r.itemDescription,itemImageUrl:r.itemImageUrl||undefined,fobPrice:r.fobPrice||undefined,quantity:Number(r.quantity),breakdowns,pos}});
-      if(styles.some(s=>!s.pos.length)){setMessage(`Every style needs at least one ${selectorLabel} with quantity and date.`);return}
-      const data=await api('/orders',{method:'POST',body:JSON.stringify({buyerId,jobType,repeatBaseJobNo:jobType==='REPEAT'?repeatBaseJobNo:undefined,repeatLotNo:jobType==='REPEAT'?repeatLotNo:undefined,styles})});setCreatedJobNo(data.order.jobNo);setMessage(`Created Job ${data.order.jobNo}. PO/Market breakdown is ready for Production Lot selection.`);setWarnings(data.warnings||[]);setRows([empty()]);refreshBaseJobs();refreshSequence();
+      const defaultShipDate = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+      const styles=rows.map((r, idx)=>{
+        let pos=r.pos.filter(p=>p.poNumber.trim()&&p.totalQty>0).map(p=>({
+          ...p,
+          poNumber:p.poNumber.trim(),
+          market:p.referenceType==='MARKET'?(p.market||p.poNumber):p.market||undefined,
+          ccd:p.ccd||defaultShipDate,
+          shipmentDate:p.shipmentDate||p.ccd||defaultShipDate
+        }));
+
+        // If no explicit references were entered, auto-synthesize default reference from style details
+        if (!pos.length) {
+          const qty = Number(r.quantity) || 5000;
+          pos = [{
+            poNumber: isOvs ? `MKT-${r.styleNo || idx + 1}` : `PO-${r.styleNo || idx + 1}-MAIN`,
+            totalQty: qty,
+            ccd: defaultShipDate,
+            shipmentDate: defaultShipDate,
+            referenceType: isOvs ? 'MARKET' : 'PO',
+            destination: isOvs ? 'ITALY' : 'EU CENTRAL',
+            market: isOvs ? 'ITALY' : 'GERMANY',
+            breakdowns: r.breakdowns.length ? r.breakdowns : [
+              { color: 'Standard', size: 'M', qty }
+            ]
+          }];
+        }
+
+        const fromRefs=pos.flatMap(p=>p.breakdowns);
+        const breakdowns=fromRefs.length?aggregateBreakdowns(fromRefs):(r.breakdowns.length?r.breakdowns:[{ color: 'Standard', size: 'M', qty: Number(r.quantity)||5000 }]);
+        return {
+          styleNo:r.styleNo.trim() || `ST-${Date.now().toString().slice(-5)}`,
+          itemDescription:r.itemDescription.trim() || 'Knit Garment',
+          itemImageUrl:r.itemImageUrl||undefined,
+          fobPrice:r.fobPrice||undefined,
+          quantity:Number(r.quantity) || 5000,
+          breakdowns,
+          pos
+        };
+      });
+
+      const data=await api('/orders',{method:'POST',body:JSON.stringify({buyerId,jobType,repeatBaseJobNo:jobType==='REPEAT'?repeatBaseJobNo:undefined,repeatLotNo:jobType==='REPEAT'?repeatLotNo:undefined,styles})});
+      setCreatedJobNo(data.order.jobNo);
+      setMessage(`Created Job ${data.order.jobNo}. PO/Market breakdown is ready for Production Lot selection.`);
+      setWarnings(data.warnings||[]);
+      setRows([empty()]);
+      refreshBaseJobs();
+      refreshSequence();
     }catch(e:any){setMessage(e.message)}
   }
   async function parsePdf(){if(!file){setMessage('Select a PDF first');return}setBusy(true);setMessage('');setWarnings([]);setPreview(null);try{const form=new FormData();form.append('file',file);if(buyer?.name)form.append('buyerCode',buyer.name);const data=await api('/orders/import/preview',{method:'POST',body:form});setPreview(recalcPreviewValidation(data));setPreviewSelection({});setReviewApproved(false);setWarnings(data.warnings||[])}catch(e:any){setMessage(e.message)}finally{setBusy(false)}}

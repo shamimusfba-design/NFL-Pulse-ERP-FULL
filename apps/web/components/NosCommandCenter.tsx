@@ -274,6 +274,15 @@ export default function NosCommandCenter() {
     }
   ]);
 
+  useEffect(() => {
+    try {
+      const savedActions = localStorage.getItem('nos_command_actions');
+      if (savedActions) setMyActions(JSON.parse(savedActions));
+      const savedExceptions = localStorage.getItem('nos_command_exceptions');
+      if (savedExceptions) setExceptions(JSON.parse(savedExceptions));
+    } catch {}
+  }, []);
+
   // 1. Strict Permission Scoping Logic
   // If persona is normal merchandiser (e.g. ONLY), they only see ONLY jobs!
   // If Head of Merchandising, they can see ALL or filter by buyer.
@@ -479,21 +488,25 @@ export default function NosCommandCenter() {
 
   // Mark Action Complete handler
   const handleMarkComplete = (id: string) => {
-    setMyActions((prev) =>
-      prev.map((a) => {
+    setMyActions((prev) => {
+      const next = prev.map((a) => {
         if (a.id === id) {
           return { ...a, bucket: 'completed', completed: true };
         }
         return a;
-      })
-    );
+      });
+      try { localStorage.setItem('nos_command_actions', JSON.stringify(next)); } catch {}
+      return next;
+    });
   };
 
   // Resolve Exception handler
   const handleResolveException = (id: string) => {
-    setExceptions((prev) =>
-      prev.map((ex) => (ex.id === id ? { ...ex, status: 'RESOLVED', actionText: 'Resolved ✓' } : ex))
-    );
+    setExceptions((prev) => {
+      const next = prev.map((ex) => (ex.id === id ? { ...ex, status: 'RESOLVED', actionText: 'Resolved ✓' } : ex));
+      try { localStorage.setItem('nos_command_exceptions', JSON.stringify(next)); } catch {}
+      return next;
+    });
   };
 
   // Open 360 Modal

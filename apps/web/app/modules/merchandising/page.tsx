@@ -5,7 +5,7 @@ import { api } from '../../../lib/api';
 import { buyerShortCode, displayJobNo } from '../../../lib/display';
 import ReferenceSelect from '../../../components/ReferenceSelect';
 import NosTopNav from '../../../components/NosTopNav';
-import NosCommandCenter from '../../../components/NosCommandCenter';
+import BulkMerchandisingDashboard from '../../../components/BulkMerchandisingDashboard';
 
 type ActionState='DONE'|'PENDING'|'OVERDUE'|'NA'|undefined;
 type FollowUpForm = {
@@ -61,6 +61,15 @@ function StatusSelect({value,onChange}:{value:ActionState;onChange:(v:ActionStat
 export default function MerchandisingFollowUp(){
   const [viewMode, setViewMode] = useState<'NOS_COMMAND_CENTER' | 'LEGACY_REGISTER'>('NOS_COMMAND_CENTER');
   const [orders,setOrders]=useState<any[]>([]),[error,setError]=useState(''),[loading,setLoading]=useState(true);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get('view') === 'LEGACY_REGISTER') {
+        setViewMode('LEGACY_REGISTER');
+      }
+    }
+  }, []);
   const [editing,setEditing]=useState<any|null>(null),[saving,setSaving]=useState(false),[saved,setSaved]=useState('');
   const [revising,setRevising]=useState<any|null>(null),[revisionQty,setRevisionQty]=useState(''),[revisionReason,setRevisionReason]=useState(''),[revisionSaving,setRevisionSaving]=useState(false);
   const [breakdownView,setBreakdownView]=useState<any|null>(null);
@@ -149,7 +158,7 @@ export default function MerchandisingFollowUp(){
           </button>
         </div>
         <div style={{ padding: '14px 24px 40px' }}>
-          <NosCommandCenter />
+          <BulkMerchandisingDashboard />
         </div>
       </div>
     );
