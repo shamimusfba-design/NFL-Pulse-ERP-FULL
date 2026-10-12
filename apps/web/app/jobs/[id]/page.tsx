@@ -4,6 +4,7 @@ import React, { Suspense, useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Shell from '../../../components/Shell';
+import JobDetailDrawer from '../../../components/JobDetailDrawer';
 import demo2000DataRaw from '../../../data/demo-2000-master.json';
 import { displayJobNo } from '../../../lib/display';
 
@@ -154,6 +155,7 @@ function JobDetailContent() {
     ['sizes', 'po', 'material', 'production', 'quality', 'leadtime', 'reports'].includes(initialTab) ? (initialTab as any) : 'sizes'
   );
   const [viewMode, setViewMode] = useState<'tab' | 'all'>('tab');
+  const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
 
   useEffect(() => {
     const t = searchParams?.get('tab');
@@ -258,6 +260,14 @@ function JobDetailContent() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            onClick={() => setIsWorkspaceOpen(true)}
+            className="reg-btn-compact"
+            style={{ background: '#2563eb', color: '#ffffff', fontWeight: 800, border: 'none' }}
+            title="Open Operational Merchandising Workspace (16 Workflow Tabs)"
+          >
+            ⚡ Operational Workspace (16 Tabs)
+          </button>
           <button
             onClick={() => window.print()}
             className="reg-btn-compact"
@@ -1011,6 +1021,13 @@ function JobDetailContent() {
         )}
 
       </section>
+
+      {/* Full Operational Merchandising Workspace (16 Workflow Tabs) */}
+      <JobDetailDrawer
+        job={job}
+        isOpen={isWorkspaceOpen}
+        onClose={() => setIsWorkspaceOpen(false)}
+      />
     </Shell>
   );
 }

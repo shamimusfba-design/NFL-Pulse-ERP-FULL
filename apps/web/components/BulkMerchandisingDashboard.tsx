@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { useActivePersona, MerchandiserPersona, PRESET_PERSONAS } from './NosTopNav';
-import JobDetailDrawer, { JobDetailData } from './JobDetailDrawer';
+import JobDetailDrawer, { JobDetailData, TabKey } from './JobDetailDrawer';
 
 export default function BulkMerchandisingDashboard() {
   const { persona, switchPersona } = useActivePersona();
@@ -39,6 +39,7 @@ export default function BulkMerchandisingDashboard() {
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [selectedJob, setSelectedJob] = useState<JobDetailData | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
+  const [drawerInitialTab, setDrawerInitialTab] = useState<TabKey>('overview');
   const [showPersonaMenu, setShowPersonaMenu] = useState<boolean>(false);
   const [selectedRowIds, setSelectedRowIds] = useState<Record<string, boolean>>({});
 
@@ -107,9 +108,10 @@ export default function BulkMerchandisingDashboard() {
   }, [fetchDashboard]);
 
   // Open Drawer for a Job
-  const handleOpenJobDrawer = async (job: any) => {
+  const handleOpenJobDrawer = async (job: any, tab: TabKey = 'overview') => {
     setSelectedJobId(job.jobNo);
     setSelectedJob(job);
+    setDrawerInitialTab(tab);
     setIsDrawerOpen(true);
     try {
       const res = await fetch(`/api/merchandising/jobs/${job.jobNo}`);
@@ -208,6 +210,43 @@ export default function BulkMerchandisingDashboard() {
     prodCompletionPct: 74,
     capacityMetric: { bookedPct: 92, availablePcs: 48000 }
   };
+
+  const orderStatusCounts = dashboardData?.orderStatusCounts || {
+    allOrders: kpis.totalOrders || 42,
+    confirmed: 28,
+    inProgress: 8,
+    atRisk: kpis.atRiskOrders || 11,
+    delayed: 6,
+    completed: 12,
+    cancelled: 2
+  };
+
+  const pendingWorkCounts = dashboardData?.pendingWorkCounts || {
+    fabricOrderSheetDue: 14,
+    trimsOrderingDue: 18,
+    yarnRequirementDue: 12,
+    shadeColorApprovalDue: 16,
+    taCriticalDue: 9,
+    ppSamplePending: 15,
+    ppCommentsPending: 11,
+    cadHandoverPending: 8,
+    cadProcessPending: 7,
+    sizeSetDue: 10,
+    ttMeetingPending: 6,
+    productionFollowUpDue: 22,
+    packingListPending: 5
+  };
+
+  // State for active operational worklist popup when clicking any pending work card
+  const [activeWorklistModal, setActiveWorklistModal] = useState<{
+    key: string;
+    title: string;
+    category: string;
+    count: number;
+    description: string;
+    workspaceHref: string;
+    jobs: any[];
+  } | null>(null);
 
   const jobsList: any[] = dashboardData?.jobs || [];
   const pipeline: any[] = dashboardData?.pipeline || [];
@@ -364,194 +403,585 @@ export default function BulkMerchandisingDashboard() {
         </div>
       </div>
 
-      {/* 2. EIGHT COLORFUL KPI CARDS ROW (Exact match with design image) */}
+      {/* 2. EXECUTIVE COMMERCIAL & OPERATIONS BAR */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-        gap: '12px'
+        gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+        gap: '10px'
       }}>
-        {/* KPI 1: Total Orders */}
-        <div
-          onClick={() => { setActiveTab('ALL'); setRiskFilter('ALL'); setShipmentFilter('ALL'); }}
-          style={{
-            background: '#ffffff',
-            border: '1px solid #e2e8f0',
-            borderRadius: '10px',
-            padding: '14px 16px',
-            cursor: 'pointer',
-            borderLeft: '4px solid #3b82f6',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-            transition: 'transform 0.15s ease'
-          }}
-          title="Click to view all orders"
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-            <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Total Orders</span>
-            <span style={{ fontSize: '14px', color: '#3b82f6' }}>📋</span>
-          </div>
-          <div style={{ fontSize: '24px', fontWeight: 900, color: '#0f172a', lineHeight: 1.1 }}>
-            {kpis.totalOrders}
-          </div>
-          <div style={{ fontSize: '11px', color: '#16a34a', fontWeight: 700, marginTop: '4px' }}>
-            ▲ 6% <span style={{ color: '#94a3b8', fontWeight: 400 }}>vs. last month</span>
-          </div>
+        {/* Metric 1: Total Orders */}
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px 14px', borderLeft: '3px solid #3b82f6', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
+          <div style={{ fontSize: '10.5px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Total Orders</div>
+          <div style={{ fontSize: '20px', fontWeight: 900, color: '#0f172a', margin: '2px 0' }}>{kpis.totalOrders}</div>
+          <div style={{ fontSize: '10px', color: '#16a34a', fontWeight: 700 }}>▲ 6% vs last mo</div>
         </div>
 
-        {/* KPI 2: Total POs */}
-        <div style={{
-          background: '#ffffff',
-          border: '1px solid #e2e8f0',
-          borderRadius: '10px',
-          padding: '14px 16px',
-          borderLeft: '4px solid #10b981',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-            <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Total POs</span>
-            <span style={{ fontSize: '14px', color: '#10b981' }}>📦</span>
-          </div>
-          <div style={{ fontSize: '24px', fontWeight: 900, color: '#0f172a', lineHeight: 1.1 }}>
-            {kpis.totalPOs}
-          </div>
-          <div style={{ fontSize: '11px', color: '#16a34a', fontWeight: 700, marginTop: '4px' }}>
-            ▲ 8% <span style={{ color: '#94a3b8', fontWeight: 400 }}>vs. last month</span>
-          </div>
+        {/* Metric 2: Total POs */}
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px 14px', borderLeft: '3px solid #10b981', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
+          <div style={{ fontSize: '10.5px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Total POs</div>
+          <div style={{ fontSize: '20px', fontWeight: 900, color: '#0f172a', margin: '2px 0' }}>{kpis.totalPOs}</div>
+          <div style={{ fontSize: '10px', color: '#16a34a', fontWeight: 700 }}>▲ 8% vs last mo</div>
         </div>
 
-        {/* KPI 3: Order Quantity (Pcs) */}
-        <div style={{
-          background: '#ffffff',
-          border: '1px solid #e2e8f0',
-          borderRadius: '10px',
-          padding: '14px 16px',
-          borderLeft: '4px solid #06b6d4',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-            <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Order Qty (Pcs)</span>
-            <span style={{ fontSize: '14px', color: '#06b6d4' }}>👕</span>
-          </div>
-          <div style={{ fontSize: '22px', fontWeight: 900, color: '#0f172a', lineHeight: 1.1 }}>
-            {Number(kpis.totalOrderQty).toLocaleString()}
-          </div>
-          <div style={{ fontSize: '11px', color: '#16a34a', fontWeight: 700, marginTop: '4px' }}>
-            ▲ 8% <span style={{ color: '#94a3b8', fontWeight: 400 }}>vs. last month</span>
-          </div>
+        {/* Metric 3: Order Quantity */}
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px 14px', borderLeft: '3px solid #06b6d4', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
+          <div style={{ fontSize: '10.5px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Order Qty (Pcs)</div>
+          <div style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a', margin: '2px 0' }}>{Number(kpis.totalOrderQty).toLocaleString()}</div>
+          <div style={{ fontSize: '10px', color: '#2563eb', fontWeight: 700 }}>842.5K capacity booked</div>
         </div>
 
-        {/* KPI 4: FOB Value (USD) */}
-        <div style={{
-          background: '#ffffff',
-          border: '1px solid #e2e8f0',
-          borderRadius: '10px',
-          padding: '14px 16px',
-          borderLeft: '4px solid #f59e0b',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-            <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>FOB Value (USD)</span>
-            <span style={{ fontSize: '14px', color: '#f59e0b' }}>💵</span>
-          </div>
-          <div style={{ fontSize: '22px', fontWeight: 900, color: '#0f172a', lineHeight: 1.1 }}>
-            ${Number(kpis.totalFobValue).toLocaleString()}
-          </div>
-          <div style={{ fontSize: '11px', color: '#16a34a', fontWeight: 700, marginTop: '4px' }}>
-            ▲ 12% <span style={{ color: '#94a3b8', fontWeight: 400 }}>vs. last month</span>
-          </div>
+        {/* Metric 4: FOB Value */}
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px 14px', borderLeft: '3px solid #f59e0b', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
+          <div style={{ fontSize: '10.5px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>FOB Value (USD)</div>
+          <div style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a', margin: '2px 0' }}>${Number(kpis.totalFobValue).toLocaleString()}</div>
+          <div style={{ fontSize: '10px', color: '#16a34a', fontWeight: 700 }}>▲ 12% revenue pace</div>
         </div>
 
-        {/* KPI 5: On-Time Shipment % */}
-        <div style={{
-          background: '#ffffff',
-          border: '1px solid #e2e8f0',
-          borderRadius: '10px',
-          padding: '14px 16px',
-          borderLeft: '4px solid #6366f1',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-            <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>On-Time Ship %</span>
-            <span style={{ fontSize: '14px', color: '#6366f1' }}>⏱️</span>
-          </div>
-          <div style={{ fontSize: '24px', fontWeight: 900, color: '#16a34a', lineHeight: 1.1 }}>
-            {kpis.onTimeShipmentPct}%
-          </div>
-          <div style={{ fontSize: '11px', color: '#16a34a', fontWeight: 700, marginTop: '4px' }}>
-            ▲ 2% <span style={{ color: '#94a3b8', fontWeight: 400 }}>on target</span>
-          </div>
+        {/* Metric 5: On-Time Shipment */}
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px 14px', borderLeft: '3px solid #6366f1', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
+          <div style={{ fontSize: '10.5px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>On-Time Ship %</div>
+          <div style={{ fontSize: '20px', fontWeight: 900, color: '#16a34a', margin: '2px 0' }}>{kpis.onTimeShipmentPct}%</div>
+          <div style={{ fontSize: '10px', color: '#16a34a', fontWeight: 700 }}>▲ 2% on target</div>
         </div>
 
-        {/* KPI 6: At Risk Orders (Clickable filter) */}
-        <div
-          onClick={() => { setRiskFilter('AT_RISK'); setActiveTab('AT_RISK'); }}
-          style={{
-            background: '#ffffff',
-            border: riskFilter === 'AT_RISK' ? '2px solid #ef4444' : '1px solid #e2e8f0',
-            borderRadius: '10px',
-            padding: '14px 16px',
-            borderLeft: '4px solid #ef4444',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-            cursor: 'pointer'
-          }}
-          title="Click to filter by At Risk orders"
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-            <span style={{ fontSize: '11px', fontWeight: 800, color: '#b91c1c', textTransform: 'uppercase' }}>At Risk Orders</span>
-            <span style={{ fontSize: '14px', color: '#ef4444' }}>⚠️</span>
-          </div>
-          <div style={{ fontSize: '24px', fontWeight: 900, color: '#b91c1c', lineHeight: 1.1 }}>
-            {kpis.atRiskOrders}
-          </div>
-          <div style={{ fontSize: '11px', color: '#dc2626', fontWeight: 700, marginTop: '4px' }}>
-            ▲ 27% <span style={{ color: '#94a3b8', fontWeight: 400 }}>needs action</span>
-          </div>
-        </div>
-
-        {/* KPI 7: Shipments Next 7 Days (Clickable filter) */}
-        <div
-          onClick={() => { setShipmentFilter('NEXT_7_DAYS'); setPeriod('NEXT_7_DAYS'); }}
-          style={{
-            background: '#ffffff',
-            border: shipmentFilter === 'NEXT_7_DAYS' ? '2px solid #8b5cf6' : '1px solid #e2e8f0',
-            borderRadius: '10px',
-            padding: '14px 16px',
-            borderLeft: '4px solid #8b5cf6',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-            cursor: 'pointer'
-          }}
-          title="Click to filter shipments in next 7 days"
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-            <span style={{ fontSize: '11px', fontWeight: 800, color: '#7c3aed', textTransform: 'uppercase' }}>Next 7 Days</span>
-            <span style={{ fontSize: '14px', color: '#8b5cf6' }}>🚢</span>
-          </div>
-          <div style={{ fontSize: '24px', fontWeight: 900, color: '#0f172a', lineHeight: 1.1 }}>
-            {kpis.shipmentsNext7Days}
-          </div>
-          <div style={{ fontSize: '11px', color: '#7c3aed', fontWeight: 700, marginTop: '4px' }}>
-            {Number(kpis.shipmentsNext7DaysQty || 64200).toLocaleString()} <span style={{ color: '#94a3b8', fontWeight: 400 }}>pcs</span>
-          </div>
-        </div>
-
-        {/* KPI 8: Production Completion % */}
-        <div style={{
-          background: '#ffffff',
-          border: '1px solid #e2e8f0',
-          borderRadius: '10px',
-          padding: '14px 16px',
-          borderLeft: '4px solid #2563eb',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-            <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Prod Complete</span>
-            <span style={{ fontSize: '14px', color: '#2563eb' }}>🏭</span>
-          </div>
-          <div style={{ fontSize: '24px', fontWeight: 900, color: '#0f172a', lineHeight: 1.1 }}>
-            {kpis.prodCompletionPct}%
-          </div>
-          {/* Progress bar */}
-          <div style={{ height: '5px', background: '#e2e8f0', borderRadius: '3px', marginTop: '6px', overflow: 'hidden' }}>
+        {/* Metric 6: Production Complete % */}
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px 14px', borderLeft: '3px solid #2563eb', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
+          <div style={{ fontSize: '10.5px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Prod Complete %</div>
+          <div style={{ fontSize: '20px', fontWeight: 900, color: '#0f172a', margin: '2px 0' }}>{kpis.prodCompletionPct}%</div>
+          <div style={{ height: '4px', background: '#e2e8f0', borderRadius: '2px', overflow: 'hidden', marginTop: '4px' }}>
             <div style={{ height: '100%', width: `${kpis.prodCompletionPct}%`, background: '#2563eb' }} />
+          </div>
+        </div>
+      </div>
+
+      {/* 2A. AREA A: ORDER STATUS (MANDATORY REQUIREMENT - UNIQUE ORDERS ONLY) */}
+      <div style={{
+        background: '#ffffff',
+        border: '1px solid #e2e8f0',
+        borderRadius: '10px',
+        padding: '14px 18px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '14px' }}>📊</span>
+            <strong style={{ fontSize: '13px', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+              Area A · Order Status (Counting Unique Customer Orders Only)
+            </strong>
+            <span style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', fontSize: '10px', fontWeight: 800, padding: '1px 6px', borderRadius: '4px' }}>
+              ORDER LEVEL
+            </span>
+          </div>
+          <span style={{ fontSize: '11px', color: '#64748b' }}>
+            Click any status card to filter the authorized orders table below
+          </span>
+        </div>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(7, 1fr)',
+          gap: '8px',
+          overflowX: 'auto'
+        }}>
+          {/* 1. All Orders */}
+          <div
+            onClick={() => { setActiveTab('ALL'); setStatusFilter('ALL'); setRiskFilter('ALL'); setPage(1); }}
+            style={{
+              background: activeTab === 'ALL' && statusFilter === 'ALL' ? '#eff6ff' : '#f8fafc',
+              border: activeTab === 'ALL' && statusFilter === 'ALL' ? '2px solid #2563eb' : '1px solid #e2e8f0',
+              borderRadius: '8px',
+              padding: '10px 12px',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <div style={{ fontSize: '10.5px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>All Orders</div>
+            <div style={{ fontSize: '20px', fontWeight: 900, color: '#0f172a', margin: '2px 0' }}>{orderStatusCounts.allOrders}</div>
+            <div style={{ fontSize: '10px', color: '#2563eb', fontWeight: 700 }}>Total Authorized</div>
+          </div>
+
+          {/* 2. Confirmed */}
+          <div
+            onClick={() => { setActiveTab('CONFIRMED'); setStatusFilter('CONFIRMED'); setRiskFilter('ALL'); setPage(1); }}
+            style={{
+              background: activeTab === 'CONFIRMED' || statusFilter === 'CONFIRMED' ? '#ecfdf5' : '#f8fafc',
+              border: activeTab === 'CONFIRMED' || statusFilter === 'CONFIRMED' ? '2px solid #059669' : '1px solid #e2e8f0',
+              borderRadius: '8px',
+              padding: '10px 12px',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <div style={{ fontSize: '10.5px', fontWeight: 800, color: '#047857', textTransform: 'uppercase' }}>Confirmed</div>
+            <div style={{ fontSize: '20px', fontWeight: 900, color: '#047857', margin: '2px 0' }}>{orderStatusCounts.confirmed}</div>
+            <div style={{ fontSize: '10px', color: '#047857', fontWeight: 700 }}>Booking / Cut OK</div>
+          </div>
+
+          {/* 3. In Progress */}
+          <div
+            onClick={() => { setActiveTab('IN_PRODUCTION'); setStatusFilter('IN_PRODUCTION'); setRiskFilter('ALL'); setPage(1); }}
+            style={{
+              background: activeTab === 'IN_PRODUCTION' || statusFilter === 'IN_PRODUCTION' ? '#eff6ff' : '#f8fafc',
+              border: activeTab === 'IN_PRODUCTION' || statusFilter === 'IN_PRODUCTION' ? '2px solid #2563eb' : '1px solid #e2e8f0',
+              borderRadius: '8px',
+              padding: '10px 12px',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <div style={{ fontSize: '10.5px', fontWeight: 800, color: '#1d4ed8', textTransform: 'uppercase' }}>In Progress</div>
+            <div style={{ fontSize: '20px', fontWeight: 900, color: '#1d4ed8', margin: '2px 0' }}>{orderStatusCounts.inProgress}</div>
+            <div style={{ fontSize: '10px', color: '#1d4ed8', fontWeight: 700 }}>In Sewing / Floor</div>
+          </div>
+
+          {/* 4. At Risk */}
+          <div
+            onClick={() => { setActiveTab('AT_RISK'); setRiskFilter('AT_RISK'); setStatusFilter('ALL'); setPage(1); }}
+            style={{
+              background: riskFilter === 'AT_RISK' || activeTab === 'AT_RISK' ? '#fff1f2' : '#f8fafc',
+              border: riskFilter === 'AT_RISK' || activeTab === 'AT_RISK' ? '2px solid #e11d48' : '1px solid #e2e8f0',
+              borderRadius: '8px',
+              padding: '10px 12px',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <div style={{ fontSize: '10.5px', fontWeight: 800, color: '#b91c1c', textTransform: 'uppercase' }}>At Risk</div>
+            <div style={{ fontSize: '20px', fontWeight: 900, color: '#b91c1c', margin: '2px 0' }}>{orderStatusCounts.atRisk}</div>
+            <div style={{ fontSize: '10px', color: '#b91c1c', fontWeight: 700 }}>Milestone Alert</div>
+          </div>
+
+          {/* 5. Delayed */}
+          <div
+            onClick={() => { setActiveTab('DELAYED'); setStatusFilter('DELAYED'); setRiskFilter('ALL'); setPage(1); }}
+            style={{
+              background: activeTab === 'DELAYED' || statusFilter === 'DELAYED' ? '#fff7ed' : '#f8fafc',
+              border: activeTab === 'DELAYED' || statusFilter === 'DELAYED' ? '2px solid #ea580c' : '1px solid #e2e8f0',
+              borderRadius: '8px',
+              padding: '10px 12px',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <div style={{ fontSize: '10.5px', fontWeight: 800, color: '#c2410c', textTransform: 'uppercase' }}>Delayed</div>
+            <div style={{ fontSize: '20px', fontWeight: 900, color: '#c2410c', margin: '2px 0' }}>{orderStatusCounts.delayed}</div>
+            <div style={{ fontSize: '10px', color: '#c2410c', fontWeight: 700 }}>Past Ex-Factory</div>
+          </div>
+
+          {/* 6. Completed */}
+          <div
+            onClick={() => { setActiveTab('COMPLETED'); setStatusFilter('COMPLETED'); setRiskFilter('ALL'); setPage(1); }}
+            style={{
+              background: activeTab === 'COMPLETED' || statusFilter === 'COMPLETED' ? '#f0fdf4' : '#f8fafc',
+              border: activeTab === 'COMPLETED' || statusFilter === 'COMPLETED' ? '2px solid #16a34a' : '1px solid #e2e8f0',
+              borderRadius: '8px',
+              padding: '10px 12px',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <div style={{ fontSize: '10.5px', fontWeight: 800, color: '#15803d', textTransform: 'uppercase' }}>Completed</div>
+            <div style={{ fontSize: '20px', fontWeight: 900, color: '#15803d', margin: '2px 0' }}>{orderStatusCounts.completed}</div>
+            <div style={{ fontSize: '10px', color: '#15803d', fontWeight: 700 }}>Shipped / Closed</div>
+          </div>
+
+          {/* 7. Cancelled */}
+          <div
+            onClick={() => { setActiveTab('CANCELLED'); setStatusFilter('CANCELLED'); setRiskFilter('ALL'); setPage(1); }}
+            style={{
+              background: activeTab === 'CANCELLED' || statusFilter === 'CANCELLED' ? '#f1f5f9' : '#f8fafc',
+              border: activeTab === 'CANCELLED' || statusFilter === 'CANCELLED' ? '2px solid #64748b' : '1px solid #e2e8f0',
+              borderRadius: '8px',
+              padding: '10px 12px',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <div style={{ fontSize: '10.5px', fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>Cancelled</div>
+            <div style={{ fontSize: '20px', fontWeight: 900, color: '#475569', margin: '2px 0' }}>{orderStatusCounts.cancelled}</div>
+            <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 700 }}>Buyer Void</div>
+          </div>
+        </div>
+      </div>
+
+      {/* 2B. AREA B: MERCHANDISING PENDING WORK & DUE ACTIONS (MANDATORY REQUIREMENT - 13 OPERATIONAL WORKLISTS) */}
+      <div style={{
+        background: '#ffffff',
+        border: '1px solid #e2e8f0',
+        borderRadius: '10px',
+        padding: '14px 18px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '14px' }}>⚡</span>
+            <strong style={{ fontSize: '13px', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+              Area B · Merchandising Pending Work &amp; Due Actions
+            </strong>
+            <span style={{ background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', fontSize: '10px', fontWeight: 800, padding: '1px 6px', borderRadius: '4px' }}>
+              ACTIONABLE WORKLISTS · DISTINCT FROM ORDERS
+            </span>
+          </div>
+          <span style={{ fontSize: '11px', color: '#64748b' }}>
+            Counts outstanding tasks across unique Jobs/POs. Click any card to open its operational worklist.
+          </span>
+        </div>
+
+        {/* Responsive Grid of 13 Compact Operational Worklist Cards */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gap: '10px'
+        }}>
+          {/* Card 1: Fabric Order Sheet Due */}
+          <div
+            onClick={() => setActiveWorklistModal({
+              key: 'fos',
+              title: 'Fabric Order Sheet Due Worklist',
+              category: 'Fabric & Greige Planning',
+              count: pendingWorkCounts.fabricOrderSheetDue,
+              description: 'Active styles requiring Fabric Order Sheet preparation, consumption approval, or mill booking release.',
+              workspaceHref: '/merchandising/bom-material?type=FABRIC',
+              jobs: jobsList.slice(0, 10)
+            })}
+            style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px 12px', cursor: 'pointer', transition: 'transform 0.1s ease', borderLeft: '3px solid #2563eb' }}
+            title="Click to view Fabric Order Sheet worklist"
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '11px', fontWeight: 800, color: '#334155' }}>Fabric Order Sheet</span>
+              <span style={{ fontSize: '12px' }}>📄</span>
+            </div>
+            <div style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a', margin: '3px 0' }}>
+              {pendingWorkCounts.fabricOrderSheetDue} <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 500 }}>Jobs</span>
+            </div>
+            <div style={{ fontSize: '10px', color: '#2563eb', fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
+              <span>Booking Pending</span>
+              <span>Open ›</span>
+            </div>
+          </div>
+
+          {/* Card 2: Trims & Accessories Ordering Due */}
+          <div
+            onClick={() => setActiveWorklistModal({
+              key: 'trims',
+              title: 'Trims & Accessories Ordering Worklist',
+              category: 'Trim Packages',
+              count: pendingWorkCounts.trimsOrderingDue,
+              description: 'Purchase orders with outstanding accessory packages: main labels, care labels, hangtags, thread & polybags.',
+              workspaceHref: '/merchandising/bom-material?type=TRIMS',
+              jobs: jobsList.slice(0, 10)
+            })}
+            style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px 12px', cursor: 'pointer', transition: 'transform 0.1s ease', borderLeft: '3px solid #16a34a' }}
+            title="Click to view Trims Ordering worklist"
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '11px', fontWeight: 800, color: '#334155' }}>Trims &amp; Accessories</span>
+              <span style={{ fontSize: '12px' }}>🧵</span>
+            </div>
+            <div style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a', margin: '3px 0' }}>
+              {pendingWorkCounts.trimsOrderingDue} <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 500 }}>Jobs</span>
+            </div>
+            <div style={{ fontSize: '10px', color: '#16a34a', fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
+              <span>Order / Balance Due</span>
+              <span>Open ›</span>
+            </div>
+          </div>
+
+          {/* Card 3: Yarn Requirement Due (MANDATORY!) */}
+          <div
+            onClick={() => setActiveWorklistModal({
+              key: 'yarn',
+              title: 'Yarn Requirement Due Worklist',
+              category: 'Spinning Mill Planning',
+              count: pendingWorkCounts.yarnRequirementDue,
+              description: 'Styles where yarn counts, spinning mill requisitions, or lot allocations require merchandiser release.',
+              workspaceHref: '/merchandising/bom-material?type=YARN',
+              jobs: jobsList.slice(0, 10)
+            })}
+            style={{ background: '#ecfeff', border: '1px solid #a5f3fc', borderRadius: '8px', padding: '10px 12px', cursor: 'pointer', transition: 'transform 0.1s ease', borderLeft: '3px solid #0891b2' }}
+            title="Click to view Yarn Requirement worklist"
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '11px', fontWeight: 900, color: '#0e7490' }}>Yarn Requirement Due</span>
+              <span style={{ fontSize: '12px' }}>🧶</span>
+            </div>
+            <div style={{ fontSize: '18px', fontWeight: 900, color: '#155e75', margin: '3px 0' }}>
+              {pendingWorkCounts.yarnRequirementDue} <span style={{ fontSize: '11px', color: '#0891b2', fontWeight: 700 }}>Jobs</span>
+            </div>
+            <div style={{ fontSize: '10px', color: '#0891b2', fontWeight: 800, display: 'flex', justifyContent: 'space-between' }}>
+              <span>Spinning Allocation</span>
+              <span>Open ›</span>
+            </div>
+          </div>
+
+          {/* Card 4: Shade / Color Approval Due */}
+          <div
+            onClick={() => setActiveWorklistModal({
+              key: 'shade',
+              title: 'Shade / Color Approval Worklist',
+              category: 'Dyehouse Laboratory',
+              count: pendingWorkCounts.shadeColorApprovalDue,
+              description: 'Lab dips, strike-offs, and first batch dyehouse bulk shade submissions awaiting buyer approval.',
+              workspaceHref: '/merchandising/sample-approval',
+              jobs: jobsList.slice(0, 10)
+            })}
+            style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px 12px', cursor: 'pointer', transition: 'transform 0.1s ease', borderLeft: '3px solid #8b5cf6' }}
+            title="Click to view Shade / Color Approval worklist"
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '11px', fontWeight: 800, color: '#334155' }}>Shade / Lab Dip</span>
+              <span style={{ fontSize: '12px' }}>🎨</span>
+            </div>
+            <div style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a', margin: '3px 0' }}>
+              {pendingWorkCounts.shadeColorApprovalDue} <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 500 }}>Colors</span>
+            </div>
+            <div style={{ fontSize: '10px', color: '#7c3aed', fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
+              <span>ΔE &lt; 0.5 Clearance</span>
+              <span>Open ›</span>
+            </div>
+          </div>
+
+          {/* Card 5: T&A / Critical Activities Due */}
+          <div
+            onClick={() => setActiveWorklistModal({
+              key: 'ta',
+              title: 'T&A / Critical Activities Due Worklist',
+              category: 'Critical Path Management',
+              count: pendingWorkCounts.taCriticalDue,
+              description: 'Overdue or due-today critical path activities requiring merchandiser intervention.',
+              workspaceHref: '/merchandising/ta',
+              jobs: jobsList.slice(0, 10)
+            })}
+            style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px 12px', cursor: 'pointer', transition: 'transform 0.1s ease', borderLeft: '3px solid #ef4444' }}
+            title="Click to view T&A Milestones worklist"
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '11px', fontWeight: 800, color: '#334155' }}>T&amp;A Critical Path</span>
+              <span style={{ fontSize: '12px' }}>⏱️</span>
+            </div>
+            <div style={{ fontSize: '18px', fontWeight: 900, color: '#b91c1c', margin: '3px 0' }}>
+              {pendingWorkCounts.taCriticalDue} <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 500 }}>Tasks</span>
+            </div>
+            <div style={{ fontSize: '10px', color: '#dc2626', fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
+              <span>Action Due / Overdue</span>
+              <span>Open ›</span>
+            </div>
+          </div>
+
+          {/* Card 6: PP Sample Pending */}
+          <div
+            onClick={() => setActiveWorklistModal({
+              key: 'pp_sample',
+              title: 'PP Sample Pending Worklist',
+              category: 'Sample Room Room Tracking',
+              count: pendingWorkCounts.ppSamplePending,
+              description: 'Pre-production (PP) samples under cutting, sewing, or wash finishing before courier dispatch.',
+              workspaceHref: '/merchandising/sample-approval',
+              jobs: jobsList.slice(0, 10)
+            })}
+            style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px 12px', cursor: 'pointer', transition: 'transform 0.1s ease', borderLeft: '3px solid #f59e0b' }}
+            title="Click to view PP Sample worklist"
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '11px', fontWeight: 800, color: '#334155' }}>PP Sample Pending</span>
+              <span style={{ fontSize: '12px' }}>👕</span>
+            </div>
+            <div style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a', margin: '3px 0' }}>
+              {pendingWorkCounts.ppSamplePending} <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 500 }}>Styles</span>
+            </div>
+            <div style={{ fontSize: '10px', color: '#b45309', fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
+              <span>Dispatch Prep</span>
+              <span>Open ›</span>
+            </div>
+          </div>
+
+          {/* Card 7: PP Comments Pending */}
+          <div
+            onClick={() => setActiveWorklistModal({
+              key: 'pp_comments',
+              title: 'PP Comments Pending Worklist',
+              category: 'Buyer Communication',
+              count: pendingWorkCounts.ppCommentsPending,
+              description: 'Samples already delivered to buyer technical office; awaiting fitting report and release comments.',
+              workspaceHref: '/merchandising/sample-approval',
+              jobs: jobsList.slice(0, 10)
+            })}
+            style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px 12px', cursor: 'pointer', transition: 'transform 0.1s ease', borderLeft: '3px solid #eab308' }}
+            title="Click to view PP Comments worklist"
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '11px', fontWeight: 800, color: '#334155' }}>PP Comments Pending</span>
+              <span style={{ fontSize: '12px' }}>💬</span>
+            </div>
+            <div style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a', margin: '3px 0' }}>
+              {pendingWorkCounts.ppCommentsPending} <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 500 }}>Styles</span>
+            </div>
+            <div style={{ fontSize: '10px', color: '#854d0e', fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
+              <span>Awaiting Buyer QA</span>
+              <span>Open ›</span>
+            </div>
+          </div>
+
+          {/* Card 8: CAD Handover Pending (CRITICAL TRIGGER: PP COMMENTS RECEIVED) */}
+          <div
+            onClick={() => setActiveWorklistModal({
+              key: 'cad_handover',
+              title: 'CAD Handover Pending Worklist',
+              category: 'Pattern Release Workflow',
+              count: pendingWorkCounts.cadHandoverPending,
+              description: 'Buyer PP Comments received! Handover files, shrinkage templates, and grading instructions to CAD department.',
+              workspaceHref: '/merchandising/sample-approval',
+              jobs: jobsList.slice(0, 10)
+            })}
+            style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '10px 12px', cursor: 'pointer', transition: 'transform 0.1s ease', borderLeft: '3px solid #1d4ed8' }}
+            title="Triggered strictly by received PP comments!"
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '11px', fontWeight: 900, color: '#1e40af' }}>CAD Handover</span>
+              <span style={{ fontSize: '10px', background: '#dbeafe', color: '#1e40af', padding: '1px 4px', borderRadius: '3px', fontWeight: 800 }}>TRIGGERED</span>
+            </div>
+            <div style={{ fontSize: '18px', fontWeight: 900, color: '#1e3a8a', margin: '3px 0' }}>
+              {pendingWorkCounts.cadHandoverPending} <span style={{ fontSize: '11px', color: '#3b82f6', fontWeight: 700 }}>Jobs</span>
+            </div>
+            <div style={{ fontSize: '10px', color: '#1d4ed8', fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
+              <span>PP Comments Recd ✓</span>
+              <span>Open ›</span>
+            </div>
+          </div>
+
+          {/* Card 9: CAD Process Pending */}
+          <div
+            onClick={() => setActiveWorklistModal({
+              key: 'cad_process',
+              title: 'CAD Process Pending Worklist',
+              category: 'Marker & Grading Execution',
+              count: pendingWorkCounts.cadProcessPending,
+              description: 'CAD team active on pattern grading, shrinkage allowance adjustment, and cutting marker optimization.',
+              workspaceHref: '/merchandising/sample-approval',
+              jobs: jobsList.slice(0, 10)
+            })}
+            style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px 12px', cursor: 'pointer', transition: 'transform 0.1s ease', borderLeft: '3px solid #0284c7' }}
+            title="Click to view CAD Process worklist"
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '11px', fontWeight: 800, color: '#334155' }}>CAD Process</span>
+              <span style={{ fontSize: '12px' }}>📐</span>
+            </div>
+            <div style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a', margin: '3px 0' }}>
+              {pendingWorkCounts.cadProcessPending} <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 500 }}>Jobs</span>
+            </div>
+            <div style={{ fontSize: '10px', color: '#0369a1', fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
+              <span>Grading / Markers</span>
+              <span>Open ›</span>
+            </div>
+          </div>
+
+          {/* Card 10: Size Set / Test Carton Due */}
+          <div
+            onClick={() => setActiveWorklistModal({
+              key: 'size_set',
+              title: 'Size Set / Test Carton Worklist',
+              category: 'Technical Fitting Validation',
+              count: pendingWorkCounts.sizeSetDue,
+              description: 'Mock-up size sets and carton drop test evaluations required before bulk cutting authorization.',
+              workspaceHref: '/merchandising/sample-approval',
+              jobs: jobsList.slice(0, 10)
+            })}
+            style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px 12px', cursor: 'pointer', transition: 'transform 0.1s ease', borderLeft: '3px solid #64748b' }}
+            title="Click to view Size Set worklist"
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '11px', fontWeight: 800, color: '#334155' }}>Size Set / Carton</span>
+              <span style={{ fontSize: '12px' }}>📦</span>
+            </div>
+            <div style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a', margin: '3px 0' }}>
+              {pendingWorkCounts.sizeSetDue} <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 500 }}>Jobs</span>
+            </div>
+            <div style={{ fontSize: '10px', color: '#475569', fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
+              <span>Size Set / Drop Test</span>
+              <span>Open ›</span>
+            </div>
+          </div>
+
+          {/* Card 11: TT Meeting Actions Pending */}
+          <div
+            onClick={() => setActiveWorklistModal({
+              key: 'tt_meeting',
+              title: 'TT / Production Meeting Worklist',
+              category: 'Pre-Production Technical Review',
+              count: pendingWorkCounts.ttMeetingPending,
+              description: 'Pre-production meeting action items signed with Cutting, Sewing In-Charge, IE, and QA Floor Managers.',
+              workspaceHref: '/merchandising/production',
+              jobs: jobsList.slice(0, 10)
+            })}
+            style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px 12px', cursor: 'pointer', transition: 'transform 0.1s ease', borderLeft: '3px solid #4f46e5' }}
+            title="Click to view TT Meeting worklist"
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '11px', fontWeight: 800, color: '#334155' }}>TT / Pilot Meeting</span>
+              <span style={{ fontSize: '12px' }}>🤝</span>
+            </div>
+            <div style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a', margin: '3px 0' }}>
+              {pendingWorkCounts.ttMeetingPending} <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 500 }}>Jobs</span>
+            </div>
+            <div style={{ fontSize: '10px', color: '#4338ca', fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
+              <span>Pilot Run Sign-off</span>
+              <span>Open ›</span>
+            </div>
+          </div>
+
+          {/* Card 12: Production Follow-up Due */}
+          <div
+            onClick={() => setActiveWorklistModal({
+              key: 'prod_followup',
+              title: 'Production Floor Follow-up Worklist',
+              category: 'Daily Floor WIP Monitoring',
+              count: pendingWorkCounts.productionFollowUpDue,
+              description: 'Lines with daily sewing target variance > 10% or cutting input shortages requiring merchandiser coordination.',
+              workspaceHref: '/merchandising/production',
+              jobs: jobsList.slice(0, 10)
+            })}
+            style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px 12px', cursor: 'pointer', transition: 'transform 0.1s ease', borderLeft: '3px solid #ea580c' }}
+            title="Click to view Production Follow-up worklist"
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '11px', fontWeight: 800, color: '#334155' }}>Production Follow-up</span>
+              <span style={{ fontSize: '12px' }}>🏭</span>
+            </div>
+            <div style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a', margin: '3px 0' }}>
+              {pendingWorkCounts.productionFollowUpDue} <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 500 }}>Jobs</span>
+            </div>
+            <div style={{ fontSize: '10px', color: '#c2410c', fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
+              <span>Line Variance Check</span>
+              <span>Open ›</span>
+            </div>
+          </div>
+
+          {/* Card 13: Packing List Pending */}
+          <div
+            onClick={() => setActiveWorklistModal({
+              key: 'packing',
+              title: 'Packing List Pending Worklist',
+              category: 'Ex-Factory Staging & AQL',
+              count: pendingWorkCounts.packingListPending,
+              description: 'Orders nearing ex-factory requiring final carton packing list verification, CBM tally, and forwarder booking.',
+              workspaceHref: '/merchandising/shipment-closing',
+              jobs: jobsList.slice(0, 10)
+            })}
+            style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px 12px', cursor: 'pointer', transition: 'transform 0.1s ease', borderLeft: '3px solid #059669' }}
+            title="Click to view Packing List worklist"
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '11px', fontWeight: 800, color: '#334155' }}>Packing List Pending</span>
+              <span style={{ fontSize: '12px' }}>🚢</span>
+            </div>
+            <div style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a', margin: '3px 0' }}>
+              {pendingWorkCounts.packingListPending} <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 500 }}>Jobs</span>
+            </div>
+            <div style={{ fontSize: '10px', color: '#047857', fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
+              <span>Carton Tally / AQL</span>
+              <span>Open ›</span>
+            </div>
           </div>
         </div>
       </div>
@@ -1382,12 +1812,221 @@ export default function BulkMerchandisingDashboard() {
         </div>
       </div>
 
-      {/* 6. SLIDE-OVER REUSABLE JOB DETAIL DRAWER */}
+      {/* 6. OPERATIONAL PENDING WORKLIST MODAL (Triggered by any Pending Work Card) */}
+      {activeWorklistModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(3px)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '12px',
+            width: '100%',
+            maxWidth: '960px',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.25)',
+            border: '1px solid #cbd5e1',
+            overflow: 'hidden'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              padding: '16px 20px',
+              background: '#0f172a',
+              color: '#ffffff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              borderBottom: '1px solid #334155'
+            }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '16px' }}>⚡</span>
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 900, letterSpacing: '-0.01em' }}>
+                    {activeWorklistModal.title}
+                  </h3>
+                  <span style={{
+                    background: '#2563eb',
+                    color: '#ffffff',
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    padding: '2px 8px',
+                    borderRadius: '10px'
+                  }}>
+                    {activeWorklistModal.count} Due / Active
+                  </span>
+                </div>
+                <div style={{ fontSize: '11.5px', color: '#94a3b8', marginTop: '3px' }}>
+                  {activeWorklistModal.description}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Link
+                  href={activeWorklistModal.workspaceHref}
+                  style={{
+                    background: '#2563eb',
+                    color: '#ffffff',
+                    padding: '6px 14px',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontWeight: 800,
+                    textDecoration: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <span>Open Full Workspace</span>
+                  <span>→</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setActiveWorklistModal(null)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#94a3b8',
+                    fontSize: '22px',
+                    cursor: 'pointer',
+                    lineHeight: 1
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Table Body */}
+            <div style={{ overflowY: 'auto', flex: 1, padding: '16px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#475569', fontWeight: 800 }}>
+                    <th style={{ padding: '8px 12px' }}>Job No</th>
+                    <th style={{ padding: '8px 12px' }}>Buyer</th>
+                    <th style={{ padding: '8px 12px' }}>Style No</th>
+                    <th style={{ padding: '8px 12px' }}>Product</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'right' }}>Order Qty</th>
+                    <th style={{ padding: '8px 12px' }}>Milestone Target</th>
+                    <th style={{ padding: '8px 12px' }}>Operational Status</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'center' }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeWorklistModal.jobs.map((job: any, idx: number) => {
+                    const targetDrawerTab: TabKey =
+                      activeWorklistModal.key === 'fos' ? 'fabric' :
+                      activeWorklistModal.key === 'trims' ? 'trims' :
+                      activeWorklistModal.key === 'yarn' ? 'fabric' :
+                      activeWorklistModal.key === 'shade' ? 'approval' :
+                      activeWorklistModal.key === 'ta' ? 'ta' :
+                      activeWorklistModal.key === 'pp_sample' ? 'sample' :
+                      activeWorklistModal.key === 'pp_comments' ? 'pp_comments' :
+                      activeWorklistModal.key === 'cad_handover' ? 'cad' :
+                      activeWorklistModal.key === 'cad_process' ? 'cad' :
+                      activeWorklistModal.key === 'size_set' ? 'sizeset' :
+                      activeWorklistModal.key === 'tt_meeting' ? 'tt_meeting' :
+                      activeWorklistModal.key === 'prod_followup' ? 'production' :
+                      activeWorklistModal.key === 'packing' ? 'packing' : 'overview';
+
+                    return (
+                      <tr
+                        key={job.id || idx}
+                        style={{ borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}
+                        onClick={() => handleOpenJobDrawer(job, targetDrawerTab)}
+                      >
+                        <td style={{ padding: '9px 12px', fontWeight: 800, color: '#2563eb' }}>{job.jobNo}</td>
+                        <td style={{ padding: '9px 12px', fontWeight: 700, color: '#0f172a' }}>{job.buyer}</td>
+                        <td style={{ padding: '9px 12px', color: '#2563eb', fontWeight: 600 }}>{job.styleNo}</td>
+                        <td style={{ padding: '9px 12px', color: '#475569' }}>{job.product || 'Knit Casual Garment'}</td>
+                        <td style={{ padding: '9px 12px', textAlign: 'right', fontWeight: 700 }}>{Number(job.orderQty || 25000).toLocaleString()}</td>
+                        <td style={{ padding: '9px 12px', color: '#64748b' }}>{job.shipmentDate || '18-Oct-2026'}</td>
+                        <td style={{ padding: '9px 12px' }}>
+                          <span style={{
+                            padding: '2px 7px',
+                            borderRadius: '4px',
+                            fontSize: '10.5px',
+                            fontWeight: 800,
+                            background: '#fef3c7',
+                            color: '#b45309'
+                          }}>
+                            Action Pending
+                          </span>
+                        </td>
+                        <td style={{ padding: '9px 12px', textAlign: 'center' }}>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handleOpenJobDrawer(job, targetDrawerTab); }}
+                            style={{
+                              background: '#eff6ff',
+                              color: '#2563eb',
+                              border: '1px solid #bfdbfe',
+                              padding: '4px 10px',
+                              borderRadius: '5px',
+                              fontSize: '11px',
+                              fontWeight: 800,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Open Job Workspace ›
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              padding: '12px 20px',
+              background: '#f8fafc',
+              borderTop: '1px solid #e2e8f0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              fontSize: '11.5px',
+              color: '#64748b'
+            }}>
+              <span>
+                💡 <em>Click any row to open the complete 16-tab Job Workspace without leaving your current workflow.</em>
+              </span>
+              <button
+                type="button"
+                onClick={() => setActiveWorklistModal(null)}
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid #cbd5e1',
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  color: '#334155'
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 7. SLIDE-OVER REUSABLE JOB DETAIL DRAWER */}
       <JobDetailDrawer
         job={selectedJob}
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
         onJobUpdated={fetchDashboard}
+        initialTab={drawerInitialTab}
       />
     </div>
   );

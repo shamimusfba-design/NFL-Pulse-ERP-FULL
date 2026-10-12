@@ -10,9 +10,11 @@ function sum(rows:any[],key:string){return rows.reduce((s,r)=>s+Number(r?.[key]|
 
 export default function CompanyFormPrint(){
   const p=useParams<{styleId:string;formId:string}>();const [payload,setPayload]=useState<any>(null),[error,setError]=useState('');
-  useEffect(()=>{api(`/documents/styles/${p.styleId}/forms/${p.formId}`).then(setPayload).catch(e=>setError(e.message));},[p.styleId,p.formId]);
+  useEffect(()=>{if(p.styleId&&p.formId){api(`/documents/styles/${p.styleId}/forms/${p.formId}`).then(setPayload).catch(e=>setError(e.message));}},[p.styleId,p.formId]);
   if(error)return <div className="print-loading">{error}</div>;if(!payload)return <div className="print-loading">Loading company form…</div>;
-  const {form}=payload;const data=form.data||{};
+  const form=payload.form||payload;
+  if(!form||!form.type)return <div className="print-loading">Document format not found.</div>;
+  const data=form.data||{};
   return <><div className="print-toolbar no-print"><button onClick={()=>window.print()}>Print A4</button><button onClick={()=>window.close()}>Close</button></div>
     {form.type==='SMS_SAMPLE_ORDER'&&<SmsPrint data={data} form={form}/>} 
     {form.type==='TNA_PLAN'&&<TnaPrint data={data} form={form}/>} 
@@ -21,7 +23,7 @@ export default function CompanyFormPrint(){
 }
 
 function Header({title}:{title:string}){return <><div className="cf-brand"><img src="/branding/northern-fashions-logo.jpg" alt="Northern Fashions Limited"/><div className="cf-company">NORTHERN FASHIONS LIMITED</div></div><div className="cf-title">{title}</div></>}
-function DocStamp({form}:{form:any}){return <div className="cf-doc-stamp no-print">{form.templateVersion} · {form.status.replace(/_/g,' ')} · Rev {form.revision}</div>}
+function DocStamp({form}:{form:any}){return <div className="cf-doc-stamp no-print">{form?.templateVersion||'v1.2 Company Standard'} · {(form?.status||'DRAFT').replace(/_/g,' ')} · Rev {form?.revision??1}</div>}
 
 function SmsPrint({data,form}:{data:any;form:any}){
  const orders=data.buyerSampleOrders||[],rows=data.fabricRows||[],ta=data.sampleTa||[];

@@ -81,16 +81,15 @@ export const PRESET_PERSONAS: MerchandiserPersona[] = [
 ];
 
 export const NOS_NAV_ITEMS = [
-  { no: '01', label: 'Bulk Merchandising', href: '/merchandising', short: 'BM', icon: '⚡' },
-  { no: '02', label: 'Order & PO Management', href: '/merchandising/order-po', short: 'PO', icon: '📦' },
-  { no: '03', label: 'Style & Product Management', href: '/merchandising/styles', short: 'ST', icon: '👕' },
-  { no: '04', label: 'Costing & Commercial', href: '/merchandising/costing', short: 'CS', icon: '💵' },
-  { no: '05', label: 'T&A / Critical Path', href: '/merchandising/ta', short: 'TA', icon: '⏱️' },
-  { no: '06', label: 'BOM & Material Follow-up', href: '/merchandising/bom-material', short: 'BM', icon: '🧵' },
-  { no: '07', label: 'Sample & Approval', href: '/merchandising/sample-approval', short: 'SA', icon: '✨' },
-  { no: '08', label: 'Production Follow-up', href: '/merchandising/production', short: 'PR', icon: '🏭' },
-  { no: '09', label: 'Shipment & Order Closing', href: '/merchandising/shipment-closing', short: 'SH', icon: '🚢' },
-  { no: '10', label: 'Reports & Documents', href: '/merchandising/reports-docs', short: 'RP', icon: '📑' }
+  { no: '01', label: 'Pre-Order / Costing', href: '/merchandising/costing', short: 'CS', icon: '💵' },
+  { no: '02', label: 'Bulk Merchandising', href: '/merchandising', short: 'BM', icon: '⚡' },
+  { no: '03', label: 'Order & PO Management', href: '/merchandising/order-po', short: 'PO', icon: '📦' },
+  { no: '04', label: 'T&A / Critical Path', href: '/merchandising/ta', short: 'TA', icon: '⏱️' },
+  { no: '05', label: 'BOM & Material Follow-up', href: '/merchandising/bom-material', short: 'MT', icon: '🧵' },
+  { no: '06', label: 'Sample & Approval', href: '/merchandising/sample-approval', short: 'SA', icon: '✨' },
+  { no: '07', label: 'Production Follow-up', href: '/merchandising/production', short: 'PR', icon: '🏭' },
+  { no: '08', label: 'Shipment & Order Closing', href: '/merchandising/shipment-closing', short: 'SH', icon: '🚢' },
+  { no: '09', label: 'Reports & Documents', href: '/merchandising/reports-docs', short: 'RP', icon: '📑' }
 ];
 
 export function useActivePersona() {
