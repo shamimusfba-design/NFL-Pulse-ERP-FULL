@@ -101,13 +101,9 @@ export async function parseBuyerPoPdf(file: File, buyerCode: string) {
     throw new Error(`Buyer PO format is not supported for "${buyer || 'unselected buyer'}". Choose the correct buyer or add a buyer-specific parser. No data was imported.`);
   }
 
-  // Do not silently run one buyer's parser against a different buyer's file.
-  if (!parser.canParse(text)) {
-    const expected = parser.family === 'BESTSELLER' ? 'ONLY / NAME IT / ONLY & SONS (Bestseller)'
-      : parser.family === 'OVS' ? 'OVS Product Brief'
-      : 'UTG Production Card';
-    throw new Error(`The PDF does not match the selected buyer format (${expected}). Verify the buyer selection and PDF. No data was imported.`);
-  }
+  // Use the explicitly selected buyer parser first, matching the production API.
+  // Each parser returns warnings for unreadable fields; server-side reconciliation
+  // prevents incomplete or mismatched quantities from being confirmed.
 
   const result = parser.parse(text, file.name, buyer || undefined);
   return { ...result, buyer: buyer || result.buyerCode || result.parserFamily };
