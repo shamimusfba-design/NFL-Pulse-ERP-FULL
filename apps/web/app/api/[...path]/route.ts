@@ -2916,7 +2916,43 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (!preview || !Array.isArray(preview.styles) || preview.styles.length === 0) {
       return NextResponse.json({ success: false, error: 'No extracted PO styles are available to import. Review the PDF and retry.' }, { status: 422 });
     }
-    if (preview.validation?.status !== 'VALIDATED' && !body.approveNeedReview) {
+
+    // Recalculate all quantities on the server. Browser-side validation is only a
+    // preview aid and must never be trusted as the authority for saved order data.
+    const hardErrors: string[] = [];
+    for (const style of preview.styles as any[]) {
+      const styleNo = String(style.styleNo || '').trim();
+      const styleQty = Number(style.totalQty || 0);
+      if (!styleNo || styleNo === 'UNKNOWN_STYLE') hardErrors.push('Style/article number is missing or unknown.');
+      if (!Number.isFinite(styleQty) || styleQty <= 0) hardErrors.push(`${styleNo || 'Style'}: style quantity must be greater than zero.`);
+
+      const sumColors = (colors: any[]) => (colors || []).reduce((sum: number, color: any) =>
+        sum + (color?.sizes || []).reduce((qty: number, size: any) => qty + Math.max(0, Number(size?.qty || 0)), 0), 0);
+      const styleMatrixQty = sumColors(style.colors || []);
+      if (styleMatrixQty !== styleQty) hardErrors.push(`${styleNo}: Color × Size total ${styleMatrixQty} does not match style total ${styleQty}.`);
+
+      const refs = Array.isArray(style.orderReferences) ? style.orderReferences : [];
+      if (!refs.length) hardErrors.push(`${styleNo}: no PO / Order / Market references were extracted.`);
+      const refSum = refs.reduce((sum: number, ref: any) => sum + Number(ref.totalQty || 0), 0);
+      if (refs.length && refSum !== styleQty) hardErrors.push(`${styleNo}: PO / Order / Market total ${refSum} does not match style total ${styleQty}.`);
+      const seenRefs = new Set<string>();
+      for (const ref of refs) {
+        const refName = String(ref.reference || ref.poNumber || '').trim();
+        const refKey = refName.toLowerCase();
+        if (!refName) hardErrors.push(`${styleNo}: a PO / Order / Market reference is blank.`);
+        if (refKey && seenRefs.has(refKey)) hardErrors.push(`${styleNo}: duplicate reference "${refName}".`);
+        if (refKey) seenRefs.add(refKey);
+        const refQty = Number(ref.totalQty || 0);
+        if (!Number.isFinite(refQty) || refQty <= 0) hardErrors.push(`${styleNo} / ${refName || 'reference'}: quantity must be greater than zero.`);
+        const refMatrixQty = sumColors(ref.colors || []);
+        if (refMatrixQty !== refQty) hardErrors.push(`${styleNo} / ${refName || 'reference'}: Color × Size total ${refMatrixQty} does not match reference total ${refQty}.`);
+      }
+    }
+    if (hardErrors.length) {
+      return NextResponse.json({ success: false, error: 'PO import totals do not reconcile. Correct these fields before confirming.', details: [...new Set(hardErrors)] }, { status: 422 });
+    }
+    const hasParserWarnings = Array.isArray(preview.warnings) && preview.warnings.length > 0;
+    if ((preview.validation?.status !== 'VALIDATED' || hasParserWarnings) && !body.approveNeedReview) {
       return NextResponse.json({ success: false, error: 'This import needs review approval before it can be saved.' }, { status: 422 });
     }
 
