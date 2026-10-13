@@ -43,5 +43,12 @@ Source: `271PJA416SP-903 416PJA SHORT+ SCRITTA - Product Brief Supplier.pdf`
 
 Parser text-logic test result: VALIDATED; no arithmetic warnings.
 
+OVS Product Brief allocation acceptance:
+- The PDF has no conventional PO number. The six operational references are market/country headings, imported as MARKET references rather than fabricated PO numbers.
+- Expected market totals from the page-1 summary: ITALY 42,081 | WARM 574 | INDIA 77 | MIDDLE EAST 203 | COLD 371 | DUBAI 60.
+- Market allocation sum: 43,366 pcs, matching the style total.
+- Expected reference labels in the import preview: ITALY, WARM, INDIA, MIDDLE EAST, COLD, DUBAI. The original PDF heading is retained in metadata for traceability.
+- Expected market Color × Size rows come from the delivery/color sections; repeated Kit and Piece allocations for a market must be summed, not treated as separate POs.
+
 ## UTG
 Only a Production Card photo was supplied at this stage. The draft parser is deliberately marked Need Review until a full UTG PDF is supplied and tested.
