@@ -168,6 +168,8 @@ export class OvsParser implements BuyerPoParser {
         continue;
       }
       const shipmentDate = parseDateToIso(section.match(/Shipment Date\s+([0-9]{1,2}\s+[A-Za-z]{3}\s+\d{4})/i)?.[1]) || defaultShipmentDate;
+      const marketInStoreDate = parseDateToIso(section.match(/In Store Date\s+([0-9]{1,2}\s+[A-Za-z]{3}\s+\d{4})/i)?.[1]);
+      const marketCommercialDate = parseDateToIso(section.match(/Commercial Date\s+([0-9]{1,2}\s+[A-Za-z]{3}\s+\d{4})/i)?.[1]);
       refs.push({
         reference: this.marketReferenceName(market),
         referenceType: 'MARKET',
@@ -177,7 +179,7 @@ export class OvsParser implements BuyerPoParser {
         shipmentDate,
         ccd: shipmentDate,
         colors,
-        metadata: { sourceRule: 'OVS Product Brief Country/Market allocation; not a traditional PO.', sourceMarketHeading: market },
+        metadata: { sourceRule: 'OVS Product Brief Country/Market allocation; not a traditional PO.', sourceMarketHeading: market, inStoreDate: marketInStoreDate, commercialDate: marketCommercialDate },
       });
     }
 
