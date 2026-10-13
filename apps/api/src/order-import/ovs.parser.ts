@@ -5,7 +5,7 @@ interface OvsOption { colorId: string; color: string; colorCode: string }
 
 export class OvsParser implements BuyerPoParser {
   readonly family = 'OVS' as const;
-  readonly version = '2.1.0-country-market-segmented';
+  readonly version = '2.2.0-country-market-import';
 
   canParse(text: string) {
     return /Style Code:/i.test(text) && /OVS BD/i.test(text) && /Main Supplier:/i.test(text);
@@ -152,26 +152,28 @@ export class OvsParser implements BuyerPoParser {
       }
       const shipmentDate = parseDateToIso(section.match(/Shipment Date\s+([0-9]{1,2}\s+[A-Za-z]{3}\s+\d{4})/i)?.[1]) || defaultShipmentDate;
       refs.push({
-        reference: market,
+        reference: this.marketReferenceName(market),
         referenceType: 'MARKET',
-        market,
-        destination: market,
+        market: this.marketReferenceName(market),
+        destination: this.marketReferenceName(market),
         totalQty: colors.reduce((s, c) => s + c.totalQty, 0),
         shipmentDate,
+        ccd: shipmentDate,
         colors,
-        metadata: { sourceRule: 'OVS Product Brief Country/Market allocation; not a traditional PO.' },
+        metadata: { sourceRule: 'OVS Product Brief Country/Market allocation; not a traditional PO.', sourceMarketHeading: market },
       });
     }
 
     const marketOrder = ['OVS ITALY','OVS WARM','OVS INDIA','OVS MIDDLE EAST','OVS COLD','REPL. HUB DUBAI'];
-    refs.sort((a, b) => marketOrder.indexOf(a.reference) - marketOrder.indexOf(b.reference));
+    refs.sort((a, b) => marketOrder.indexOf(String((a.metadata as any)?.sourceMarketHeading || '')) - marketOrder.indexOf(String((b.metadata as any)?.sourceMarketHeading || '')));
 
     // Validate each parsed market total against the page-1 market columns when available.
     if (summaryColors.length) {
       const expected = new Map<string, number>();
       marketOrder.forEach((name, idx) => expected.set(name, summaryColors.reduce((sum, color) => sum + Number((color.metadata as any)?.marketTotals?.[idx] || 0), 0)));
       for (const ref of refs) {
-        const exp = expected.get(ref.reference);
+        const sourceMarket = String((ref.metadata as any)?.sourceMarketHeading || '');
+        const exp = expected.get(sourceMarket);
         if (exp !== undefined && exp !== ref.totalQty) warnings.push(`OVS ${ref.reference}: parsed market total ${ref.totalQty} differs from page-1 market total ${exp}.`);
       }
     }
@@ -194,6 +196,20 @@ export class OvsParser implements BuyerPoParser {
       market: x.market,
       section: text.slice(x.start, i + 1 < matches.length ? matches[i + 1].start : text.length),
     }));
+  }
+
+  private marketReferenceName(market: string) {
+    // OVS has no conventional PO number: use the country/market label in the
+    // reference field and retain the original PDF heading in metadata.
+    const names: Record<string, string> = {
+      'OVS ITALY': 'ITALY',
+      'OVS INDIA': 'INDIA',
+      'OVS WARM': 'WARM',
+      'OVS COLD': 'COLD',
+      'OVS MIDDLE EAST': 'MIDDLE EAST',
+      'REPL. HUB DUBAI': 'DUBAI',
+    };
+    return names[market] || market;
   }
 
   private cleanMarketName(value: string) {
