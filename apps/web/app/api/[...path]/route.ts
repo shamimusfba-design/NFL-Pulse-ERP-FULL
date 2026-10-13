@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { parseBuyerPoPdf } from '../../../lib/buyer-po-parser';
 import demo2000DataRaw from '../../../data/demo-2000-master.json';
 import factoryDataRaw from '../../../data/dyeing-factory-data.json';
 import factoryKpiMasterRaw from '../../../data/factory-kpi-master.json';
@@ -2895,104 +2896,99 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   if (pathStr === 'orders/import/preview') {
-    const isOvs = request.headers.get('buyerCode')?.toLowerCase().includes('ovs');
-    const parserFamily = isOvs ? 'OVS' : 'Bestseller';
-    return NextResponse.json({
-      parserFamily,
-      parserVersion: 'v2.4-canonical',
-      validation: {
-        status: 'VALIDATED',
-        checks: [
-          { code: 'STYLE_COLOR_TOTAL', ok: true, message: 'Style quantities reconcile with Color × Size total ✓' },
-          { code: 'ORDER_REFERENCE_TOTAL', ok: true, message: 'Country/PO allocation matches style total ✓' }
-        ]
-      },
-      styles: [
-        {
-          styleNo: '13251506',
-          styleDescription: 'Crew Neck Knit Top - Short Sleeve',
-          totalQty: 12000,
-          collection: 'Autumn 26',
-          season: 'Fall/Winter',
-          colors: [
-            {
-              color: 'Navy Blazer',
-              colorCode: '19-3921',
-              totalQty: 12000,
-              sizes: [
-                { size: 'S', qty: 2400 },
-                { size: 'M', qty: 3600 },
-                { size: 'L', qty: 3600 },
-                { size: 'XL', qty: 2400 }
-              ]
-            }
-          ],
-          orderReferences: [
-            {
-              reference: isOvs ? 'OVS GERMANY' : 'PO-48093-DE',
-              referenceType: isOvs ? 'MARKET' : 'PO',
-              market: 'Germany (DE)',
-              totalQty: 4800,
-              shipmentDate: '2026-10-15',
-              ccd: '2026-10-12',
-              destination: 'Hamburg Port',
-              colors: [
-                {
-                  color: 'Navy Blazer',
-                  colorCode: '19-3921',
-                  totalQty: 4800,
-                  sizes: [{ size: 'S', qty: 960 }, { size: 'M', qty: 1440 }, { size: 'L', qty: 1440 }, { size: 'XL', qty: 960 }]
-                }
-              ]
-            },
-            {
-              reference: isOvs ? 'OVS FRANCE' : 'PO-48093-FR',
-              referenceType: isOvs ? 'MARKET' : 'PO',
-              market: 'France (FR)',
-              totalQty: 3600,
-              shipmentDate: '2026-10-18',
-              ccd: '2026-10-15',
-              destination: 'Le Havre Port',
-              colors: [
-                {
-                  color: 'Navy Blazer',
-                  colorCode: '19-3921',
-                  totalQty: 3600,
-                  sizes: [{ size: 'S', qty: 720 }, { size: 'M', qty: 1080 }, { size: 'L', qty: 1080 }, { size: 'XL', qty: 720 }]
-                }
-              ]
-            },
-            {
-              reference: isOvs ? 'OVS ITALY' : 'PO-48093-IT',
-              referenceType: isOvs ? 'MARKET' : 'PO',
-              market: 'Italy (IT)',
-              totalQty: 3600,
-              shipmentDate: '2026-10-22',
-              ccd: '2026-10-19',
-              destination: 'Genoa Port',
-              colors: [
-                {
-                  color: 'Navy Blazer',
-                  colorCode: '19-3921',
-                  totalQty: 3600,
-                  sizes: [{ size: 'S', qty: 720 }, { size: 'M', qty: 1080 }, { size: 'L', qty: 1080 }, { size: 'XL', qty: 720 }]
-                }
-              ]
-            }
-          ]
-        }
-      ],
-      warnings: []
-    });
+    try {
+      const formData = await request.formData();
+      const uploaded = formData.get('file');
+      const buyerCode = String(formData.get('buyerCode') || request.headers.get('buyerCode') || '');
+      if (!(uploaded instanceof File)) {
+        return NextResponse.json({ error: 'A buyer PO PDF file is required.' }, { status: 400 });
+      }
+      const result = await parseBuyerPoPdf(uploaded, buyerCode);
+      return NextResponse.json(result);
+    } catch (error: any) {
+      return NextResponse.json({ error: error?.message || 'Could not read this PO PDF.' }, { status: 422 });
+    }
   }
 
   if (pathStr === 'orders/import/confirm') {
-    memoryJobSequence += 1;
-    const newJobNo = String(memoryJobSequence);
+    const body = await request.json().catch(() => ({}));
+    const preview = body.preview;
+    if (!preview || !Array.isArray(preview.styles) || preview.styles.length === 0) {
+      return NextResponse.json({ success: false, error: 'No extracted PO styles are available to import. Review the PDF and retry.' }, { status: 422 });
+    }
+    if (preview.validation?.status !== 'VALIDATED' && !body.approveNeedReview) {
+      return NextResponse.json({ success: false, error: 'This import needs review approval before it can be saved.' }, { status: 422 });
+    }
+
+    const buyerId = String(body.buyerId || '');
+    const buyerName = String(preview.buyer || (
+      buyerId.toLowerCase().includes('ovs') ? 'OVS' :
+      buyerId.toLowerCase().includes('nameit') ? 'Name It' :
+      buyerId.toLowerCase().includes('utg') ? 'UTG' :
+      buyerId.toLowerCase().includes('sons') ? 'Only & Sons' :
+      buyerId.toLowerCase().includes('only') ? 'ONLY' : buyerId || 'Unknown'
+    ));
+    const isOvs = buyerName.toLowerCase().includes('ovs');
+    let newJobNo: string;
+    if (body.jobType === 'REPEAT') {
+      newJobNo = String(body.repeatBaseJobNo || memoryJobSequence);
+    } else {
+      memoryJobSequence += 1;
+      newJobNo = String(memoryJobSequence);
+    }
+
+    const styles = preview.styles.map((style: any, styleIndex: number) => {
+      const overallBreakdowns = (style.colors || []).flatMap((color: any) =>
+        (color.sizes || []).map((size: any) => ({ color: String(color.color || ''), size: String(size.size || ''), qty: Number(size.qty || 0) }))
+      ).filter((item: any) => item.color && item.size && item.qty > 0);
+      const pos = (style.orderReferences || []).map((ref: any, refIndex: number) => ({
+        poNumber: String(ref.reference || ref.poNumber || ''),
+        referenceType: isOvs ? 'MARKET' : 'PO',
+        totalQty: Number(ref.totalQty || 0),
+        ccd: String(ref.ccd || ''),
+        shipmentDate: String(ref.shipmentDate || ''),
+        destination: String(ref.destination || ''),
+        market: String(ref.market || (isOvs ? ref.reference : '')),
+        breakdowns: (ref.colors || []).flatMap((color: any) =>
+          (color.sizes || []).map((size: any) => ({ color: String(color.color || ''), size: String(size.size || ''), qty: Number(size.qty || 0) }))
+        ).filter((item: any) => item.color && item.size && item.qty > 0),
+        id: `po-${newJobNo}-${styleIndex + 1}-${refIndex + 1}`
+      }));
+      return {
+        id: `s-${newJobNo}-${styleIndex + 1}`,
+        styleNo: String(style.styleNo || ''),
+        itemDescription: String(style.styleDescription || style.description || ''),
+        quantity: Number(style.totalQty || overallBreakdowns.reduce((sum: number, item: any) => sum + item.qty, 0)),
+        breakdowns: overallBreakdowns,
+        purchaseOrders: pos.map((p: any) => ({
+          id: p.id, poNumber: p.poNumber, ccd: p.ccd, shipmentDate: p.shipmentDate,
+          totalQty: p.totalQty, breakdowns: p.breakdowns, referenceType: p.referenceType,
+          destination: p.destination, market: p.market
+        })),
+        sourceMetadata: {
+          merchandisingFollowUp: { presentStatus: 'Order Confirmed', merchandiser: '' },
+          import: { parserFamily: preview.parserFamily, parserVersion: preview.parserVersion, warnings: preview.warnings || [] }
+        }
+      };
+    });
+
+    const newOrder = {
+      id: `ord-${newJobNo}`,
+      jobNo: newJobNo,
+      totalQty: styles.reduce((sum: number, style: any) => sum + Number(style.quantity || 0), 0),
+      buyer: { id: buyerId, name: buyerName, code: buyerName },
+      factory: { id: 'f-nfl', name: 'Northern Fashions Limited (NFL)', code: 'NFL' },
+      styles,
+      importMetadata: { parserFamily: preview.parserFamily, parserVersion: preview.parserVersion, warnings: preview.warnings || [], validation: preview.validation }
+    };
+    memoryCreatedOrders.unshift(newOrder);
+
     return NextResponse.json({
       success: true,
       jobNo: newJobNo,
-      message: `Imported Job ${newJobNo} successfully created and registered.`
+      order: { id: newOrder.id, jobNo: newJobNo, buyerId, styles: newOrder.styles },
+      warnings: preview.warnings || [],
+      message: `Imported ${styles.length} extracted style(s) into Job ${newJobNo}.`
     });
   }
 
