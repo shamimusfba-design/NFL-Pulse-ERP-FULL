@@ -7,6 +7,6 @@ export async function api(path: string, init: RequestInit = {}) {
   if (token) headers.set('Authorization', `Bearer ${token}`);
   const res = await fetch(`${API}${path}`, { ...init, headers, cache: 'no-store' });
   if (res.status === 401 && typeof window !== 'undefined') { localStorage.removeItem('nfl_access_token'); window.location.href = '/login'; }
-  if (!res.ok) { const data = await res.json().catch(() => ({})); throw new Error(data.message || `Request failed: ${res.status}`); }
+  if (!res.ok) { const data = await res.json().catch(() => ({})); const details = Array.isArray(data.details) ? ` ${data.details.join(' ')}` : ''; throw new Error(`${data.message || data.error || `Request failed: ${res.status}`}${details}`); }
   return res.json();
 }
