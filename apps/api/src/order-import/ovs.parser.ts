@@ -79,23 +79,39 @@ export class OvsParser implements BuyerPoParser {
   }
 
   private parseSummaryColors(text: string, options: OvsOption[], warnings: string[]): ImportedColor[] {
-    const pageOneEnd = text.indexOf('\f') >= 0 ? text.indexOf('\f') : Math.min(text.length, 16000);
+    const pageOneEnd = text.indexOf('\\f') >= 0 ? text.indexOf('\\f') : Math.min(text.length, 16000);
     const firstPage = text.slice(0, pageOneEnd);
     const results: ImportedColor[] = [];
     const summaryStart = firstPage.search(/Total quantities per color size/i);
     const summarySection = summaryStart >= 0 ? firstPage.slice(summaryStart) : firstPage;
+
     for (const option of options) {
-      const colorIdx = summarySection.search(new RegExp(`\\b${escapeRegExp(option.colorId)}\\b`));
+      const colorIdx = summarySection.search(new RegExp('\\\\b' + escapeRegExp(option.colorId) + '\\\\b'));
       if (colorIdx < 0) continue;
       const window = summarySection.slice(colorIdx, Math.min(summarySection.length, colorIdx + 1400));
-      const itemCodeMatch = window.match(/\b(\d{7})\b/);
-      if (!itemCodeMatch) continue;
+      const itemCodeMatch = window.match(/\\b(\\d{7})\\b/);
+      if (!itemCodeMatch) {
+        warnings.push('OVS ' + option.color + ': item code was not found in the page-1 summary.');
+        continue;
+      }
+
       const afterItem = window.slice((itemCodeMatch.index || 0) + itemCodeMatch[0].length);
-      const firstLine = afterItem.split(/\r?\n/)[0] || '';
-      const nums = (firstLine.match(/\b\d+\b/g) || []).map(Number);
-      if (nums.length < 12) continue;
+      // Depending on the PDF extractor, table cells may be on one line or
+      // emitted as separate lines. Read numeric cells until the next item code.
+      const nextItemCode = afterItem.search(/\\b\\d{7}\\b/);
+      const rowText = nextItemCode >= 0 ? afterItem.slice(0, nextItemCode) : afterItem;
+      const nums = (rowText.match(/\\b\\d+\\b/g) || []).map(Number);
+      if (nums.length < 12) {
+        warnings.push('OVS ' + option.color + ': page-1 summary row is incomplete (expected size total and six market allocations).');
+        continue;
+      }
+
       const sizeValues = nums.slice(0, 5);
       const rowTotal = nums[5];
+      if (sizeValues.reduce((sum, qty) => sum + qty, 0) !== rowTotal) {
+        warnings.push('OVS ' + option.color + ': page-1 size quantities do not reconcile with color total.');
+        continue;
+      }
       results.push({
         color: option.color,
         colorCode: option.colorCode,
@@ -104,6 +120,7 @@ export class OvsParser implements BuyerPoParser {
         metadata: { itemCode: itemCodeMatch[1], marketTotals: nums.slice(6, 12) },
       });
     }
+
     if (!results.length) warnings.push('OVS page-1 color/size summary could not be parsed automatically.');
     return results;
   }
