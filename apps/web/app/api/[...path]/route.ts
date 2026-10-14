@@ -3593,7 +3593,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         dueAt: '2026-10-20',
         description: `Central Planning reviews and approves Fabric Order Sheet and T&A Plan. Once approved, system automatically dispatches copy to Knitting & Dyeing departments.`,
         order: { jobNo: newJobNo, buyer: { name: buyerName, code: buyerName }, styleNo: primaryStyle.styleNo, qty: totalOrderQty }
-      }
+      },
       {
         id: `task-sample-followup-${newJobNo}`,
         jobNo: newJobNo,
