@@ -133,6 +133,7 @@ export default function OrderEntryWorkspace() {
   const [preview, setPreview] = useState<any>(null);
   const [busy, setBusy] = useState(false);
   const [reviewApproved, setReviewApproved] = useState(false);
+  const [importWarnings, setImportWarnings] = useState<string[]>([]);
   const [message, setMessage] = useState('');
   const [createdJob, setCreatedJob] = useState<any | null>(null);
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
@@ -331,16 +332,62 @@ export default function OrderEntryWorkspace() {
     }
   };
 
-  // Quick load demo import
+  // Real file upload & parsing handler
+  const handleFileUpload = async (uploadedFile?: File) => {
+    if (!uploadedFile) return;
+    // 1. Clear previous parsed state, messages, warnings, and review approvals
+    setFile(uploadedFile);
+    setPreview(null);
+    setMessage('');
+    setImportWarnings([]);
+    setReviewApproved(false);
+    setBusy(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', uploadedFile);
+      if (selectedBuyer?.name) {
+        formData.append('buyerCode', selectedBuyer.name);
+      }
+      const res = await api('/orders/import/preview', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (res?.error) {
+        throw new Error(res.error);
+      }
+
+      setPreview(res);
+      setImportWarnings(res.warnings || []);
+      const isValidated = res.validation?.status === 'VALIDATED';
+      if (isValidated) {
+        setMessage(`✓ File "${uploadedFile.name}" parsed and reconciled 100%! All internal checks passed.`);
+      } else {
+        setMessage(`⚠️ File "${uploadedFile.name}" parsed with items requiring review. Check discrepancies below.`);
+      }
+    } catch (err: any) {
+      setPreview(null);
+      setMessage(`❌ Failed to parse "${uploadedFile.name}": ${err.message || 'Check file format or contents.'}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Quick load demo import (strictly isolated demo fixture for testing only)
   const loadDemoImport = (type: 'bestseller' | 'ovs') => {
     setBusy(true);
+    setFile(null); // Clear real file so UI indicates this is an isolated demo fixture
     setMessage('');
+    setImportWarnings([]);
+    setReviewApproved(false);
     setTimeout(() => {
       if (type === 'bestseller') {
         setBuyerId('b-only');
         setPreview({
-          parserFamily: 'Bestseller',
-          parserVersion: 'v2.4-canonical',
+          parserFamily: 'BESTSELLER',
+          parserVersion: 'v2.4-demo-fixture',
+          sourceFileName: 'DEMO_BESTSELLER_FIXTURE.pdf',
           validation: {
             status: 'VALIDATED',
             checks: [
@@ -413,7 +460,8 @@ export default function OrderEntryWorkspace() {
         setBuyerId('b-ovs');
         setPreview({
           parserFamily: 'OVS',
-          parserVersion: 'v2.4-canonical',
+          parserVersion: 'v2.4-demo-fixture',
+          sourceFileName: 'DEMO_OVS_FIXTURE.pdf',
           validation: {
             status: 'VALIDATED',
             checks: [
@@ -466,13 +514,18 @@ export default function OrderEntryWorkspace() {
         });
       }
       setBusy(false);
-      setMessage('✓ Sample file loaded and reconciled successfully. Review and confirm below.');
-    }, 400);
+      setMessage(`⚡ Demo ${type === 'bestseller' ? 'Bestseller' : 'OVS'} fixture loaded (isolated sample data).`);
+    }, 200);
   };
 
   // Confirm import
   const handleConfirmImport = async () => {
     if (!preview) return;
+    const isValidated = preview.validation?.status === 'VALIDATED';
+    if (!isValidated && !reviewApproved) {
+      setMessage('⚠️ Please review the parser warnings and check the approval box before confirming.');
+      return;
+    }
     setBusy(true);
     setMessage('');
 
@@ -482,25 +535,32 @@ export default function OrderEntryWorkspace() {
         body: JSON.stringify({
           buyerId,
           preview,
+          approveNeedReview: isValidated ? false : reviewApproved,
           jobType,
           repeatBaseJobNo: jobType === 'REPEAT' ? repeatBaseJobNo : undefined,
           repeatLotNo: jobType === 'REPEAT' ? repeatLotNo : undefined
         })
       });
 
+      if (res?.error) {
+        throw new Error(res.error);
+      }
+
       const newJobNo = res?.jobNo || String(sequence?.nextJobNo || '48093');
       const totalPcs = (preview.styles || []).reduce((acc: number, s: any) => acc + (s.totalQty || 0), 0);
 
       setCreatedJob({
         jobNo: newJobNo,
-        buyer: selectedBuyer?.name || 'Bestseller',
+        buyer: selectedBuyer?.name || preview.buyerCode || 'Buyer',
         qty: totalPcs,
         styleNo: preview.styles?.[0]?.styleNo
       });
 
-      setMessage(`✓ Import confirmed! Job ${newJobNo} registered and released for Production Lots.`);
+      setMessage(`✓ Import confirmed! Job ${newJobNo} registered and released for Production Lots (${totalPcs.toLocaleString()} pcs across ${preview.styles.length} style(s)).`);
       setPreview(null);
       setFile(null);
+      setImportWarnings([]);
+      setReviewApproved(false);
       refreshSequence();
       refreshBaseJobs();
       loadOrders();
@@ -1227,8 +1287,7 @@ export default function OrderEntryWorkspace() {
                 id="po-file-input"
                 onChange={e => {
                   if (e.target.files?.[0]) {
-                    setFile(e.target.files[0]);
-                    loadDemoImport(isOvs ? 'ovs' : 'bestseller');
+                    handleFileUpload(e.target.files[0]);
                   }
                 }}
                 style={{ display: 'none' }}
@@ -1237,123 +1296,184 @@ export default function OrderEntryWorkspace() {
                 htmlFor="po-file-input"
                 style={{
                   display: 'inline-block',
-                  padding: '8px 20px',
+                  padding: '9px 22px',
                   borderRadius: '6px',
-                  background: '#2563eb',
+                  background: busy ? '#94a3b8' : '#2563eb',
                   color: '#ffffff',
                   fontWeight: 700,
                   fontSize: '13px',
-                  cursor: 'pointer',
+                  cursor: busy ? 'not-allowed' : 'pointer',
                   marginBottom: '8px'
                 }}
               >
-                📁 Choose File (PDF / Excel / CSV)
+                {busy ? '⏳ Reading & Parsing File...' : '📁 Choose File (PDF / Excel / CSV)'}
               </label>
               <div style={{ fontSize: '11.5px', color: '#64748b' }}>
-                {file ? `Selected: ${file.name}` : 'Drop official Buyer Order PDF or Excel file here for canonical breakdown'}
+                {file ? (
+                  <span style={{ color: '#0f172a', fontWeight: 600 }}>
+                    Selected: {file.name} ({(file.size / 1024).toFixed(1)} KB)
+                  </span>
+                ) : (
+                  'Drop official Buyer Order PDF, Excel (.xlsx, .xls), or CSV file here for canonical breakdown'
+                )}
               </div>
             </div>
 
             {/* Reconciled Preview Box */}
             {preview && (
               <div style={{ marginTop: '20px', display: 'grid', gap: '14px' }}>
+                {/* Reconciliation Header Badge */}
                 <div
                   style={{
                     padding: '12px 16px',
                     borderRadius: '8px',
-                    background: '#ecfdf5',
-                    border: '1px solid #a7f3d0',
+                    background: preview.validation?.status === 'VALIDATED' ? '#ecfdf5' : '#fffbeb',
+                    border: preview.validation?.status === 'VALIDATED' ? '1px solid #a7f3d0' : '1px solid #fde68a',
                     display: 'flex',
                     justifyContent: 'space-between',
-                    alignItems: 'center'
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '10px'
                   }}
                 >
                   <div>
-                    <strong style={{ color: '#065f46', fontSize: '13px' }}>
-                      Parser Reconciled: {preview.parserFamily} ({preview.parserVersion})
+                    <strong style={{ color: preview.validation?.status === 'VALIDATED' ? '#065f46' : '#92400e', fontSize: '13.5px' }}>
+                      {preview.validation?.status === 'VALIDATED' ? '✓ Reconciled' : '⚠️ Need Review'}: {preview.parserFamily} ({preview.parserVersion})
                     </strong>
-                    <div style={{ fontSize: '11.5px', color: '#047857' }}>
-                      Style quantities match exactly with PO / Market allocation and Color × Size breakdown.
+                    <div style={{ fontSize: '12px', color: preview.validation?.status === 'VALIDATED' ? '#047857' : '#b45309', marginTop: '2px' }}>
+                      File: <strong>{preview.sourceFileName || file?.name || 'Uploaded Document'}</strong> · {preview.styles?.length || 0} Style(s) Extracted
                     </div>
                   </div>
                   <span
                     style={{
-                      background: '#10b981',
+                      background: preview.validation?.status === 'VALIDATED' ? '#10b981' : '#f59e0b',
                       color: '#fff',
                       fontWeight: 800,
                       fontSize: '11px',
-                      padding: '2px 8px',
-                      borderRadius: '4px'
+                      padding: '4px 10px',
+                      borderRadius: '4px',
+                      letterSpacing: '0.03em'
                     }}
                   >
-                    100% RECONCILED
+                    {preview.validation?.status === 'VALIDATED' ? '100% RECONCILED' : 'DISCREPANCIES DETECTED'}
                   </span>
                 </div>
 
+                {/* Validation Audit Checks */}
+                {preview.validation?.checks?.length > 0 && (
+                  <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '12px' }}>
+                    <div style={{ fontWeight: 800, color: '#334155', marginBottom: '6px' }}>Reconciliation Audit Trail:</div>
+                    <div style={{ display: 'grid', gap: '4px' }}>
+                      {preview.validation.checks.map((chk: any, idx: number) => (
+                        <div key={idx} style={{ color: chk.ok ? '#15803d' : '#b45309', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontWeight: 800 }}>{chk.ok ? '✓' : '⚠️'}</span>
+                          <span>{chk.message}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Parser Warnings / Discrepancies */}
+                {importWarnings.length > 0 && (
+                  <div style={{ padding: '12px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px' }}>
+                    <strong style={{ fontSize: '12.5px', color: '#92400e' }}>Warnings / Discrepancies Requiring Review:</strong>
+                    <ul style={{ margin: '6px 0 0 18px', padding: 0, fontSize: '12px', color: '#b45309', lineHeight: 1.5 }}>
+                      {importWarnings.map((w, wi) => <li key={wi}>{w}</li>)}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Extracted Styles List */}
                 {preview.styles?.map((st: any, i: number) => (
                   <div
                     key={i}
                     style={{
                       background: '#f8fafc',
-                      border: '1px solid #e2e8f0',
+                      border: '1px solid #cbd5e1',
                       borderRadius: '8px',
-                      padding: '14px'
+                      padding: '16px'
                     }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
                       <div>
-                        <strong style={{ fontSize: '14px', color: '#0f172a' }}>
-                          Style {st.styleNo} — {st.styleDescription}
+                        <strong style={{ fontSize: '14.5px', color: '#0f172a' }}>
+                          Style {st.styleNo} {st.styleDescription ? `— ${st.styleDescription}` : ''}
                         </strong>
-                        <div style={{ fontSize: '11.5px', color: '#64748b' }}>
-                          Collection: {st.collection} · Season: {st.season}
+                        <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '2px' }}>
+                          {st.collection ? `Collection: ${st.collection} · ` : ''}
+                          {st.season ? `Season: ${st.season} · ` : ''}
+                          {st.orderReferences?.length || 0} PO / Allocation Reference(s)
                         </div>
                       </div>
-                      <div style={{ fontSize: '15px', fontWeight: 800, color: '#2563eb' }}>
+                      <div style={{ fontSize: '16px', fontWeight: 800, color: '#2563eb' }}>
                         {Number(st.totalQty).toLocaleString()} pcs
                       </div>
                     </div>
 
                     {/* Breakdown Matrix */}
-                    <div style={{ background: '#fff', padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', marginBottom: '10px' }}>
-                      <div style={{ fontSize: '11px', fontWeight: 800, color: '#475569', marginBottom: '4px', textTransform: 'uppercase' }}>
-                        Parsed Color × Size Distribution
+                    <div style={{ background: '#fff', padding: '12px', borderRadius: '6px', border: '1px solid #e2e8f0', marginBottom: '12px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 800, color: '#475569', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Extracted Color × Size Breakdown ({st.colors?.length || 0} Colorways)
                       </div>
-                      {st.colors?.map((c: any, ci: number) => (
-                        <div key={ci} style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', fontSize: '12px' }}>
-                          <span style={{ fontWeight: 700, color: '#1e293b', minWidth: '110px' }}>{c.color} ({c.colorCode}):</span>
-                          {c.sizes?.map((sz: any, szi: number) => (
-                            <span key={szi} style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>
-                              {sz.size}: <strong>{sz.qty.toLocaleString()}</strong>
-                            </span>
-                          ))}
-                        </div>
-                      ))}
+                      <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                          <thead>
+                            <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #cbd5e1' }}>
+                              <th style={{ textAlign: 'left', padding: '6px 8px' }}>Color</th>
+                              <th style={{ textAlign: 'left', padding: '6px 8px' }}>Code</th>
+                              <th style={{ textAlign: 'left', padding: '6px 8px' }}>Sizes Breakdown</th>
+                              <th style={{ textAlign: 'right', padding: '6px 8px' }}>Color Total</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {st.colors?.map((c: any, ci: number) => (
+                              <tr key={ci} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                <td style={{ padding: '6px 8px', fontWeight: 700, color: '#1e293b' }}>{c.color}</td>
+                                <td style={{ padding: '6px 8px', color: '#64748b' }}>{c.colorCode || '—'}</td>
+                                <td style={{ padding: '6px 8px' }}>
+                                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                    {c.sizes?.map((sz: any, szi: number) => (
+                                      <span key={szi} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '1px 6px', borderRadius: '4px', fontSize: '11px' }}>
+                                        {sz.size}: <strong>{sz.qty.toLocaleString()}</strong>
+                                      </span>
+                                    ))}
+                                  </div>
+                                </td>
+                                <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 700, color: '#0f172a' }}>
+                                  {Number(c.totalQty).toLocaleString()} pcs
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
 
                     {/* Order Reference Splits */}
                     <div>
-                      <div style={{ fontSize: '11px', fontWeight: 800, color: '#475569', marginBottom: '4px', textTransform: 'uppercase' }}>
-                        {isOvs ? 'Market Dispatch Allocation' : 'Purchase Orders Split'}
+                      <div style={{ fontSize: '11px', fontWeight: 800, color: '#475569', marginBottom: '6px', textTransform: 'uppercase' }}>
+                        {isOvs ? 'Market / Country Dispatch Allocations' : 'Purchase Orders Split'}
                       </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '8px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '8px' }}>
                         {st.orderReferences?.map((ref: any, ri: number) => (
                           <div
                             key={ri}
                             style={{
-                              padding: '8px 10px',
+                              padding: '10px 12px',
                               background: '#fff',
                               borderRadius: '6px',
                               border: '1px solid #e2e8f0',
                               fontSize: '11.5px'
                             }}
                           >
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <strong>{ref.reference}</strong>
-                              <span style={{ color: '#2563eb', fontWeight: 700 }}>{ref.totalQty.toLocaleString()} pcs</span>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <strong style={{ color: '#0f172a' }}>{ref.reference}</strong>
+                              <span style={{ color: '#2563eb', fontWeight: 800 }}>{Number(ref.totalQty).toLocaleString()} pcs</span>
                             </div>
-                            <div style={{ color: '#64748b', fontSize: '11px', marginTop: '2px' }}>
-                              CCD: {ref.ccd} · {ref.market}
+                            <div style={{ color: '#64748b', fontSize: '11px', marginTop: '3px' }}>
+                              {ref.ccd ? `CCD: ${ref.ccd} · ` : ''}
+                              {ref.destination || ref.market || 'Destination Unspecified'}
                             </div>
                           </div>
                         ))}
@@ -1362,20 +1482,32 @@ export default function OrderEntryWorkspace() {
                   </div>
                 ))}
 
+                {/* Review Approval Checkbox if review needed */}
+                {preview.validation?.status !== 'VALIDATED' && (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', fontWeight: 600, color: '#334155', cursor: 'pointer', padding: '6px 0' }}>
+                    <input
+                      type="checkbox"
+                      checked={reviewApproved}
+                      onChange={e => setReviewApproved(e.target.checked)}
+                    />
+                    I have audited the reconciliation report above and approve confirming this order.
+                  </label>
+                )}
+
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
                   <button
                     type="button"
                     onClick={handleConfirmImport}
-                    disabled={busy}
+                    disabled={busy || (preview.validation?.status !== 'VALIDATED' && !reviewApproved)}
                     style={{
                       padding: '10px 24px',
                       borderRadius: '8px',
-                      background: '#16a34a',
+                      background: (preview.validation?.status !== 'VALIDATED' && !reviewApproved) ? '#94a3b8' : '#16a34a',
                       color: '#ffffff',
                       border: 'none',
                       fontSize: '13px',
                       fontWeight: 800,
-                      cursor: busy ? 'not-allowed' : 'pointer',
+                      cursor: (busy || (preview.validation?.status !== 'VALIDATED' && !reviewApproved)) ? 'not-allowed' : 'pointer',
                       boxShadow: '0 2px 8px rgba(22,163,74,0.25)'
                     }}
                   >

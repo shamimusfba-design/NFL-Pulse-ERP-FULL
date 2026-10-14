@@ -116,13 +116,17 @@ export class UtgParser implements BuyerPoParser {
       const restTokens = first[2].trim().split(/\s+/);
       const trailing: number[] = [];
       let idx = restTokens.length - 1;
+      let internalRef = '';
+      if (idx >= 0 && !/^\d+$/.test(restTokens[idx])) {
+        internalRef = restTokens[idx];
+        idx--;
+      }
       while (idx >= 0 && /^\d+$/.test(restTokens[idx]) && trailing.length < sizes.length) {
         trailing.unshift(Number(restTokens[idx]));
         idx--;
       }
       if (!trailing.length) continue;
-      const internalRef = idx >= 0 ? restTokens[idx] : '';
-      const description = normalizeSpace(restTokens.slice(0, Math.max(0, idx)).join(' '));
+      const description = normalizeSpace(restTokens.slice(0, Math.max(0, idx + 1)).join(' '));
       const qtys = [...trailing, ...Array(Math.max(0, sizes.length - trailing.length)).fill(0)].slice(0, sizes.length);
       const total = qtys.reduce((s, n) => s + n, 0);
       colors.push({

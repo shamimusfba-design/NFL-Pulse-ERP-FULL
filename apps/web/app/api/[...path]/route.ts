@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { parseBuyerPoPdf } from '../../../lib/buyer-po-parser';
+import { parseBuyerPoFile } from '../../../lib/buyer-po-parser';
 import demo2000DataRaw from '../../../data/demo-2000-master.json';
 import factoryDataRaw from '../../../data/dyeing-factory-data.json';
 import factoryKpiMasterRaw from '../../../data/factory-kpi-master.json';
@@ -2901,12 +2901,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       const uploaded = formData.get('file');
       const buyerCode = String(formData.get('buyerCode') || request.headers.get('buyerCode') || '');
       if (!(uploaded instanceof File)) {
-        return NextResponse.json({ error: 'A buyer PO PDF file is required.' }, { status: 400 });
+        return NextResponse.json({ error: 'A buyer PO file (PDF, Excel, or CSV) is required.' }, { status: 400 });
       }
-      const result = await parseBuyerPoPdf(uploaded, buyerCode);
+      const result = await parseBuyerPoFile(uploaded, buyerCode);
       return NextResponse.json(result);
     } catch (error: any) {
-      return NextResponse.json({ error: error?.message || 'Could not read this PO PDF.' }, { status: 422 });
+      return NextResponse.json({ error: error?.message || 'Could not read this order file.' }, { status: 422 });
     }
   }
 

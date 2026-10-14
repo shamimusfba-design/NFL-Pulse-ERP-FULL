@@ -3,16 +3,24 @@ import { createHash } from 'crypto';
 import { BestsellerParser } from './bestseller.parser';
 import { OvsParser } from './ovs.parser';
 import { UtgParser } from './utg.parser';
+import { ExcelCsvParser } from './excel-csv.parser';
 import { BuyerPoParser, OrderImportPreview } from './order-import.types';
 import { PdfTextService } from './pdf-text.service';
 
 @Injectable()
 export class OrderImportService {
   private readonly parsers: BuyerPoParser[] = [new BestsellerParser(), new OvsParser(), new UtgParser()];
+  private readonly excelCsvParser = new ExcelCsvParser();
   constructor(private readonly pdfText: PdfTextService) {}
 
   async preview(file: { buffer: Buffer; originalname: string }, buyerCode?: string): Promise<OrderImportPreview> {
-    if (!file?.buffer?.length) throw new BadRequestException('PDF file is required');
+    if (!file?.buffer?.length) throw new BadRequestException('Order file (PDF, Excel, or CSV) is required');
+
+    const fileName = file.originalname || 'order_file';
+    if (/\.(xlsx|xls|csv)$/i.test(fileName)) {
+      const preview = this.excelCsvParser.parse(file.buffer, fileName, buyerCode);
+      return this.withSourceFingerprint(preview, file.buffer);
+    }
 
     const normalizedBuyer = (buyerCode || '').trim().toUpperCase();
     const bestsellerBuyer = ['ONLY', 'NAME IT', 'NAMEIT', 'ONLY & SONS', 'ONLY AND SONS', 'ONLY&SONS'].includes(normalizedBuyer);
