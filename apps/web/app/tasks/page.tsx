@@ -58,7 +58,7 @@ function TasksContent() {
     });
   }, [tasks, moduleFilter, departmentFilter, priorityFilter, statusFilter, query]);
 
-  const handleCompleteTask = async (task: any) => {
+  const handleTaskStatus = async (task: any, nextStatus: string) => {
     setBusyTaskId(task.id);
     setSuccessMsg('');
     try {
@@ -66,10 +66,10 @@ function TasksContent() {
         method: 'POST',
         body: JSON.stringify({
           taskId: task.id,
-          status: 'COMPLETED'
+          status: nextStatus
         })
       });
-      setSuccessMsg(`✓ Task "${task.title}" marked as COMPLETED and workflow advanced.`);
+      setSuccessMsg(`✓ Task "${task.title}" updated to ${nextStatus.replace('_', ' ')}.`);
       loadTasks();
     } catch (err: any) {
       setError(err.message || 'Failed to update task');
@@ -161,6 +161,7 @@ function TasksContent() {
               <option value="ALL">All Status</option>
               <option value="PENDING">PENDING</option>
               <option value="IN_PROGRESS">IN_PROGRESS</option>
+              <option value="WAITING">WAITING / BLOCKED</option>
               <option value="COMPLETED">COMPLETED</option>
             </select>
           </label>
@@ -175,6 +176,7 @@ function TasksContent() {
                 <th style={{ padding: '10px 12px' }}>Task Title & Workflow Objective</th>
                 <th style={{ padding: '10px 12px' }}>Module</th>
                 <th style={{ padding: '10px 12px' }}>Priority</th>
+                <th style={{ padding: '10px 12px' }}>Due Date / Next Action</th>
                 <th style={{ padding: '10px 12px' }}>Status</th>
                 <th style={{ padding: '10px 12px', textAlign: 'right' }}>Actions</th>
               </tr>
@@ -240,6 +242,11 @@ function TasksContent() {
                         {t.priority}
                       </span>
                     </td>
+                    <td style={{ padding: '10px 12px', minWidth: '180px' }}>
+                      <div style={{ fontSize: '12px', fontWeight: 700, color: '#334155' }}>{t.dueAt || 'No due date set'}</div>
+                      {t.nextAction && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', maxWidth: '260px', lineHeight: 1.4 }}>{t.nextAction}</div>}
+                      {t.waitingOn && <div style={{ fontSize: '11px', color: '#b45309', marginTop: '4px' }}>Waiting on: {t.waitingOn}</div>}
+                    </td>
                     <td style={{ padding: '10px 12px' }}>
                       <span
                         style={{
@@ -268,7 +275,7 @@ function TasksContent() {
                         )}
                         {!isCompleted && (
                           <button
-                            onClick={() => handleCompleteTask(t)}
+                            onClick={() => handleTaskStatus(t, 'COMPLETED')}
                             disabled={busyTaskId === t.id}
                             style={{
                               background: '#059669',
