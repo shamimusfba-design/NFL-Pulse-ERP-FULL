@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import Shell from '../../../components/Shell';
 import { api } from '../../../lib/api';
 
@@ -99,7 +99,6 @@ export default function SampleMerchandisingPage() {
 
   const selectedOrder = orders.find((o: any) => String(o.id) === form.soId);
   const orderStyles: any[] = selectedOrder?.styles || [];
-  const selectedStyle = orderStyles.find((s: any) => String(s.styleNo || s.id) === form.styleNo) || orderStyles[0];
 
   function changeEntryMethod(method: 'MANUAL' | 'SO') {
     setForm(prev => ({ ...prev, entryMethod: method, soId: '', styleNo: '', buyer: '', colour: '', orderQty: '', poReference: '' }));
@@ -122,7 +121,7 @@ export default function SampleMerchandisingPage() {
     const style = orderStyles.find((s: any) => String(s.styleNo || s.id) === styleNo);
     setForm(prev => ({ ...prev, styleNo, orderQty: style?.quantity == null ? prev.orderQty : String(style.quantity), colour: style?.colors?.[0]?.name || style?.color || prev.colour }));
   }
-  function saveRecord(event: React.FormEvent) {
+  function saveRecord(event: FormEvent) {
     event.preventDefault();
     if (!form.styleNo.trim() || !form.colour.trim()) {
       setError('Style No. and Colour are required.');
