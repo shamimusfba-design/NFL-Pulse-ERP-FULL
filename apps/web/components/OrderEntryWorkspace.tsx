@@ -535,7 +535,7 @@ export default function OrderEntryWorkspace() {
         body: JSON.stringify({
           buyerId,
           preview,
-          approveNeedReview: isValidated ? false : reviewApproved,
+          approveNeedReview: isValidated ? true : reviewApproved,
           jobType,
           repeatBaseJobNo: jobType === 'REPEAT' ? repeatBaseJobNo : undefined,
           repeatLotNo: jobType === 'REPEAT' ? repeatLotNo : undefined

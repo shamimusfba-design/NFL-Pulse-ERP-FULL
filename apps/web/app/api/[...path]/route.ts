@@ -2951,13 +2951,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (hardErrors.length) {
       return NextResponse.json({ success: false, error: 'PO import totals do not reconcile. Correct these fields before confirming.', details: [...new Set(hardErrors)] }, { status: 422 });
     }
-    const hasParserWarnings = Array.isArray(preview.warnings) && preview.warnings.length > 0;
-    if ((preview.validation?.status !== 'VALIDATED' || hasParserWarnings) && !body.approveNeedReview) {
+    const isExplicitlyValidated = preview.validation?.status === 'VALIDATED';
+    if (!isExplicitlyValidated && !body.approveNeedReview) {
       return NextResponse.json({ success: false, error: 'This import needs review approval before it can be saved.' }, { status: 422 });
     }
 
     const buyerId = String(body.buyerId || '');
-    const buyerName = String(preview.buyer || (
+    const buyerName = String(preview.buyer || preview.buyerCode || (
       buyerId.toLowerCase().includes('ovs') ? 'OVS' :
       buyerId.toLowerCase().includes('nameit') ? 'Name It' :
       buyerId.toLowerCase().includes('utg') ? 'UTG' :
