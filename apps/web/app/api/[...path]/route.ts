@@ -3594,6 +3594,58 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         description: `Central Planning reviews and approves Fabric Order Sheet and T&A Plan. Once approved, system automatically dispatches copy to Knitting & Dyeing departments.`,
         order: { jobNo: newJobNo, buyer: { name: buyerName, code: buyerName }, styleNo: primaryStyle.styleNo, qty: totalOrderQty }
       }
+      {
+        id: `task-sample-followup-${newJobNo}`,
+        jobNo: newJobNo,
+        title: `Create Sample Follow-up for Style ${primaryStyle.styleNo || 'Style'}`,
+        module: 'merchandising',
+        department: 'Sample / Merchandising',
+        priority: 'HIGH',
+        status: 'PENDING',
+        dueAt: '',
+        nextAction: 'Confirm buyer-required sample types; SMS is optional when buyer does not require it.',
+        description: 'Record required sample types and track present status/approval. PP Sample is tracked after PO/order confirmation when applicable.',
+        order: { jobNo: newJobNo, buyer: { name: buyerName, code: buyerName }, styleNo: primaryStyle.styleNo, qty: totalOrderQty }
+      },
+      {
+        id: `task-costing-${newJobNo}`,
+        jobNo: newJobNo,
+        title: `Prepare / Verify Costing for Style ${primaryStyle.styleNo || 'Style'}`,
+        module: 'merchandising',
+        department: 'Merchandising',
+        priority: 'NORMAL',
+        status: 'PENDING',
+        dueAt: '',
+        nextAction: 'Check required costing fields and record the current costing status.',
+        description: 'A single order-linked costing task; reuse imported style/order data and avoid duplicate entry.',
+        order: { jobNo: newJobNo, buyer: { name: buyerName, code: buyerName }, styleNo: primaryStyle.styleNo, qty: totalOrderQty }
+      },
+      {
+        id: `task-planning-input-${newJobNo}`,
+        jobNo: newJobNo,
+        title: `Review Production Planning Inputs for Job ${newJobNo}`,
+        module: 'central-planning',
+        department: 'Central Planning',
+        priority: 'HIGH',
+        status: 'PENDING',
+        dueAt: '',
+        nextAction: 'Review order quantity, CCD, IE bulletin and material/fabric readiness before setting dates.',
+        description: 'Planning reviews the existing order and IE/T&A information. Production-section tasks should be raised when the plan is ready, not all marked due at PO import.',
+        order: { jobNo: newJobNo, buyer: { name: buyerName, code: buyerName }, styleNo: primaryStyle.styleNo, qty: totalOrderQty }
+      },
+      {
+        id: `task-yarn-requirement-${newJobNo}`,
+        jobNo: newJobNo,
+        title: `Check Yarn Requirement for Job ${newJobNo}`,
+        module: 'yarn-store',
+        department: 'Yarn Store',
+        priority: 'HIGH',
+        status: 'PENDING',
+        dueAt: '',
+        nextAction: 'Use confirmed fabric requirement and knitting plan to confirm yarn demand.',
+        description: 'Yarn requirement is linked to this job. Final demand should use approved consumption/planning data rather than guessed quantities.',
+        order: { jobNo: newJobNo, buyer: { name: buyerName, code: buyerName }, styleNo: primaryStyle.styleNo, qty: totalOrderQty }
+      },
     ];
     memoryTasks = [...generatedTasks, ...memoryTasks];
 
@@ -3605,7 +3657,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       workflow: workflowState,
       tasksGenerated: generatedTasks.length,
       warnings: preview.warnings || [],
-      message: `Imported ${styles.length} extracted style(s) into Job ${newJobNo}. Generated 8 workflow tasks across Central IE, CAD, Merchandising, Dyeing Lab, and Central Planning.`
+      message: `Imported ${styles.length} extracted style(s) into Job ${newJobNo}. Generated order-linked pending tasks for IE, CAD, sample follow-up, costing, materials, yarn, lab shade, T&A, and Central Planning.`
     });
   }
 
