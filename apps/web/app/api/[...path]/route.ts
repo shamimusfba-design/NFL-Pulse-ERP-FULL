@@ -3841,18 +3841,50 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       wf.tna.preparedBy = body.preparedBy || 'Md. Jahidul Islam';
       const t = memoryTasks.find(x => String(x.jobNo) === jobNo && x.module === 'ta');
       if (t) t.status = 'COMPLETED';
+    } else if (action === 'fabric_order_sheet_physical_signed') {
+      wf.fabricOrderSheet.physicalCopySigned = true;
+      wf.fabricOrderSheet.physicalSignedAt = new Date().toISOString();
+      wf.fabricOrderSheet.physicalSignedBy = body.signedBy || 'Central Planning Head';
+      wf.fabricOrderSheet.physicalCopyReference = body.physicalCopyReference || wf.fabricOrderSheet.physicalCopyReference || '';
+      wf.fabricOrderSheet.status = 'PHYSICAL_COPY_SIGNED';
     } else if (action === 'planning_approval_submit') {
+      if (!wf.fabricOrderSheet.physicalCopySigned && !wf.fabricOrderSheet.dispatchedToKnitting) {
+        return NextResponse.json({ success: false, error: 'Record the physical signed copy before final ERP approval.' }, { status: 409 });
+      }
+      const approvedAt = new Date().toISOString();
+      const sourceRows = Array.isArray(wf.fabricOrderSheet.fabricRows) ? wf.fabricOrderSheet.fabricRows : [];
+      const fabricBreakdown = sourceRows.map((row: any, index: number) => ({
+        id: row.id || `fabric-${index + 1}`,
+        part: row.part || row.fabricPart || 'Fabric',
+        colour: row.colorCode || row.colour || row.color || 'UNSPECIFIED',
+        composition: row.composition || wf.fabricOrderSheet.fabricComposition || 'UNSPECIFIED',
+        construction: row.gsmFabricDescription || row.construction || wf.fabricOrderSheet.fabricConstruction || 'UNSPECIFIED',
+        quantityKg: Number(row.totalKg || row.requiredKg || 0)
+      }));
       wf.fabricOrderSheet.status = 'PLANNING_APPROVED';
       wf.fabricOrderSheet.approvalStatus = 'APPROVED';
-      wf.fabricOrderSheet.approvedAt = new Date().toISOString();
+      wf.fabricOrderSheet.approvedAt = approvedAt;
       wf.fabricOrderSheet.approvedBy = body.approvedBy || 'Central Planning Head';
       wf.fabricOrderSheet.dispatchedToKnitting = true;
       wf.fabricOrderSheet.dispatchedToDyeing = true;
-      wf.fabricOrderSheet.knitDyeCopySentAt = new Date().toISOString();
+      wf.fabricOrderSheet.dispatchedToGreyFabricStore = true;
+      wf.fabricOrderSheet.dispatchedToFinishedFabricStore = true;
+      wf.fabricOrderSheet.knitDyeCopySentAt = approvedAt;
+      wf.fabricOrderSheet.distribution = {
+        approvedAt,
+        approvedBy: wf.fabricOrderSheet.approvedBy,
+        basis: ['colour', 'composition', 'construction'],
+        fabricRows: fabricBreakdown,
+        knitting: { status: 'REQUIREMENT_RELEASED', rows: fabricBreakdown },
+        dyeing: { status: 'REQUIREMENT_RELEASED', rows: fabricBreakdown },
+        greyFabricStore: { status: 'EXPECTED_GREY_FABRIC', rows: fabricBreakdown },
+        finishedFabricStore: { status: 'EXPECTED_FINISHED_FABRIC', rows: fabricBreakdown }
+      };
       wf.tna.status = 'PLANNING_APPROVED';
-      wf.tna.approvedAt = new Date().toISOString();
+      wf.tna.approvedAt = approvedAt;
+      wf.tna.approvedBy = body.approvedBy || 'Central Planning Head';
       wf.overallStage = 'Knitting & Dyeing Execution';
-      wf.presentStatus = 'Planning Approved · Auto-Copy Sent to Knitting & Dyeing';
+      wf.presentStatus = 'Planning Approved · Signed T&A / Fabric Order Sheet distributed by colour, composition and construction';
       const t = memoryTasks.find(x => String(x.jobNo) === jobNo && (x.module === 'sewing-planning' || x.title.includes('Planning')));
       if (t) t.status = 'COMPLETED';
 
@@ -3860,8 +3892,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       const mj = memoryCreatedJobs.find(j => String(j.jobNo) === jobNo);
       if (mj) {
         mj.overallStage = 'Knitting & Dyeing Execution';
-        mj.presentStatus = 'Planning Approved · Dispatched to Knitting & Dyeing';
-        mj.knitting.status = 'RUNNING';
+        mj.presentStatus = 'Planning Approved · Fabric requirement released to Knitting, Dyeing and Fabric Stores';
+        if (mj.knitting) mj.knitting.status = 'RUNNING';
       }
     }
 
