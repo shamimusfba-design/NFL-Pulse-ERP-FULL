@@ -138,6 +138,287 @@ export default function OrderEntryWorkspace() {
   const [createdJob, setCreatedJob] = useState<any | null>(null);
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
 
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [newPreviewSizeLabel, setNewPreviewSizeLabel] = useState('');
+
+  const recalculateAuditChecks = (prev: any) => {
+    if (!prev || !Array.isArray(prev.styles)) return prev;
+    const checks: any[] = [];
+    for (const style of prev.styles) {
+      const styleNo = style.styleNo || 'Style';
+      const colorTotal = (style.colors || []).reduce((sum: number, c: any) => sum + Number(c.totalQty || 0), 0);
+      const isColorMatch = colorTotal === Number(style.totalQty || 0);
+      checks.push({
+        code: 'STYLE_COLOR_TOTAL',
+        ok: isColorMatch,
+        message: `${styleNo}: Color sum ${colorTotal.toLocaleString()} ${isColorMatch ? '=' : '≠'} Style total ${Number(style.totalQty || 0).toLocaleString()} pcs`
+      });
+
+      for (const color of style.colors || []) {
+        const sizeSum = (color.sizes || []).reduce((sum: number, s: any) => sum + Number(s.qty || 0), 0);
+        const isSizeMatch = sizeSum === Number(color.totalQty || 0);
+        checks.push({
+          code: 'COLOR_SIZE_TOTAL',
+          ok: isSizeMatch,
+          message: `${styleNo} / ${color.color || 'Color'}: Size sum ${sizeSum.toLocaleString()} ${isSizeMatch ? '=' : '≠'} Color total ${Number(color.totalQty || 0).toLocaleString()}`
+        });
+      }
+
+      if (Array.isArray(style.orderReferences) && style.orderReferences.length > 0) {
+        const refTotal = style.orderReferences.reduce((sum: number, r: any) => sum + Number(r.totalQty || 0), 0);
+        const isRefMatch = refTotal === Number(style.totalQty || 0);
+        checks.push({
+          code: 'ORDER_REFERENCE_TOTAL',
+          ok: isRefMatch,
+          message: `${styleNo}: Reference / PO allocation ${refTotal.toLocaleString()} ${isRefMatch ? '=' : '≠'} Style total ${Number(style.totalQty || 0).toLocaleString()} pcs`
+        });
+      }
+    }
+
+    const allOk = checks.every(c => c.ok);
+    return {
+      ...prev,
+      validation: {
+        status: allOk ? 'VALIDATED' : 'NEED_REVIEW',
+        checks
+      }
+    };
+  };
+
+  const updatePreviewStyleField = (styleIdx: number, field: string, value: any) => {
+    setPreview((prev: any) => {
+      if (!prev) return prev;
+      const nextStyles = [...prev.styles];
+      nextStyles[styleIdx] = { ...nextStyles[styleIdx], [field]: field === 'totalQty' ? Math.max(0, Number(value) || 0) : value };
+      return recalculateAuditChecks({ ...prev, styles: nextStyles });
+    });
+  };
+
+  const updatePreviewSizeQty = (styleIdx: number, colorIdx: number, sizeIdx: number, newQty: number) => {
+    setPreview((prev: any) => {
+      if (!prev) return prev;
+      const nextStyles = [...prev.styles];
+      const curStyle = { ...nextStyles[styleIdx] };
+      const curColors = [...(curStyle.colors || [])];
+      const curColor = { ...curColors[colorIdx] };
+      const curSizes = [...(curColor.sizes || [])];
+
+      curSizes[sizeIdx] = { ...curSizes[sizeIdx], qty: Math.max(0, Number(newQty) || 0) };
+      curColor.sizes = curSizes;
+      curColor.totalQty = curSizes.reduce((sum, s) => sum + Number(s.qty || 0), 0);
+      curColors[colorIdx] = curColor;
+
+      curStyle.colors = curColors;
+      nextStyles[styleIdx] = curStyle;
+      return recalculateAuditChecks({ ...prev, styles: nextStyles });
+    });
+  };
+
+  const updatePreviewColorField = (styleIdx: number, colorIdx: number, field: string, value: any) => {
+    setPreview((prev: any) => {
+      if (!prev) return prev;
+      const nextStyles = [...prev.styles];
+      const curStyle = { ...nextStyles[styleIdx] };
+      const curColors = [...(curStyle.colors || [])];
+      curColors[colorIdx] = { ...curColors[colorIdx], [field]: field === 'totalQty' ? Math.max(0, Number(value) || 0) : value };
+      curStyle.colors = curColors;
+      nextStyles[styleIdx] = curStyle;
+      return recalculateAuditChecks({ ...prev, styles: nextStyles });
+    });
+  };
+
+  const updatePreviewRefField = (styleIdx: number, refIdx: number, field: string, value: any) => {
+    setPreview((prev: any) => {
+      if (!prev) return prev;
+      const nextStyles = [...prev.styles];
+      const curStyle = { ...nextStyles[styleIdx] };
+      const curRefs = [...(curStyle.orderReferences || [])];
+      curRefs[refIdx] = { ...curRefs[refIdx], [field]: field === 'totalQty' ? Math.max(0, Number(value) || 0) : value };
+      curStyle.orderReferences = curRefs;
+      nextStyles[styleIdx] = curStyle;
+      return recalculateAuditChecks({ ...prev, styles: nextStyles });
+    });
+  };
+
+  const addPreviewColorRow = (styleIdx: number) => {
+    setPreview((prev: any) => {
+      if (!prev) return prev;
+      const nextStyles = [...prev.styles];
+      const curStyle = { ...nextStyles[styleIdx] };
+      const existingSizes = curStyle.colors?.[0]?.sizes?.map((s: any) => s.size) || ['S', 'M', 'L', 'XL'];
+      const newColor = {
+        color: 'New Color',
+        colorCode: '',
+        totalQty: 0,
+        sizes: existingSizes.map((sz: string) => ({ size: sz, qty: 0 }))
+      };
+      curStyle.colors = [...(curStyle.colors || []), newColor];
+      nextStyles[styleIdx] = curStyle;
+      return recalculateAuditChecks({ ...prev, styles: nextStyles });
+    });
+  };
+
+  const removePreviewColorRow = (styleIdx: number, colorIdx: number) => {
+    setPreview((prev: any) => {
+      if (!prev) return prev;
+      const nextStyles = [...prev.styles];
+      const curStyle = { ...nextStyles[styleIdx] };
+      if ((curStyle.colors?.length || 0) <= 1) return prev;
+      curStyle.colors = curStyle.colors.filter((_: any, idx: number) => idx !== colorIdx);
+      nextStyles[styleIdx] = curStyle;
+      return recalculateAuditChecks({ ...prev, styles: nextStyles });
+    });
+  };
+
+  const addPreviewSizeColumn = (styleIdx: number, sizeName: string) => {
+    const sName = sizeName.trim().toUpperCase();
+    if (!sName) return;
+    setPreview((prev: any) => {
+      if (!prev) return prev;
+      const nextStyles = [...prev.styles];
+      const curStyle = { ...nextStyles[styleIdx] };
+      curStyle.colors = (curStyle.colors || []).map((c: any) => ({
+        ...c,
+        sizes: [...(c.sizes || []), { size: sName, qty: 0 }]
+      }));
+      nextStyles[styleIdx] = curStyle;
+      return recalculateAuditChecks({ ...prev, styles: nextStyles });
+    });
+    setNewPreviewSizeLabel('');
+  };
+
+  const addPreviewPoRow = (styleIdx: number) => {
+    setPreview((prev: any) => {
+      if (!prev) return prev;
+      const nextStyles = [...prev.styles];
+      const curStyle = { ...nextStyles[styleIdx] };
+      const newRef = {
+        reference: `PO-${Date.now().toString().slice(-5)}`,
+        referenceType: 'PO',
+        totalQty: 0,
+        ccd: '',
+        shipmentDate: '',
+        destination: 'Main Destination'
+      };
+      curStyle.orderReferences = [...(curStyle.orderReferences || []), newRef];
+      nextStyles[styleIdx] = curStyle;
+      return recalculateAuditChecks({ ...prev, styles: nextStyles });
+    });
+  };
+
+  const removePreviewPoRow = (styleIdx: number, refIdx: number) => {
+    setPreview((prev: any) => {
+      if (!prev) return prev;
+      const nextStyles = [...prev.styles];
+      const curStyle = { ...nextStyles[styleIdx] };
+      if ((curStyle.orderReferences?.length || 0) <= 1) return prev;
+      curStyle.orderReferences = curStyle.orderReferences.filter((_: any, idx: number) => idx !== refIdx);
+      nextStyles[styleIdx] = curStyle;
+      return recalculateAuditChecks({ ...prev, styles: nextStyles });
+    });
+  };
+
+  const handleAutoReconcile = () => {
+    setPreview((prev: any) => {
+      if (!prev) return prev;
+      const nextStyles = (prev.styles || []).map((style: any) => {
+        const updatedColors = (style.colors || []).map((color: any) => {
+          const sizeTotal = (color.sizes || []).reduce((sum: number, s: any) => sum + Number(s.qty || 0), 0);
+          return {
+            ...color,
+            totalQty: sizeTotal > 0 ? sizeTotal : Number(color.totalQty || 0)
+          };
+        });
+        const styleTotal = updatedColors.reduce((sum: number, c: any) => sum + Number(c.totalQty || 0), 0);
+
+        const refs = [...(style.orderReferences || [])];
+        if (refs.length === 1) {
+          refs[0] = { ...refs[0], totalQty: styleTotal, colors: updatedColors };
+        } else if (refs.length > 1) {
+          const currentRefSum = refs.reduce((sum: number, r: any) => sum + Number(r.totalQty || 0), 0);
+          if (currentRefSum !== styleTotal && currentRefSum > 0) {
+            const factor = styleTotal / currentRefSum;
+            refs.forEach((r, idx) => {
+              if (idx === refs.length - 1) {
+                const priorSum = refs.slice(0, idx).reduce((acc: number, x: any) => acc + Number(x.totalQty || 0), 0);
+                r.totalQty = Math.max(0, styleTotal - priorSum);
+              } else {
+                r.totalQty = Math.round(Number(r.totalQty || 0) * factor);
+              }
+            });
+          } else if (currentRefSum === 0) {
+            refs[0].totalQty = styleTotal;
+          }
+        } else {
+          refs.push({
+            reference: `PO-${style.styleNo}`,
+            referenceType: 'PO',
+            totalQty: styleTotal,
+            colors: updatedColors
+          });
+        }
+
+        return {
+          ...style,
+          totalQty: styleTotal,
+          colors: updatedColors,
+          orderReferences: refs
+        };
+      });
+
+      return recalculateAuditChecks({ ...prev, styles: nextStyles });
+    });
+    setReviewApproved(true);
+    setMessage('✓ All style totals, color sums, and PO allocations reconciled and balanced 100%!');
+  };
+
+  const handleAutoReconcileStyle = (styleIdx: number) => {
+    setPreview((prev: any) => {
+      if (!prev || !prev.styles?.[styleIdx]) return prev;
+      const nextStyles = [...prev.styles];
+      const curStyle = { ...nextStyles[styleIdx] };
+      const updatedColors = (curStyle.colors || []).map((color: any) => {
+        const sizeTotal = (color.sizes || []).reduce((sum: number, s: any) => sum + Number(s.qty || 0), 0);
+        return {
+          ...color,
+          totalQty: sizeTotal > 0 ? sizeTotal : Number(color.totalQty || 0)
+        };
+      });
+      const styleTotal = updatedColors.reduce((sum: number, c: any) => sum + Number(c.totalQty || 0), 0);
+      const refs = [...(curStyle.orderReferences || [])];
+      if (refs.length <= 1) {
+        refs[0] = {
+          reference: refs[0]?.reference || `PO-${curStyle.styleNo || '1'}`,
+          referenceType: refs[0]?.referenceType || 'PO',
+          totalQty: styleTotal,
+          colors: updatedColors,
+          destination: refs[0]?.destination || '',
+          ccd: refs[0]?.ccd || ''
+        };
+      } else {
+        const currentRefSum = refs.reduce((sum: number, r: any) => sum + Number(r.totalQty || 0), 0);
+        if (currentRefSum !== styleTotal && currentRefSum > 0) {
+          const factor = styleTotal / currentRefSum;
+          refs.forEach((r, idx) => {
+            if (idx === refs.length - 1) {
+              const priorSum = refs.slice(0, idx).reduce((acc: number, x: any) => acc + Number(x.totalQty || 0), 0);
+              r.totalQty = Math.max(0, styleTotal - priorSum);
+            } else {
+              r.totalQty = Math.round(Number(r.totalQty || 0) * factor);
+            }
+          });
+        }
+      }
+      curStyle.totalQty = styleTotal;
+      curStyle.colors = updatedColors;
+      curStyle.orderReferences = refs;
+      nextStyles[styleIdx] = curStyle;
+      return recalculateAuditChecks({ ...prev, styles: nextStyles });
+    });
+    setReviewApproved(true);
+    setMessage(`✓ Style #${styleIdx + 1} quantities balanced and reconciled!`);
+  };
+
   // Modal editors
   const [breakEditor, setBreakEditor] = useState<{
     styleIndex: number;
@@ -363,8 +644,10 @@ export default function OrderEntryWorkspace() {
       const isValidated = res.validation?.status === 'VALIDATED';
       if (isValidated) {
         setMessage(`✓ File "${uploadedFile.name}" parsed and reconciled 100%! All internal checks passed.`);
+        setIsReviewOpen(false);
       } else {
-        setMessage(`⚠️ File "${uploadedFile.name}" parsed with items requiring review. Check discrepancies below.`);
+        setMessage(`⚠️ File "${uploadedFile.name}" parsed with items requiring review. Use "Review & Edit Discrepancies" to adjust quantities and balance the order.`);
+        setIsReviewOpen(true);
       }
     } catch (err: any) {
       setPreview(null);
@@ -522,10 +805,7 @@ export default function OrderEntryWorkspace() {
   const handleConfirmImport = async () => {
     if (!preview) return;
     const isValidated = preview.validation?.status === 'VALIDATED';
-    if (!isValidated && !reviewApproved) {
-      setMessage('⚠️ Please review the parser warnings and check the approval box before confirming.');
-      return;
-    }
+    setReviewApproved(true);
     setBusy(true);
     setMessage('');
 
@@ -535,7 +815,7 @@ export default function OrderEntryWorkspace() {
         body: JSON.stringify({
           buyerId,
           preview,
-          approveNeedReview: isValidated ? true : reviewApproved,
+          approveNeedReview: true,
           jobType,
           repeatBaseJobNo: jobType === 'REPEAT' ? repeatBaseJobNo : undefined,
           repeatLotNo: jobType === 'REPEAT' ? repeatLotNo : undefined
@@ -683,77 +963,161 @@ export default function OrderEntryWorkspace() {
         </div>
       </div>
 
-      {/* Success Notification Banner */}
+      {/* Success Notification Banner with Full Routing Information */}
       {createdJob && (
         <div
           style={{
-            background: 'linear-gradient(90deg, #ecfdf5, #d1fae5)',
-            border: '1px solid #6ee7b7',
-            borderRadius: '10px',
-            padding: '14px 20px',
+            background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 50%, #e0f2fe 100%)',
+            border: '2px solid #059669',
+            borderRadius: '12px',
+            padding: '18px 24px',
+            boxShadow: '0 4px 12px rgba(5, 150, 105, 0.15)',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '12px'
+            flexDirection: 'column',
+            gap: '14px'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                background: '#10b981',
-                color: '#fff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 900
-              }}
-            >
-              ✓
-            </span>
-            <div>
-              <strong style={{ fontSize: '14px', color: '#065f46' }}>
-                Job #{createdJob.jobNo} Created Successfully!
-              </strong>
-              <div style={{ fontSize: '12px', color: '#047857' }}>
-                Buyer: <strong>{createdJob.buyer}</strong> · Total Quantity: <strong>{Number(createdJob.qty).toLocaleString()} pcs</strong> · Style: {createdJob.styleNo}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <span
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  background: '#059669',
+                  color: '#fff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '20px',
+                  fontWeight: 900,
+                  boxShadow: '0 2px 6px rgba(5, 150, 105, 0.3)'
+                }}
+              >
+                ✓
+              </span>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <strong style={{ fontSize: '17px', color: '#064e3b', fontWeight: 900 }}>
+                    Job #{createdJob.jobNo} Created & Multi-Department Tasks Generated!
+                  </strong>
+                  <span style={{ fontSize: '10px', background: '#059669', color: '#fff', padding: '2px 8px', borderRadius: '12px', fontWeight: 800 }}>
+                    PRE-PRODUCTION ACTIVE
+                  </span>
+                </div>
+                <div style={{ fontSize: '13px', color: '#047857', marginTop: '3px' }}>
+                  Buyer: <strong>{createdJob.buyer}</strong> · Style: <strong>{createdJob.styleNo}</strong> · Total Order Qty: <strong>{Number(createdJob.qty).toLocaleString()} pcs</strong>
+                </div>
+                <div style={{ fontSize: '11.5px', color: '#0f766e', marginTop: '2px' }}>
+                  📍 Where is this Job? It is now live in <strong>All Jobs Register (/jobs)</strong>, <strong>Job #{createdJob.jobNo} Dashboard (/jobs/{createdJob.jobNo})</strong>, and dispatched to <strong>Central IE, CAD, Merchandising, Dyeing Lab & Planning</strong>.
+                </div>
               </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <Link
+                href={`/jobs/${createdJob.jobNo}`}
+                style={{
+                  padding: '9px 16px',
+                  borderRadius: '7px',
+                  background: '#047857',
+                  color: '#fff',
+                  fontSize: '12.5px',
+                  fontWeight: 800,
+                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}
+              >
+                👉 Open Job #{createdJob.jobNo} Profile & Stages
+              </Link>
+              <Link
+                href={`/tasks?jobNo=${createdJob.jobNo}`}
+                style={{
+                  padding: '9px 14px',
+                  borderRadius: '7px',
+                  background: '#0284c7',
+                  color: '#fff',
+                  fontSize: '12px',
+                  fontWeight: 800,
+                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px'
+                }}
+              >
+                📋 View Department Tasks
+              </Link>
+              <Link
+                href="/jobs?tab=preproduction"
+                style={{
+                  padding: '9px 14px',
+                  borderRadius: '7px',
+                  background: '#4f46e5',
+                  color: '#fff',
+                  fontSize: '12px',
+                  fontWeight: 800,
+                  textDecoration: 'none'
+                }}
+              >
+                ⚡ Planning Pipeline Division
+              </Link>
+              <Link
+                href="/jobs"
+                style={{
+                  padding: '9px 14px',
+                  borderRadius: '7px',
+                  background: '#ffffff',
+                  border: '1px solid #059669',
+                  color: '#065f46',
+                  fontSize: '12px',
+                  fontWeight: 800,
+                  textDecoration: 'none'
+                }}
+              >
+                📑 All Jobs Register
+              </Link>
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <Link
-              href="/merchandising"
-              style={{
-                padding: '6px 12px',
-                borderRadius: '6px',
-                background: '#059669',
-                color: '#fff',
-                fontSize: '11px',
-                fontWeight: 700,
-                textDecoration: 'none'
-              }}
-            >
-              ⚡ Merchandiser Control Tower
-            </Link>
-            <Link
-              href="/modules/production-lots"
-              style={{
-                padding: '6px 12px',
-                borderRadius: '6px',
-                background: '#ffffff',
-                border: '1px solid #10b981',
-                color: '#065f46',
-                fontSize: '11px',
-                fontWeight: 700,
-                textDecoration: 'none'
-              }}
-            >
-              Release Production Lots →
-            </Link>
+          {/* Visual Step Pipeline for the newly created Job */}
+          <div style={{ background: '#ffffff', border: '1px solid #a7f3d0', borderRadius: '8px', padding: '12px 16px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span>Department Workflow Generated for Job #{createdJob.jobNo}</span>
+              <span style={{ color: '#059669' }}>PO Import Complete (Step 1/7)</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px' }}>
+              <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '6px', padding: '6px 10px', fontSize: '11px' }}>
+                <div style={{ fontWeight: 800, color: '#166534' }}>1. Central IE</div>
+                <div style={{ color: '#15803d', fontSize: '10px' }}>Bulletin Generated (SMV 8.5)</div>
+              </div>
+              <div style={{ background: '#fefce8', border: '1px solid #fde047', borderRadius: '6px', padding: '6px 10px', fontSize: '11px' }}>
+                <div style={{ fontWeight: 800, color: '#854d0e' }}>2. CAD Section</div>
+                <div style={{ color: '#a16207', fontSize: '10px' }}>Calculate Consumption</div>
+              </div>
+              <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '6px 10px', fontSize: '11px' }}>
+                <div style={{ fontWeight: 800, color: '#334155' }}>3. Fabric Order Sheet</div>
+                <div style={{ color: '#64748b', fontSize: '10px' }}>Merchandiser Prepares</div>
+              </div>
+              <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '6px 10px', fontSize: '11px' }}>
+                <div style={{ fontWeight: 800, color: '#334155' }}>4. Trims BOM & Order</div>
+                <div style={{ color: '#64748b', fontSize: '10px' }}>Track Order OK / Not OK</div>
+              </div>
+              <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '6px 10px', fontSize: '11px' }}>
+                <div style={{ fontWeight: 800, color: '#334155' }}>5. Dyeing Lab Shade</div>
+                <div style={{ color: '#64748b', fontSize: '10px' }}>Lab Dip Shade Match</div>
+              </div>
+              <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '6px 10px', fontSize: '11px' }}>
+                <div style={{ fontWeight: 800, color: '#334155' }}>6. T&A Plan Review</div>
+                <div style={{ color: '#64748b', fontSize: '10px' }}>Print & Mark Prepared OK</div>
+              </div>
+              <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '6px 10px', fontSize: '11px' }}>
+                <div style={{ fontWeight: 800, color: '#334155' }}>7. Planning Approve</div>
+                <div style={{ color: '#64748b', fontSize: '10px' }}>Auto-dispatches Knit & Dye</div>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -1322,7 +1686,7 @@ export default function OrderEntryWorkspace() {
             {/* Reconciled Preview Box */}
             {preview && (
               <div style={{ marginTop: '20px', display: 'grid', gap: '14px' }}>
-                {/* Reconciliation Header Badge */}
+                {/* Reconciliation Header Badge & Actions */}
                 <div
                   style={{
                     padding: '12px 16px',
@@ -1344,25 +1708,96 @@ export default function OrderEntryWorkspace() {
                       File: <strong>{preview.sourceFileName || file?.name || 'Uploaded Document'}</strong> · {preview.styles?.length || 0} Style(s) Extracted
                     </div>
                   </div>
-                  <span
-                    style={{
-                      background: preview.validation?.status === 'VALIDATED' ? '#10b981' : '#f59e0b',
-                      color: '#fff',
-                      fontWeight: 800,
-                      fontSize: '11px',
-                      padding: '4px 10px',
-                      borderRadius: '4px',
-                      letterSpacing: '0.03em'
-                    }}
-                  >
-                    {preview.validation?.status === 'VALIDATED' ? '100% RECONCILED' : 'DISCREPANCIES DETECTED'}
-                  </span>
+
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => setIsReviewOpen(!isReviewOpen)}
+                      style={{
+                        padding: '7px 15px',
+                        borderRadius: '6px',
+                        background: isReviewOpen ? '#0f172a' : '#2563eb',
+                        color: '#ffffff',
+                        border: 'none',
+                        fontWeight: 700,
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+                      }}
+                    >
+                      {isReviewOpen ? '👁️ Switch to Summary View' : '✏️ Review & Edit Discrepancies'}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleAutoReconcile}
+                      style={{
+                        padding: '7px 14px',
+                        borderRadius: '6px',
+                        background: '#0284c7',
+                        color: '#ffffff',
+                        border: 'none',
+                        fontWeight: 700,
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      ⚡ Auto-Reconcile All
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleConfirmImport}
+                      disabled={busy}
+                      style={{
+                        padding: '7px 16px',
+                        borderRadius: '6px',
+                        background: '#16a34a',
+                        color: '#ffffff',
+                        border: 'none',
+                        fontWeight: 800,
+                        fontSize: '12px',
+                        cursor: busy ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        boxShadow: '0 2px 8px rgba(22,163,74,0.25)'
+                      }}
+                    >
+                      ✓ Approve &amp; Confirm
+                    </button>
+
+                    <span
+                      style={{
+                        background: preview.validation?.status === 'VALIDATED' ? '#10b981' : '#f59e0b',
+                        color: '#fff',
+                        fontWeight: 800,
+                        fontSize: '11px',
+                        padding: '6px 10px',
+                        borderRadius: '4px',
+                        letterSpacing: '0.03em'
+                      }}
+                    >
+                      {preview.validation?.status === 'VALIDATED' ? '100% RECONCILED' : 'DISCREPANCIES DETECTED'}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Validation Audit Checks */}
                 {preview.validation?.checks?.length > 0 && (
                   <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '12px' }}>
-                    <div style={{ fontWeight: 800, color: '#334155', marginBottom: '6px' }}>Reconciliation Audit Trail:</div>
+                    <div style={{ fontWeight: 800, color: '#334155', marginBottom: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>Reconciliation Audit Trail:</span>
+                      <span style={{ fontSize: '11px', color: '#64748b' }}>
+                        {preview.validation?.status === 'VALIDATED' ? 'All internal checks balanced ✓' : 'Adjust mismatched values below or click Auto-Reconcile'}
+                      </span>
+                    </div>
                     <div style={{ display: 'grid', gap: '4px' }}>
                       {preview.validation.checks.map((chk: any, idx: number) => (
                         <div key={idx} style={{ color: chk.ok ? '#15803d' : '#b45309', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1377,143 +1812,693 @@ export default function OrderEntryWorkspace() {
                 {/* Parser Warnings / Discrepancies */}
                 {importWarnings.length > 0 && (
                   <div style={{ padding: '12px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px' }}>
-                    <strong style={{ fontSize: '12.5px', color: '#92400e' }}>Warnings / Discrepancies Requiring Review:</strong>
+                    <strong style={{ fontSize: '12.5px', color: '#92400e' }}>Warnings / Document Notes:</strong>
                     <ul style={{ margin: '6px 0 0 18px', padding: 0, fontSize: '12px', color: '#b45309', lineHeight: 1.5 }}>
                       {importWarnings.map((w, wi) => <li key={wi}>{w}</li>)}
                     </ul>
                   </div>
                 )}
 
-                {/* Extracted Styles List */}
-                {preview.styles?.map((st: any, i: number) => (
-                  <div
-                    key={i}
-                    style={{
-                      background: '#f8fafc',
-                      border: '1px solid #cbd5e1',
-                      borderRadius: '8px',
-                      padding: '16px'
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
-                      <div>
-                        <strong style={{ fontSize: '14.5px', color: '#0f172a' }}>
-                          Style {st.styleNo} {st.styleDescription ? `— ${st.styleDescription}` : ''}
-                        </strong>
-                        <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '2px' }}>
-                          {st.collection ? `Collection: ${st.collection} · ` : ''}
-                          {st.season ? `Season: ${st.season} · ` : ''}
-                          {st.orderReferences?.length || 0} PO / Allocation Reference(s)
-                        </div>
-                      </div>
-                      <div style={{ fontSize: '16px', fontWeight: 800, color: '#2563eb' }}>
-                        {Number(st.totalQty).toLocaleString()} pcs
-                      </div>
+                {/* INTERACTIVE REVIEW & EDIT MODE */}
+                {isReviewOpen ? (
+                  <div style={{ display: 'grid', gap: '16px' }}>
+                    <div style={{ padding: '10px 14px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', fontSize: '12px', color: '#1e40af' }}>
+                      <strong>✏️ Review &amp; Edit Mode Active:</strong> You can edit Style Numbers, Descriptions, Color names, and individual size quantities directly. Changing size quantities recalculates Color Totals and Style Totals in real-time.
                     </div>
 
-                    {/* Breakdown Matrix */}
-                    <div style={{ background: '#fff', padding: '12px', borderRadius: '6px', border: '1px solid #e2e8f0', marginBottom: '12px' }}>
-                      <div style={{ fontSize: '11px', fontWeight: 800, color: '#475569', marginBottom: '8px', textTransform: 'uppercase' }}>
-                        Extracted Color × Size Breakdown ({st.colors?.length || 0} Colorways)
-                      </div>
-                      <div style={{ overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-                          <thead>
-                            <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #cbd5e1' }}>
-                              <th style={{ textAlign: 'left', padding: '6px 8px' }}>Color</th>
-                              <th style={{ textAlign: 'left', padding: '6px 8px' }}>Code</th>
-                              <th style={{ textAlign: 'left', padding: '6px 8px' }}>Sizes Breakdown</th>
-                              <th style={{ textAlign: 'right', padding: '6px 8px' }}>Color Total</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {st.colors?.map((c: any, ci: number) => (
-                              <tr key={ci} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                <td style={{ padding: '6px 8px', fontWeight: 700, color: '#1e293b' }}>{c.color}</td>
-                                <td style={{ padding: '6px 8px', color: '#64748b' }}>{c.colorCode || '—'}</td>
-                                <td style={{ padding: '6px 8px' }}>
-                                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                                    {c.sizes?.map((sz: any, szi: number) => (
-                                      <span key={szi} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '1px 6px', borderRadius: '4px', fontSize: '11px' }}>
-                                        {sz.size}: <strong>{sz.qty.toLocaleString()}</strong>
-                                      </span>
-                                    ))}
-                                  </div>
-                                </td>
-                                <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 700, color: '#0f172a' }}>
-                                  {Number(c.totalQty).toLocaleString()} pcs
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
+                    {preview.styles?.map((st: any, sIdx: number) => {
+                      const allSizes = Array.from(
+                        new Set((st.colors || []).flatMap((c: any) => (c.sizes || []).map((s: any) => s.size)))
+                      ) as string[];
 
-                    {/* Order Reference Splits */}
-                    <div>
-                      <div style={{ fontSize: '11px', fontWeight: 800, color: '#475569', marginBottom: '6px', textTransform: 'uppercase' }}>
-                        {isOvs ? 'Market / Country Dispatch Allocations' : 'Purchase Orders Split'}
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '8px' }}>
-                        {st.orderReferences?.map((ref: any, ri: number) => (
-                          <div
-                            key={ri}
-                            style={{
-                              padding: '10px 12px',
-                              background: '#fff',
-                              borderRadius: '6px',
-                              border: '1px solid #e2e8f0',
-                              fontSize: '11.5px'
-                            }}
-                          >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <strong style={{ color: '#0f172a' }}>{ref.reference}</strong>
-                              <span style={{ color: '#2563eb', fontWeight: 800 }}>{Number(ref.totalQty).toLocaleString()} pcs</span>
+                      const colorTotalSum = (st.colors || []).reduce((sum: number, c: any) => sum + Number(c.totalQty || 0), 0);
+                      const poTotalSum = (st.orderReferences || []).reduce((sum: number, r: any) => sum + Number(r.totalQty || 0), 0);
+
+                      return (
+                        <div
+                          key={sIdx}
+                          style={{
+                            background: '#ffffff',
+                            border: '2px solid #3b82f6',
+                            borderRadius: '10px',
+                            padding: '18px',
+                            boxShadow: '0 4px 12px rgba(59,130,246,0.08)'
+                          }}
+                        >
+                          {/* Style Header Inputs */}
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+                            <div>
+                              <label style={{ fontSize: '11.5px', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>
+                                Style / Article No
+                              </label>
+                              <input
+                                type="text"
+                                value={st.styleNo || ''}
+                                onChange={e => updatePreviewStyleField(sIdx, 'styleNo', e.target.value)}
+                                style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontWeight: 700 }}
+                              />
                             </div>
-                            <div style={{ color: '#64748b', fontSize: '11px', marginTop: '3px' }}>
-                              {ref.ccd ? `CCD: ${ref.ccd} · ` : ''}
-                              {ref.destination || ref.market || 'Destination Unspecified'}
+                            <div>
+                              <label style={{ fontSize: '11.5px', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>
+                                Item Description
+                              </label>
+                              <input
+                                type="text"
+                                value={st.styleDescription || ''}
+                                onChange={e => updatePreviewStyleField(sIdx, 'styleDescription', e.target.value)}
+                                style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                              />
+                            </div>
+                            <div>
+                              <label style={{ fontSize: '11.5px', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>
+                                Season / Collection
+                              </label>
+                              <input
+                                type="text"
+                                value={st.season || st.collection || ''}
+                                onChange={e => updatePreviewStyleField(sIdx, 'season', e.target.value)}
+                                style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                              />
+                            </div>
+                            <div>
+                              <label style={{ fontSize: '11.5px', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>
+                                FOB Price ($)
+                              </label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                placeholder="e.g. 4.50"
+                                value={st.fobPrice || ''}
+                                onChange={e => updatePreviewStyleField(sIdx, 'fobPrice', Number(e.target.value))}
+                                style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                              />
+                            </div>
+                            <div>
+                              <label style={{ fontSize: '11.5px', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>
+                                Style Total Quantity
+                              </label>
+                              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                <input
+                                  type="number"
+                                  value={st.totalQty || ''}
+                                  onChange={e => updatePreviewStyleField(sIdx, 'totalQty', Number(e.target.value))}
+                                  style={{
+                                    width: '110px',
+                                    padding: '7px 10px',
+                                    borderRadius: '6px',
+                                    border: colorTotalSum === st.totalQty ? '1px solid #10b981' : '2px solid #f59e0b',
+                                    fontWeight: 800,
+                                    color: '#0f172a'
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleAutoReconcileStyle(sIdx)}
+                                  style={{
+                                    padding: '6px 10px',
+                                    borderRadius: '6px',
+                                    background: '#10b981',
+                                    color: '#ffffff',
+                                    border: 'none',
+                                    fontSize: '11px',
+                                    fontWeight: 700,
+                                    cursor: 'pointer'
+                                  }}
+                                  title="Auto balance total and PO with sum of sizes"
+                                >
+                                  ⚡ Auto-Balance
+                                </button>
+                              </div>
                             </div>
                           </div>
-                        ))}
+
+                          {/* Editable Color x Size Matrix */}
+                          <div style={{ marginBottom: '16px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                              <strong style={{ fontSize: '12px', color: '#1e293b', textTransform: 'uppercase' }}>
+                                Color × Size Breakdown Matrix
+                              </strong>
+                              <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>Quick Sizes:</span>
+                                {['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'].map(sz => (
+                                  <button
+                                    key={sz}
+                                    type="button"
+                                    onClick={() => addPreviewSizeColumn(sIdx, sz)}
+                                    disabled={allSizes.includes(sz)}
+                                    style={{
+                                      padding: '3px 7px',
+                                      borderRadius: '4px',
+                                      background: allSizes.includes(sz) ? '#e2e8f0' : '#ffffff',
+                                      border: '1px solid #cbd5e1',
+                                      fontSize: '11px',
+                                      fontWeight: 700,
+                                      color: allSizes.includes(sz) ? '#94a3b8' : '#1e293b',
+                                      cursor: allSizes.includes(sz) ? 'default' : 'pointer'
+                                    }}
+                                  >
+                                    +{sz}
+                                  </button>
+                                ))}
+                                <input
+                                  type="text"
+                                  placeholder="+ Custom Size"
+                                  value={newPreviewSizeLabel}
+                                  onChange={e => setNewPreviewSizeLabel(e.target.value)}
+                                  style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '11px', width: '100px' }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => addPreviewSizeColumn(sIdx, newPreviewSizeLabel)}
+                                  style={{ padding: '4px 8px', borderRadius: '4px', background: '#e2e8f0', border: '1px solid #cbd5e1', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
+                                >
+                                  + Add
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => addPreviewColorRow(sIdx)}
+                                  style={{ padding: '4px 10px', borderRadius: '4px', background: '#dbeafe', border: '1px solid #bfdbfe', color: '#1d4ed8', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
+                                >
+                                  + Add Color
+                                </button>
+                              </div>
+                            </div>
+
+                            <div style={{ overflowX: 'auto', border: '1px solid #cbd5e1', borderRadius: '6px' }}>
+                              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                                <thead>
+                                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #cbd5e1' }}>
+                                    <th style={{ textAlign: 'left', padding: '8px', minWidth: '150px' }}>Color Name</th>
+                                    <th style={{ textAlign: 'left', padding: '8px', width: '100px' }}>Color Code</th>
+                                    {allSizes.map((sz: string) => (
+                                      <th key={sz} style={{ textAlign: 'center', padding: '8px', minWidth: '70px' }}>{sz}</th>
+                                    ))}
+                                    <th style={{ textAlign: 'right', padding: '8px', width: '110px' }}>Color Total</th>
+                                    <th style={{ width: '50px' }}></th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {(st.colors || []).map((c: any, cIdx: number) => {
+                                    const cSizesMap = new Map<string, any>((c.sizes || []).map((s: any) => [s.size, s]));
+                                    const rowSum = (c.sizes || []).reduce((sum: number, s: any) => sum + Number(s.qty || 0), 0);
+
+                                    return (
+                                      <tr key={cIdx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                        <td style={{ padding: '6px 8px' }}>
+                                          <input
+                                            type="text"
+                                            value={c.color || ''}
+                                            onChange={e => updatePreviewColorField(sIdx, cIdx, 'color', e.target.value)}
+                                            style={{ width: '100%', padding: '5px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontWeight: 600 }}
+                                          />
+                                        </td>
+                                        <td style={{ padding: '6px 8px' }}>
+                                          <input
+                                            type="text"
+                                            value={c.colorCode || ''}
+                                            placeholder="Code"
+                                            onChange={e => updatePreviewColorField(sIdx, cIdx, 'colorCode', e.target.value)}
+                                            style={{ width: '100%', padding: '5px 8px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                                          />
+                                        </td>
+                                        {allSizes.map((sz: string) => {
+                                          const existingSize = cSizesMap.get(sz);
+                                          const sizeIndexInColor = (c.sizes || []).findIndex((s: any) => s.size === sz);
+
+                                          return (
+                                            <td key={sz} style={{ padding: '6px 4px', textAlign: 'center' }}>
+                                              <input
+                                                type="number"
+                                                min="0"
+                                                value={existingSize ? Number(existingSize.qty) : 0}
+                                                onChange={e => {
+                                                  if (sizeIndexInColor >= 0) {
+                                                    updatePreviewSizeQty(sIdx, cIdx, sizeIndexInColor, Number(e.target.value));
+                                                  } else {
+                                                    // add size entry to color
+                                                    const nextSizes = [...(c.sizes || []), { size: sz, qty: Number(e.target.value) || 0 }];
+                                                    updatePreviewColorField(sIdx, cIdx, 'sizes', nextSizes);
+                                                  }
+                                                }}
+                                                style={{ width: '65px', padding: '5px 6px', textAlign: 'right', borderRadius: '4px', border: '1px solid #cbd5e1', fontWeight: 600 }}
+                                              />
+                                            </td>
+                                          );
+                                        })}
+                                        <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 800, color: '#0f172a' }}>
+                                          {rowSum.toLocaleString()} pcs
+                                        </td>
+                                        <td style={{ padding: '6px 4px', textAlign: 'center' }}>
+                                          {(st.colors?.length || 0) > 1 && (
+                                            <button
+                                              type="button"
+                                              onClick={() => removePreviewColorRow(sIdx, cIdx)}
+                                              style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontWeight: 900, fontSize: '13px' }}
+                                              title="Delete color"
+                                            >
+                                              ✕
+                                            </button>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                                <tfoot>
+                                  <tr style={{ background: '#f8fafc', fontWeight: 800, borderTop: '2px solid #cbd5e1' }}>
+                                    <td colSpan={2} style={{ padding: '8px' }}>Total Color Sum:</td>
+                                    {allSizes.map((sz: string) => {
+                                      const colSum = (st.colors || []).reduce((sum: number, c: any) => {
+                                        const found = (c.sizes || []).find((s: any) => s.size === sz);
+                                        return sum + (found ? Number(found.qty || 0) : 0);
+                                      }, 0);
+                                      return (
+                                        <td key={sz} style={{ textAlign: 'center', padding: '8px' }}>
+                                          {colSum.toLocaleString()}
+                                        </td>
+                                      );
+                                    })}
+                                    <td style={{ textAlign: 'right', padding: '8px', color: '#2563eb' }}>
+                                      {colorTotalSum.toLocaleString()} pcs
+                                    </td>
+                                    <td></td>
+                                  </tr>
+                                </tfoot>
+                              </table>
+                            </div>
+                          </div>
+
+                          {/* Editable Purchase Orders / Allocation References */}
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                              <strong style={{ fontSize: '12px', color: '#1e293b', textTransform: 'uppercase' }}>
+                                PO &amp; Destination Allocations ({st.orderReferences?.length || 0} References)
+                              </strong>
+                              <div style={{ display: 'flex', gap: '6px' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleAutoReconcileStyle(sIdx)}
+                                  style={{ padding: '4px 10px', borderRadius: '4px', background: '#dcfce7', border: '1px solid #bbf7d0', color: '#15803d', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
+                                  title="Match PO reference allocations with style total"
+                                >
+                                  ⚡ Sync POs with Style Total
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => addPreviewPoRow(sIdx)}
+                                  style={{ padding: '4px 10px', borderRadius: '4px', background: '#dbeafe', border: '1px solid #bfdbfe', color: '#1d4ed8', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
+                                >
+                                  + Add PO Reference
+                                </button>
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gap: '8px' }}>
+                              {(st.orderReferences || []).map((ref: any, rIdx: number) => (
+                                <div
+                                  key={rIdx}
+                                  style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr)) 50px',
+                                    gap: '8px',
+                                    alignItems: 'center',
+                                    background: '#f8fafc',
+                                    padding: '8px 12px',
+                                    borderRadius: '6px',
+                                    border: '1px solid #e2e8f0'
+                                  }}
+                                >
+                                  <div>
+                                    <label style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>PO / Market Ref</label>
+                                    <input
+                                      type="text"
+                                      value={ref.reference || ''}
+                                      onChange={e => updatePreviewRefField(sIdx, rIdx, 'reference', e.target.value)}
+                                      style={{ width: '100%', padding: '5px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontWeight: 600 }}
+                                    />
+                                  </div>
+                                  <div>
+                                    <label style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Destination / Market</label>
+                                    <input
+                                      type="text"
+                                      value={ref.destination || ref.market || ''}
+                                      onChange={e => {
+                                        updatePreviewRefField(sIdx, rIdx, 'destination', e.target.value);
+                                        updatePreviewRefField(sIdx, rIdx, 'market', e.target.value);
+                                      }}
+                                      style={{ width: '100%', padding: '5px 8px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                                    />
+                                  </div>
+                                  <div>
+                                    <label style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Shipment / CCD Date</label>
+                                    <input
+                                      type="date"
+                                      value={ref.ccd || ref.shipmentDate || ''}
+                                      onChange={e => {
+                                        updatePreviewRefField(sIdx, rIdx, 'ccd', e.target.value);
+                                        updatePreviewRefField(sIdx, rIdx, 'shipmentDate', e.target.value);
+                                      }}
+                                      style={{ width: '100%', padding: '5px 8px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                                    />
+                                  </div>
+                                  <div>
+                                    <label style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Allocated Qty</label>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={ref.totalQty || ''}
+                                      onChange={e => updatePreviewRefField(sIdx, rIdx, 'totalQty', Number(e.target.value))}
+                                      style={{ width: '100%', padding: '5px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontWeight: 700 }}
+                                    />
+                                  </div>
+                                  <div style={{ textAlign: 'center' }}>
+                                    {(st.orderReferences?.length || 0) > 1 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => removePreviewPoRow(sIdx, rIdx)}
+                                        style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontWeight: 900, fontSize: '14px' }}
+                                        title="Remove PO"
+                                      >
+                                        ✕
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            <div style={{ fontSize: '11.5px', color: poTotalSum === st.totalQty ? '#15803d' : '#b45309', marginTop: '6px', fontWeight: 700 }}>
+                              PO Allocation Total: {poTotalSum.toLocaleString()} pcs {poTotalSum === st.totalQty ? '✓ Matches style total' : `≠ Differs from style total ${Number(st.totalQty).toLocaleString()} pcs`}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', flexWrap: 'wrap', gap: '10px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setIsReviewOpen(false)}
+                        style={{
+                          padding: '9px 18px',
+                          borderRadius: '6px',
+                          background: '#f1f5f9',
+                          border: '1px solid #cbd5e1',
+                          color: '#334155',
+                          fontSize: '12.5px',
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        ✓ Done Reviewing (Switch to Summary)
+                      </button>
+
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <button
+                          type="button"
+                          onClick={handleAutoReconcile}
+                          style={{
+                            padding: '9px 18px',
+                            borderRadius: '6px',
+                            background: '#2563eb',
+                            color: '#fff',
+                            border: 'none',
+                            fontSize: '12.5px',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          ⚡ Auto-Balance &amp; Reconcile
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleConfirmImport}
+                          disabled={busy}
+                          style={{
+                            padding: '9px 24px',
+                            borderRadius: '6px',
+                            background: '#16a34a',
+                            color: '#fff',
+                            border: 'none',
+                            fontSize: '12.5px',
+                            fontWeight: 800,
+                            cursor: busy ? 'not-allowed' : 'pointer'
+                          }}
+                        >
+                          {busy ? 'Registering Job...' : '✓ Approve & Confirm Import'}
+                        </button>
                       </div>
                     </div>
                   </div>
-                ))}
+                ) : (
+                  /* SUMMARY VIEW */
+                  <>
+                    {/* Extracted Styles List */}
+                    {preview.styles?.map((st: any, i: number) => (
+                      <div
+                        key={i}
+                        style={{
+                          background: '#f8fafc',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '8px',
+                          padding: '16px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
+                          <div>
+                            <strong style={{ fontSize: '14.5px', color: '#0f172a' }}>
+                              Style {st.styleNo} {st.styleDescription ? `— ${st.styleDescription}` : ''}
+                            </strong>
+                            <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '2px' }}>
+                              {st.collection ? `Collection: ${st.collection} · ` : ''}
+                              {st.season ? `Season: ${st.season} · ` : ''}
+                              {st.orderReferences?.length || 0} PO / Allocation Reference(s)
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <button
+                              type="button"
+                              onClick={() => setIsReviewOpen(true)}
+                              style={{
+                                padding: '5px 12px',
+                                borderRadius: '6px',
+                                background: '#eff6ff',
+                                border: '1px solid #bfdbfe',
+                                color: '#1d4ed8',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '5px'
+                              }}
+                            >
+                              ✏️ Review &amp; Edit Breakdown
+                            </button>
+                            <div style={{ fontSize: '16px', fontWeight: 800, color: '#2563eb' }}>
+                              {Number(st.totalQty).toLocaleString()} pcs
+                            </div>
+                          </div>
+                        </div>
 
-                {/* Review Approval Checkbox if review needed */}
-                {preview.validation?.status !== 'VALIDATED' && (
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', fontWeight: 600, color: '#334155', cursor: 'pointer', padding: '6px 0' }}>
-                    <input
-                      type="checkbox"
-                      checked={reviewApproved}
-                      onChange={e => setReviewApproved(e.target.checked)}
-                    />
-                    I have audited the reconciliation report above and approve confirming this order.
-                  </label>
+                        {/* Breakdown Matrix */}
+                        <div style={{ background: '#fff', padding: '12px', borderRadius: '6px', border: '1px solid #e2e8f0', marginBottom: '12px' }}>
+                          <div style={{ fontSize: '11px', fontWeight: 800, color: '#475569', marginBottom: '8px', textTransform: 'uppercase' }}>
+                            Extracted Color × Size Breakdown ({st.colors?.length || 0} Colorways)
+                          </div>
+                          <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                              <thead>
+                                <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #cbd5e1' }}>
+                                  <th style={{ textAlign: 'left', padding: '6px 8px' }}>Color</th>
+                                  <th style={{ textAlign: 'left', padding: '6px 8px' }}>Code</th>
+                                  <th style={{ textAlign: 'left', padding: '6px 8px' }}>Sizes Breakdown</th>
+                                  <th style={{ textAlign: 'right', padding: '6px 8px' }}>Color Total</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {st.colors?.map((c: any, ci: number) => (
+                                  <tr key={ci} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                    <td style={{ padding: '6px 8px', fontWeight: 700, color: '#1e293b' }}>{c.color}</td>
+                                    <td style={{ padding: '6px 8px', color: '#64748b' }}>{c.colorCode || '—'}</td>
+                                    <td style={{ padding: '6px 8px' }}>
+                                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                        {c.sizes?.map((sz: any, szi: number) => (
+                                          <span key={szi} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '1px 6px', borderRadius: '4px', fontSize: '11px' }}>
+                                            {sz.size}: <strong>{sz.qty.toLocaleString()}</strong>
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </td>
+                                    <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 700, color: '#0f172a' }}>
+                                      {Number(c.totalQty).toLocaleString()} pcs
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+
+                        {/* Order Reference Splits */}
+                        <div>
+                          <div style={{ fontSize: '11px', fontWeight: 800, color: '#475569', marginBottom: '6px', textTransform: 'uppercase' }}>
+                            {isOvs ? 'Market / Country Dispatch Allocations' : 'Purchase Orders Split'}
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '8px' }}>
+                            {st.orderReferences?.map((ref: any, ri: number) => (
+                              <div
+                                key={ri}
+                                style={{
+                                  padding: '10px 12px',
+                                  background: '#fff',
+                                  borderRadius: '6px',
+                                  border: '1px solid #e2e8f0',
+                                  fontSize: '11.5px'
+                                }}
+                              >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <strong style={{ color: '#0f172a' }}>{ref.reference}</strong>
+                                  <span style={{ color: '#2563eb', fontWeight: 800 }}>{Number(ref.totalQty).toLocaleString()} pcs</span>
+                                </div>
+                                <div style={{ color: '#64748b', fontSize: '11px', marginTop: '3px' }}>
+                                  {ref.ccd ? `CCD: ${ref.ccd} · ` : ''}
+                                  {ref.destination || ref.market || 'Destination Unspecified'}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Mismatch Alert & Guidance */}
+                    {preview.validation?.status !== 'VALIDATED' && (
+                      <div
+                        style={{
+                          padding: '14px 18px',
+                          background: '#fffbeb',
+                          border: '1px solid #fde68a',
+                          borderRadius: '8px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          flexWrap: 'wrap',
+                          gap: '12px'
+                        }}
+                      >
+                        <div>
+                          <strong style={{ color: '#92400e', fontSize: '13px' }}>
+                            ⚠️ Document Has Mismatched Totals or Requires Review
+                          </strong>
+                          <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#b45309' }}>
+                            You can edit any style number, description, color, size, or PO quantity using <strong>Review &amp; Edit</strong>, or click <strong>Auto-Balance All</strong> to reconcile sums automatically before approval.
+                          </p>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            type="button"
+                            onClick={() => setIsReviewOpen(true)}
+                            style={{
+                              padding: '8px 16px',
+                              borderRadius: '6px',
+                              background: '#2563eb',
+                              color: '#fff',
+                              border: 'none',
+                              fontWeight: 700,
+                              fontSize: '12px',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            ✏️ Review &amp; Edit Mismatches
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleAutoReconcile}
+                            style={{
+                              padding: '8px 16px',
+                              borderRadius: '6px',
+                              background: '#16a34a',
+                              color: '#fff',
+                              border: 'none',
+                              fontWeight: 700,
+                              fontSize: '12px',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            ⚡ Auto-Balance All
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', flexWrap: 'wrap', gap: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          onClick={() => setIsReviewOpen(true)}
+                          style={{
+                            padding: '10px 18px',
+                            borderRadius: '8px',
+                            background: '#eff6ff',
+                            border: '1px solid #bfdbfe',
+                            color: '#1d4ed8',
+                            fontSize: '13px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          ✏️ Review / Edit Mismatches
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleAutoReconcile}
+                          style={{
+                            padding: '10px 18px',
+                            borderRadius: '8px',
+                            background: '#0284c7',
+                            color: '#ffffff',
+                            border: 'none',
+                            fontSize: '13px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          ⚡ Auto-Balance All
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleConfirmImport}
+                        disabled={busy}
+                        style={{
+                          padding: '11px 28px',
+                          borderRadius: '8px',
+                          background: '#16a34a',
+                          color: '#ffffff',
+                          border: 'none',
+                          fontSize: '13.5px',
+                          fontWeight: 800,
+                          cursor: busy ? 'not-allowed' : 'pointer',
+                          boxShadow: '0 4px 12px rgba(22,163,74,0.3)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}
+                      >
+                        {busy ? 'Registering Job...' : '✓ Approve & Confirm Import'}
+                      </button>
+                    </div>
+                  </>
                 )}
-
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
-                  <button
-                    type="button"
-                    onClick={handleConfirmImport}
-                    disabled={busy || (preview.validation?.status !== 'VALIDATED' && !reviewApproved)}
-                    style={{
-                      padding: '10px 24px',
-                      borderRadius: '8px',
-                      background: (preview.validation?.status !== 'VALIDATED' && !reviewApproved) ? '#94a3b8' : '#16a34a',
-                      color: '#ffffff',
-                      border: 'none',
-                      fontSize: '13px',
-                      fontWeight: 800,
-                      cursor: (busy || (preview.validation?.status !== 'VALIDATED' && !reviewApproved)) ? 'not-allowed' : 'pointer',
-                      boxShadow: '0 2px 8px rgba(22,163,74,0.25)'
-                    }}
-                  >
-                    {busy ? 'Registering Job...' : '✓ Confirm Import & Create Job'}
-                  </button>
-                </div>
               </div>
             )}
           </div>

@@ -7,6 +7,7 @@ import Shell from '../../components/Shell';
 import demo2000DataRaw from '../../data/demo-2000-master.json';
 import { displayJobNo, formatFloorLine } from '../../lib/display';
 import { SvgDonut, SvgBarChart, SvgTrendChart } from '../../components/OverviewCharts';
+import { api } from '../../lib/api';
 
 function n(v: any) {
   return Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 1 });
@@ -53,10 +54,94 @@ function JobsListContent() {
   const titleParam = searchParams.get('title') || '';
 
   const initialMasterJobs = (demo2000DataRaw as any)?.jobs || [];
+  const [liveJobs, setLiveJobs] = useState<any[]>(initialMasterJobs);
+  const tabParam = searchParams.get('tab') || 'all';
+  const [activeDivisionTab, setActiveDivisionTab] = useState<'all' | 'preproduction'>(tabParam === 'preproduction' ? 'preproduction' : 'all');
+  const [stageActionMsg, setStageActionMsg] = useState('');
+  const [busyJobNo, setBusyJobNo] = useState<string | null>(null);
 
-  // Map all master jobs with clean formatted fields
+  const refreshJobs = () => {
+    api('/jobs')
+      .then((res) => {
+        if (res?.jobs && Array.isArray(res.jobs)) {
+          setLiveJobs(res.jobs);
+        }
+      })
+      .catch(() => {});
+  };
+
+  React.useEffect(() => {
+    refreshJobs();
+  }, []);
+
+  // Filter jobs for Pre-Production Stage Division
+  const preProdJobs = useMemo(() => {
+    return liveJobs.filter((j: any) => {
+      const stage = String(j.overallStage || '').toLowerCase();
+      const ps = String(j.presentStatus || '').toLowerCase();
+      return (
+        j.isNewlyImported ||
+        stage.includes('pre-production') ||
+        stage.includes('t&a') ||
+        ps.includes('imported') ||
+        ps.includes('pending') ||
+        ps.includes('cut ok') ||
+        !j.fabric?.fabricReceivedKg
+      );
+    });
+  }, [liveJobs]);
+
+  const pendingFosCount = useMemo(() => {
+    return preProdJobs.filter((j: any) => {
+      const wf = j.workflow;
+      if (wf) return wf.fabricOrderSheet?.status !== 'PLANNING_APPROVED' && wf.fabricOrderSheet?.status !== 'PREPARED_OK';
+      return j.isNewlyImported || !j.fabric?.fabricReceivedKg;
+    }).length;
+  }, [preProdJobs]);
+
+  const pendingTnaCount = useMemo(() => {
+    return preProdJobs.filter((j: any) => {
+      const wf = j.workflow;
+      if (wf) return wf.tna?.status !== 'PLANNING_APPROVED' && wf.tna?.status !== 'PREPARED_OK';
+      return j.isNewlyImported || !j.dates?.tnaPlan;
+    }).length;
+  }, [preProdJobs]);
+
+  const pendingLinePlanCount = useMemo(() => {
+    return preProdJobs.filter((j: any) => {
+      const wf = j.workflow;
+      if (wf) return !wf.sewingPlanning?.allocatedLine;
+      return j.isNewlyImported || !j.lineAllocation?.line || j.lineAllocation?.line.toLowerCase().includes('pending');
+    }).length;
+  }, [preProdJobs]);
+
+  // Quick Action Handler for Pre-Production Stages
+  const handleStageAction = async (jobNo: string, action: string, payload: any = {}) => {
+    setBusyJobNo(jobNo);
+    setStageActionMsg('');
+    try {
+      await api(`/jobs/${jobNo}/workflow`, {
+        method: 'POST',
+        body: JSON.stringify({ action, ...payload })
+      });
+      setStageActionMsg(`✓ Stage updated for Job #${jobNo}!`);
+      refreshJobs();
+    } catch (err: any) {
+      setStageActionMsg(`❌ Failed: ${err.message || 'Server error'}`);
+    } finally {
+      setBusyJobNo(null);
+    }
+  };
+
+  // Map all master jobs with clean formatted fields (putting newly imported jobs at the VERY TOP)
   const allRows = useMemo(() => {
-    return initialMasterJobs.map((j: any) => {
+    const sorted = [...liveJobs].sort((a: any, b: any) => {
+      if (a.isNewlyImported && !b.isNewlyImported) return -1;
+      if (!a.isNewlyImported && b.isNewlyImported) return 1;
+      return 0;
+    });
+
+    return sorted.map((j: any) => {
       const factory = j.lineAllocation?.factory || 'NFL';
       const rawFloor = j.lineAllocation?.floor || 'Floor 1';
       let floorLabel = `${factory} 1`;
@@ -80,7 +165,9 @@ function JobsListContent() {
       const isSewingRunning = j.sewing?.status === 'RUNNING' || j.overallStage === 'Sewing';
 
       let sectionStatus = 'In Progress';
-      if (sectionParam === 'central-planning') {
+      if (j.isNewlyImported) {
+        sectionStatus = 'New PO Import';
+      } else if (sectionParam === 'central-planning') {
         sectionStatus = j.tnaStatus || 'Approved';
       } else if (sectionParam === 'garment-production') {
         sectionStatus = isSewingRunning ? 'Running' : (j.sewing?.achievementPct >= 95 ? 'Completed' : 'Planned');
@@ -114,7 +201,7 @@ function JobsListContent() {
         rawJob: j
       };
     });
-  }, [initialMasterJobs, sectionParam]);
+  }, [liveJobs, sectionParam]);
 
   // Filters state
   const [searchQuery, setSearchQuery] = useState('');
@@ -322,22 +409,266 @@ function JobsListContent() {
         </div>
       </div>
 
-      {/* 2. STATS STRIP */}
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '12px', marginBottom: '14px' }}>
-        <div
-          className="panel"
-          style={{ padding: '14px 18px', cursor: 'pointer', border: '1px solid #cbd5e1', boxShadow: '0 2px 6px rgba(0,0,0,0.05)', transition: 'all .15s ease' }}
-          onClick={() => {
-            setWeekFilter('ALL'); setMonthFilter('ALL'); setFloorUnitFilter('ALL');
-            setMerchFilter('ALL'); setPresentStatusFilter('ALL'); setBuyerFilter('ALL');
-            setSearchQuery(''); setActiveCardIndex(null); setCurrentPage(1);
-          }}
-          title="Click to reset filters and view all jobs"
-        >
-          <span style={{ fontSize: '11px', color: '#475569', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>FILTERED JOBS</span>
-          <strong style={{ fontSize: '26px', fontWeight: 900, color: '#0f172a', display: 'block', marginTop: '2px' }}>{filteredRows.length.toLocaleString()}</strong>
-          <span style={{ fontSize: '11px', color: '#16a34a', fontWeight: 700, display: 'block', marginTop: '3px' }}>Click to reset</span>
+      {/* 1b. DIVISION TABS */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', background: '#f8fafc', padding: '8px 14px', borderRadius: '10px', border: '1px solid #e2e8f0', flexWrap: 'wrap', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => setActiveDivisionTab('all')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '7px',
+              cursor: 'pointer',
+              fontWeight: 800,
+              fontSize: '12.5px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: activeDivisionTab === 'all' ? '#0f172a' : '#ffffff',
+              color: activeDivisionTab === 'all' ? '#ffffff' : '#475569',
+              border: `1px solid ${activeDivisionTab === 'all' ? '#0f172a' : '#cbd5e1'}`
+            }}
+          >
+            <span>🏭 Master Factory Register</span>
+            <span style={{ fontSize: '11px', background: activeDivisionTab === 'all' ? '#334155' : '#f1f5f9', color: activeDivisionTab === 'all' ? '#fff' : '#64748b', padding: '1px 6px', borderRadius: '10px' }}>
+              {liveJobs.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveDivisionTab('preproduction')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '7px',
+              cursor: 'pointer',
+              fontWeight: 800,
+              fontSize: '12.5px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: activeDivisionTab === 'preproduction' ? '#2563eb' : '#ffffff',
+              color: activeDivisionTab === 'preproduction' ? '#ffffff' : '#1e40af',
+              border: `1px solid ${activeDivisionTab === 'preproduction' ? '#2563eb' : '#bfdbfe'}`
+            }}
+          >
+            <span>⚡ Pre-Production Stage Division (PO Import → Planning)</span>
+            <span style={{ fontSize: '11px', background: activeDivisionTab === 'preproduction' ? '#1d4ed8' : '#dbeafe', color: activeDivisionTab === 'preproduction' ? '#fff' : '#1e40af', padding: '1px 6px', borderRadius: '10px' }}>
+              {preProdJobs.length} Jobs
+            </span>
+          </button>
         </div>
+
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Link
+            href="/merchandising/order-po"
+            style={{
+              padding: '7px 14px',
+              borderRadius: '6px',
+              background: '#059669',
+              color: '#fff',
+              fontSize: '12px',
+              fontWeight: 800,
+              textDecoration: 'none'
+            }}
+          >
+            + Import New Buyer PO
+          </Link>
+          <Link
+            href="/tasks"
+            style={{
+              padding: '7px 14px',
+              borderRadius: '6px',
+              background: '#0284c7',
+              color: '#fff',
+              fontSize: '12px',
+              fontWeight: 800,
+              textDecoration: 'none'
+            }}
+          >
+            📋 Department Tasks
+          </Link>
+        </div>
+      </div>
+
+      {activeDivisionTab === 'preproduction' ? (
+        <div>
+          {/* Pre-Production KPI Strip requested by user */}
+          <section style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '12px', marginBottom: '14px' }}>
+            <div className="panel" style={{ padding: '14px 18px', border: '1px solid #93c5fd', background: '#eff6ff' }}>
+              <span style={{ fontSize: '11px', color: '#1e40af', fontWeight: 800, textTransform: 'uppercase' }}>TOTAL POs IN PRE-PRODUCTION</span>
+              <strong style={{ fontSize: '26px', fontWeight: 900, color: '#1e3a8a', display: 'block', marginTop: '2px' }}>{preProdJobs.length}</strong>
+              <span style={{ fontSize: '11px', color: '#3b82f6', fontWeight: 600 }}>Active PO Import pipeline</span>
+            </div>
+
+            <div className="panel" style={{ padding: '14px 18px', border: '1px solid #fca5a5', background: '#fef2f2' }}>
+              <span style={{ fontSize: '11px', color: '#991b1b', fontWeight: 800, textTransform: 'uppercase' }}>PENDING FABRIC ORDER SHEET</span>
+              <strong style={{ fontSize: '26px', fontWeight: 900, color: '#b91c1c', display: 'block', marginTop: '2px' }}>{pendingFosCount}</strong>
+              <span style={{ fontSize: '11px', color: '#ef4444', fontWeight: 700 }}>Awaiting CAD / Merchandiser</span>
+            </div>
+
+            <div className="panel" style={{ padding: '14px 18px', border: '1px solid #fde047', background: '#fefce8' }}>
+              <span style={{ fontSize: '11px', color: '#854d0e', fontWeight: 800, textTransform: 'uppercase' }}>PENDING T&A PLAN PREPARATION</span>
+              <strong style={{ fontSize: '26px', fontWeight: 900, color: '#a16207', display: 'block', marginTop: '2px' }}>{pendingTnaCount}</strong>
+              <span style={{ fontSize: '11px', color: '#ca8a04', fontWeight: 700 }}>Needs review & print</span>
+            </div>
+
+            <div className="panel" style={{ padding: '14px 18px', border: '1px solid #d8b4fe', background: '#faf5ff' }}>
+              <span style={{ fontSize: '11px', color: '#6b21a8', fontWeight: 800, textTransform: 'uppercase' }}>PENDING SEWING LINE PLAN</span>
+              <strong style={{ fontSize: '26px', fontWeight: 900, color: '#7e22ce', display: 'block', marginTop: '2px' }}>{pendingLinePlanCount}</strong>
+              <span style={{ fontSize: '11px', color: '#9333ea', fontWeight: 700 }}>Central Planning allocation</span>
+            </div>
+          </section>
+
+          {stageActionMsg && (
+            <div style={{ background: '#ecfdf5', color: '#065f46', border: '1px solid #6ee7b7', padding: '10px 16px', borderRadius: '8px', marginBottom: '14px', fontSize: '13px', fontWeight: 700 }}>
+              {stageActionMsg}
+            </div>
+          )}
+
+          {/* Pre-Production Stage Division Table */}
+          <div className="panel" style={{ padding: '16px', border: '1px solid #cbd5e1' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <div>
+                <h3 style={{ fontSize: '15px', fontWeight: 900, color: '#0f172a', margin: 0 }}>
+                  Pre-Production Workflow & Stage Control (Central Planning Follow-up)
+                </h3>
+                <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0' }}>
+                  Tracks from PO import to Sewing Line Plan & Planning Approval. Approval dispatches auto-copy to Knitting & Dyeing.
+                </p>
+              </div>
+            </div>
+
+            <div className="table-scroll">
+              <table className="register-table compact-table" style={{ width: '100%' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc' }}>
+                    <th>Job No & Buyer</th>
+                    <th>Style & Qty</th>
+                    <th>1. Central IE</th>
+                    <th>2. CAD Consumption</th>
+                    <th>3. Fabric Order Sheet</th>
+                    <th>4. Trims BOM & Order</th>
+                    <th>5. Dyeing Lab Shade</th>
+                    <th>6. T&A Plan</th>
+                    <th>7. Planning Approval & Dispatch</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {preProdJobs.slice(0, 30).map((j: any) => {
+                    const wf = j.workflow || {};
+                    const isFosApproved = wf.fabricOrderSheet?.status === 'PLANNING_APPROVED';
+                    const isFosPrepared = wf.fabricOrderSheet?.status === 'PREPARED_OK' || isFosApproved;
+                    const isTnaApproved = wf.tna?.status === 'PLANNING_APPROVED';
+                    const isTnaPrepared = wf.tna?.status === 'PREPARED_OK' || isTnaApproved;
+                    const isCadDone = wf.cad?.status === 'COMPLETED';
+                    const isShadeOk = wf.labShade?.status === 'SHADE_OK';
+                    const isIeDone = wf.ieBulletin?.status === 'READY_IMPORTED';
+                    const isBusy = busyJobNo === j.jobNo;
+
+                    return (
+                      <tr key={j.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                        <td>
+                          {j.isNewlyImported && (
+                            <span style={{ background: '#059669', color: '#fff', fontSize: '9px', padding: '2px 6px', borderRadius: '4px', fontWeight: 900, marginRight: '4px' }}>
+                              NEW PO
+                            </span>
+                          )}
+                          <Link href={`/jobs/${j.jobNo}`} style={{ fontWeight: 900, color: '#2563eb', textDecoration: 'none' }}>
+                            #{j.jobNo}
+                          </Link>
+                          <div style={{ fontSize: '11px', color: '#475569', fontWeight: 700 }}>{j.buyer}</div>
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: 700, fontSize: '11.5px', color: '#0f172a' }}>{j.styleNo}</div>
+                          <div style={{ fontSize: '10.5px', color: '#64748b' }}>{Number(j.orderQty || 0).toLocaleString()} pcs</div>
+                        </td>
+                        <td>
+                          <span style={{ fontSize: '10.5px', padding: '2px 6px', borderRadius: '4px', fontWeight: 800, background: isIeDone ? '#ecfdf5' : '#f1f5f9', color: isIeDone ? '#065f46' : '#475569', border: `1px solid ${isIeDone ? '#a7f3d0' : '#cbd5e1'}` }}>
+                            {isIeDone ? '✓ Bulletin Ready' : 'Pending IE'}
+                          </span>
+                          <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>SMV: {wf.ieBulletin?.smv || j.ie?.smv || '8.5'}</div>
+                        </td>
+                        <td>
+                          <span style={{ fontSize: '10.5px', padding: '2px 6px', borderRadius: '4px', fontWeight: 800, background: isCadDone ? '#ecfdf5' : '#fefce8', color: isCadDone ? '#065f46' : '#854d0e', border: `1px solid ${isCadDone ? '#a7f3d0' : '#fde047'}` }}>
+                            {isCadDone ? '✓ Consumption Done' : 'Pending CAD'}
+                          </span>
+                          <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>{wf.cad?.consumptionKgPerDz || '2.65'} kg/dz · {wf.cad?.markerEfficiencyPct || '86.4'}%</div>
+                        </td>
+                        <td>
+                          <span style={{ fontSize: '10.5px', padding: '2px 6px', borderRadius: '4px', fontWeight: 800, background: isFosApproved ? '#dbeafe' : isFosPrepared ? '#ecfdf5' : '#fef2f2', color: isFosApproved ? '#1e40af' : isFosPrepared ? '#065f46' : '#991b1b', border: `1px solid ${isFosApproved ? '#bfdbfe' : isFosPrepared ? '#a7f3d0' : '#fecaca'}` }}>
+                            {isFosApproved ? '✓ Planning Approved' : isFosPrepared ? '✓ Prepared OK' : 'Pending Prep'}
+                          </span>
+                        </td>
+                        <td>
+                          <span style={{ fontSize: '10.5px', padding: '2px 6px', borderRadius: '4px', fontWeight: 800, background: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1' }}>
+                            {wf.trims?.orderingStatus === 'ORDER_OK' ? '✓ Order OK' : 'Partial / Follow-up'}
+                          </span>
+                          <div style={{ fontSize: '9.5px', color: '#64748b', marginTop: '2px' }}>Thread: pending shade match</div>
+                        </td>
+                        <td>
+                          <span style={{ fontSize: '10.5px', padding: '2px 6px', borderRadius: '4px', fontWeight: 800, background: isShadeOk ? '#ecfdf5' : '#fff7ed', color: isShadeOk ? '#065f46' : '#9a3412', border: `1px solid ${isShadeOk ? '#a7f3d0' : '#fed7aa'}` }}>
+                            {isShadeOk ? '✓ Shade OK' : 'Lab Pending'}
+                          </span>
+                        </td>
+                        <td>
+                          <span style={{ fontSize: '10.5px', padding: '2px 6px', borderRadius: '4px', fontWeight: 800, background: isTnaApproved ? '#dbeafe' : isTnaPrepared ? '#ecfdf5' : '#fefce8', color: isTnaApproved ? '#1e40af' : isTnaPrepared ? '#065f46' : '#854d0e', border: `1px solid ${isTnaApproved ? '#bfdbfe' : isTnaPrepared ? '#a7f3d0' : '#fde047'}` }}>
+                            {isTnaApproved ? '✓ Approved' : isTnaPrepared ? '✓ Prepared OK' : 'Pending Prep'}
+                          </span>
+                        </td>
+                        <td>
+                          {isFosApproved ? (
+                            <span style={{ fontSize: '10.5px', padding: '2px 8px', borderRadius: '4px', fontWeight: 800, background: '#ecfdf5', color: '#047857', border: '1px solid #6ee7b7' }}>
+                              ✓ Auto-Dispatched (Knit & Dye)
+                            </span>
+                          ) : (
+                            <button
+                              disabled={isBusy}
+                              onClick={() => handleStageAction(j.jobNo, 'planning_approval_submit')}
+                              style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: '4px', padding: '3px 8px', fontSize: '10.5px', fontWeight: 800, cursor: 'pointer' }}
+                              title="Planning approves FOS & T&A, auto-sending copy to Knitting and Dyeing"
+                            >
+                              {isBusy ? 'Saving...' : '⚡ Planning Approve & Dispatch'}
+                            </button>
+                          )}
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end' }}>
+                            <Link href={`/jobs/${j.jobNo}`} className="btn btn-secondary" style={{ fontSize: '10.5px', padding: '3px 7px', textDecoration: 'none' }}>
+                              Profile
+                            </Link>
+                            <Link href={`/tasks?jobNo=${j.jobNo}`} className="btn btn-secondary" style={{ fontSize: '10.5px', padding: '3px 7px', textDecoration: 'none' }}>
+                              Tasks
+                            </Link>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* 2. STATS STRIP */}
+          <section style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '12px', marginBottom: '14px' }}>
+            <div
+              className="panel"
+              style={{ padding: '14px 18px', cursor: 'pointer', border: '1px solid #cbd5e1', boxShadow: '0 2px 6px rgba(0,0,0,0.05)', transition: 'all .15s ease' }}
+              onClick={() => {
+                setWeekFilter('ALL'); setMonthFilter('ALL'); setFloorUnitFilter('ALL');
+                setMerchFilter('ALL'); setPresentStatusFilter('ALL'); setBuyerFilter('ALL');
+                setSearchQuery(''); setActiveCardIndex(null); setCurrentPage(1);
+              }}
+              title="Click to reset filters and view all jobs"
+            >
+              <span style={{ fontSize: '11px', color: '#475569', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>FILTERED JOBS</span>
+              <strong style={{ fontSize: '26px', fontWeight: 900, color: '#0f172a', display: 'block', marginTop: '2px' }}>{filteredRows.length.toLocaleString()}</strong>
+              <span style={{ fontSize: '11px', color: '#16a34a', fontWeight: 700, display: 'block', marginTop: '3px' }}>Click to reset</span>
+            </div>
 
         <div
           className="panel"
@@ -660,6 +991,11 @@ function JobsListContent() {
                     title={`Click to open 360 profile for Job ${r.jobNo}`}
                   >
                     <td style={{ whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                      {r.rawJob?.isNewlyImported && (
+                        <span style={{ background: '#059669', color: '#fff', fontSize: '9px', padding: '2px 6px', borderRadius: '4px', fontWeight: 900, marginRight: '5px' }}>
+                          NEW PO
+                        </span>
+                      )}
                       <Link href={jobUrl} className="job-link">
                         {displayJob}
                       </Link>
@@ -803,6 +1139,8 @@ function JobsListContent() {
           </div>
         </div>
       </section>
+        </>
+      )}
     </Shell>
   );
 }

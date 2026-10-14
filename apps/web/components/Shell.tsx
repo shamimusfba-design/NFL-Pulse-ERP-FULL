@@ -50,6 +50,7 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
   const pathname = usePathname();
   const [user, setUser] = useState<any>(null);
   const [query, setQuery] = useState('');
+  const [jobJumpNo, setJobJumpNo] = useState('');
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -111,6 +112,7 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
           {!query && <>
             <Link className={active('/') ? 'nav-link active' : 'nav-link'} href="/"><span className="nav-icon">👑</span><span>Executive KPI Board</span></Link>
             <Link className={active('/tasks') ? 'nav-link active' : 'nav-link'} href="/tasks"><span className="nav-icon">TK</span><span>My Pending Tasks</span></Link>
+            <Link className={active('/jobs') ? 'nav-link active' : 'nav-link'} href="/jobs"><span className="nav-icon">📋</span><span>All Jobs & Stages</span></Link>
           </>}
 
           {groups.map((group) => {
@@ -152,8 +154,26 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
       <main className="main">
         <header className="topbar">
           <div><div className="page-eyebrow">{eyebrow || 'NFL / NCL · Connected ERP'}</div><h1>{title}</h1></div>
-          <div className="top-actions">
-            <button className="icon-btn" title="Notifications">●</button>
+          <div className="top-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const clean = jobJumpNo.trim();
+                if (clean) window.location.href = `/jobs/${encodeURIComponent(clean)}`;
+              }}
+              style={{ display: 'flex', alignItems: 'center', background: '#f1f5f9', borderRadius: '6px', padding: '3px 8px', border: '1px solid #cbd5e1' }}
+            >
+              <span style={{ fontSize: '13px', color: '#64748b', marginRight: '5px' }}>🔍</span>
+              <input
+                value={jobJumpNo}
+                onChange={(e) => setJobJumpNo(e.target.value)}
+                placeholder="Jump to Job # (e.g. 48093)..."
+                style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', width: '165px', fontWeight: 600 }}
+              />
+              <button type="submit" style={{ border: 'none', background: '#2563eb', color: '#fff', fontSize: '10px', fontWeight: 800, padding: '2px 6px', borderRadius: '4px', cursor: 'pointer' }}>GO</button>
+            </form>
+            <Link href="/jobs?tab=preproduction" className="btn btn-secondary" style={{ fontSize: '11.5px', padding: '5px 10px', textDecoration: 'none', fontWeight: 700 }}>⚡ Stage Control</Link>
+            <Link href="/tasks" className="btn btn-secondary" style={{ fontSize: '11.5px', padding: '5px 10px', textDecoration: 'none', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}><span>📋 Tasks</span></Link>
             <div className="user-chip"><div className="avatar">{(user?.name || 'A').slice(0, 1).toUpperCase()}</div><div className="user-meta"><strong>{user?.name || 'NFL Pulse User'}</strong><span>{user?.roles?.join(', ') || 'Authorized user'}</span></div></div>
             <button className="btn btn-secondary" onClick={logout}>Sign Out</button>
           </div>

@@ -7,6 +7,7 @@ import Shell from '../../../components/Shell';
 import JobDetailDrawer from '../../../components/JobDetailDrawer';
 import demo2000DataRaw from '../../../data/demo-2000-master.json';
 import { displayJobNo } from '../../../lib/display';
+import { api } from '../../../lib/api';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,54 +51,85 @@ function generateJobManufacturingProfile(job: any) {
   const qty = Number(job.orderQty || 3000);
   const jobSeed = parseInt(String(job.jobNo).replace(/\D/g, ''), 10) || 45000;
 
-  // Size Ratios (From imported Buyer PO Pack Sheet)
-  const sizeRatios = [
-    { size: 'XS', ratio: 1 },
-    { size: 'S', ratio: 2 },
-    { size: 'M', ratio: 3 },
-    { size: 'L', ratio: 3 },
-    { size: 'XL', ratio: 2 },
-    { size: '2XL', ratio: 1 },
-    { size: '3XL', ratio: 0.5 },
-  ];
-  const totalRatio = sizeRatios.reduce((s, r) => s + r.ratio, 0);
-  const sizeBreakdown = sizeRatios.map((item) => {
-    const orderSizeQty = Math.round((qty * item.ratio) / totalRatio);
-    return {
-      size: item.size,
-      ratio: item.ratio,
-      orderQty: orderSizeQty,
-      shippedQty: orderSizeQty, // Only PO Order Entry and Ex-Factory Shipment are tracked size-wise
-    };
-  });
-  const sumOrder = sizeBreakdown.reduce((s, x) => s + x.orderQty, 0);
-  if (sumOrder !== qty && sizeBreakdown.length > 2) {
-    sizeBreakdown[2].orderQty += (qty - sumOrder);
-    sizeBreakdown[2].shippedQty += (qty - sumOrder);
+  // Size Breakdown (From imported Buyer PO Pack Sheet or Default Ratios)
+  let sizeBreakdown: any[] = [];
+  if (job.importedOrder?.styles?.[0]?.breakdowns?.length) {
+    const rawBreakdowns = job.importedOrder.styles[0].breakdowns;
+    const sizeMap: Record<string, number> = {};
+    for (const b of rawBreakdowns) {
+      const sz = String(b.size || 'M');
+      sizeMap[sz] = (sizeMap[sz] || 0) + Number(b.qty || 0);
+    }
+    sizeBreakdown = Object.entries(sizeMap).map(([size, sizeQty]) => ({
+      size,
+      ratio: Math.max(1, Math.round((sizeQty / (qty || 1)) * 10)),
+      orderQty: sizeQty,
+      shippedQty: 0
+    }));
+  } else {
+    const sizeRatios = [
+      { size: 'XS', ratio: 1 },
+      { size: 'S', ratio: 2 },
+      { size: 'M', ratio: 3 },
+      { size: 'L', ratio: 3 },
+      { size: 'XL', ratio: 2 },
+      { size: '2XL', ratio: 1 },
+      { size: '3XL', ratio: 0.5 },
+    ];
+    const totalRatio = sizeRatios.reduce((s, r) => s + r.ratio, 0);
+    sizeBreakdown = sizeRatios.map((item) => {
+      const orderSizeQty = Math.round((qty * item.ratio) / totalRatio);
+      return {
+        size: item.size,
+        ratio: item.ratio,
+        orderQty: orderSizeQty,
+        shippedQty: orderSizeQty,
+      };
+    });
+    const sumOrder = sizeBreakdown.reduce((s, x) => s + x.orderQty, 0);
+    if (sumOrder !== qty && sizeBreakdown.length > 2) {
+      sizeBreakdown[2].orderQty += (qty - sumOrder);
+      sizeBreakdown[2].shippedQty += (qty - sumOrder);
+    }
   }
 
   // PO & Destination Country Breakdown
-  const countries = [
-    { country: 'Germany (DE)', code: 'DE', flag: '🇩🇪', port: 'Hamburg', term: 'CIF Hamburg', share: 0.35 },
-    { country: 'France (FR)', code: 'FR', flag: '🇫🇷', port: 'Le Havre', term: 'CIF Le Havre', share: 0.25 },
-    { country: 'United Kingdom (UK)', code: 'UK', flag: '🇬🇧', port: 'Felixstowe', term: 'FOB Chittagong', share: 0.20 },
-    { country: 'Spain (ES)', code: 'ES', flag: '🇪🇸', port: 'Valencia', term: 'CIF Valencia', share: 0.12 },
-    { country: 'Italy (IT)', code: 'IT', flag: '🇮🇹', port: 'Genoa', term: 'CIF Genoa', share: 0.08 },
-  ];
-  const poBreakdown = countries.map((c, i) => {
-    const poQty = Math.round(qty * c.share);
-    return {
-      poNo: `PO-${job.jobNo}-${c.code}`,
-      country: c.country,
-      flag: c.flag,
-      port: c.port,
-      terms: c.term,
-      packType: i % 2 === 0 ? 'Ratio Pack (1:2:2:1)' : 'Solid Size Pack (24 pcs/ctn)',
-      cartons: Math.ceil(poQty / 24),
-      qty: poQty,
-      status: job.shipment?.status === 'SHIPPED' ? 'Shipped' : 'Packed in Cartons'
-    };
-  });
+  let poBreakdown: any[] = [];
+  if (job.importedOrder?.styles?.[0]?.purchaseOrders?.length) {
+    poBreakdown = job.importedOrder.styles[0].purchaseOrders.map((p: any) => ({
+      poNo: p.poNumber || `PO-${job.jobNo}`,
+      country: p.destination || p.market || 'Export Destination',
+      flag: '🌐',
+      port: p.destination || 'Chittagong Port',
+      terms: 'FOB Chittagong',
+      packType: 'Standard PO Pack',
+      cartons: Math.ceil((p.totalQty || 0) / 24),
+      qty: Number(p.totalQty || 0),
+      status: 'Awaiting Production'
+    }));
+  } else {
+    const countries = [
+      { country: 'Germany (DE)', code: 'DE', flag: '🇩🇪', port: 'Hamburg', term: 'CIF Hamburg', share: 0.35 },
+      { country: 'France (FR)', code: 'FR', flag: '🇫🇷', port: 'Le Havre', term: 'CIF Le Havre', share: 0.25 },
+      { country: 'United Kingdom (UK)', code: 'UK', flag: '🇬🇧', port: 'Felixstowe', term: 'FOB Chittagong', share: 0.20 },
+      { country: 'Spain (ES)', code: 'ES', flag: '🇪🇸', port: 'Valencia', term: 'CIF Valencia', share: 0.12 },
+      { country: 'Italy (IT)', code: 'IT', flag: '🇮🇹', port: 'Genoa', term: 'CIF Genoa', share: 0.08 },
+    ];
+    poBreakdown = countries.map((c, i) => {
+      const poQty = Math.round(qty * c.share);
+      return {
+        poNo: `PO-${job.jobNo}-${c.code}`,
+        country: c.country,
+        flag: c.flag,
+        port: c.port,
+        terms: c.term,
+        packType: i % 2 === 0 ? 'Ratio Pack (1:2:2:1)' : 'Solid Size Pack (24 pcs/ctn)',
+        cartons: Math.ceil(poQty / 24),
+        qty: poQty,
+        status: job.shipment?.status === 'SHIPPED' ? 'Shipped' : 'Packed in Cartons'
+      };
+    });
+  }
 
   // Fabric & Trims Details
   const fabricTypes = [
@@ -166,10 +198,49 @@ function JobDetailContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const [apiJob, setApiJob] = useState<any>(null);
+  const [workflow, setWorkflow] = useState<any>(null);
+  const [stageMsg, setStageMsg] = useState('');
+  const [busyStage, setBusyStage] = useState(false);
+
+  const loadJobData = () => {
+    if (idParam) {
+      api(`/jobs/${encodeURIComponent(idParam)}`).then(res => {
+        if (res?.job) {
+          setApiJob(res.job);
+          if (res.workflow) setWorkflow(res.workflow);
+        }
+      }).catch(() => {});
+    }
+  };
+
+  useEffect(() => {
+    loadJobData();
+  }, [idParam]);
+
+  const handleWorkflowAction = async (action: string, payload: any = {}) => {
+    if (!job) return;
+    setBusyStage(true);
+    setStageMsg('');
+    try {
+      await api(`/jobs/${job.jobNo}/workflow`, {
+        method: 'POST',
+        body: JSON.stringify({ action, ...payload })
+      });
+      setStageMsg('✓ Stage successfully updated and synchronized across all departments!');
+      loadJobData();
+    } catch (err: any) {
+      setStageMsg(`❌ Error: ${err.message || 'Server error'}`);
+    } finally {
+      setBusyStage(false);
+    }
+  };
+
   const jobsList = (demo2000DataRaw as any)?.jobs || [];
 
   // Find job by ID or Job No
   const job = useMemo(() => {
+    if (apiJob) return apiJob;
     if (!idParam) return jobsList[0] || null;
     const cleanId = idParam.toLowerCase().trim();
     const found = jobsList.find((j: any) =>
@@ -179,7 +250,7 @@ function JobDetailContent() {
       String(j.jobNo).toLowerCase().includes(cleanId)
     );
     return found || jobsList[0] || null;
-  }, [idParam, jobsList]);
+  }, [idParam, jobsList, apiJob]);
 
   const profile = useMemo(() => {
     if (!job) return null;
@@ -348,6 +419,249 @@ function JobDetailContent() {
               <span style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', display: 'block' }}>{p.date}</span>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* 3b. MULTI-DEPARTMENT GARMENT PIPELINE & STAGE CONTROLS */}
+      <section className="panel" style={{ padding: '18px 24px', background: '#f8fafc', border: '1px solid #cbd5e1', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '18px' }}>🏭</span>
+              <h3 style={{ fontSize: '15.5px', fontWeight: 900, color: '#0f172a', margin: 0 }}>
+                Multi-Department Pre-Production Pipeline & Stage Control
+              </h3>
+              <span style={{ fontSize: '10.5px', background: '#e0f2fe', color: '#0369a1', padding: '2px 8px', borderRadius: '12px', fontWeight: 800 }}>
+                Job #{job.jobNo}
+              </span>
+            </div>
+            <p style={{ fontSize: '12px', color: '#64748b', margin: '3px 0 0' }}>
+              From PO Import → Central IE Bulletin & CAD → Merchandising FOS, Trims & T&A → Central Planning Approval → Auto-Dispatch to Knitting & Dyeing.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <Link
+              href={`/tasks?jobNo=${job.jobNo}`}
+              className="btn btn-secondary"
+              style={{ fontSize: '11.5px', padding: '5px 12px', textDecoration: 'none', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}
+            >
+              <span>📋</span> Department Tasks ({job.jobNo})
+            </Link>
+            <Link
+              href="/jobs?tab=preproduction"
+              className="btn btn-secondary"
+              style={{ fontSize: '11.5px', padding: '5px 12px', textDecoration: 'none', fontWeight: 700 }}
+            >
+              ⚡ Stage Division
+            </Link>
+          </div>
+        </div>
+
+        {stageMsg && (
+          <div style={{ background: stageMsg.startsWith('✓') ? '#ecfdf5' : '#fef2f2', color: stageMsg.startsWith('✓') ? '#065f46' : '#991b1b', border: `1px solid ${stageMsg.startsWith('✓') ? '#6ee7b7' : '#fecaca'}`, padding: '10px 16px', borderRadius: '8px', marginBottom: '14px', fontSize: '12.5px', fontWeight: 700 }}>
+            {stageMsg}
+          </div>
+        )}
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
+          {/* 1. Central IE Bulletin */}
+          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>1. Central IE</span>
+                <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: 800, background: workflow?.ieBulletin?.status === 'READY_IMPORTED' ? '#ecfdf5' : '#f1f5f9', color: workflow?.ieBulletin?.status === 'READY_IMPORTED' ? '#065f46' : '#64748b' }}>
+                  {workflow?.ieBulletin?.status === 'READY_IMPORTED' ? '✓ Ready / Attached' : 'Pending IE'}
+                </span>
+              </div>
+              <strong style={{ fontSize: '13px', color: '#0f172a' }}>Operation Bulletin & Target SMV</strong>
+              <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '4px', lineHeight: 1.4 }}>
+                Target SMV: <strong>{workflow?.ieBulletin?.smv || job.ie?.smv || 8.5}</strong> · Ops: 18 · Target/hr: 180 pcs.
+                <div style={{ color: '#059669', fontSize: '10.5px', marginTop: '2px' }}>Auto-pulls data when Planning inputs Job No.</div>
+              </div>
+            </div>
+            <div style={{ marginTop: '10px' }}>
+              <button
+                disabled={busyStage || workflow?.ieBulletin?.status === 'READY_IMPORTED'}
+                onClick={() => handleWorkflowAction('ie_bulletin_ready', { smv: 8.5 })}
+                style={{ width: '100%', padding: '5px 10px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', border: '1px solid #cbd5e1', background: workflow?.ieBulletin?.status === 'READY_IMPORTED' ? '#f1f5f9' : '#0284c7', color: workflow?.ieBulletin?.status === 'READY_IMPORTED' ? '#64748b' : '#fff', cursor: workflow?.ieBulletin?.status === 'READY_IMPORTED' ? 'default' : 'pointer' }}
+              >
+                {workflow?.ieBulletin?.status === 'READY_IMPORTED' ? '✓ Bulletin Active & Pulled' : 'Attach / Complete IE Bulletin'}
+              </button>
+            </div>
+          </div>
+
+          {/* 2. CAD Consumption */}
+          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>2. CAD Section</span>
+                <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: 800, background: workflow?.cad?.status === 'COMPLETED' ? '#ecfdf5' : '#fefce8', color: workflow?.cad?.status === 'COMPLETED' ? '#065f46' : '#854d0e' }}>
+                  {workflow?.cad?.status === 'COMPLETED' ? '✓ Consumption Done' : 'Pending Marker & Cons.'}
+                </span>
+              </div>
+              <strong style={{ fontSize: '13px', color: '#0f172a' }}>Marker & Fabric Consumption</strong>
+              <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '4px', lineHeight: 1.4 }}>
+                Cons: <strong>{workflow?.cad?.consumptionKgPerDz || 2.65} kg/dz</strong> · Marker Eff: <strong>{workflow?.cad?.markerEfficiencyPct || 86.4}%</strong>.
+                <div style={{ color: '#0284c7', fontSize: '10.5px', marginTop: '2px' }}>Completing CAD unlocks Merchandiser Fabric Order Sheet.</div>
+              </div>
+            </div>
+            <div style={{ marginTop: '10px' }}>
+              <button
+                disabled={busyStage || workflow?.cad?.status === 'COMPLETED'}
+                onClick={() => handleWorkflowAction('cad_consumption_submit', { consumptionKgPerDz: 2.65, markerEfficiencyPct: 86.4 })}
+                style={{ width: '100%', padding: '5px 10px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', border: '1px solid #cbd5e1', background: workflow?.cad?.status === 'COMPLETED' ? '#f1f5f9' : '#0284c7', color: workflow?.cad?.status === 'COMPLETED' ? '#64748b' : '#fff', cursor: workflow?.cad?.status === 'COMPLETED' ? 'default' : 'pointer' }}
+              >
+                {workflow?.cad?.status === 'COMPLETED' ? '✓ CAD Consumption Submitted' : 'Submit CAD Consumption'}
+              </button>
+            </div>
+          </div>
+
+          {/* 3. Merchandising Fabric Order Sheet */}
+          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>3. Fabric Order Sheet</span>
+                <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: 800, background: workflow?.fabricOrderSheet?.status === 'PLANNING_APPROVED' ? '#dbeafe' : workflow?.fabricOrderSheet?.status === 'PREPARED_OK' ? '#ecfdf5' : '#fef2f2', color: workflow?.fabricOrderSheet?.status === 'PLANNING_APPROVED' ? '#1e40af' : workflow?.fabricOrderSheet?.status === 'PREPARED_OK' ? '#065f46' : '#991b1b' }}>
+                  {workflow?.fabricOrderSheet?.status === 'PLANNING_APPROVED' ? '✓ Planning Approved' : workflow?.fabricOrderSheet?.status === 'PREPARED_OK' ? '✓ Prepared OK' : 'Awaiting Preparation'}
+                </span>
+              </div>
+              <strong style={{ fontSize: '13px', color: '#0f172a' }}>Fabric Booking & Handover</strong>
+              <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '4px', lineHeight: 1.4 }}>
+                Required: <strong>{workflow?.fabricOrderSheet?.requiredFabricKg || Math.round((job.orderQty || 3000) * 0.22)} kg</strong> · {job.fabric?.fabricType || 'Single Jersey'} {job.fabric?.gsm || 180} GSM.
+                <div style={{ color: '#475569', fontSize: '10.5px', marginTop: '2px' }}>Combines CAD consumption + PO pack sheet.</div>
+              </div>
+            </div>
+            <div style={{ marginTop: '10px' }}>
+              <button
+                disabled={busyStage || workflow?.fabricOrderSheet?.status === 'PREPARED_OK' || workflow?.fabricOrderSheet?.status === 'PLANNING_APPROVED'}
+                onClick={() => handleWorkflowAction('fabric_order_sheet_prepared', { preparedBy: 'Md. Jahidul Islam' })}
+                style={{ width: '100%', padding: '5px 10px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', border: '1px solid #cbd5e1', background: (workflow?.fabricOrderSheet?.status === 'PREPARED_OK' || workflow?.fabricOrderSheet?.status === 'PLANNING_APPROVED') ? '#f1f5f9' : '#059669', color: (workflow?.fabricOrderSheet?.status === 'PREPARED_OK' || workflow?.fabricOrderSheet?.status === 'PLANNING_APPROVED') ? '#64748b' : '#fff', cursor: 'pointer' }}
+              >
+                {workflow?.fabricOrderSheet?.status === 'PLANNING_APPROVED' ? '✓ Approved by Planning' : workflow?.fabricOrderSheet?.status === 'PREPARED_OK' ? '✓ Prepared OK (Sent to Planning)' : 'Mark Prepared OK'}
+              </button>
+            </div>
+          </div>
+
+          {/* 4. Trims & Accessories BOM */}
+          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>4. Trims & Accessories</span>
+                <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: 800, background: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1' }}>
+                  {workflow?.trims?.orderingStatus === 'ORDER_OK' ? '✓ Order OK' : 'Partial / Pending'}
+                </span>
+              </div>
+              <strong style={{ fontSize: '13px', color: '#0f172a' }}>BOM & Materials Ordering Status</strong>
+              <div style={{ fontSize: '11px', color: '#475569', marginTop: '4px', lineHeight: 1.35 }}>
+                • Labels, Polybag & Hangtag: <span style={{ color: '#059669', fontWeight: 700 }}>Order OK</span><br />
+                • Sewing Thread: <span style={{ color: '#d97706', fontWeight: 700 }}>Pending lab shade match</span><br />
+                • Master Cartons: <span style={{ color: '#d97706', fontWeight: 700 }}>Pending final ratio packing</span>
+              </div>
+            </div>
+            <div style={{ marginTop: '10px' }}>
+              <button
+                disabled={busyStage}
+                onClick={() => handleWorkflowAction('trims_item_status', { itemIndex: 0, status: 'ORDER_OK', remarks: 'Thread order placed with Coats' })}
+                style={{ width: '100%', padding: '5px 10px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#334155', cursor: 'pointer' }}
+              >
+                ✓ Mark Thread Order OK
+              </button>
+            </div>
+          </div>
+
+          {/* 5. Dyeing Lab Shade */}
+          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>5. Dyeing Lab</span>
+                <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: 800, background: workflow?.labShade?.status === 'SHADE_OK' ? '#ecfdf5' : '#fff7ed', color: workflow?.labShade?.status === 'SHADE_OK' ? '#065f46' : '#9a3412' }}>
+                  {workflow?.labShade?.status === 'SHADE_OK' ? '✓ Shade OK' : 'Pending Lab'}
+                </span>
+              </div>
+              <strong style={{ fontSize: '13px', color: '#0f172a' }}>Lab Dip & Color Shade Approval</strong>
+              <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '4px', lineHeight: 1.4 }}>
+                Colors: <strong>{job.fabric?.colors || 'Navy / Standard'}</strong>.
+                <div style={{ color: workflow?.labShade?.status === 'SHADE_OK' ? '#059669' : '#d97706', fontSize: '10.5px', marginTop: '2px', fontWeight: 700 }}>
+                  {workflow?.labShade?.status === 'SHADE_OK' ? '✓ Shade Approved by Dyeing Lab Chief' : 'Lab testing match against buyer swatch'}
+                </div>
+              </div>
+            </div>
+            <div style={{ marginTop: '10px' }}>
+              <button
+                disabled={busyStage || workflow?.labShade?.status === 'SHADE_OK'}
+                onClick={() => handleWorkflowAction('shade_approval_submit', { approvedBy: 'Dyeing Lab Chief' })}
+                style={{ width: '100%', padding: '5px 10px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', border: '1px solid #cbd5e1', background: workflow?.labShade?.status === 'SHADE_OK' ? '#f1f5f9' : '#059669', color: workflow?.labShade?.status === 'SHADE_OK' ? '#64748b' : '#fff', cursor: 'pointer' }}
+              >
+                {workflow?.labShade?.status === 'SHADE_OK' ? '✓ Shade Certified OK' : 'Approve Lab Shade (Shade OK)'}
+              </button>
+            </div>
+          </div>
+
+          {/* 6. T&A (Time & Action Plan) */}
+          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>6. T&A Schedule</span>
+                <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: 800, background: workflow?.tna?.status === 'PLANNING_APPROVED' ? '#dbeafe' : workflow?.tna?.status === 'PREPARED_OK' ? '#ecfdf5' : '#fefce8', color: workflow?.tna?.status === 'PLANNING_APPROVED' ? '#1e40af' : workflow?.tna?.status === 'PREPARED_OK' ? '#065f46' : '#854d0e' }}>
+                  {workflow?.tna?.status === 'PLANNING_APPROVED' ? '✓ Approved' : workflow?.tna?.status === 'PREPARED_OK' ? '✓ Prepared OK' : 'Pending Prep'}
+                </span>
+              </div>
+              <strong style={{ fontSize: '13px', color: '#0f172a' }}>Time & Action Plan Schedule</strong>
+              <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '4px', lineHeight: 1.4 }}>
+                Review milestones, print for signature, and submit with FOS to Central Planning.
+                <div style={{ color: '#475569', fontSize: '10.5px', marginTop: '2px' }}>Ex-Factory Target: {job.dates?.exFactory || '05-Aug-2026'}.</div>
+              </div>
+            </div>
+            <div style={{ marginTop: '10px', display: 'flex', gap: '6px' }}>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                style={{ flex: 1, padding: '5px', fontSize: '11px', fontWeight: 700, borderRadius: '5px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#334155', cursor: 'pointer' }}
+              >
+                🖨️ Print T&A
+              </button>
+              <button
+                disabled={busyStage || workflow?.tna?.status === 'PREPARED_OK' || workflow?.tna?.status === 'PLANNING_APPROVED'}
+                onClick={() => handleWorkflowAction('tna_prepared', { preparedBy: 'Md. Jahidul Islam' })}
+                style={{ flex: 1.5, padding: '5px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', border: '1px solid #cbd5e1', background: (workflow?.tna?.status === 'PREPARED_OK' || workflow?.tna?.status === 'PLANNING_APPROVED') ? '#f1f5f9' : '#059669', color: (workflow?.tna?.status === 'PREPARED_OK' || workflow?.tna?.status === 'PLANNING_APPROVED') ? '#64748b' : '#fff', cursor: 'pointer' }}
+              >
+                {workflow?.tna?.status === 'PLANNING_APPROVED' ? '✓ Approved' : workflow?.tna?.status === 'PREPARED_OK' ? '✓ Prepared OK' : 'Mark Prepared OK'}
+              </button>
+            </div>
+          </div>
+
+          {/* 7. Central Planning Approval & Auto-Dispatch */}
+          <div style={{ background: '#eff6ff', border: '2px solid #3b82f6', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gridColumn: 'span 2' }}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 900, color: '#1e40af', textTransform: 'uppercase' }}>7. Central Planning Approval & Auto-Dispatch</span>
+                <span style={{ fontSize: '10.5px', padding: '2px 8px', borderRadius: '4px', fontWeight: 900, background: workflow?.fabricOrderSheet?.dispatchedToKnitting ? '#ecfdf5' : '#fef3c7', color: workflow?.fabricOrderSheet?.dispatchedToKnitting ? '#047857' : '#92400e' }}>
+                  {workflow?.fabricOrderSheet?.dispatchedToKnitting ? '✓ Dispatched to Knitting & Dyeing' : 'Awaiting Planning Approval'}
+                </span>
+              </div>
+              <strong style={{ fontSize: '14px', color: '#1e3a8a' }}>Final Sign-off & Automated Mill Transmission</strong>
+              <div style={{ fontSize: '12px', color: '#1e40af', marginTop: '4px', lineHeight: 1.4 }}>
+                When Central Planning reviews and approves the Fabric Order Sheet & T&A Plan, <strong>an electronic copy automatically dispatches to Knitting & Dyeing departments</strong> without requiring manual paper copies!
+              </div>
+            </div>
+            <div style={{ marginTop: '12px' }}>
+              {workflow?.fabricOrderSheet?.dispatchedToKnitting ? (
+                <div style={{ background: '#ecfdf5', border: '1px solid #6ee7b7', padding: '8px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 800, color: '#065f46', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>✓</span>
+                  <span>Planning Approved! Auto-Copy Dispatched to Knitting Program & Dyeing Batch Orders on {d2(workflow?.fabricOrderSheet?.knitDyeCopySentAt || new Date())}.</span>
+                </div>
+              ) : (
+                <button
+                  disabled={busyStage}
+                  onClick={() => handleWorkflowAction('planning_approval_submit', { approvedBy: 'Central Planning Head' })}
+                  style={{ width: '100%', padding: '8px 16px', fontSize: '12.5px', fontWeight: 900, borderRadius: '6px', border: 'none', background: '#2563eb', color: '#ffffff', cursor: 'pointer', boxShadow: '0 2px 6px rgba(37,99,235,0.3)' }}
+                >
+                  ⚡ Central Planning Approve & Auto-Dispatch to Knitting / Dyeing
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </section>
 

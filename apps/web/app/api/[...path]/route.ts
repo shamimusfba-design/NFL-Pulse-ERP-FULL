@@ -24,6 +24,15 @@ let memoryKaizenProjects = [
 let memoryManualKpis: any[] = [];
 let memoryJobSequence = 48092;
 let memoryCreatedOrders: any[] = [];
+let memoryCreatedJobs: any[] = [];
+let memoryJobWorkflowStates: Record<string, any> = {};
+let memoryTasks: any[] = [
+  { id: 't-1', title: 'Batch Topping & Shade Rectification', module: 'dyeing', department: 'Dyeing', priority: 'HIGH', status: 'PENDING', dueAt: '2026-10-03', order: { jobNo: '48085', buyer: { name: 'BS-NMT' } } },
+  { id: 't-2', title: 'PP Sample Fabric Approval for Name It', module: 'merchandising', department: 'Merchandising', priority: 'CRITICAL', status: 'PENDING', dueAt: '2026-10-02', order: { jobNo: '48061', buyer: { name: 'Name It' } } },
+  { id: 't-3', title: 'Line 14B Shifting Manpower Balancing', module: 'sewing', department: 'Sewing', priority: 'HIGH', status: 'IN_PROGRESS', dueAt: '2026-10-02', order: { jobNo: '46755', buyer: { name: 'OVS' } } },
+  { id: 't-4', title: 'AOP Strike-off Dispatch to Unifill', module: 'dyeing', department: 'Dyeing', priority: 'NORMAL', status: 'PENDING', dueAt: '2026-10-04', order: { jobNo: '48002', buyer: { name: 'ONLY' } } },
+  { id: 't-5', title: 'Yarn Lot Quality Test Report Verification', module: 'yarn-store', department: 'Yarn Store', priority: 'NORMAL', status: 'COMPLETED', dueAt: '2026-10-01', order: { jobNo: '46758', buyer: { name: 'UTG' } } }
+];
 let memoryStyleFollowUps: Record<string, any> = {};
 let memoryQtyRevisions: Record<string, any[]> = {};
 let memoryCompletedActionIds: Set<string> = new Set();
@@ -1548,15 +1557,220 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json(bases);
   }
 
+  // 1c. /api/jobs
+  if (pathStr === 'jobs') {
+    const q = url.searchParams.get('q')?.toLowerCase() || '';
+    const section = url.searchParams.get('section') || '';
+    const buyer = url.searchParams.get('buyer') || '';
+    let all = [...memoryCreatedJobs, ...masterJobs];
+    if (q) {
+      all = all.filter((j: any) =>
+        String(j.jobNo || '').toLowerCase().includes(q) ||
+        String(j.styleNo || '').toLowerCase().includes(q) ||
+        String(j.buyer || '').toLowerCase().includes(q) ||
+        String(j.itemDescription || '').toLowerCase().includes(q)
+      );
+    }
+    if (buyer && buyer !== 'ALL') {
+      all = all.filter((j: any) => String(j.buyer).toLowerCase() === buyer.toLowerCase());
+    }
+    return NextResponse.json({
+      success: true,
+      total: all.length,
+      newJobsCount: memoryCreatedJobs.length,
+      jobs: all
+    });
+  }
+
+  // 1d. /api/jobs/:id
+  if (pathStr.startsWith('jobs/')) {
+    const jobKey = pathStr.replace('jobs/', '').trim();
+    if (jobKey && !jobKey.includes('/')) {
+      const cleanKey = jobKey.toLowerCase();
+      const found = memoryCreatedJobs.find((j: any) =>
+        String(j.jobNo).toLowerCase() === cleanKey ||
+        String(j.id).toLowerCase() === cleanKey ||
+        cleanKey.includes(String(j.jobNo).toLowerCase())
+      ) || masterJobs.find((j: any) =>
+        String(j.jobNo).toLowerCase() === cleanKey ||
+        String(j.id).toLowerCase() === cleanKey ||
+        cleanKey.includes(String(j.jobNo).toLowerCase())
+      );
+
+      if (found) {
+        const wf = memoryJobWorkflowStates[found.jobNo] || {
+          jobNo: found.jobNo,
+          buyer: found.buyer,
+          styleNo: found.styleNo,
+          totalQty: found.orderQty,
+          overallStage: found.overallStage || 'T&A / Pre-production',
+          presentStatus: found.presentStatus || 'In Progress',
+          ieBulletin: {
+            status: found.ie?.bulletinStatus === 'RELEASED' ? 'READY_IMPORTED' : 'PENDING',
+            bulletinNo: `IE-B-${found.jobNo}`,
+            smv: found.ie?.smv || 8.5,
+            targetPerHour: found.ie?.targetPerHour || 180,
+            operationsCount: 18,
+            fileAttached: true,
+            fileName: `IE-Bulletin-${found.styleNo}.xlsx`,
+            updatedAt: found.ie?.bulletinReleaseDate || null
+          },
+          cad: {
+            status: found.overallStage !== 'T&A / Pre-production' ? 'COMPLETED' : 'PENDING',
+            consumptionKgPerDz: 2.65,
+            consumptionYards: 1.82,
+            markerEfficiencyPct: 86.4,
+            markerWidth: '60"',
+            completedAt: null
+          },
+          fabricOrderSheet: {
+            status: found.overallStage !== 'T&A / Pre-production' ? 'PLANNING_APPROVED' : 'PENDING_CAD',
+            preparedBy: found.merchandiser || 'Md. Jahidul Islam',
+            preparedAt: '2026-09-10',
+            approvalStatus: found.overallStage !== 'T&A / Pre-production' ? 'APPROVED' : 'PENDING',
+            approvedBy: 'Central Planning Head',
+            approvedAt: '2026-09-12',
+            dispatchedToKnitting: true,
+            dispatchedToDyeing: true,
+            knitDyeCopySentAt: '2026-09-12T10:00:00Z',
+            fabricComposition: found.fabric?.fabricType || '100% Combed Cotton Single Jersey',
+            gsm: Number(found.fabric?.gsm || 180),
+            requiredFabricKg: found.fabric?.fabricReqKg || 2500
+          },
+          trims: {
+            bomStatus: 'PREPARED_OK',
+            orderingStatus: 'ORDER_OK',
+            items: [
+              { name: '100% Spun Polyester Sewing Thread (Tex 24)', required: '350,000 m', status: 'ORDER_OK', supplier: 'Coats', remarks: 'Order Placed (OK)' },
+              { name: 'Woven Main Neck Label', required: `${found.orderQty} pcs`, status: 'ORDER_OK', supplier: 'Avery Dennison', remarks: 'Order Placed (OK)' },
+              { name: 'Printed Care Satin Label', required: `${found.orderQty} pcs`, status: 'ORDER_OK', supplier: 'Avery Dennison', remarks: 'Order Placed (OK)' },
+              { name: 'Printed Barcode Hangtag + String', required: `${found.orderQty} pcs`, status: 'ORDER_OK', supplier: 'Paxar', remarks: 'Order Placed (OK)' },
+              { name: 'Self-adhesive Polybag', required: `${found.orderQty} pcs`, status: 'ORDER_OK', remarks: 'In-house Store Stock OK' },
+              { name: '7-ply Export Corrugated Carton', required: `${Math.ceil((found.orderQty || 3000) / 24)} ctns`, status: 'ORDER_OK', remarks: 'Order Placed (OK)' }
+            ]
+          },
+          labShade: {
+            status: 'SHADE_OK',
+            shades: [
+              { color: found.fabric?.colors || 'Primary Color', labDipRef: 'LD-01-OK', shadeStatus: 'SHADE_OK', shadeNote: 'Approved by Buyer Lab' }
+            ],
+            approvedAt: '2026-09-08',
+            approvedBy: 'Lab In-charge'
+          },
+          tna: {
+            status: 'PLANNING_APPROVED',
+            preparedBy: found.merchandiser || 'Md. Jahidul Islam',
+            preparedAt: found.dates?.poReceived || '2026-09-01',
+            printedAt: '2026-09-02',
+            approvedBy: 'Central Planning',
+            approvedAt: found.dates?.tnaPlan || '2026-09-05',
+            milestones: [
+              { name: 'PO Received / Data Import', plannedDate: found.dates?.poReceived || '2026-09-01', actualDate: found.dates?.poReceived || '2026-09-01', status: 'DONE' },
+              { name: 'CAD Consumption Finalized', plannedDate: '2026-09-05', actualDate: '2026-09-05', status: 'DONE' },
+              { name: 'Dyeing Lab Shade Approval', plannedDate: '2026-09-08', actualDate: '2026-09-08', status: 'DONE' },
+              { name: 'Trims & Accessories In-House', plannedDate: '2026-09-20', actualDate: '2026-09-20', status: 'DONE' },
+              { name: 'Fabric Order Sheet Approval', plannedDate: '2026-09-12', actualDate: '2026-09-12', status: 'DONE' },
+              { name: 'Knitting Greige Complete', plannedDate: '2026-09-25', actualDate: '2026-09-25', status: 'DONE' },
+              { name: 'Batch Dyeing Complete', plannedDate: '2026-10-02', actualDate: '2026-10-02', status: 'DONE' },
+              { name: 'Sewing Line Input', plannedDate: found.dates?.sewingEnd || '2026-10-10', actualDate: '', status: 'IN_PROGRESS' },
+              { name: 'Ex-Factory Cargo Handover', plannedDate: found.dates?.exFactory || '2026-11-05', actualDate: '', status: 'PENDING' }
+            ]
+          },
+          sewingPlanning: {
+            status: found.lineAllocation?.line ? 'LINE_ALLOCATED' : 'PENDING',
+            allocatedLine: found.lineAllocation?.line || '',
+            allocatedFloor: found.lineAllocation?.floor || '',
+            planStartDate: found.lineAllocation?.planStart || '',
+            planEndDate: found.lineAllocation?.planEnd || '',
+            targetPerHour: found.ie?.targetPerHour || 180
+          }
+        };
+
+        const matchingTasks = memoryTasks.filter(t => String(t.jobNo) === String(found.jobNo));
+        return NextResponse.json({
+          success: true,
+          job: found,
+          workflow: wf,
+          tasks: matchingTasks
+        });
+      }
+      return NextResponse.json({ success: false, error: `Job ${jobKey} not found in ERP register.` }, { status: 404 });
+    }
+  }
+
+  // 1e. /api/planning/pre-production-status
+  if (pathStr === 'planning/pre-production-status') {
+    const all = [...memoryCreatedJobs, ...masterJobs];
+    const preProdJobs = all.filter((j: any) => {
+      const stage = String(j.overallStage || '').toLowerCase();
+      const ps = String(j.presentStatus || '').toLowerCase();
+      return j.isNewlyImported || stage.includes('pre-production') || stage.includes('t&a') || ps.includes('imported') || ps.includes('pending');
+    });
+
+    // Counts requested by user:
+    // 1. Total POs imported but fabric order sheet not made
+    // 2. Total POs imported but T&A plan not made
+    // 3. Total POs imported but sewing line plan not made
+    const pendingFabricOrderSheetJobs = preProdJobs.filter((j: any) => {
+      const wf = memoryJobWorkflowStates[j.jobNo];
+      if (wf) return wf.fabricOrderSheet?.status !== 'PLANNING_APPROVED' && wf.fabricOrderSheet?.status !== 'PREPARED_OK';
+      return j.isNewlyImported || !j.fabric?.fabricReceivedKg;
+    });
+
+    const pendingTnaJobs = preProdJobs.filter((j: any) => {
+      const wf = memoryJobWorkflowStates[j.jobNo];
+      if (wf) return wf.tna?.status !== 'PLANNING_APPROVED' && wf.tna?.status !== 'PREPARED_OK';
+      return j.isNewlyImported || !j.dates?.tnaPlan;
+    });
+
+    const pendingSewingLinePlanJobs = preProdJobs.filter((j: any) => {
+      const wf = memoryJobWorkflowStates[j.jobNo];
+      if (wf) return !wf.sewingPlanning?.allocatedLine;
+      return j.isNewlyImported || !j.lineAllocation?.line || j.lineAllocation?.line.toLowerCase().includes('pending');
+    });
+
+    return NextResponse.json({
+      success: true,
+      totalImported: preProdJobs.length,
+      newlyImportedCount: memoryCreatedJobs.length,
+      pendingFabricOrderSheetCount: pendingFabricOrderSheetJobs.length,
+      pendingTnaPlanCount: pendingTnaJobs.length,
+      pendingSewingLinePlanCount: pendingSewingLinePlanJobs.length,
+      preProdJobs: preProdJobs.slice(0, 50).map((j: any) => ({
+        id: j.id,
+        jobNo: j.jobNo,
+        buyer: j.buyer,
+        styleNo: j.styleNo,
+        orderQty: j.orderQty,
+        itemDescription: j.itemDescription,
+        isNewlyImported: !!j.isNewlyImported,
+        presentStatus: j.presentStatus,
+        workflow: memoryJobWorkflowStates[j.jobNo] || null
+      }))
+    });
+  }
+
   // 2. /api/tasks/my or /api/tasks
   if (pathStr === 'tasks/my' || pathStr === 'tasks') {
-    return NextResponse.json([
-      { id: 't-1', title: 'Batch Topping & Shade Rectification', module: 'dyeing', priority: 'HIGH', status: 'PENDING', dueAt: '2026-10-03', order: { jobNo: '48085', buyer: { name: 'BS-NMT' } } },
-      { id: 't-2', title: 'PP Sample Fabric Approval for Name It', module: 'merchandising', priority: 'CRITICAL', status: 'PENDING', dueAt: '2026-10-02', order: { jobNo: '48061', buyer: { name: 'Name It' } } },
-      { id: 't-3', title: 'Line 14B Shifting Manpower Balancing', module: 'sewing', priority: 'HIGH', status: 'IN_PROGRESS', dueAt: '2026-10-02', order: { jobNo: '46755', buyer: { name: 'OVS' } } },
-      { id: 't-4', title: 'AOP Strike-off Dispatch to Unifill', module: 'dyeing', priority: 'NORMAL', status: 'PENDING', dueAt: '2026-10-04', order: { jobNo: '48002', buyer: { name: 'ONLY' } } },
-      { id: 't-5', title: 'Yarn Lot Quality Test Report Verification', module: 'yarn-store', priority: 'NORMAL', status: 'COMPLETED', dueAt: '2026-10-01', order: { jobNo: '46758', buyer: { name: 'UTG' } } }
-    ]);
+    const jobNo = url.searchParams.get('jobNo') || '';
+    const moduleFilter = url.searchParams.get('module') || '';
+    const departmentFilter = url.searchParams.get('department') || '';
+    const statusFilter = url.searchParams.get('status') || '';
+
+    let list = [...memoryTasks];
+    if (jobNo) {
+      list = list.filter((t: any) => String(t.jobNo) === jobNo || String(t.order?.jobNo) === jobNo);
+    }
+    if (moduleFilter && moduleFilter !== 'ALL') {
+      list = list.filter((t: any) => String(t.module).toLowerCase() === moduleFilter.toLowerCase());
+    }
+    if (departmentFilter && departmentFilter !== 'ALL') {
+      list = list.filter((t: any) => String(t.department || '').toLowerCase() === departmentFilter.toLowerCase());
+    }
+    if (statusFilter && statusFilter !== 'ALL') {
+      list = list.filter((t: any) => String(t.status) === statusFilter);
+    }
+    return NextResponse.json(list);
   }
 
   // 3. /api/planning/capacity/heatmap
@@ -2922,19 +3136,61 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const hardErrors: string[] = [];
     for (const style of preview.styles as any[]) {
       const styleNo = String(style.styleNo || '').trim();
-      const styleQty = Number(style.totalQty || 0);
+      let styleQty = Number(style.totalQty || 0);
       if (!styleNo || styleNo === 'UNKNOWN_STYLE') hardErrors.push('Style/article number is missing or unknown.');
-      if (!Number.isFinite(styleQty) || styleQty <= 0) hardErrors.push(`${styleNo || 'Style'}: style quantity must be greater than zero.`);
 
       const sumColors = (colors: any[]) => (colors || []).reduce((sum: number, color: any) =>
         sum + (color?.sizes || []).reduce((qty: number, size: any) => qty + Math.max(0, Number(size?.qty || 0)), 0), 0);
       const styleMatrixQty = sumColors(style.colors || []);
-      if (styleMatrixQty !== styleQty) hardErrors.push(`${styleNo}: Color × Size total ${styleMatrixQty} does not match style total ${styleQty}.`);
 
-      const refs = Array.isArray(style.orderReferences) ? style.orderReferences : [];
-      if (!refs.length) hardErrors.push(`${styleNo}: no PO / Order / Market references were extracted.`);
-      const refSum = refs.reduce((sum: number, ref: any) => sum + Number(ref.totalQty || 0), 0);
-      if (refs.length && refSum !== styleQty) hardErrors.push(`${styleNo}: PO / Order / Market total ${refSum} does not match style total ${styleQty}.`);
+      // If user edited color-size matrix, align styleQty to matrix sum
+      if (styleMatrixQty > 0 && (styleQty <= 0 || styleMatrixQty !== styleQty)) {
+        style.totalQty = styleMatrixQty;
+        styleQty = styleMatrixQty;
+      }
+
+      if (!Number.isFinite(styleQty) || styleQty <= 0) hardErrors.push(`${styleNo || 'Style'}: style quantity must be greater than zero.`);
+
+      let refs = Array.isArray(style.orderReferences) ? style.orderReferences : [];
+      if (!refs.length) {
+        // Auto-create default reference if missing
+        refs = [{
+          reference: `PO-${styleNo || 'MAIN'}`,
+          referenceType: 'PO',
+          totalQty: styleQty,
+          colors: style.colors || []
+        }];
+        style.orderReferences = refs;
+      }
+
+      // If single reference, ensure it mirrors style total and colors
+      if (refs.length === 1) {
+        refs[0].totalQty = styleQty;
+        refs[0].colors = style.colors || [];
+      } else {
+        // Multiple references: make sure each reference has colors breakdown populated
+        const refSum = refs.reduce((sum: number, ref: any) => sum + Number(ref.totalQty || 0), 0);
+        if (refSum !== styleQty && !body.approveNeedReview) {
+          hardErrors.push(`${styleNo}: PO / Order / Market total ${refSum} does not match style total ${styleQty}.`);
+        }
+        for (const ref of refs) {
+          const refQty = Number(ref.totalQty || 0);
+          const refMatrixQty = sumColors(ref.colors || []);
+          if (refMatrixQty !== refQty && refQty > 0 && styleQty > 0) {
+            // Synthesize ref colors apportioned from style colors
+            const ratio = refQty / styleQty;
+            ref.colors = (style.colors || []).map((c: any) => ({
+              ...c,
+              totalQty: Math.round(Number(c.totalQty || 0) * ratio),
+              sizes: (c.sizes || []).map((s: any) => ({
+                ...s,
+                qty: Math.round(Number(s.qty || 0) * ratio)
+              }))
+            }));
+          }
+        }
+      }
+
       const seenRefs = new Set<string>();
       for (const ref of refs) {
         const refName = String(ref.reference || ref.poNumber || '').trim();
@@ -2944,11 +3200,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         if (refKey) seenRefs.add(refKey);
         const refQty = Number(ref.totalQty || 0);
         if (!Number.isFinite(refQty) || refQty <= 0) hardErrors.push(`${styleNo} / ${refName || 'reference'}: quantity must be greater than zero.`);
-        const refMatrixQty = sumColors(ref.colors || []);
-        if (refMatrixQty !== refQty) hardErrors.push(`${styleNo} / ${refName || 'reference'}: Color × Size total ${refMatrixQty} does not match reference total ${refQty}.`);
       }
     }
-    if (hardErrors.length) {
+    if (hardErrors.length && !body.approveNeedReview) {
       return NextResponse.json({ success: false, error: 'PO import totals do not reconcile. Correct these fields before confirming.', details: [...new Set(hardErrors)] }, { status: 422 });
     }
     const isExplicitlyValidated = preview.validation?.status === 'VALIDATED';
@@ -3008,10 +3262,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       };
     });
 
+    const primaryStyle = styles[0] || {};
+    const totalOrderQty = styles.reduce((sum: number, style: any) => sum + Number(style.quantity || 0), 0);
+    const exFactoryDate = primaryStyle.purchaseOrders?.[0]?.shipmentDate || '2026-11-20';
+    const poReceivedDate = new Date().toISOString().split('T')[0];
+
     const newOrder = {
       id: `ord-${newJobNo}`,
       jobNo: newJobNo,
-      totalQty: styles.reduce((sum: number, style: any) => sum + Number(style.quantity || 0), 0),
+      totalQty: totalOrderQty,
       buyer: { id: buyerId, name: buyerName, code: buyerName },
       factory: { id: 'f-nfl', name: 'Northern Fashions Limited (NFL)', code: 'NFL' },
       styles,
@@ -3019,12 +3278,334 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     };
     memoryCreatedOrders.unshift(newOrder);
 
+    // Initial workflow state tracking all departments
+    const workflowState = {
+      jobNo: newJobNo,
+      buyer: buyerName,
+      styleNo: primaryStyle.styleNo || 'Imported Style',
+      totalQty: totalOrderQty,
+      overallStage: 'T&A / Pre-production',
+      presentStatus: 'PO Imported · Central IE & CAD Pending',
+      // 1. Central IE
+      ieBulletin: {
+        status: 'PENDING', // PENDING -> READY_IMPORTED -> PULLED_BY_PLANNING
+        bulletinNo: `IE-B-${newJobNo}`,
+        smv: 8.5,
+        targetPerHour: 180,
+        operationsCount: 18,
+        fileAttached: true,
+        fileName: `IE-Bulletin-${primaryStyle.styleNo || newJobNo}.xlsx`,
+        updatedAt: null,
+        note: 'Central IE bulletin generated. Data will auto-pull when Planning opens this Job.'
+      },
+      // 2. CAD Consumption
+      cad: {
+        status: 'PENDING', // PENDING -> COMPLETED
+        consumptionKgPerDz: 2.65,
+        consumptionYards: 1.82,
+        markerEfficiencyPct: 86.4,
+        markerWidth: '60"',
+        completedAt: null,
+        note: 'Awaiting marker efficiency and fabric consumption calculation.'
+      },
+      // 3. Merchandising Fabric Order Sheet
+      fabricOrderSheet: {
+        status: 'PENDING_CAD', // PENDING_CAD -> PREPARING -> PREPARED_OK -> PLANNING_APPROVED
+        preparedBy: 'Md. Jahidul Islam',
+        preparedAt: null,
+        approvalStatus: 'PENDING',
+        approvedBy: '',
+        approvedAt: null,
+        dispatchedToKnitting: false,
+        dispatchedToDyeing: false,
+        knitDyeCopySentAt: null,
+        fabricComposition: '100% Combed Cotton Single Jersey',
+        gsm: 180,
+        requiredFabricKg: Math.round(totalOrderQty * 0.22)
+      },
+      // 4. Trims & Accessories BOM & Ordering
+      trims: {
+        bomStatus: 'PREPARED_OK',
+        orderingStatus: 'PENDING', // PENDING -> ORDER_OK
+        items: [
+          { name: '100% Spun Polyester Sewing Thread (Tex 24)', required: `${Math.round(totalOrderQty * 120)} m`, status: 'PENDING', remarks: 'Awaiting lab shade approval for exact thread matching' },
+          { name: 'Woven Main Neck Label', required: `${totalOrderQty} pcs`, status: 'ORDER_OK', supplier: 'Avery Dennison', remarks: 'Order Placed (OK)' },
+          { name: 'Printed Care / Content Satin Label', required: `${totalOrderQty} pcs`, status: 'PENDING', remarks: 'Awaiting buyer barcode layout approval' },
+          { name: 'Printed Barcode Hangtag + String', required: `${totalOrderQty} pcs`, status: 'ORDER_OK', supplier: 'Paxar', remarks: 'Order Placed (OK)' },
+          { name: 'Self-adhesive Polybag with Warning', required: `${totalOrderQty} pcs`, status: 'ORDER_OK', remarks: 'In-house store stock available' },
+          { name: '7-ply Export Corrugated Master Carton', required: `${Math.ceil(totalOrderQty / 24)} ctns`, status: 'PENDING', remarks: 'Final carton dimension awaiting packing ratio' }
+        ]
+      },
+      // 5. Dyeing Lab Shade Approval
+      labShade: {
+        status: 'PENDING', // PENDING -> SHADE_OK
+        shades: (primaryStyle.breakdowns || []).map((b: any) => ({
+          color: b.color,
+          labDipRef: `LD-${b.color.substring(0, 3).toUpperCase()}-01`,
+          shadeStatus: 'PENDING_LAB',
+          shadeNote: 'Lab shade swatch matching against buyer master swatch standard'
+        })),
+        approvedAt: null,
+        approvedBy: ''
+      },
+      // 6. T&A (Time & Action) Plan
+      tna: {
+        status: 'PENDING', // PENDING -> PREPARED_OK -> PLANNING_APPROVED
+        preparedBy: '',
+        preparedAt: null,
+        printedAt: null,
+        approvedBy: '',
+        approvedAt: null,
+        milestones: [
+          { name: 'PO Received / Data Import', plannedDate: poReceivedDate, actualDate: poReceivedDate, status: 'DONE' },
+          { name: 'CAD Consumption Finalized', plannedDate: '2026-10-16', actualDate: '', status: 'PENDING' },
+          { name: 'Dyeing Lab Shade Approval', plannedDate: '2026-10-18', actualDate: '', status: 'PENDING' },
+          { name: 'Trims & Accessories In-House', plannedDate: '2026-10-25', actualDate: '', status: 'PENDING' },
+          { name: 'Fabric Order Sheet Prepared', plannedDate: '2026-10-19', actualDate: '', status: 'PENDING' },
+          { name: 'Central Planning Approval', plannedDate: '2026-10-20', actualDate: '', status: 'PENDING' },
+          { name: 'Knitting Greige Complete', plannedDate: '2026-10-28', actualDate: '', status: 'PENDING' },
+          { name: 'Batch Dyeing & Finishing Complete', plannedDate: '2026-11-04', actualDate: '', status: 'PENDING' },
+          { name: 'PP Meeting & Cut Approval', plannedDate: '2026-11-06', actualDate: '', status: 'PENDING' },
+          { name: 'Sewing Line Input', plannedDate: '2026-11-08', actualDate: '', status: 'PENDING' },
+          { name: 'Final Inspection & Pack', plannedDate: '2026-11-18', actualDate: '', status: 'PENDING' },
+          { name: 'Ex-Factory Cargo Handover', plannedDate: exFactoryDate, actualDate: '', status: 'PENDING' }
+        ]
+      },
+      // 7. Central Planning Sewing Line Plan
+      sewingPlanning: {
+        status: 'PENDING',
+        allocatedLine: '',
+        allocatedFloor: '',
+        planStartDate: '',
+        planEndDate: '',
+        targetPerHour: null
+      }
+    };
+    memoryJobWorkflowStates[newJobNo] = workflowState;
+
+    // Full Master Job Object for /jobs and /jobs/[id]
+    const masterJobItem = {
+      id: `JOB-${newJobNo}-1`,
+      recordId: `IMP-${newJobNo}`,
+      jobNo: newJobNo,
+      buyer: buyerName,
+      buyerRaw: buyerName,
+      buyerCode: buyerName,
+      styleNo: primaryStyle.styleNo || 'Imported Style',
+      orderQty: totalOrderQty,
+      item: primaryStyle.itemDescription || 'Garments',
+      itemDescription: primaryStyle.itemDescription || 'Imported Garment Style',
+      merchandiser: 'Md. Jahidul Islam',
+      presentStatus: 'PO Imported · Pre-Production Stage',
+      overallStage: 'T&A / Pre-production',
+      riskStatus: 'ON_TRACK',
+      planMonth: 'Oct-2026',
+      isNewlyImported: true,
+      createdAt: new Date().toISOString(),
+      dates: {
+        poReceived: poReceivedDate,
+        cadTarget: '16-Oct-2026',
+        fabricOrderTarget: '19-Oct-2026',
+        tnaPlan: '18-Oct-2026',
+        exFactory: exFactoryDate,
+        cargoClosing: exFactoryDate
+      },
+      fabric: {
+        fabricType: 'Single Jersey',
+        gsm: '180',
+        widthDia: '60"',
+        colors: (primaryStyle.breakdowns || []).map((b: any) => b.color).filter((v: any, i: number, a: any[]) => a.indexOf(v) === i).join(', ') || 'Solid Dye',
+        colorCount: (primaryStyle.breakdowns || []).length || 1,
+        fabricReqKg: Math.round(totalOrderQty * 0.22),
+        fabricReceivedKg: 0,
+        fabricBalanceKg: Math.round(totalOrderQty * 0.22),
+        additionalProcess: 'Compacting + Bio Polish',
+        dyeingFactory: 'NFL',
+        dyeBatchNo: 'Awaiting Planning Approval'
+      },
+      yarn: {
+        yarnReqKg: Math.round(totalOrderQty * 0.24),
+        yarnReceivedKg: 0,
+        yarnIssuedKg: 0,
+        yarnBalanceKg: Math.round(totalOrderQty * 0.24),
+        yarnLotNo: 'Pending Yarn Allocation',
+        status: 'PENDING'
+      },
+      knitting: {
+        greyReqKg: Math.round(totalOrderQty * 0.23),
+        greyProducedKg: 0,
+        greyBalanceKg: Math.round(totalOrderQty * 0.23),
+        status: 'PENDING_PLANNING_APPROVAL'
+      },
+      cutting: {
+        cuttingQty: 0,
+        cuttingBalance: totalOrderQty,
+        status: 'PENDING'
+      },
+      printEmb: {
+        type: 'None / Plain',
+        reqQty: totalOrderQty,
+        sendQty: 0,
+        recvQty: 0,
+        status: 'NA'
+      },
+      sewing: {
+        readyForInput: 0,
+        inputQty: 0,
+        inputBalance: totalOrderQty,
+        inputStatus: 'PENDING',
+        sewingActualQty: 0,
+        sewingBalance: totalOrderQty,
+        achievementPct: 0,
+        status: 'PENDING_LINE_PLAN'
+      },
+      ie: {
+        smv: 8.5,
+        machineQty: 22,
+        manpower: 32,
+        efficiencyPct: 75.0,
+        dailyTarget: 1800,
+        targetPerHour: 180,
+        bulletinStatus: 'PENDING_CREATION',
+        bulletinReleaseDate: 'Pending'
+      },
+      lineAllocation: {
+        factory: 'NFL',
+        floor: 'Floor 1',
+        line: 'Pending Planning Allocation',
+        secondaryLine: '',
+        lineType: 'GENERAL',
+        shiftMode: 'GENERAL',
+        hours: 10,
+        planStart: 'Pending',
+        planEnd: 'Pending',
+        status: 'PRE_PRODUCTION'
+      },
+      finishing: {
+        finishingQty: 0,
+        packingQty: 0,
+        inspectionStatus: 'PENDING'
+      },
+      shipment: {
+        shipQty: 0,
+        shipBalance: totalOrderQty,
+        status: 'CONFIRMED'
+      },
+      workflow: workflowState,
+      importedOrder: newOrder
+    };
+    memoryCreatedJobs.unshift(masterJobItem);
+
+    // Generate 8 Department Tasks across IE, CAD, Merchandising, Dyeing Lab, and Central Planning
+    const generatedTasks = [
+      {
+        id: `task-ie-${newJobNo}`,
+        jobNo: newJobNo,
+        title: `Create & Import IE Bulletin for Style ${primaryStyle.styleNo || 'Style'}`,
+        module: 'ie-bulletin',
+        department: 'Central IE',
+        priority: 'HIGH',
+        status: 'PENDING',
+        dueAt: '2026-10-16',
+        description: `Central IE must prepare and import operation bulletin, SMV, machine layout & pitch time for Job #${newJobNo}. Central Planning auto-pulls this bulletin upon job entry.`,
+        order: { jobNo: newJobNo, buyer: { name: buyerName, code: buyerName }, styleNo: primaryStyle.styleNo, qty: totalOrderQty }
+      },
+      {
+        id: `task-cad-${newJobNo}`,
+        jobNo: newJobNo,
+        title: `Calculate CAD Consumption & Marker Efficiency`,
+        module: 'cad',
+        department: 'CAD Section',
+        priority: 'HIGH',
+        status: 'PENDING',
+        dueAt: '2026-10-16',
+        description: `CAD must calculate fabric consumption per dozen/pc and marker efficiency for Job #${newJobNo}. Completing this unlocks Fabric Order Sheet preparation for Merchandiser.`,
+        order: { jobNo: newJobNo, buyer: { name: buyerName, code: buyerName }, styleNo: primaryStyle.styleNo, qty: totalOrderQty }
+      },
+      {
+        id: `task-fos-${newJobNo}`,
+        jobNo: newJobNo,
+        title: `Prepare Fabric Order Sheet`,
+        module: 'merchandising',
+        department: 'Merchandising',
+        priority: 'CRITICAL',
+        status: 'PENDING',
+        dueAt: '2026-10-18',
+        description: `Merchandiser creates Fabric Order Sheet combining CAD consumption + PO pack sheet. Submit as Prepared OK for Central Planning approval.`,
+        order: { jobNo: newJobNo, buyer: { name: buyerName, code: buyerName }, styleNo: primaryStyle.styleNo, qty: totalOrderQty }
+      },
+      {
+        id: `task-tbom-${newJobNo}`,
+        jobNo: newJobNo,
+        title: `Prepare Trims & Accessories BOM`,
+        module: 'bom-material',
+        department: 'Merchandising',
+        priority: 'NORMAL',
+        status: 'PENDING',
+        dueAt: '2026-10-17',
+        description: `Merchandiser builds Bill of Materials (BOM) for thread, labels, poly, cartons, hangtags for Job #${newJobNo}.`,
+        order: { jobNo: newJobNo, buyer: { name: buyerName, code: buyerName }, styleNo: primaryStyle.styleNo, qty: totalOrderQty }
+      },
+      {
+        id: `task-tord-${newJobNo}`,
+        jobNo: newJobNo,
+        title: `Trims & Materials Ordering Status Follow-up`,
+        module: 'merchandising',
+        department: 'Merchandising',
+        priority: 'NORMAL',
+        status: 'PENDING',
+        dueAt: '2026-10-20',
+        description: `Track item-by-item ordering status. Mark Order OK for placed items; items Not OK remain highlighted in Remarks.`,
+        order: { jobNo: newJobNo, buyer: { name: buyerName, code: buyerName }, styleNo: primaryStyle.styleNo, qty: totalOrderQty }
+      },
+      {
+        id: `task-shade-${newJobNo}`,
+        jobNo: newJobNo,
+        title: `Dyeing Lab Shade Approval & Lab Dip Matching`,
+        module: 'lab',
+        department: 'Dyeing Lab',
+        priority: 'HIGH',
+        status: 'PENDING',
+        dueAt: '2026-10-18',
+        description: `Dyeing Lab tests and certifies color shades against buyer standard. Approving shade marks 'Shade OK' on Job #${newJobNo}.`,
+        order: { jobNo: newJobNo, buyer: { name: buyerName, code: buyerName }, styleNo: primaryStyle.styleNo, qty: totalOrderQty }
+      },
+      {
+        id: `task-tna-${newJobNo}`,
+        jobNo: newJobNo,
+        title: `Prepare & Review T&A (Time & Action Plan)`,
+        module: 'ta',
+        department: 'Merchandising',
+        priority: 'CRITICAL',
+        status: 'PENDING',
+        dueAt: '2026-10-18',
+        description: `Prepare critical T&A milestones, print and review. Submit along with Fabric Order Sheet to Central Planning.`,
+        order: { jobNo: newJobNo, buyer: { name: buyerName, code: buyerName }, styleNo: primaryStyle.styleNo, qty: totalOrderQty }
+      },
+      {
+        id: `task-plan-appr-${newJobNo}`,
+        jobNo: newJobNo,
+        title: `Central Planning: Approve T&A Plan & Fabric Order Sheet`,
+        module: 'sewing-planning',
+        department: 'Central Planning',
+        priority: 'CRITICAL',
+        status: 'PENDING',
+        dueAt: '2026-10-20',
+        description: `Central Planning reviews and approves Fabric Order Sheet and T&A Plan. Once approved, system automatically dispatches copy to Knitting & Dyeing departments.`,
+        order: { jobNo: newJobNo, buyer: { name: buyerName, code: buyerName }, styleNo: primaryStyle.styleNo, qty: totalOrderQty }
+      }
+    ];
+    memoryTasks = [...generatedTasks, ...memoryTasks];
+
     return NextResponse.json({
       success: true,
       jobNo: newJobNo,
       order: { id: newOrder.id, jobNo: newJobNo, buyerId, styles: newOrder.styles },
+      job: masterJobItem,
+      workflow: workflowState,
+      tasksGenerated: generatedTasks.length,
       warnings: preview.warnings || [],
-      message: `Imported ${styles.length} extracted style(s) into Job ${newJobNo}.`
+      message: `Imported ${styles.length} extracted style(s) into Job ${newJobNo}. Generated 8 workflow tasks across Central IE, CAD, Merchandising, Dyeing Lab, and Central Planning.`
     });
   }
 
@@ -3136,6 +3717,155 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   if (pathStr.includes('/commit')) {
     return NextResponse.json({ success: true, message: 'Batch committed to system records.' });
+  }
+
+  if (pathStr === 'tasks/update') {
+    const body = await request.json().catch(() => ({}));
+    const taskId = String(body.taskId || body.id || '');
+    const taskStatus = String(body.status || 'COMPLETED');
+    const task = memoryTasks.find(t => t.id === taskId);
+    if (task) {
+      task.status = taskStatus;
+      task.updatedAt = new Date().toISOString();
+      if (body.remarks) task.remarks = body.remarks;
+
+      // Automatically update corresponding workflow state if linked to a job
+      const jNo = task.jobNo || task.order?.jobNo;
+      if (jNo && memoryJobWorkflowStates[jNo]) {
+        const wf = memoryJobWorkflowStates[jNo];
+        if (task.module === 'cad') {
+          wf.cad.status = 'COMPLETED';
+          wf.cad.completedAt = new Date().toISOString();
+          if (body.consumptionKgPerDz) wf.cad.consumptionKgPerDz = body.consumptionKgPerDz;
+          if (body.markerEfficiencyPct) wf.cad.markerEfficiencyPct = body.markerEfficiencyPct;
+          wf.fabricOrderSheet.status = 'PREPARING';
+          wf.presentStatus = 'CAD Completed · Fabric Order Sheet In Preparation';
+        } else if (task.module === 'ie-bulletin') {
+          wf.ieBulletin.status = 'READY_IMPORTED';
+          wf.ieBulletin.updatedAt = new Date().toISOString();
+          if (body.smv) wf.ieBulletin.smv = body.smv;
+        } else if (task.module === 'lab') {
+          wf.labShade.status = 'SHADE_OK';
+          wf.labShade.approvedAt = new Date().toISOString();
+          wf.labShade.approvedBy = body.approvedBy || 'Dyeing Lab In-charge';
+          wf.labShade.shades.forEach((s: any) => { s.shadeStatus = 'SHADE_OK'; });
+        } else if (task.module === 'merchandising' && task.title.includes('Fabric Order Sheet')) {
+          wf.fabricOrderSheet.status = 'PREPARED_OK';
+          wf.fabricOrderSheet.preparedAt = new Date().toISOString();
+          wf.fabricOrderSheet.preparedBy = 'Md. Jahidul Islam';
+        } else if (task.module === 'ta') {
+          wf.tna.status = 'PREPARED_OK';
+          wf.tna.preparedAt = new Date().toISOString();
+          wf.tna.printedAt = new Date().toISOString();
+        } else if (task.module === 'sewing-planning') {
+          wf.fabricOrderSheet.status = 'PLANNING_APPROVED';
+          wf.fabricOrderSheet.approvalStatus = 'APPROVED';
+          wf.fabricOrderSheet.approvedAt = new Date().toISOString();
+          wf.fabricOrderSheet.approvedBy = 'Central Planning';
+          wf.fabricOrderSheet.dispatchedToKnitting = true;
+          wf.fabricOrderSheet.dispatchedToDyeing = true;
+          wf.fabricOrderSheet.knitDyeCopySentAt = new Date().toISOString();
+          wf.tna.status = 'PLANNING_APPROVED';
+          wf.overallStage = 'Knitting / Dyeing Prep';
+          wf.presentStatus = 'Planning Approved · Auto-dispatched to Knitting & Dyeing';
+        }
+      }
+      return NextResponse.json({ success: true, task });
+    }
+    return NextResponse.json({ success: false, error: 'Task not found' }, { status: 404 });
+  }
+
+  if (pathStr.startsWith('jobs/') && pathStr.endsWith('/workflow')) {
+    const jobNo = pathStr.split('/')[1];
+    const body = await request.json().catch(() => ({}));
+    const action = String(body.action || '');
+    let wf = memoryJobWorkflowStates[jobNo];
+    if (!wf) {
+      const existingJob = memoryCreatedJobs.find(j => String(j.jobNo) === jobNo) || masterJobs.find((j: any) => String(j.jobNo) === jobNo);
+      wf = {
+        jobNo,
+        buyer: existingJob?.buyer || 'Buyer',
+        styleNo: existingJob?.styleNo || 'Style',
+        totalQty: existingJob?.orderQty || 3000,
+        overallStage: existingJob?.overallStage || 'T&A / Pre-production',
+        presentStatus: existingJob?.presentStatus || 'In Progress',
+        ieBulletin: { status: 'PENDING', bulletinNo: `IE-B-${jobNo}`, smv: 8.5, targetPerHour: 180, operationsCount: 18, fileAttached: true, fileName: `IE-Bulletin-${jobNo}.xlsx`, updatedAt: null },
+        cad: { status: 'PENDING', consumptionKgPerDz: 2.65, consumptionYards: 1.82, markerEfficiencyPct: 86.4, markerWidth: '60"', completedAt: null },
+        fabricOrderSheet: { status: 'PENDING_CAD', preparedBy: '', preparedAt: null, approvalStatus: 'PENDING', approvedBy: '', approvedAt: null, dispatchedToKnitting: false, dispatchedToDyeing: false, knitDyeCopySentAt: null, fabricComposition: '100% Cotton Single Jersey', gsm: 180, requiredFabricKg: 1200 },
+        trims: { bomStatus: 'PREPARED_OK', orderingStatus: 'PENDING', items: [] },
+        labShade: { status: 'PENDING', shades: [{ color: 'Main Color', labDipRef: 'LD-01', shadeStatus: 'PENDING_LAB', shadeNote: 'Awaiting Lab Approval' }], approvedAt: null, approvedBy: '' },
+        tna: { status: 'PENDING', preparedBy: '', preparedAt: null, printedAt: null, approvedBy: '', approvedAt: null, milestones: [] },
+        sewingPlanning: { status: 'PENDING', allocatedLine: '', allocatedFloor: '', planStartDate: '', planEndDate: '', targetPerHour: null }
+      };
+      memoryJobWorkflowStates[jobNo] = wf;
+    }
+
+    if (action === 'ie_bulletin_ready') {
+      wf.ieBulletin.status = 'READY_IMPORTED';
+      wf.ieBulletin.updatedAt = new Date().toISOString();
+      if (body.smv) wf.ieBulletin.smv = Number(body.smv);
+      const t = memoryTasks.find(x => String(x.jobNo) === jobNo && x.module === 'ie-bulletin');
+      if (t) t.status = 'COMPLETED';
+    } else if (action === 'cad_consumption_submit') {
+      wf.cad.status = 'COMPLETED';
+      wf.cad.completedAt = new Date().toISOString();
+      if (body.consumptionKgPerDz) wf.cad.consumptionKgPerDz = Number(body.consumptionKgPerDz);
+      if (body.markerEfficiencyPct) wf.cad.markerEfficiencyPct = Number(body.markerEfficiencyPct);
+      wf.fabricOrderSheet.status = 'PREPARING';
+      wf.presentStatus = 'CAD Completed · Fabric Order Sheet In Preparation';
+      const t = memoryTasks.find(x => String(x.jobNo) === jobNo && x.module === 'cad');
+      if (t) t.status = 'COMPLETED';
+    } else if (action === 'fabric_order_sheet_prepared') {
+      wf.fabricOrderSheet.status = 'PREPARED_OK';
+      wf.fabricOrderSheet.preparedAt = new Date().toISOString();
+      wf.fabricOrderSheet.preparedBy = body.preparedBy || 'Md. Jahidul Islam';
+      const t = memoryTasks.find(x => String(x.jobNo) === jobNo && x.module === 'merchandising' && x.title.includes('Fabric Order Sheet'));
+      if (t) t.status = 'COMPLETED';
+    } else if (action === 'trims_item_status') {
+      const itemIndex = Number(body.itemIndex ?? -1);
+      if (itemIndex >= 0 && wf.trims?.items?.[itemIndex]) {
+        wf.trims.items[itemIndex].status = body.status || 'ORDER_OK';
+        if (body.remarks) wf.trims.items[itemIndex].remarks = body.remarks;
+      }
+    } else if (action === 'shade_approval_submit') {
+      wf.labShade.status = 'SHADE_OK';
+      wf.labShade.approvedAt = new Date().toISOString();
+      wf.labShade.approvedBy = body.approvedBy || 'Dyeing Lab Chief';
+      (wf.labShade.shades || []).forEach((s: any) => { s.shadeStatus = 'SHADE_OK'; });
+      const t = memoryTasks.find(x => String(x.jobNo) === jobNo && x.module === 'lab');
+      if (t) t.status = 'COMPLETED';
+    } else if (action === 'tna_prepared') {
+      wf.tna.status = 'PREPARED_OK';
+      wf.tna.preparedAt = new Date().toISOString();
+      wf.tna.printedAt = new Date().toISOString();
+      wf.tna.preparedBy = body.preparedBy || 'Md. Jahidul Islam';
+      const t = memoryTasks.find(x => String(x.jobNo) === jobNo && x.module === 'ta');
+      if (t) t.status = 'COMPLETED';
+    } else if (action === 'planning_approval_submit') {
+      wf.fabricOrderSheet.status = 'PLANNING_APPROVED';
+      wf.fabricOrderSheet.approvalStatus = 'APPROVED';
+      wf.fabricOrderSheet.approvedAt = new Date().toISOString();
+      wf.fabricOrderSheet.approvedBy = body.approvedBy || 'Central Planning Head';
+      wf.fabricOrderSheet.dispatchedToKnitting = true;
+      wf.fabricOrderSheet.dispatchedToDyeing = true;
+      wf.fabricOrderSheet.knitDyeCopySentAt = new Date().toISOString();
+      wf.tna.status = 'PLANNING_APPROVED';
+      wf.tna.approvedAt = new Date().toISOString();
+      wf.overallStage = 'Knitting & Dyeing Execution';
+      wf.presentStatus = 'Planning Approved · Auto-Copy Sent to Knitting & Dyeing';
+      const t = memoryTasks.find(x => String(x.jobNo) === jobNo && (x.module === 'sewing-planning' || x.title.includes('Planning')));
+      if (t) t.status = 'COMPLETED';
+
+      // Update matching master job
+      const mj = memoryCreatedJobs.find(j => String(j.jobNo) === jobNo);
+      if (mj) {
+        mj.overallStage = 'Knitting & Dyeing Execution';
+        mj.presentStatus = 'Planning Approved · Dispatched to Knitting & Dyeing';
+        mj.knitting.status = 'RUNNING';
+      }
+    }
+
+    return NextResponse.json({ success: true, workflow: wf, message: `Job ${jobNo} workflow stage updated.` });
   }
 
   if (pathStr === 'demo/load') {
