@@ -642,23 +642,37 @@ function JobDetailContent() {
               </div>
               <strong style={{ fontSize: '14px', color: '#1e3a8a' }}>Final Sign-off & Automated Mill Transmission</strong>
               <div style={{ fontSize: '12px', color: '#1e40af', marginTop: '4px', lineHeight: 1.4 }}>
-                When Central Planning reviews and approves the Fabric Order Sheet & T&A Plan, <strong>an electronic copy automatically dispatches to Knitting & Dyeing departments</strong> without requiring manual paper copies!
+                Print the Fabric Order Sheet and T&A Plan, collect the required physical signature(s), then record the signed copy here. Final approval releases the approved fabric requirement by colour, composition and construction to the relevant teams and stores.
               </div>
             </div>
-            <div style={{ marginTop: '12px' }}>
+            <div style={{ marginTop: '12px', display: 'grid', gap: '8px' }}>
               {workflow?.fabricOrderSheet?.dispatchedToKnitting ? (
-                <div style={{ background: '#ecfdf5', border: '1px solid #6ee7b7', padding: '8px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 800, color: '#065f46', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>✓</span>
-                  <span>Planning Approved! Auto-Copy Dispatched to Knitting Program & Dyeing Batch Orders on {d2(workflow?.fabricOrderSheet?.knitDyeCopySentAt || new Date())}.</span>
+                <div style={{ background: '#ecfdf5', border: '1px solid #6ee7b7', padding: '8px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 800, color: '#065f46' }}>
+                  ✓ Approved and distributed to Knitting, Dyeing, Grey Fabric Store and Finished Fabric Store on {d2(workflow?.fabricOrderSheet?.knitDyeCopySentAt || new Date())}.
                 </div>
               ) : (
-                <button
-                  disabled={busyStage}
-                  onClick={() => handleWorkflowAction('planning_approval_submit', { approvedBy: 'Central Planning Head' })}
-                  style={{ width: '100%', padding: '8px 16px', fontSize: '12.5px', fontWeight: 900, borderRadius: '6px', border: 'none', background: '#2563eb', color: '#ffffff', cursor: 'pointer', boxShadow: '0 2px 6px rgba(37,99,235,0.3)' }}
-                >
-                  ⚡ Central Planning Approve & Auto-Dispatch to Knitting / Dyeing
-                </button>
+                <>
+                  {workflow?.fabricOrderSheet?.physicalCopySigned ? (
+                    <div style={{ background: '#eff6ff', border: '1px solid #93c5fd', padding: '8px 12px', borderRadius: '6px', fontSize: '12px', color: '#1e40af' }}>
+                      ✓ Physical signature recorded by {workflow?.fabricOrderSheet?.physicalSignedBy || 'Planning'} on {d2(workflow?.fabricOrderSheet?.physicalSignedAt)}. Ready for ERP approval.
+                    </div>
+                  ) : (
+                    <button
+                      disabled={busyStage}
+                      onClick={() => handleWorkflowAction('fabric_order_sheet_physical_signed', { signedBy: 'Central Planning Head' })}
+                      style={{ width: '100%', padding: '8px 16px', fontSize: '12.5px', fontWeight: 900, borderRadius: '6px', border: '1px solid #2563eb', background: '#eff6ff', color: '#1d4ed8', cursor: 'pointer' }}
+                    >
+                      Record Physical Copy Signed
+                    </button>
+                  )}
+                  <button
+                    disabled={busyStage || !workflow?.fabricOrderSheet?.physicalCopySigned}
+                    onClick={() => handleWorkflowAction('planning_approval_submit', { approvedBy: 'Central Planning Head' })}
+                    style={{ width: '100%', padding: '8px 16px', fontSize: '12.5px', fontWeight: 900, borderRadius: '6px', border: 'none', background: workflow?.fabricOrderSheet?.physicalCopySigned ? '#2563eb' : '#94a3b8', color: '#ffffff', cursor: workflow?.fabricOrderSheet?.physicalCopySigned ? 'pointer' : 'not-allowed', boxShadow: '0 2px 6px rgba(37,99,235,0.3)' }}
+                  >
+                    Approve Signed T&A + Fabric Order Sheet & Distribute
+                  </button>
+                </>
               )}
             </div>
           </div>

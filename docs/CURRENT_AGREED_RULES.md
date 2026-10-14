@@ -42,11 +42,16 @@ This document captures the current confirmed design rules so future implementati
 ## Central Planning
 - Main category name is Central Planning; do not nest another duplicate Central Planning item underneath it.
 - Bulk and Sample T&A are issued by Central Planning.
-- Pending Jobs can be bulk auto-generated into T&A drafts.
-- Auto-generated T&A must be reviewed against capacity heatmaps before approval/release.
-- Approved T&A releases relevant dates to Merchandising.
-- Approved T&A auto-loads a Sewing Gantt draft.
+- Pending Jobs can be bulk auto-generated into T&A drafts; Planning reviews and manually edits suggested dates before final approval.
+- T&A is calculated backward from the fixed Buyer CCD. Use job-specific lead time and applicable process steps; if a job has 60 days available rather than a 120-day standard, generate a compressed 60-day plan instead of blindly keeping 120 days.
+- No newly generated process start date may be earlier than the T&A generation date. If the fixed CCD and minimum practical durations cannot both be met, retain the CCD, flag the schedule as infeasible / Planning Review Required, and do not silently show past process dates as a valid plan.
+- Slack/float is calculated from process dependencies and the critical path; do not add the same fixed buffer to every activity.
+- Auto-generated T&A must be reviewed against capacity heatmaps before approval/release. Planning can manually edit dates and durations; the approved plan is the official baseline.
+- The physical T&A Plan and Fabric Order Sheet are printed and signed outside the ERP. Record that the signed physical copy was received before final approval; an ERP approval click alone is not a substitute for the physical signature.
+- Final approval releases the approved fabric requirement by colour, composition and construction to Knitting, Dyeing, Grey Fabric Store and Finished Fabric Store. These are requirement/expected-receipt records, not actual stock; actual stock changes only after physical receive/issue transactions.
+- Approved T&A releases relevant dates to Merchandising and auto-loads a Sewing Gantt draft.
 - Sewing Gantt is then independently reviewed/adjusted and approved by Central Planning as the official future plan.
+- Line suggestions should rank prior same-item/style experience, compatible machine/operation capability, current line loading/capacity, required manpower and CCD risk. Suggestions are advisory; Planning selects the final line and approves the official Gantt.
 - Gantt supports Job, Item, Present Status, Buyer, Style, Risk and Plan vs Actual views. Item view can show image. Status/risk colors should not be replaced with arbitrary Buyer/Job colors.
 
 ## Capacity
