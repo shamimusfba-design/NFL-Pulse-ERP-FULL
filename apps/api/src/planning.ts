@@ -330,21 +330,40 @@ function scheduleFromCcd(style: any) {
   }
   const firstRow = rows[0];
   const firstStart = firstRow.dateField ? new Date(result[firstRow.dateField]) : new Date(result[firstRow.startField!]);
-  // If rounding / emergency overlap still pushes before tomorrow, align the earliest process to tomorrow while preserving fixed CCD metadata warning.
-  const firstProcessViolation = firstStart < tomorrow;
+  // Newly generated T&A must never leave an editable process date in the past.
+  // Keep buyer CCD fixed; if remaining lead time is infeasible, clamp process dates to today
+  // and flag the schedule for Planning review instead of presenting past dates as valid.
+  const todayIso = iso(today);
+  const firstProcessViolation = firstStart < today;
+  let clampedPastProcessDates = false;
+  for (const row of rows) {
+    if (row.dateField && !row.fixed) {
+      const value = result[row.dateField];
+      if (value && value < todayIso) { result[row.dateField] = todayIso; clampedPastProcessDates = true; }
+    }
+    if (row.startField && row.endField) {
+      const startValue = result[row.startField];
+      const endValue = result[row.endField];
+      if (startValue && startValue < todayIso) { result[row.startField] = todayIso; clampedPastProcessDates = true; }
+      if (endValue && endValue < todayIso) { result[row.endField] = todayIso; clampedPastProcessDates = true; }
+      if (result[row.endField] < result[row.startField]) result[row.endField] = result[row.startField];
+    }
+  }
   result.taGeneration = {
     engineVersion: '2.0',
     generatedAt: new Date().toISOString(),
     fixedCcd: iso(dayOnlyUtc(ccd)),
     earliestAllowedStart: iso(tomorrow),
     firstProcess: firstRow.label,
-    firstProcessStart: iso(firstProcessViolation ? tomorrow : firstStart),
+    firstProcessStart: iso(firstProcessViolation ? today : firstStart),
+    clampedPastProcessDates,
+    scheduleFeasibility: firstProcessViolation || clampedPastProcessDates ? 'PLANNING_REVIEW_REQUIRED' : 'FEASIBLE',
     baselineRequiredDays,
     availableDays,
     shortageDays,
     recoveredDays: recovered.slack + recovered.leadTime + recovered.overlap + recovered.priority,
     recovery: recovered,
-    remainingGapDays: Math.max(0, remaining + (firstProcessViolation ? inclusiveDays(firstStart, addDays(tomorrow,-1)) : 0)),
+    remainingGapDays: Math.max(0, remaining + (firstProcessViolation ? inclusiveDays(firstStart, addDays(today,-1)) : 0)),
     mode: shortageDays <= 0 ? 'STANDARD' : recovered.priority > 0 ? 'AGGRESSIVE_COMPRESSION' : 'COMPRESSED',
     fabricRequiredKg: Number(facts.fabricKg.toFixed(2)),
     garmentOrderQty: facts.qty,
