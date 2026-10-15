@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { api } from '../lib/api';
-import { displayJobNo } from '../lib/display';
+import { displayJobNo, matchesJobSearch } from '../lib/display';
 import demo2000DataRaw from '../data/demo-2000-master.json';
 
 type Mode = 'job360' | 'quality' | 'leadtime';
@@ -153,15 +153,25 @@ export default function JobHistoryWorkspace({ mode = 'job360' }: { mode?: Mode }
   const [tab, setTab] = useState(mode === 'quality' ? 'quality' : mode === 'leadtime' ? 'leadtime' : 'production');
 
   useEffect(() => {
-    api('/demo/job360').then((rows) => {
-      if (Array.isArray(rows) && rows.length > 0) {
-        setJobs(rows);
-        if (rows[0]) setSelected(rows[0].id);
-      }
-    }).catch(() => {
-      // Keep initial master jobs fallback
-    });
+    const params = new URLSearchParams(window.location.search);
+    const jParam = params.get('job');
+    if (jParam) setQuery(jParam);
   }, []);
+
+  useEffect(() => {
+    const qParam = query.trim() ? `?q=${encodeURIComponent(query.trim())}` : '';
+    const timer = setTimeout(() => {
+      api(`/demo/job360${qParam}`).then((rows) => {
+        if (Array.isArray(rows) && rows.length > 0) {
+          setJobs(rows);
+          if (!rows.some((r: any) => r.id === selected)) {
+            setSelected(rows[0].id);
+          }
+        }
+      }).catch(() => {});
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [query]);
 
   useEffect(() => {
     if (!selected) return;
@@ -171,15 +181,14 @@ export default function JobHistoryWorkspace({ mode = 'job360' }: { mode?: Mode }
       return;
     }
     setDetail(null);
-    api(`/demo/job360/${selected}`).then(setDetail).catch(() => {
+    api(`/demo/job360/${encodeURIComponent(selected)}`).then(setDetail).catch(() => {
       if (foundMaster?._raw) setDetail(formatDetailFromMaster(foundMaster._raw));
     });
   }, [selected, jobs]);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return jobs;
-    return jobs.filter((j) => `${displayJobNo(j.jobNo,j.buyerCode||j.buyer)} ${j.styleNo} ${j.itemDescription}`.toLowerCase().includes(q));
+    if (!query.trim()) return jobs;
+    return jobs.filter((j) => matchesJobSearch(j, query));
   }, [jobs, query]);
 
   const title = mode === 'quality' ? 'Job Quality History' : mode === 'leadtime' ? 'Lead Time & Delivery History' : 'Job 360';

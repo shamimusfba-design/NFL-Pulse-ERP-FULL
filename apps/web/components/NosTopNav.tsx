@@ -93,26 +93,54 @@ export const NOS_NAV_ITEMS = [
 ];
 
 export function useActivePersona() {
-  const [persona, setPersona] = useState<MerchandiserPersona>(PRESET_PERSONAS[0]);
+  const [persona, setPersona] = useState<MerchandiserPersona>(PRESET_PERSONAS[1]); // Default to Md. Imran Khan
 
   useEffect(() => {
     try {
       const stored = localStorage.getItem('nos_active_persona');
+      const userRaw = localStorage.getItem('nfl_user');
+      let baseUser: any = null;
+      if (userRaw) {
+        try { baseUser = JSON.parse(userRaw); } catch {}
+      }
+
       if (stored) {
         const parsed = JSON.parse(stored);
-        const found = PRESET_PERSONAS.find(p => p.id === parsed.id) || parsed;
+        const found = PRESET_PERSONAS.find(p => p.id === parsed.id || (baseUser && p.email === baseUser.email)) || parsed;
         setPersona(found);
+      } else if (baseUser) {
+        const found = PRESET_PERSONAS.find(p => p.email === baseUser.email || p.name.includes(baseUser.name) || (baseUser.merchandiserName === 'Imran' && p.id === 'user-imran'));
+        if (found) {
+          setPersona(found);
+          localStorage.setItem('nos_active_persona', JSON.stringify(found));
+        }
       }
     } catch (e) {
       // fallback
     }
+
+    const handlePersonaChange = (e: any) => {
+      if (e.detail) setPersona(e.detail);
+    };
+    window.addEventListener('nos-persona-changed', handlePersonaChange);
+    return () => window.removeEventListener('nos-persona-changed', handlePersonaChange);
   }, []);
 
   const switchPersona = (p: MerchandiserPersona) => {
     setPersona(p);
     try {
       localStorage.setItem('nos_active_persona', JSON.stringify(p));
-      // Trigger a window event so all components react instantly
+      const userObj = {
+        id: p.id,
+        name: p.name,
+        email: p.email,
+        role: p.role,
+        roles: [p.role, 'MERCH_BULK'],
+        merchandiserName: p.name.includes('Imran') ? 'Imran' : p.name.split(' ')[0],
+        assignedBuyer: p.assignedBuyer,
+        department: p.department
+      };
+      localStorage.setItem('nfl_user', JSON.stringify(userObj));
       window.dispatchEvent(new CustomEvent('nos-persona-changed', { detail: p }));
     } catch (e) {
       // ignore

@@ -1,11 +1,11 @@
 'use client';
 
-import React, { Suspense, useMemo, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Shell from '../../components/Shell';
 import demo2000DataRaw from '../../data/demo-2000-master.json';
-import { displayJobNo, formatFloorLine } from '../../lib/display';
+import { displayJobNo, formatFloorLine, matchesJobSearch } from '../../lib/display';
 import { SvgDonut, SvgBarChart, SvgTrendChart } from '../../components/OverviewCharts';
 import { api } from '../../lib/api';
 
@@ -52,6 +52,11 @@ function JobsListContent() {
   const cardIndexParam = searchParams.get('card');
   const typeParam = searchParams.get('type') || '';
   const titleParam = searchParams.get('title') || '';
+  const qParam = searchParams.get('q') || searchParams.get('jobNo') || '';
+  const myJobsParam = searchParams.get('myJobs') === 'true';
+
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [myJobsOnly, setMyJobsOnly] = useState<boolean>(myJobsParam);
 
   const initialMasterJobs = (demo2000DataRaw as any)?.jobs || [];
   const [liveJobs, setLiveJobs] = useState<any[]>(initialMasterJobs);
@@ -59,6 +64,19 @@ function JobsListContent() {
   const [activeDivisionTab, setActiveDivisionTab] = useState<'all' | 'preproduction'>(tabParam === 'preproduction' ? 'preproduction' : 'all');
   const [stageActionMsg, setStageActionMsg] = useState('');
   const [busyJobNo, setBusyJobNo] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('nfl_user');
+      if (stored) {
+        const u = JSON.parse(stored);
+        setCurrentUser(u);
+        if (u.role === 'MERCHANDISER' || u.name?.includes('Imran') || myJobsParam) {
+          setMyJobsOnly(true);
+        }
+      }
+    } catch {}
+  }, [myJobsParam]);
 
   const refreshJobs = () => {
     api('/jobs')
@@ -204,7 +222,7 @@ function JobsListContent() {
   }, [liveJobs, sectionParam]);
 
   // Filters state
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(qParam);
   const [weekFilter, setWeekFilter] = useState('ALL');
   const [monthFilter, setMonthFilter] = useState('ALL');
   const [floorUnitFilter, setFloorUnitFilter] = useState('ALL');
@@ -214,6 +232,10 @@ function JobsListContent() {
   const [activeCardIndex, setActiveCardIndex] = useState<number | null>(
     cardIndexParam !== null && cardIndexParam !== undefined ? parseInt(cardIndexParam, 10) : null
   );
+
+  React.useEffect(() => {
+    if (qParam) setSearchQuery(qParam);
+  }, [qParam]);
 
   React.useEffect(() => {
     if (cardIndexParam !== null && cardIndexParam !== undefined) {
@@ -228,6 +250,15 @@ function JobsListContent() {
   // Dynamic filtering
   const filteredRows = useMemo(() => {
     return allRows.filter((r: any) => {
+      // 0. Imran / Merchandiser Scope Filter (when myJobsOnly is active)
+      if (myJobsOnly && currentUser) {
+        const uMerch = (currentUser.merchandiserName || '').toLowerCase();
+        const rMerch = (r.merchandiser || '').toLowerCase();
+        if (uMerch && !rMerch.includes(uMerch) && !r.isNewlyImported) {
+          return false;
+        }
+      }
+
       // 1. Card/Type Filter from URL
       if (typeParam === 'CRITICAL' && !r.isCritical) return false;
       if (typeParam === 'RISK' && !r.isShipmentRisk) return false;
@@ -252,14 +283,13 @@ function JobsListContent() {
       if (floorUnitFilter !== 'ALL' && !r.floorLine.startsWith(floorUnitFilter) && r.floor !== floorUnitFilter) return false;
       if (presentStatusFilter !== 'ALL' && r.presentStatus !== presentStatusFilter) return false;
       if (buyerFilter !== 'ALL' && r.buyer !== buyerFilter) return false;
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const match = `${r.jobNo} ${r.buyer} ${r.styleNo} ${r.itemDescription || ''} ${r.merchandiser || ''} ${r.floorLine || ''}`.toLowerCase();
-        if (!match.includes(q)) return false;
-      }
+
+      // 3. Robust Search Matching (Job #, Style, Buyer, Merch, Item)
+      if (searchQuery.trim() && !matchesJobSearch(r, searchQuery)) return false;
+
       return true;
     });
-  }, [allRows, typeParam, activeCardIndex, weekFilter, monthFilter, merchFilter, floorUnitFilter, presentStatusFilter, buyerFilter, searchQuery]);
+  }, [allRows, typeParam, activeCardIndex, weekFilter, monthFilter, merchFilter, floorUnitFilter, presentStatusFilter, buyerFilter, searchQuery, myJobsOnly, currentUser]);
 
   // Options for dropdowns
   const weekOptions = useMemo(() => (Array.from(new Set(allRows.map((r: any) => r.shipmentWeek))).filter(Boolean) as string[]).sort(), [allRows]);
@@ -408,6 +438,65 @@ function JobsListContent() {
           </button>
         </div>
       </div>
+
+      {/* Merchandiser Scope Switcher Banner */}
+      {currentUser && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', background: myJobsOnly ? '#ecfdf5' : '#f8fafc', padding: '10px 16px', borderRadius: '10px', border: `1.5px solid ${myJobsOnly ? '#059669' : '#cbd5e1'}`, flexWrap: 'wrap', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '18px' }}>{myJobsOnly ? '👤' : '🌐'}</span>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <strong style={{ fontSize: '13.5px', color: '#0f172a' }}>
+                  {currentUser.name?.includes('Imran') ? 'Md. Imran (Merchandiser · ONLY Buyer)' : currentUser.name || 'Current User'}
+                </strong>
+                <span style={{ fontSize: '11px', background: myJobsOnly ? '#059669' : '#475569', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontWeight: 800 }}>
+                  {myJobsOnly ? 'FILTERED: MY ASSIGNED JOBS' : 'VIEWING ALL FACTORY JOBS'}
+                </span>
+              </div>
+              <div style={{ fontSize: '11.5px', color: '#475569', marginTop: '2px' }}>
+                {myJobsOnly
+                  ? `Showing 61 jobs assigned to Imran (ONLY Buyer). Other merchandisers' jobs are hidden from your workspace.`
+                  : `Showing all 2,000+ factory production jobs across all buyers and lines.`}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={() => setMyJobsOnly(true)}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                background: myJobsOnly ? '#059669' : '#ffffff',
+                color: myJobsOnly ? '#ffffff' : '#047857',
+                border: '1.5px solid #059669'
+              }}
+            >
+              ⭐ My Jobs Only ({currentUser.name?.includes('Imran') ? '61 Jobs' : 'My Scope'})
+            </button>
+            <button
+              type="button"
+              onClick={() => setMyJobsOnly(false)}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                background: !myJobsOnly ? '#0f172a' : '#ffffff',
+                color: !myJobsOnly ? '#ffffff' : '#334155',
+                border: '1.5px solid #cbd5e1'
+              }}
+            >
+              🌐 All Factory Jobs (2,000+)
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 1b. DIVISION TABS */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', background: '#f8fafc', padding: '8px 14px', borderRadius: '10px', border: '1px solid #e2e8f0', flexWrap: 'wrap', gap: '8px' }}>

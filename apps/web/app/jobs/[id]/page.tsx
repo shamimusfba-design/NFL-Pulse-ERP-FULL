@@ -236,21 +236,58 @@ function JobDetailContent() {
     }
   };
 
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('nfl_user');
+      if (stored) setCurrentUser(JSON.parse(stored));
+    } catch {}
+  }, []);
+
+  const isMerchandiser = currentUser?.role === 'MERCHANDISER';
+  const isHeadOrAdmin = !currentUser || currentUser?.role === 'HEAD_MERCHANDISER' || currentUser?.role === 'ADMIN' || currentUser?.roles?.includes('ADMIN');
+
   const jobsList = (demo2000DataRaw as any)?.jobs || [];
 
-  // Find job by ID or Job No
+  // Find job by ID or Job No (flexible normalized search)
   const job = useMemo(() => {
     if (apiJob) return apiJob;
     if (!idParam) return jobsList[0] || null;
-    const cleanId = idParam.toLowerCase().trim();
-    const found = jobsList.find((j: any) =>
-      String(j.jobNo).toLowerCase() === cleanId ||
-      String(j.id).toLowerCase() === cleanId ||
-      cleanId.includes(String(j.jobNo).toLowerCase()) ||
-      String(j.jobNo).toLowerCase().includes(cleanId)
-    );
-    return found || jobsList[0] || null;
+    const cleanId = decodeURIComponent(idParam).toLowerCase().trim();
+    const strippedId = cleanId
+      .replace(/^job\s*(#|no\.?|num\.?)?\s*/i, '')
+      .replace(/^#\s*/, '')
+      .replace(/^(onl|ons|ovs|nmt|utg)\s+/i, '')
+      .trim();
+    const digitsId = strippedId.replace(/\D/g, '');
+    const found = jobsList.find((j: any) => {
+      const jNo = String(j.jobNo || '').toLowerCase().trim();
+      const cleanJNo = jNo.replace(/^(onl|ons|ovs|nmt|utg)\s+/i, '').replace(/^#\s*/, '').trim();
+      const jDigits = cleanJNo.replace(/\D/g, '');
+      const jId = String(j.id || '').toLowerCase().trim();
+      const sNo = String(j.styleNo || '').toLowerCase().trim();
+      return jNo === cleanId ||
+             jNo === strippedId ||
+             cleanJNo === strippedId ||
+             jId === cleanId ||
+             sNo === cleanId ||
+             cleanJNo.startsWith(strippedId) ||
+             (strippedId.length >= 3 && cleanJNo.includes(strippedId)) ||
+             (digitsId.length >= 3 && (jDigits === digitsId || jDigits.startsWith(digitsId) || jNo.startsWith(digitsId))) ||
+             cleanId.includes(jNo);
+    });
+    return found || null;
   }, [idParam, jobsList, apiJob]);
+
+  const isAssignedToUser = useMemo(() => {
+    if (isHeadOrAdmin) return true;
+    if (!isMerchandiser) return true;
+    if (!job) return true;
+    if (job.isNewlyImported) return true;
+    const uMerch = (currentUser?.merchandiserName || 'imran').toLowerCase();
+    const jMerch = String(job.merchandiser || '').toLowerCase();
+    return jMerch.includes(uMerch) || uMerch.includes(jMerch);
+  }, [isHeadOrAdmin, isMerchandiser, job, currentUser]);
 
   const profile = useMemo(() => {
     if (!job) return null;
@@ -481,13 +518,19 @@ function JobDetailContent() {
               </div>
             </div>
             <div style={{ marginTop: '10px' }}>
-              <button
-                disabled={busyStage || workflow?.ieBulletin?.status === 'READY_IMPORTED'}
-                onClick={() => handleWorkflowAction('ie_bulletin_ready', { smv: 8.5 })}
-                style={{ width: '100%', padding: '5px 10px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', border: '1px solid #cbd5e1', background: workflow?.ieBulletin?.status === 'READY_IMPORTED' ? '#f1f5f9' : '#0284c7', color: workflow?.ieBulletin?.status === 'READY_IMPORTED' ? '#64748b' : '#fff', cursor: workflow?.ieBulletin?.status === 'READY_IMPORTED' ? 'default' : 'pointer' }}
-              >
-                {workflow?.ieBulletin?.status === 'READY_IMPORTED' ? '✓ Bulletin Active & Pulled' : 'Attach / Complete IE Bulletin'}
-              </button>
+              {isMerchandiser && !isHeadOrAdmin ? (
+                <div style={{ fontSize: '11px', color: '#64748b', fontStyle: 'italic', padding: '6px 8px', textAlign: 'center', background: '#f8fafc', borderRadius: '5px', border: '1px dashed #cbd5e1' }}>
+                  🔒 Central IE Department Area (View Only for Merchandiser · IE Specialist Authority)
+                </div>
+              ) : (
+                <button
+                  disabled={busyStage || workflow?.ieBulletin?.status === 'READY_IMPORTED'}
+                  onClick={() => handleWorkflowAction('ie_bulletin_ready', { smv: 8.5 })}
+                  style={{ width: '100%', padding: '5px 10px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', border: '1px solid #cbd5e1', background: workflow?.ieBulletin?.status === 'READY_IMPORTED' ? '#f1f5f9' : '#0284c7', color: workflow?.ieBulletin?.status === 'READY_IMPORTED' ? '#64748b' : '#fff', cursor: workflow?.ieBulletin?.status === 'READY_IMPORTED' ? 'default' : 'pointer' }}
+                >
+                  {workflow?.ieBulletin?.status === 'READY_IMPORTED' ? '✓ Bulletin Active & Pulled' : 'Attach / Complete IE Bulletin'}
+                </button>
+              )}
             </div>
           </div>
 
@@ -507,13 +550,19 @@ function JobDetailContent() {
               </div>
             </div>
             <div style={{ marginTop: '10px' }}>
-              <button
-                disabled={busyStage || workflow?.cad?.status === 'COMPLETED'}
-                onClick={() => handleWorkflowAction('cad_consumption_submit', { consumptionKgPerDz: 2.65, markerEfficiencyPct: 86.4 })}
-                style={{ width: '100%', padding: '5px 10px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', border: '1px solid #cbd5e1', background: workflow?.cad?.status === 'COMPLETED' ? '#f1f5f9' : '#0284c7', color: workflow?.cad?.status === 'COMPLETED' ? '#64748b' : '#fff', cursor: workflow?.cad?.status === 'COMPLETED' ? 'default' : 'pointer' }}
-              >
-                {workflow?.cad?.status === 'COMPLETED' ? '✓ CAD Consumption Submitted' : 'Submit CAD Consumption'}
-              </button>
+              {isMerchandiser && !isHeadOrAdmin ? (
+                <div style={{ fontSize: '11px', color: '#64748b', fontStyle: 'italic', padding: '6px 8px', textAlign: 'center', background: '#f8fafc', borderRadius: '5px', border: '1px dashed #cbd5e1' }}>
+                  🔒 CAD Section Area (View Only for Merchandiser · CAD Marker Authority)
+                </div>
+              ) : (
+                <button
+                  disabled={busyStage || workflow?.cad?.status === 'COMPLETED'}
+                  onClick={() => handleWorkflowAction('cad_consumption_submit', { consumptionKgPerDz: 2.65, markerEfficiencyPct: 86.4 })}
+                  style={{ width: '100%', padding: '5px 10px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', border: '1px solid #cbd5e1', background: workflow?.cad?.status === 'COMPLETED' ? '#f1f5f9' : '#0284c7', color: workflow?.cad?.status === 'COMPLETED' ? '#64748b' : '#fff', cursor: workflow?.cad?.status === 'COMPLETED' ? 'default' : 'pointer' }}
+                >
+                  {workflow?.cad?.status === 'COMPLETED' ? '✓ CAD Consumption Submitted' : 'Submit CAD Consumption'}
+                </button>
+              )}
             </div>
           </div>
 
@@ -533,13 +582,19 @@ function JobDetailContent() {
               </div>
             </div>
             <div style={{ marginTop: '10px' }}>
-              <button
-                disabled={busyStage || workflow?.fabricOrderSheet?.status === 'PREPARED_OK' || workflow?.fabricOrderSheet?.status === 'PLANNING_APPROVED'}
-                onClick={() => handleWorkflowAction('fabric_order_sheet_prepared', { preparedBy: 'Md. Jahidul Islam' })}
-                style={{ width: '100%', padding: '5px 10px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', border: '1px solid #cbd5e1', background: (workflow?.fabricOrderSheet?.status === 'PREPARED_OK' || workflow?.fabricOrderSheet?.status === 'PLANNING_APPROVED') ? '#f1f5f9' : '#059669', color: (workflow?.fabricOrderSheet?.status === 'PREPARED_OK' || workflow?.fabricOrderSheet?.status === 'PLANNING_APPROVED') ? '#64748b' : '#fff', cursor: 'pointer' }}
-              >
-                {workflow?.fabricOrderSheet?.status === 'PLANNING_APPROVED' ? '✓ Approved by Planning' : workflow?.fabricOrderSheet?.status === 'PREPARED_OK' ? '✓ Prepared OK (Sent to Planning)' : 'Mark Prepared OK'}
-              </button>
+              {!isAssignedToUser ? (
+                <div style={{ fontSize: '11px', color: '#64748b', fontStyle: 'italic', padding: '6px 8px', textAlign: 'center', background: '#f8fafc', borderRadius: '5px', border: '1px dashed #cbd5e1' }}>
+                  🔒 View Only · Assigned to {job.merchandiser || 'Another Merchandiser'}
+                </div>
+              ) : (
+                <button
+                  disabled={busyStage || workflow?.fabricOrderSheet?.status === 'PREPARED_OK' || workflow?.fabricOrderSheet?.status === 'PLANNING_APPROVED'}
+                  onClick={() => handleWorkflowAction('fabric_order_sheet_prepared', { preparedBy: currentUser?.name || 'Md. Imran' })}
+                  style={{ width: '100%', padding: '5px 10px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', border: '1px solid #cbd5e1', background: (workflow?.fabricOrderSheet?.status === 'PREPARED_OK' || workflow?.fabricOrderSheet?.status === 'PLANNING_APPROVED') ? '#f1f5f9' : '#059669', color: (workflow?.fabricOrderSheet?.status === 'PREPARED_OK' || workflow?.fabricOrderSheet?.status === 'PLANNING_APPROVED') ? '#64748b' : '#fff', cursor: 'pointer' }}
+                >
+                  {workflow?.fabricOrderSheet?.status === 'PLANNING_APPROVED' ? '✓ Approved by Planning' : workflow?.fabricOrderSheet?.status === 'PREPARED_OK' ? '✓ Prepared OK (Sent to Planning)' : 'Mark Prepared OK'}
+                </button>
+              )}
             </div>
           </div>
 
@@ -560,13 +615,19 @@ function JobDetailContent() {
               </div>
             </div>
             <div style={{ marginTop: '10px' }}>
-              <button
-                disabled={busyStage}
-                onClick={() => handleWorkflowAction('trims_item_status', { itemIndex: 0, status: 'ORDER_OK', remarks: 'Thread order placed with Coats' })}
-                style={{ width: '100%', padding: '5px 10px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#334155', cursor: 'pointer' }}
-              >
-                ✓ Mark Thread Order OK
-              </button>
+              {!isAssignedToUser ? (
+                <div style={{ fontSize: '11px', color: '#64748b', fontStyle: 'italic', padding: '6px 8px', textAlign: 'center', background: '#f8fafc', borderRadius: '5px', border: '1px dashed #cbd5e1' }}>
+                  🔒 View Only · Assigned to {job.merchandiser || 'Another Merchandiser'}
+                </div>
+              ) : (
+                <button
+                  disabled={busyStage}
+                  onClick={() => handleWorkflowAction('trims_item_status', { itemIndex: 0, status: 'ORDER_OK', remarks: 'Thread order placed with Coats' })}
+                  style={{ width: '100%', padding: '5px 10px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#334155', cursor: 'pointer' }}
+                >
+                  ✓ Mark Thread Order OK
+                </button>
+              )}
             </div>
           </div>
 
@@ -588,13 +649,19 @@ function JobDetailContent() {
               </div>
             </div>
             <div style={{ marginTop: '10px' }}>
-              <button
-                disabled={busyStage || workflow?.labShade?.status === 'SHADE_OK'}
-                onClick={() => handleWorkflowAction('shade_approval_submit', { approvedBy: 'Dyeing Lab Chief' })}
-                style={{ width: '100%', padding: '5px 10px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', border: '1px solid #cbd5e1', background: workflow?.labShade?.status === 'SHADE_OK' ? '#f1f5f9' : '#059669', color: workflow?.labShade?.status === 'SHADE_OK' ? '#64748b' : '#fff', cursor: 'pointer' }}
-              >
-                {workflow?.labShade?.status === 'SHADE_OK' ? '✓ Shade Certified OK' : 'Approve Lab Shade (Shade OK)'}
-              </button>
+              {isMerchandiser && !isHeadOrAdmin ? (
+                <div style={{ fontSize: '11px', color: '#64748b', fontStyle: 'italic', padding: '6px 8px', textAlign: 'center', background: '#f8fafc', borderRadius: '5px', border: '1px dashed #cbd5e1' }}>
+                  🔒 Dyeing Lab Area (View Only for Merchandiser · Lab Chief Certification)
+                </div>
+              ) : (
+                <button
+                  disabled={busyStage || workflow?.labShade?.status === 'SHADE_OK'}
+                  onClick={() => handleWorkflowAction('shade_approval_submit', { approvedBy: 'Dyeing Lab Chief' })}
+                  style={{ width: '100%', padding: '5px 10px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', border: '1px solid #cbd5e1', background: workflow?.labShade?.status === 'SHADE_OK' ? '#f1f5f9' : '#059669', color: workflow?.labShade?.status === 'SHADE_OK' ? '#64748b' : '#fff', cursor: 'pointer' }}
+                >
+                  {workflow?.labShade?.status === 'SHADE_OK' ? '✓ Shade Certified OK' : 'Approve Lab Shade (Shade OK)'}
+                </button>
+              )}
             </div>
           </div>
 
@@ -621,13 +688,19 @@ function JobDetailContent() {
               >
                 🖨️ Print T&A
               </button>
-              <button
-                disabled={busyStage || workflow?.tna?.status === 'PREPARED_OK' || workflow?.tna?.status === 'PLANNING_APPROVED'}
-                onClick={() => handleWorkflowAction('tna_prepared', { preparedBy: 'Md. Jahidul Islam' })}
-                style={{ flex: 1.5, padding: '5px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', border: '1px solid #cbd5e1', background: (workflow?.tna?.status === 'PREPARED_OK' || workflow?.tna?.status === 'PLANNING_APPROVED') ? '#f1f5f9' : '#059669', color: (workflow?.tna?.status === 'PREPARED_OK' || workflow?.tna?.status === 'PLANNING_APPROVED') ? '#64748b' : '#fff', cursor: 'pointer' }}
-              >
-                {workflow?.tna?.status === 'PLANNING_APPROVED' ? '✓ Approved' : workflow?.tna?.status === 'PREPARED_OK' ? '✓ Prepared OK' : 'Mark Prepared OK'}
-              </button>
+              {!isAssignedToUser ? (
+                <div style={{ flex: 1.5, fontSize: '11px', color: '#64748b', fontStyle: 'italic', padding: '5px', textAlign: 'center', background: '#f8fafc', borderRadius: '5px', border: '1px dashed #cbd5e1' }}>
+                  🔒 Assigned to {job.merchandiser || 'Another Team'}
+                </div>
+              ) : (
+                <button
+                  disabled={busyStage || workflow?.tna?.status === 'PREPARED_OK' || workflow?.tna?.status === 'PLANNING_APPROVED'}
+                  onClick={() => handleWorkflowAction('tna_prepared', { preparedBy: currentUser?.name || 'Md. Imran' })}
+                  style={{ flex: 1.5, padding: '5px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', border: '1px solid #cbd5e1', background: (workflow?.tna?.status === 'PREPARED_OK' || workflow?.tna?.status === 'PLANNING_APPROVED') ? '#f1f5f9' : '#059669', color: (workflow?.tna?.status === 'PREPARED_OK' || workflow?.tna?.status === 'PLANNING_APPROVED') ? '#64748b' : '#fff', cursor: 'pointer' }}
+                >
+                  {workflow?.tna?.status === 'PLANNING_APPROVED' ? '✓ Approved' : workflow?.tna?.status === 'PREPARED_OK' ? '✓ Prepared OK' : 'Mark Prepared OK'}
+                </button>
+              )}
             </div>
           </div>
 
@@ -649,6 +722,10 @@ function JobDetailContent() {
               {workflow?.fabricOrderSheet?.dispatchedToKnitting ? (
                 <div style={{ background: '#ecfdf5', border: '1px solid #6ee7b7', padding: '8px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 800, color: '#065f46' }}>
                   ✓ Approved and distributed to Knitting, Dyeing, Grey Fabric Store and Finished Fabric Store on {d2(workflow?.fabricOrderSheet?.knitDyeCopySentAt || new Date())}.
+                </div>
+              ) : isMerchandiser && !isHeadOrAdmin ? (
+                <div style={{ fontSize: '12px', color: '#1e40af', fontStyle: 'italic', padding: '10px 14px', textAlign: 'center', background: '#e0f2fe', borderRadius: '6px', border: '1px dashed #38bdf8', fontWeight: 700 }}>
+                  🔒 Central Planning Authority (View Only for Merchandiser · Planning Sign-off Required)
                 </div>
               ) : (
                 <>

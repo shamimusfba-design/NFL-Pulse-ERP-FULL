@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Shell from '../../../components/Shell';
 import { api } from '../../../lib/api';
-import { displayJobNo } from '../../../lib/display';
+import { displayJobNo, matchesJobSearch } from '../../../lib/display';
 
 type Basis = 'KG_DOZ' | 'KG_PCS' | 'TOTAL_KG';
 type ConsumptionRow = {
@@ -42,6 +42,17 @@ export default function CadWorkspace() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const visibleTasks = useMemo(() => {
+    if (!searchQuery.trim()) return tasks;
+    return tasks.filter((t) => matchesJobSearch({
+      jobNo: t.order?.jobNo,
+      buyer: t.order?.buyer,
+      styleNo: t.order?.styles?.[0]?.styleNo,
+      itemDescription: t.title
+    }, searchQuery));
+  }, [tasks, searchQuery]);
 
   async function loadQueue() {
     setLoading(true); setError('');
@@ -122,12 +133,20 @@ export default function CadWorkspace() {
 
     <section className="cad-layout">
       <div className="panel cad-queue-panel">
-        <div className="panel-head"><div><div className="panel-title">CAD Pending Jobs</div><div className="panel-sub">New orders and quantity-revision re-checks</div></div><span className="status-pill neutral">{loading ? 'Loading…' : tasks.length}</span></div>
+        <div className="panel-head"><div><div className="panel-title">CAD Pending Jobs</div><div className="panel-sub">New orders and quantity-revision re-checks</div></div><span className="status-pill neutral">{loading ? 'Loading…' : `${visibleTasks.length} Jobs`}</span></div>
+        <div style={{ padding: '8px 12px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search Job # (e.g. 22041, 48093)..."
+            style={{ width: '100%', padding: '5px 8px', fontSize: '11.5px', borderRadius: '4px', border: '1px solid #cbd5e1', outline: 'none' }}
+          />
+        </div>
         <div className="cad-task-list">
-          {tasks.map((t) => <button key={t.id} className={`cad-task-card ${selectedOrderId === t.orderId ? 'active' : ''}`} onClick={() => setSelectedOrderId(t.orderId)}>
+          {visibleTasks.map((t) => <button key={t.id} className={`cad-task-card ${selectedOrderId === t.orderId ? 'active' : ''}`} onClick={() => setSelectedOrderId(t.orderId)}>
             <strong>{displayJobNo(t.order?.jobNo || 'Job',t.order?.buyer)}</strong><small>{t.title}</small>
           </button>)}
-          {!loading && !tasks.length && <div className="empty-state compact"><strong>No CAD pending jobs</strong><span>New confirmed orders will appear here automatically.</span></div>}
+          {!loading && !visibleTasks.length && <div className="empty-state compact"><strong>No matching CAD jobs</strong><span>{searchQuery ? `No jobs match "${searchQuery}"` : 'New confirmed orders will appear here automatically.'}</span></div>}
         </div>
       </div>
 

@@ -754,23 +754,66 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const pathStr = path.join('/');
   const url = new URL(request.url);
 
+  function matchJobQuery(j: any, qStr: string) {
+    if (!qStr || !qStr.trim()) return true;
+    const raw = qStr.trim().toLowerCase();
+    const clean = raw
+      .replace(/^job\s*(#|no\.?|num\.?)?\s*/i, '')
+      .replace(/^#\s*/, '')
+      .replace(/^(onl|ons|ovs|nmt|utg)\s+/i, '')
+      .trim();
+    const digits = clean.replace(/\D/g, '');
+
+    const jNo = String(j.jobNo || '').toLowerCase().trim();
+    const cleanJNo = jNo.replace(/^(onl|ons|ovs|nmt|utg)\s+/i, '').replace(/^#\s*/, '').trim();
+    const jDigits = cleanJNo.replace(/\D/g, '');
+    const sNo = String(j.styleNo || '').toLowerCase();
+    const buyer = String(j.buyer || '').toLowerCase();
+    const merch = String(j.merchandiser || '').toLowerCase();
+    const item = String(j.itemDescription || j.item || '').toLowerCase();
+    const id = String(j.id || '').toLowerCase();
+
+    if (jNo === clean || jNo === raw) return true;
+    if (cleanJNo === clean || cleanJNo.startsWith(clean)) return true;
+    if (clean.length >= 2 && jNo.includes(clean)) return true;
+    if (clean.length >= 2 && clean.includes(cleanJNo)) return true;
+    if (digits.length >= 3 && (jDigits === digits || jDigits.startsWith(digits) || jNo.startsWith(digits))) return true;
+    if (sNo.includes(clean) || sNo.includes(raw)) return true;
+    if (buyer.includes(clean) || buyer.includes(raw)) return true;
+    if (merch.includes(clean) || merch.includes(raw)) return true;
+    if (item.includes(clean) || item.includes(raw)) return true;
+    if (id === raw || id === clean) return true;
+    return false;
+  }
+
   // 0a. /api/merchandising/dashboard
   if (pathStr === 'merchandising/dashboard') {
     const role = (url.searchParams.get('role') || 'MERCHANDISER').toUpperCase();
     const assignedBuyer = url.searchParams.get('assignedBuyer') || 'ONLY';
+    const merchNameParam = (url.searchParams.get('merchandiserName') || url.searchParams.get('merchandiser') || '').toLowerCase();
     const isHead = role === 'HEAD_MERCHANDISER' || role === 'ADMIN';
 
-    // 1. Authorization: If not head, lock strictly to assigned buyer
+    // 1. Authorization: If not head, lock strictly to assigned merchandiser or assigned buyer
     let effectiveBuyer = isHead ? (url.searchParams.get('buyer') || 'ALL') : assignedBuyer;
+    const allJobs = [...memoryCreatedJobs, ...masterJobs];
 
-    // Filter master jobs by authorized buyer scope
-    let authorizedJobs = masterJobs.filter((j: any) => {
+    let authorizedJobs = allJobs.filter((j: any) => {
       const b = String(j.buyer || '').toUpperCase();
-      if (!isHead) {
+      const jMerch = String(j.merchandiser || '').toLowerCase();
+
+      // If user is a specific merchandiser (like Imran)
+      if (!isHead && role === 'MERCHANDISER') {
+        if (merchNameParam.includes('imran') || assignedBuyer === 'ONLY') {
+          // If Imran, strictly show his assigned jobs (61 jobs in demo + newly created)
+          if (merchNameParam.includes('imran')) {
+            return jMerch.includes('imran') || (j.isNewlyImported && (jMerch.includes('imran') || !jMerch));
+          }
+        }
         const assigned = assignedBuyer.toUpperCase();
         if (assigned === 'ONLY') return b.includes('ONLY') || b.includes('CARMA');
         return b.includes(assigned) || assigned.includes(b);
       }
+
       if (effectiveBuyer === 'ALL') return true;
       const eb = effectiveBuyer.toUpperCase();
       if (eb === 'ONLY') return b.includes('ONLY') || b.includes('CARMA');
@@ -872,11 +915,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         if (String(j.merchandiser || '').toLowerCase() !== merchandiserFilter.toLowerCase()) return false;
       }
 
-      // Search query
-      if (search) {
-        const text = `${j.jobNo} ${j.styleNo} ${j.buyer} ${j.itemDescription} ${j.item} ${j.merchandiser}`.toLowerCase();
-        if (!text.includes(search)) return false;
-      }
+      // Search query using matchJobQuery
+      if (search && !matchJobQuery(j, search)) return false;
 
       // Tab filter
       if (tab !== 'ALL') {
@@ -1559,20 +1599,19 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   // 1c. /api/jobs
   if (pathStr === 'jobs') {
-    const q = url.searchParams.get('q')?.toLowerCase() || '';
+    const q = url.searchParams.get('q')?.toLowerCase().trim() || '';
     const section = url.searchParams.get('section') || '';
     const buyer = url.searchParams.get('buyer') || '';
+    const merchandiser = url.searchParams.get('merchandiser') || '';
     let all = [...memoryCreatedJobs, ...masterJobs];
     if (q) {
-      all = all.filter((j: any) =>
-        String(j.jobNo || '').toLowerCase().includes(q) ||
-        String(j.styleNo || '').toLowerCase().includes(q) ||
-        String(j.buyer || '').toLowerCase().includes(q) ||
-        String(j.itemDescription || '').toLowerCase().includes(q)
-      );
+      all = all.filter((j: any) => matchJobQuery(j, q));
     }
     if (buyer && buyer !== 'ALL') {
       all = all.filter((j: any) => String(j.buyer).toLowerCase() === buyer.toLowerCase());
+    }
+    if (merchandiser && merchandiser !== 'ALL') {
+      all = all.filter((j: any) => String(j.merchandiser || '').toLowerCase() === merchandiser.toLowerCase());
     }
     return NextResponse.json({
       success: true,
@@ -1586,16 +1625,32 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (pathStr.startsWith('jobs/')) {
     const jobKey = pathStr.replace('jobs/', '').trim();
     if (jobKey && !jobKey.includes('/')) {
-      const cleanKey = jobKey.toLowerCase();
-      const found = memoryCreatedJobs.find((j: any) =>
-        String(j.jobNo).toLowerCase() === cleanKey ||
-        String(j.id).toLowerCase() === cleanKey ||
-        cleanKey.includes(String(j.jobNo).toLowerCase())
-      ) || masterJobs.find((j: any) =>
-        String(j.jobNo).toLowerCase() === cleanKey ||
-        String(j.id).toLowerCase() === cleanKey ||
-        cleanKey.includes(String(j.jobNo).toLowerCase())
-      );
+      const cleanKey = decodeURIComponent(jobKey).toLowerCase().trim();
+      const strippedKey = cleanKey
+        .replace(/^job\s*(#|no\.?|num\.?)?\s*/i, '')
+        .replace(/^#\s*/, '')
+        .replace(/^(onl|ons|ovs|nmt|utg)\s+/i, '')
+        .trim();
+      const digitsKey = strippedKey.replace(/\D/g, '');
+      const allJobs = [...memoryCreatedJobs, ...masterJobs];
+      const found = allJobs.find((j: any) => {
+        const jNo = String(j.jobNo || '').toLowerCase().trim();
+        const cleanJNo = jNo.replace(/^(onl|ons|ovs|nmt|utg)\s+/i, '').replace(/^#\s*/, '').trim();
+        const jDigits = cleanJNo.replace(/\D/g, '');
+        const jId = String(j.id || '').toLowerCase().trim();
+        const sNo = String(j.styleNo || '').toLowerCase().trim();
+
+        return jNo === cleanKey ||
+               jNo === strippedKey ||
+               cleanJNo === strippedKey ||
+               jId === cleanKey ||
+               sNo === cleanKey ||
+               cleanJNo.startsWith(strippedKey) ||
+               (strippedKey.length >= 3 && cleanJNo.includes(strippedKey)) ||
+               (digitsKey.length >= 3 && (jDigits === digitsKey || jDigits.startsWith(digitsKey) || jNo.startsWith(digitsKey))) ||
+               cleanKey.includes(jNo) ||
+               cleanKey.includes(cleanJNo);
+      });
 
       if (found) {
         const wf = memoryJobWorkflowStates[found.jobNo] || {
@@ -1814,7 +1869,25 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   // 4. /api/demo/module/:slug (all sections)
   if (pathStr.startsWith('demo/module/')) {
     const slug = pathStr.replace('demo/module/', '');
-    const rows = masterJobs.slice(0, 100).map((j: any) => {
+    const q = url.searchParams.get('q')?.toLowerCase().trim() || url.searchParams.get('search')?.toLowerCase().trim() || '';
+    const buyerParam = url.searchParams.get('buyer') || '';
+    const merchParam = url.searchParams.get('merchandiser') || '';
+
+    let candidateJobs = [...memoryCreatedJobs, ...masterJobs];
+
+    if (q) {
+      candidateJobs = candidateJobs.filter((j: any) => matchJobQuery(j, q));
+    }
+    if (buyerParam && buyerParam !== 'ALL') {
+      candidateJobs = candidateJobs.filter((j: any) => String(j.buyer || '').toLowerCase() === buyerParam.toLowerCase());
+    }
+    if (merchParam && merchParam !== 'ALL') {
+      candidateJobs = candidateJobs.filter((j: any) => String(j.merchandiser || '').toLowerCase() === merchParam.toLowerCase());
+    }
+
+    const selectedList = candidateJobs.slice(0, 500);
+
+    const rows = selectedList.map((j: any) => {
       let sectionStatus = 'In Progress';
       let secData: any = {};
       if (slug === 'sewing' || slug === 'garment-production') {
@@ -1847,6 +1920,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         styleNo: j.styleNo,
         orderQty: j.orderQty,
         sectionStatus,
+        merchandiser: j.merchandiser,
         production: {
           cuttingQty: j.cutting?.cuttingQty || j.orderQty,
           sewingQty: j.sewing?.sewingActualQty || j.orderQty,
@@ -1862,8 +1936,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   // 6. /api/demo/job360 or /api/demo/job360/:id
   if (pathStr.startsWith('demo/job360')) {
     const sub = pathStr.replace('demo/job360', '').replace(/^\//, '');
+    const allJobs = [...memoryCreatedJobs, ...masterJobs];
     if (!sub) {
-      const list = masterJobs.map((j: any) => ({
+      const q = url.searchParams.get('q')?.toLowerCase().trim() || '';
+      let list = allJobs;
+      if (q) {
+        list = list.filter((j: any) => matchJobQuery(j, q));
+      }
+      return NextResponse.json(list.slice(0, 500).map((j: any) => ({
         id: j.id,
         jobNo: j.jobNo,
         buyer: j.buyer,
@@ -1874,15 +1954,38 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         ccd: j.dates?.exFactory || j.dates?.cargoClosing,
         presentStatus: j.presentStatus,
         qualityStatus: j.finishing?.inspectionStatus || 'PASSED',
-        shipmentStatus: j.shipment?.status
-      }));
-      return NextResponse.json(list);
+        shipmentStatus: j.shipment?.status,
+        merchandiser: j.merchandiser,
+        _raw: j
+      })));
     }
-    const found = masterJobs.find((x: any) => x.id === sub || x.jobNo === sub);
+    const cleanSub = decodeURIComponent(sub).toLowerCase().trim();
+    const strippedSub = cleanSub
+      .replace(/^job\s*(#|no\.?|num\.?)?\s*/i, '')
+      .replace(/^#\s*/, '')
+      .replace(/^(onl|ons|ovs|nmt|utg)\s+/i, '')
+      .trim();
+    const digitsSub = strippedSub.replace(/\D/g, '');
+    const found = allJobs.find((x: any) => {
+      const jNo = String(x.jobNo || '').toLowerCase().trim();
+      const cleanJNo = jNo.replace(/^(onl|ons|ovs|nmt|utg)\s+/i, '').replace(/^#\s*/, '').trim();
+      const jDigits = cleanJNo.replace(/\D/g, '');
+      const jId = String(x.id || '').toLowerCase().trim();
+      const sNo = String(x.styleNo || '').toLowerCase().trim();
+      return jNo === cleanSub ||
+             jNo === strippedSub ||
+             cleanJNo === strippedSub ||
+             jId === cleanSub ||
+             sNo === cleanSub ||
+             cleanJNo.startsWith(strippedSub) ||
+             (strippedSub.length >= 3 && cleanJNo.includes(strippedSub)) ||
+             (digitsSub.length >= 3 && (jDigits === digitsSub || jDigits.startsWith(digitsSub) || jNo.startsWith(digitsSub))) ||
+             cleanSub.includes(jNo);
+    });
     if (found) {
       return NextResponse.json(formatDetailFromMaster(found));
     }
-    return NextResponse.json(formatDetailFromMaster(masterJobs[0]));
+    return NextResponse.json(formatDetailFromMaster(allJobs[0]));
   }
 
   // 7. /api/demo/status
@@ -3619,13 +3722,109 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   if (pathStr === 'auth/login') {
     const body = await request.json().catch(() => ({}));
-    const email = body.email || 'admin@nfl.local';
-    const user = {
-      id: 'u-admin-1',
-      email,
-      name: email.split('@')[0] === 'admin' ? 'NFL Administrator' : 'Executive User',
-      roles: ['ADMIN', 'MANAGEMENT']
-    };
+    const email = (body.email || 'admin@nfl.local').trim().toLowerCase();
+    const personaId = body.personaId || '';
+
+    let user: any = null;
+
+    if (email.includes('imran') || personaId === 'user-imran') {
+      user = {
+        id: 'user-imran',
+        email: 'imran.k@northernfashions.com',
+        name: 'Md. Imran',
+        role: 'MERCHANDISER',
+        roles: ['MERCHANDISER', 'MERCH_BULK'],
+        merchandiserName: 'Imran',
+        assignedBuyer: 'ONLY',
+        department: 'Team ONLY (Bulk Merchandising)',
+        permissions: ['MERCHANDISING_EDIT', 'FOS_EDIT', 'BOM_EDIT', 'TNA_EDIT', 'SAMPLE_EDIT'],
+        assignedJobsCount: 61
+      };
+    } else if (email.includes('basir') || personaId === 'user-basir') {
+      user = {
+        id: 'user-basir',
+        email: 'basir.h@northernfashions.com',
+        name: 'Basir Hossain',
+        role: 'MERCHANDISER',
+        roles: ['MERCHANDISER', 'MERCH_BULK'],
+        merchandiserName: 'Basir',
+        assignedBuyer: 'OVS',
+        department: 'Team OVS Italy',
+        permissions: ['MERCHANDISING_EDIT', 'FOS_EDIT', 'BOM_EDIT', 'TNA_EDIT', 'SAMPLE_EDIT'],
+        assignedJobsCount: 64
+      };
+    } else if (email.includes('rony') || personaId === 'user-rony') {
+      user = {
+        id: 'user-rony',
+        email: 'rony.a@northernfashions.com',
+        name: 'Rony Ahmed',
+        role: 'MERCHANDISER',
+        roles: ['MERCHANDISER', 'MERCH_BULK'],
+        merchandiserName: 'Rony',
+        assignedBuyer: 'UTG',
+        department: 'Team UTG UK',
+        permissions: ['MERCHANDISING_EDIT', 'FOS_EDIT', 'BOM_EDIT', 'TNA_EDIT', 'SAMPLE_EDIT'],
+        assignedJobsCount: 138
+      };
+    } else if (email.includes('ie') || personaId === 'user-ie') {
+      user = {
+        id: 'user-ie',
+        email: 'ie@nfl.local',
+        name: 'Engr. Kabir Hossain',
+        role: 'IE_SPECIALIST',
+        roles: ['IE_SPECIALIST'],
+        department: 'Central Industrial Engineering (IE)',
+        permissions: ['IE_EDIT', 'BULLETIN_EDIT'],
+        assignedBuyer: 'ALL'
+      };
+    } else if (email.includes('cad') || personaId === 'user-cad') {
+      user = {
+        id: 'user-cad',
+        email: 'cad@nfl.local',
+        name: 'Rafiqul Islam',
+        role: 'CAD_SPECIALIST',
+        roles: ['CAD_SPECIALIST'],
+        department: 'CAD & Technical Section',
+        permissions: ['CAD_EDIT', 'CONSUMPTION_EDIT'],
+        assignedBuyer: 'ALL'
+      };
+    } else if (email.includes('lab') || personaId === 'user-lab') {
+      user = {
+        id: 'user-lab',
+        email: 'lab@nfl.local',
+        name: 'Dr. Nazrul Islam',
+        role: 'LAB_HEAD',
+        roles: ['LAB_HEAD'],
+        department: 'Dyeing & Testing Lab',
+        permissions: ['LAB_EDIT', 'SHADE_APPROVAL_EDIT'],
+        assignedBuyer: 'ALL'
+      };
+    } else if (email.includes('planning') || personaId === 'user-planning') {
+      user = {
+        id: 'user-planning',
+        email: 'planning@nfl.local',
+        name: 'Shahidul Alam',
+        role: 'PLANNING_HEAD',
+        roles: ['PLANNING_HEAD', 'PLANNING'],
+        department: 'Central Planning & Scheduling',
+        permissions: ['PLANNING_EDIT', 'LINE_ALLOCATION_EDIT', 'APPROVAL_EDIT'],
+        assignedBuyer: 'ALL'
+      };
+    } else {
+      user = {
+        id: 'user-head',
+        email: email || 'admin@nfl.local',
+        name: 'Tariqul Islam (Admin / Head Merchandiser)',
+        role: 'HEAD_MERCHANDISER',
+        roles: ['ADMIN', 'HEAD_MERCHANDISER', 'MANAGEMENT'],
+        merchandiserName: 'ALL',
+        assignedBuyer: 'ALL',
+        department: 'Central Merchandising & Factory Operations',
+        permissions: ['ALL'],
+        assignedJobsCount: masterJobs.length
+      };
+    }
+
     return NextResponse.json({
       success: true,
       accessToken: 'demo-access-token-' + Date.now(),

@@ -50,10 +50,12 @@ export default function BulkMerchandisingDashboard() {
     setLoading(true);
     setError('');
     try {
+      const merchName = persona.name.includes('Imran') ? 'Imran' : (persona.name.split(' ')[0] || '');
       const params = new URLSearchParams({
         role: persona.role,
         assignedBuyer: persona.assignedBuyer,
         buyer: isHead ? buyerFilter : persona.assignedBuyer,
+        merchandiserName: isHead ? '' : merchName,
         period,
         from: fromDate,
         to: toDate,
@@ -64,7 +66,7 @@ export default function BulkMerchandisingDashboard() {
         task: taskFilter,
         shipment: shipmentFilter,
         production: productionFilter,
-        merchandiser: merchandiserFilter,
+        merchandiser: isHead ? merchandiserFilter : merchName,
         search: searchQuery,
         tab: activeTab,
         page: String(page),
