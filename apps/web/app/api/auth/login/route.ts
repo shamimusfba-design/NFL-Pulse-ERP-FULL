@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { forwardToLiveApi, isLiveMode } from '../../../../lib/live-gateway';
 
 export async function POST(request: NextRequest) {
+  // Live mode: real email + password check against PostgreSQL users (bcrypt + JWT).
+  if (isLiveMode()) {
+    const live = await forwardToLiveApi(request, 'auth/login');
+    if (live) return live;
+  }
   try {
     const body = await request.json().catch(() => ({}));
     const email = body.email || 'admin@nfl.local';

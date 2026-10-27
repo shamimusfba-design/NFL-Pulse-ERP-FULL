@@ -328,7 +328,12 @@ try {
 } catch (e: any) {
   caughtError = true;
 }
-console.log(`✓ Test 8 Passed: Corrupt file rejected with error, no demo data substituted (caught: ${caughtError}).\n`);
+if (!caughtError) throw new Error('Test 8 Failed: corrupt .xlsx was accepted instead of rejected');
+const garbageCsv = excelCsv.parse(Buffer.from('hello,world\nfoo,bar'), 'random.csv');
+if (garbageCsv.styles.length !== 0 || garbageCsv.validation.status === 'VALIDATED') {
+  throw new Error('Test 8 Failed: unrelated CSV produced order styles (possible demo substitution)');
+}
+console.log('✓ Test 8 Passed: corrupt .xlsx rejected; unrelated CSV yields zero styles and NEED_REVIEW.\n');
 
 console.log('====================================================');
 console.log('>>> ALL 8 PO IMPORT ACCEPTANCE TESTS PASSED 100% <<<');

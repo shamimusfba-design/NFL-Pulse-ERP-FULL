@@ -3,7 +3,19 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
+function assertProductionSecrets() {
+  if (process.env.NODE_ENV !== 'production') return;
+  const weak = ['JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET'].filter((key) => {
+    const value = process.env[key] || '';
+    return value.length < 32 || value.startsWith('dev-');
+  });
+  if (weak.length) {
+    throw new Error(`Refusing to start in production: set strong values (32+ chars) for ${weak.join(', ')}.`);
+  }
+}
+
 async function bootstrap() {
+  assertProductionSecrets();
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix('api');
   app.enableCors({

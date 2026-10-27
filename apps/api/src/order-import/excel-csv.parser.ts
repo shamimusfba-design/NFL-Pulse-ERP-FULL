@@ -8,6 +8,7 @@ export class ExcelCsvParser {
 
   parse(buffer: Buffer | Uint8Array, sourceFileName: string, buyerCode?: string): OrderImportPreview {
     const warnings: string[] = [];
+    assertSpreadsheetSignature(buffer, sourceFileName);
     const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
 
     if (!workbook.SheetNames.length) {
@@ -291,5 +292,23 @@ export class ExcelCsvParser {
   private getColVal(row: any[], idx?: number) {
     if (idx === undefined || idx < 0 || idx >= row.length) return undefined;
     return row[idx];
+  }
+}
+
+/**
+ * SheetJS accepts almost any bytes as a one-cell CSV, so a corrupt or renamed
+ * .xlsx/.xls would silently become an "empty" workbook. Check the real file
+ * signature first so the user gets a clear rejection instead.
+ */
+export function assertSpreadsheetSignature(buffer: Buffer | Uint8Array, sourceFileName: string): void {
+  const bytes = Buffer.from(buffer);
+  const name = (sourceFileName || '').toLowerCase();
+  const isZip = bytes.length >= 4 && bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 0x03 && bytes[3] === 0x04;
+  const isOle = bytes.length >= 8 && bytes.subarray(0, 8).equals(Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]));
+  if (/\.(xlsx|xlsm)$/.test(name) && !isZip) {
+    throw new Error(`"${sourceFileName}" is not a valid Excel .xlsx file (file is corrupt or has the wrong extension).`);
+  }
+  if (/\.xls$/.test(name) && !isOle && !isZip) {
+    throw new Error(`"${sourceFileName}" is not a valid Excel .xls file (file is corrupt or has the wrong extension).`);
   }
 }

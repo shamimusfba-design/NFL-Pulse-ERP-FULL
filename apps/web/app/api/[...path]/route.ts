@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseBuyerPoFile } from '../../../lib/buyer-po-parser';
+import { forwardToLiveApi, markDemo } from '../../../lib/live-gateway';
 import demo2000DataRaw from '../../../data/demo-2000-master.json';
 import factoryDataRaw from '../../../data/dyeing-factory-data.json';
 import factoryKpiMasterRaw from '../../../data/factory-kpi-master.json';
@@ -749,7 +750,7 @@ function getAllConsolidatedStyles(): any[] {
   return allStyles;
 }
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+async function mockGET(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const { path } = await params;
   const pathStr = path.join('/');
   const url = new URL(request.url);
@@ -2875,7 +2876,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   return NextResponse.json({ status: 'ok', path: pathStr, totalJobs: masterJobs.length });
 }
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+async function mockPOST(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const { path } = await params;
   const pathStr = path.join('/');
 
@@ -4106,7 +4107,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   return NextResponse.json({ success: true, message: `Action on ${pathStr} recorded successfully` });
 }
 
-export async function PUT(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+async function mockPUT(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const { path } = await params;
   const pathStr = path.join('/');
   const body = await request.json().catch(() => ({}));
@@ -4132,11 +4133,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   return NextResponse.json({ success: true, ...body });
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+async function mockDELETE(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   return NextResponse.json({ success: true });
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+async function mockPATCH(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const { path } = await params;
   const pathStr = path.join('/');
   const body = await request.json().catch(() => ({}));
@@ -4182,3 +4183,25 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   return NextResponse.json({ success: true, ...body });
 }
+
+// ---------------------------------------------------------------------------
+// Live gateway (NOS_API_MODE=live): routes implemented by the NestJS API are
+// forwarded to it so data is persisted in PostgreSQL. Everything else is still
+// answered by the demo mock above and tagged `x-nos-data-source: demo`.
+// ---------------------------------------------------------------------------
+type RouteCtx = { params: Promise<{ path: string[] }> };
+
+function withGateway(mock: (request: NextRequest, ctx: RouteCtx) => Promise<Response>) {
+  return async (request: NextRequest, ctx: RouteCtx): Promise<Response> => {
+    const { path } = await ctx.params;
+    const live = await forwardToLiveApi(request, (path || []).join('/'));
+    if (live) return live;
+    return markDemo(await mock(request, ctx));
+  };
+}
+
+export const GET = withGateway(mockGET);
+export const POST = withGateway(mockPOST);
+export const PUT = withGateway(mockPUT);
+export const PATCH = withGateway(mockPATCH);
+export const DELETE = withGateway(mockDELETE);
