@@ -105,13 +105,19 @@ export default function LoginPage() {
   async function performLogin(loginEmail: string, personaId?: string) {
     setError('');
     setLoading(true);
+    let liveFailure = '';
     try {
       const res = await fetch(`/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: loginEmail, personaId })
+        body: JSON.stringify({ email: loginEmail, password, personaId })
       });
       const data = await res.json().catch(() => ({}));
+      // Live backend: a rejected password must never fall through to the demo login.
+      if (res.headers.get('x-nos-data-source')?.startsWith('live') && !res.ok) {
+        liveFailure = data?.message || 'Invalid email or password';
+        throw new Error(liveFailure);
+      }
       if (data?.user) {
         localStorage.setItem('nfl_access_token', data.accessToken || 'demo-access-token');
         localStorage.setItem('nfl_refresh_token', data.refreshToken || 'demo-refresh-token');
@@ -139,6 +145,10 @@ export default function LoginPage() {
         throw new Error('Login failed');
       }
     } catch {
+      if (liveFailure) {
+        setError(Array.isArray(liveFailure) ? liveFailure.join(' ') : String(liveFailure));
+        return;
+      }
       // Offline fallback for demo
       const matched = QUICK_PERSONAS.find(p => p.email.toLowerCase() === loginEmail.toLowerCase() || p.id === personaId) || QUICK_PERSONAS[0];
       const fallbackUser = {
