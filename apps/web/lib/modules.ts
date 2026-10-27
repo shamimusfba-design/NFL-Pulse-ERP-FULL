@@ -32,7 +32,6 @@ export const MODULE_GROUPS: ModuleGroup[] = [
       { slug: 'production-lots', name: 'PO / Market Production Lots', short: 'PL', status: 'Live', description: 'Select PO or OVS market scope, combine Color × Size, reserve quantity and release production lots.' },
       { slug: 'projection', name: 'Merchandising Projection', short: 'PR', status: 'Planned', description: 'Pre-order projection and yarn forecast requirements.' },
       { slug: 'sample-room', name: 'Sample Room', short: 'SR', status: 'Working', description: 'Sample follow-up dashboard (type buttons, delivery status, quota, delay reasons), main sample table and new sample entry from the Sample Fabric & Garment Order Sheet. Prototype UI.' },
-      { slug: 'sample-merchandising', name: 'Sample Follow-up', short: 'SF', status: 'Working', description: 'Sample Dashboard, Manual/SO entry, Sample Report, colour-wise quantities, Present Status and Approval Status.' },
       { slug: 'forms-print', name: 'Forms & Print Documents', short: 'FM', status: 'Live', description: 'Locked company-standard SMS, T&A/TNF and bulk fabric order forms with whole-style or Production-Lot A4 printing.' },
     ],
   },

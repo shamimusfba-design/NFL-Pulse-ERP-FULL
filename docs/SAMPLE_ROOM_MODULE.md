@@ -3,6 +3,7 @@
 Status: prototype UI agreed with the sample team owner (27 Oct 2026). Data is kept in the browser only; nothing is saved to PostgreSQL yet.
 
 - Screen: `apps/web/public/sample-room/index.html`, opened from `/modules/sample-room`
+- Replaces the earlier Sample Follow-up module (`/modules/sample-merchandising`), which has been removed
 - Data used: October-26 sheets (SMS, PPS, Others) of *Garments Sample Production & Delivery Schedule*, 1,430 style × colour rows, report date 09.10.26
 - Converter: `scripts/sample-room/import_schedule.py`
 
