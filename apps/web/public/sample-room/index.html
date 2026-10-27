@@ -230,8 +230,12 @@ function prep(r){if(r.due===undefined)r.due=r.sewClose;r.buyerName=r.group==='Be
  if(r.fabReq===undefined){if((r.types||[]).some(t=>FABRIC_TYPES.includes(t))){const req=Math.round((r.qty*0.32+2)*10)/10;const early=['Pattern due','Fabric due','Trims due'].includes(r.stage);const h=hash(r.id+r.style);
   r.fabReq=req;r.knitQty=early?Math.round(req*h*9)/10:req;r.dyeQty=early?Math.round(r.knitQty*hash(r.style)*6)/10:req}else{r.fabReq=null;r.knitQty=null;r.dyeQty=null}}return r}
 let DATA;
-function loadData(){DATA=JSON.parse(JSON.stringify(RAW)).map(prep);try{const o=JSON.parse(localStorage.getItem(KEY)||'{}');if(o.edits)DATA=DATA.map(r=>o.edits[r.id]?Object.assign(r,o.edits[r.id]):r);if(o.added)DATA=o.added.map(prep).concat(DATA)}catch(e){}}
-loadData();
+function seedPending(){const mk=(sid,brand,sub,merch,style,name,type,colors,fab,d_,req)=>colors.map(([c,q],i)=>({id:sid+'-'+i,sheetId:sid,cat:type==='SMS'?'SMS':['PP','APP'].includes(type)?'PP':'Others',group:'Bestseller',brand,buyer:sub,merch,style,types:[type],color:c,qty:q,rcvd:addDays(TODAY,-d_),coll:'6',sewDone:0,dyeClose:null,sewStart:null,sewClose:null,sewActual:null,delQty:0,delActual:null,due:null,reqDate:req,approval:'Pending',statusRaw:'',stage:fab?'Fabric due':'Ready for sewing',loc:'Sample room',finish:'Print',reason:'',note:'',history:[[addDays(TODAY,-d_),'Order sheet submitted by '+merch+' to Sample Planning']],
+  os:{bso:'2204'+style.slice(-4),styleName:name,garment:'',size:type==='SMS'?'S':'146/152',instructions:'Fabric quality should be as per buyer quality requirement.',ta:null,fabric:fab?[['Body + Sleeve','Single Jersey 180 GSM','100% Cotton',String(Math.round(q*0.3))],['Neck','1x1 Rib 300 GSM F/F','95% Cotton, 5% Elastane','3']]:[]},fabReq:fab?Math.round((q*0.32+2)*10)/10:null,knitQty:fab?0:null,dyeQty:fab?0:null}));
+ return [].concat(mk('SD1','ONLY','ONL-JRSY','Faisal','15402210','ONLMAY LS TOP JRS','SMS',[['Cloud Dancer',60],['Black',60]],true,2,addDays(TODAY,16)),
+  mk('SD2','NAME IT','NMT-Baby','Hashi','13261190','NBFKATE SS DRESS','Development',[['Pink Lady',2]],false,1,addDays(TODAY,6)),
+  mk('SD3','ONLY & SONS','ONS','Shovon','22040118','ONSKANE RLX SS TEE','PP',[['Jet Black',3],['Navy Blazer',3]],true,0,addDays(TODAY,9)))}
+function loadData(){DATA=JSON.parse(JSON.stringify(RAW)).concat(seedPending()).map(prep);try{const o=JSON.parse(localStorage.getItem(KEY)||'{}');if(o.edits)DATA=DATA.map(r=>o.edits[r.id]?Object.assign(r,o.edits[r.id]):r);if(o.added)DATA=o.added.map(prep).concat(DATA)}catch(e){}}
 function persist(recs,isNew){try{const o=JSON.parse(localStorage.getItem(KEY)||'{}');o.edits=o.edits||{};o.added=o.added||[];recs.forEach(rec=>{if(isNew)o.added.unshift(rec);else{const i=o.added.findIndex(x=>x.id===rec.id);if(i>=0)o.added[i]=rec;else o.edits[rec.id]=rec}});localStorage.setItem(KEY,JSON.stringify(o))}catch(e){}}
 // ---------- helpers ----------
 const esc=v=>String(v==null?'':v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -247,15 +251,16 @@ function dstat(r){if(r.stage==='Cancelled')return'Cancelled';if(delBal(r)===0||[
 const dueMonth=r=>r.due?r.due.slice(0,7):'';
 const monthLabel=m=>{const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return M[+m.slice(5,7)-1]+' '+m.slice(0,4)};
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('show'),2800)}
+loadData();
 // ---------- state ----------
 let TYPE='all';
 const F={q:'',buyer:'',sub:'',merch:'',coll:'',month:'',dstat:'',stage:'',finish:'',loc:'',reason:'',quick:'',qline:''};
 let sort={k:'due',dir:1},pageN=0;const PER=50;
 let selId=null,newIds=new Set(),entryOpen=false;
-let PAGE=(location.hash||'').slice(1)==='entry'?'entry':'follow';let FORMTYPE='Development';const E={q:'',type:'',buyer:''};let pageE=0;
-const PAGES=[['follow','Sample follow-up'],['entry','New sample entry']];
-function renderTabs(){document.getElementById('tabs').innerHTML=PAGES.map(([k,l])=>`<button class="${PAGE===k?'active':''}" data-page="${k}">${l}</button>`).join('');document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>goPage(b.dataset.page))}
-function goPage(p){PAGE=p;selId=null;try{history.replaceState(null,'','#'+p)}catch(e){}render();window.scrollTo(0,0)}
+let PAGE=['entry','planning'].includes((location.hash||'').slice(1))?(location.hash||'').slice(1):'follow';let planSel=null;let FORMTYPE='Development';const E={q:'',type:'',buyer:''};let pageE=0;
+const PAGES=[['follow','Sample follow-up'],['entry','New sample entry'],['planning','Planning approval']];
+function renderTabs(){const pend=pendingSheets().length;document.getElementById('tabs').innerHTML=PAGES.map(([k,l])=>`<button class="${PAGE===k?'active':''}" data-page="${k}">${l}${k==='planning'&&pend?`<span class="ct" style="background:var(--warn-bg);color:var(--warn)">${pend} waiting</span>`:''}</button>`).join('');document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>goPage(b.dataset.page))}
+function goPage(p){PAGE=p;selId=null;planSel=null;try{history.replaceState(null,'','#'+p)}catch(e){}render();window.scrollTo(0,0)}
 const QUICK={delivered:{l:'Delivered',f:r=>dstat(r)==='Delivered'},pending:{l:'Pending',f:r=>['Pending','Partly delivered'].includes(dstat(r))},overdue:{l:'Delivery date passed',f:r=>dstat(r)==='Overdue'},due7:{l:'Due in next 7 days',f:r=>!['Delivered','Cancelled'].includes(dstat(r))&&r.due&&r.due>=TODAY&&r.due<=addDays(TODAY,7)},fab:{l:'Fabric due',f:r=>r.stage==='Fabric due'},sewn:{l:'Sewn, not delivered',f:r=>r.sewDone>=r.qty&&dstat(r)!=='Delivered'&&r.stage!=='Cancelled'}};
 const inType=r=>TYPE==='all'||(r.types||[]).includes(TYPE);
 function match(r,skip){const q=F.q.toLowerCase();const ql=F.qline&&QUOTA.find(x=>x.line===F.qline);
@@ -264,21 +269,24 @@ function sel(id,label,opts,val,labf){return `<select id="${id}" aria-label="${la
 function donut(entries,total,center,key){let acc=0;const seg=entries.map(([l,v,c])=>{const a=acc/total*360;acc+=v;return `${c} ${a}deg ${acc/total*360}deg`}).join(',');
  return `<div class="donutwrap"><div class="donut" style="background:${total?`conic-gradient(${seg})`:'var(--chip)'}" role="img" aria-label="${esc(center[1])}"><div class="mid"><b>${center[0]}</b>${center[1]}</div></div><div class="dleg">${entries.map(([l,v,c])=>`<button data-${key}="${esc(l)}" class="${F[key]===l?'on':''}"><i style="background:${c}"></i>${esc(l)} <b>${n(v)}</b><span class="muted">${total?Math.round(v/total*100):0}%</span></button>`).join('')}</div></div>`}
 // ---------- page ----------
-const COLS=[['stage','Present status'],['dstat','Delivery status'],['buyerName','Buyer'],['buyer','Sub-brand'],['merch','Merchandiser'],['style','Style No.'],['types','Sample type'],['color','Color / Pantone'],['qty','Qty (pcs)',1],['rcvd','Order sheet receive'],['due','Delivery due'],['coll','Coll #'],['fabReq','Fabric req. (kg)',1],['knitQty','Knitting qty (kg)',1],['dyeQty','Dyeing qty (kg)',1],['dyeClose','Dyeing close'],['sewStart','Sewing start'],['sewClose','Sewing close (plan)'],['sewDone','Sewing complete qty',1],['sewBal','Sewing balance',1],['sewActual','Actual sewing complete'],['delQty','Delivery qty',1],['delBal','Delivery balance',1],['delActual','Actual delivery'],['loc','Sewing place'],['finish','Print / Solid / Emb'],['reason','Remarks (delay)']];
-const DATEK=['rcvd','dyeClose','sewStart','sewClose','sewActual','due','delActual'];
+const COLS=[['stage','Present status'],['dstat','Delivery status'],['buyerName','Buyer'],['buyer','Sub-brand'],['merch','Merchandiser'],['style','Style No.'],['types','Sample type'],['color','Color / Pantone'],['qty','Qty (pcs)',1],['rcvd','Order sheet receive'],['due','Delivery due'],['reqDate','Required (buyer)'],['coll','Coll #'],['fabReq','Fabric req. (kg)',1],['knitQty','Knitting qty (kg)',1],['dyeQty','Dyeing qty (kg)',1],['dyeClose','Dyeing close'],['sewStart','Sewing start'],['sewClose','Sewing close (plan)'],['sewDone','Sewing complete qty',1],['sewBal','Sewing balance',1],['sewActual','Actual sewing complete'],['delQty','Delivery qty',1],['delBal','Delivery balance',1],['delActual','Actual delivery'],['loc','Sewing place'],['finish','Print / Solid / Emb'],['reason','Remarks (delay)']];
+const DATEK=['rcvd','dyeClose','sewStart','sewClose','sewActual','due','delActual','reqDate'];
 const val=(r,k)=>k==='sewBal'?sewBal(r):k==='delBal'?delBal(r):k==='dstat'?dstat(r):k==='types'?(r.types||[]).join(' + '):r[k];
-function cell(r,k){const v=val(r,k);if(DATEK.includes(k))return fmt(v);if(k==='stage')return chip(r.stage,TONE[r.stage]);if(k==='dstat')return chip(v,DTONE[v])+(v==='Overdue'?` <span class="muted">${days(r.due,TODAY)} d</span>`:'');if(k==='types')return (r.types||[]).map(t=>chip(t)).join(' ');
+function cell(r,k){const v=val(r,k);if(r.approval==='Pending'&&(k==='stage'||k==='dstat'))return k==='stage'?chip('Waiting for planning','warn'):'';if(r.approval==='Returned'&&(k==='stage'||k==='dstat'))return k==='stage'?chip('Returned to merchandiser','bad'):'';if(k==='reqDate')return v?(r.due&&r.due>v?`<span style="color:var(--bad)">${fmt(v)}</span>`:fmt(v)):'—';if(DATEK.includes(k))return fmt(v);if(k==='stage')return chip(r.stage,TONE[r.stage]);if(k==='dstat')return chip(v,DTONE[v])+(v==='Overdue'?` <span class="muted">${days(r.due,TODAY)} d</span>`:'');if(k==='types')return (r.types||[]).map(t=>chip(t)).join(' ');
  if(['fabReq','knitQty','dyeQty'].includes(k)){if(r.fabReq==null)return k==='fabReq'?'<span class="muted">Available fabric</span>':'';const pct=r.fabReq?v/r.fabReq:1;return `<span style="color:${k!=='fabReq'&&pct<1?'var(--bad)':'inherit'}">${kg(v)}</span>`}
- if(k==='reason')return v?chip(v,v==='On time'?'good':'warn'):'';if(k==='style')return `<b>${esc(v)}</b>`;if(typeof v==='number')return n(v);return esc(v||'')}
+ if(k==='reason'){if(r.approval==='Returned')return chip(r.returnReason||'Returned','bad');return v?chip(v,v==='On time'?'good':'warn'):''}if(k==='style')return `<b>${esc(v)}</b>`;if(typeof v==='number')return n(v);return esc(v||'')}
 const catOf=t=>t==='SMS'?'sms':(t==='all'||OD.includes(t))?'od':'oth';
 function quotaCat(){return catOf(TYPE)}
 const QLABEL={od:'Offer / Development',sms:'Salesman (SMS)',oth:'PP & other samples'};
 function quotaRows(cc){const c=cc||quotaCat();const typeOk=r=>c==='od'?(r.types||[]).some(t=>OD.includes(t)):c==='sms'?(r.types||[]).includes('SMS'):!(r.types||[]).some(t=>OD.includes(t)||t==='SMS');
- return QUOTA.map(q=>{const used=new Set(DATA.filter(r=>q.codes.includes(r.buyer)&&typeOk(r)&&r.rcvd&&r.rcvd.slice(0,7)===QMONTH).map(r=>r.style)).size;return {...q,quota:q[c],used}}).filter(q=>q.quota>0||q.used>0).sort((a,b)=>(b.quota?b.used/b.quota:9)-(a.quota?a.used/a.quota:9))}
+ return QUOTA.map(q=>{const used=new Set(DATA.filter(r=>r.approval!=='Returned'&&q.codes.includes(r.buyer)&&typeOk(r)&&r.rcvd&&r.rcvd.slice(0,7)===QMONTH).map(r=>r.style)).size;return {...q,quota:q[c],used}}).filter(q=>q.quota>0||q.used>0).sort((a,b)=>(b.quota?b.used/b.quota:9)-(a.quota?a.used/a.quota:9))}
 function qrowsHTML(qr,hl){return qr.map(q=>{const p=q.quota?q.used/q.quota:1;const col=!q.quota||p>1?'var(--bad)':p>=.8?'var(--warn)':'var(--good)';const lab=!q.quota?chip('No quota','bad'):q.used>q.quota?chip('Over by '+(q.used-q.quota),'bad'):q.used===q.quota?chip('Full','warn'):chip((q.quota-q.used)+' left','good');
  return `<div class="qrow ${F.qline===q.line||hl===q.line?'on':''}" data-ql="${esc(q.line)}" title="${q.used} of ${q.quota} styles"><span class="nm">${esc(q.line)} <span class="muted">${q.used}/${q.quota}</span></span><div class="tr"><div style="width:${Math.min(100,p*100)}%;background:${col}"></div></div><span>${lab}</span></div>`}).join('')||'<div class="empty">No quota for this type</div>'}
-function render(){renderTabs();const m=document.getElementById('main');if(PAGE==='entry'){entryPage(m);return}followPage(m)}
-function followPage(m){
+const isLive=r=>!r.approval||r.approval==='Approved';
+function pendingSheets(){const m={};DATA.forEach(r=>{if(r.approval==='Pending'){(m[r.sheetId]=m[r.sheetId]||[]).push(r)}});return Object.values(m).sort((a,b)=>String(a[0].rcvd).localeCompare(String(b[0].rcvd)))}
+function render(){renderTabs();const m=document.getElementById('main');if(PAGE==='entry'){entryPage(m);return}if(PAGE==='planning'){planningPage(m);return}followPage(m)}
+function followPage(m){const ALL=DATA;DATA=ALL.filter(isLive);try{followInner(m)}finally{DATA=ALL}}
+function followInner(m){
  const scoped=DATA.filter(r=>match(r,'quick')),rows=DATA.filter(r=>match(r));
  const tCount=t=>DATA.filter(r=>(r.types||[]).includes(t)).length;
  const types=TYPE_ORDER.filter(t=>ALWAYS.includes(t)||tCount(t)>0);
@@ -319,7 +327,7 @@ function followPage(m){
  <div class="stchips" role="group" aria-label="Present status">${sCount.map(([s,v])=>`<button class="${F.stage===s?'on':''}" data-fs="${esc(s)}">${s} · ${v}</button>`).join('')}</div>
  <div class="panel"><div class="tablewrap"><table><thead><tr>${COLS.map(([k,l,nm])=>`<th class="${nm?'num':''}" data-sort="${k}">${l}${['fabReq','knitQty','dyeQty'].includes(k)?' <span class="demotag">demo</span>':''}${sort.k===k?`<span class="ar">${sort.dir>0?'▲':'▼'}</span>`:''}</th>`).join('')}</tr></thead>
  <tbody>${slice.map(r=>`<tr data-id="${r.id}" class="${r.id===selId||newIds.has(r.id)?'sel':''} ${dstat(r)==='Overdue'?'late':''}">${COLS.map(([k,,nm])=>`<td class="${nm?'num':''}">${cell(r,k)}</td>`).join('')}</tr>`).join('')}</tbody>
- ${rows.length?`<tfoot><tr><td colspan="8"><b>Total · ${n(rows.length)} rows</b></td><td class="num"><b>${n(tot('qty'))}</b></td><td colspan="3"></td><td class="num"><b>${kg(tot('fabReq'))}</b></td><td class="num"><b>${kg(tot('knitQty'))}</b></td><td class="num"><b>${kg(tot('dyeQty'))}</b></td><td colspan="3"></td><td class="num"><b>${n(tot('sewDone'))}</b></td><td class="num"><b>${n(tot('sewBal'))}</b></td><td></td><td class="num"><b>${n(tot('delQty'))}</b></td><td class="num"><b>${n(tot('delBal'))}</b></td><td colspan="4"></td></tr></tfoot>`:''}</table>
+ ${rows.length?`<tfoot><tr><td colspan="8"><b>Total · ${n(rows.length)} rows</b></td><td class="num"><b>${n(tot('qty'))}</b></td><td colspan="4"></td><td class="num"><b>${kg(tot('fabReq'))}</b></td><td class="num"><b>${kg(tot('knitQty'))}</b></td><td class="num"><b>${kg(tot('dyeQty'))}</b></td><td colspan="3"></td><td class="num"><b>${n(tot('sewDone'))}</b></td><td class="num"><b>${n(tot('sewBal'))}</b></td><td></td><td class="num"><b>${n(tot('delQty'))}</b></td><td class="num"><b>${n(tot('delBal'))}</b></td><td colspan="4"></td></tr></tfoot>`:''}</table>
  ${rows.length?'':'<div class="empty">No sample matches. Clear a filter or pick another sample type.</div>'}</div>
  <div class="pager"><span>Showing ${rows.length?pageN*PER+1:0}–${Math.min(rows.length,(pageN+1)*PER)} of ${n(rows.length)} · Fabric, knitting and dyeing kg are demo numbers until the Knitting and Dyeing sample sub-modules feed them.</span><span><button class="btn sm" id="pprev" ${pageN?'':'disabled'}>Previous</button> Page ${pageN+1} of ${pages} <button class="btn sm" id="pnext" ${pageN<pages-1?'':'disabled'}>Next</button> <button class="btn sm" id="fexport">Copy for Excel</button></span></div></div>
  </div>${selId!=null?'<aside class="panel side entry open" id="side"></aside>':''}</div>`;
@@ -349,6 +357,11 @@ overlay.onclick=closeEntry;document.addEventListener('keydown',e=>{if(e.key==='E
 
 function renderSide(){const s=document.getElementById('side');if(!s){overlay.classList.remove('open');return}overlay.classList.toggle('open',mobile());const r=DATA.find(x=>x.id===selId);if(r)detail(s,r)}
 function detail(s,r){const os=r.os||null;
+ if(r.approval&&r.approval!=='Approved'){s.innerHTML=`<header><div><div class="muted" style="font-size:12.5px">${esc(r.buyerName)} · ${esc(r.buyer)} · ${esc(r.merch)}</div><h3>${esc(r.style)}${os&&os.styleName?' · '+esc(os.styleName):''}</h3><div style="margin-top:4px">${r.approval==='Pending'?chip('Waiting for Sample Planning','warn'):chip('Returned: '+(r.returnReason||''),'bad')} ${(r.types||[]).map(t=>chip(t)).join(' ')}</div></div><button class="btn sm" id="sclose">Close</button></header>
+ <div class="body"><div class="kv"><div><span>Colour</span>${esc(r.color)}</div><div><span>Qty</span>${r.qty} pcs</div><div><span>Required (buyer)</span>${fmt(r.reqDate)}</div><div><span>Submitted</span>${fmt(r.rcvd)}</div></div>
+ ${r.approval==='Returned'?`<div class="fabnote" style="margin-bottom:10px">Planning note: ${esc(r.returnNote||'—')}</div><button class="btn primary" id="resub">Resubmit to Sample Planning</button>`:'<div class="fabnote">This order sheet appears in the Sample follow-up list after Sample Planning gives the TNA and approves it.</div>'}
+ <div class="secttl">History</div><div class="tl">${(r.history||[]).map(e=>`<div><b>${fmt(e[0])}</b> · ${esc(e[1])}</div>`).join('')}</div></div>`;
+  document.getElementById('sclose').onclick=closeEntry;const rb=document.getElementById('resub');if(rb)rb.onclick=()=>{const rows=DATA.filter(x=>x.sheetId===r.sheetId);rows.forEach(x=>{x.approval='Pending';x.history.push([TODAY,'Resubmitted to Sample Planning'])});persist(rows);toast('Resubmitted '+r.style);selId=null;render()};return}
  s.innerHTML=`<header><div><div class="muted" style="font-size:12.5px">${esc(r.buyerName)} · ${esc(r.buyer)} · ${esc(r.merch)}</div><h3>${esc(r.style)}${os&&os.styleName?' · '+esc(os.styleName):''}</h3><div style="margin-top:4px">${chip(r.stage,TONE[r.stage])} ${chip(dstat(r),DTONE[dstat(r)])} ${(r.types||[]).map(t=>chip(t)).join(' ')}</div></div><div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><button class="btn sm primary" id="toNew">New sample entry</button><button class="btn sm" id="sclose">Close</button></div></header>
  <div class="body"><div class="kv"><div><span>Colour / Pantone</span>${esc(r.color)}</div><div><span>Qty</span>${r.qty} pcs</div><div><span>Coll #</span>${esc(r.coll)||'—'}</div><div><span>Order sheet received</span>${fmt(r.rcvd)}</div>
  <div><span>Delivery due</span>${fmt(r.due)} ${dstat(r)==='Overdue'?chip(days(r.due,TODAY)+' d late','bad'):''}</div><div><span>Print / Solid / Emb</span>${esc(r.finish)||'—'}</div><div><span>Sewn / balance</span>${r.sewDone} / ${sewBal(r)}</div><div><span>Delivered / balance</span>${r.delQty} / ${delBal(r)}</div>
@@ -427,18 +440,14 @@ function newForm(s){
    <div><div class="secttl">3 · Colours and quantity <span class="muted" style="font-weight:400">(each colour becomes one row)</span></div>
     <table class="colorrows" id="cRows"><thead><tr><th>Color / Pantone</th><th style="width:84px">Qty pcs</th><th style="width:34px"></th></tr></thead><tbody></tbody></table><button class="btn sm" id="addC" style="margin-top:6px">Add colour</button></div>
    <div id="fabBox"></div></div>
-  <div class="full"><div class="secttl">5 · Sample T&A</div><div style="overflow-x:auto"><table class="colorrows"><thead><tr><th></th>${TA.map(k=>`<th>${k}</th>`).join('')}</tr></thead><tbody>
-   <tr><td>Start</td>${TA.map((k,i)=>`<td><input type="date" id="ta-s-${i}" value="${addDays(TODAY,i*2+1)}"></td>`).join('')}</tr>
-   <tr><td>End</td>${TA.map((k,i)=>`<td><input type="date" id="ta-e-${i}" value="${addDays(TODAY,i*2+2)}"></td>`).join('')}</tr></tbody></table></div></div>
-  <label>Ex-factory delivery date<input type="date" id="nDue" value="${addDays(TODAY,14)}"></label>
-  <label>Sewing place<select id="nLoc">${LOCS.map(x=>`<option>${x}</option>`).join('')}</select></label>
-  <label>Received by<input type="text" id="nRecv" placeholder="Sample room person"></label>
-  <label>First status<select id="nStage">${STAGES.slice(0,6).map(x=>`<option>${x}</option>`).join('')}</select></label>
+  <div class="secttl full">5 · Delivery</div>
+  <label>Required delivery date (buyer)<input type="date" id="nReq" value="${addDays(TODAY,14)}"></label>
+  <div class="full fabnote" style="grid-column:2/-1">Sample Planning will add the Sample T&A and the planned delivery date, then approve. Until then this order sheet waits in Planning approval.</div>
   <label class="full">Specific instructions<input type="text" id="nInst" value="Fabric quality should be as per buyer quality requirement."></label>
  </div></div>`;
  const $=id=>document.getElementById(id);
  const fill=()=>{const t=$('nG').value;FORMTYPE=t;$('nAlso').innerHTML=['Photo','BPS','Test','AR','AD','Color ref.','Size set','Shipment','Fit'].filter(x=>x!==t&&t!=='SMS').map(x=>`<label><input type="checkbox" value="${x}">${x}</label>`).join('')||'<span class="muted" style="font-size:12.5px">Not used for salesman samples</span>';
-  const needs=FABRIC_TYPES.includes(t);$('nStage').value=needs?'Fabric due':'Ready for sewing';
+  const needs=FABRIC_TYPES.includes(t);
   $('fabBox').innerHTML=needs?`<div class="secttl">4 · Fabric to knit and dye</div><table class="colorrows" id="fRows"><thead><tr><th>Part</th><th>GSM & fabric</th><th>Composition</th><th style="width:70px">Kgs</th></tr></thead><tbody></tbody></table><button class="btn sm" id="addF" style="margin-top:6px">Add fabric part</button><div class="muted" style="font-size:12.5px;margin-top:4px">Total kg goes to Knitting and Dyeing as the fabric requirement.</div>`:`<div class="secttl">4 · Fabric</div><div class="fabnote">${esc(t)} samples are made from available fabric. No knitting or dyeing order is created.</div>`;
   if(needs){const addF=(p,d,c,k)=>{const tr=document.createElement('tr');tr.innerHTML=`<td><input value="${esc(p||'')}"></td><td><input value="${esc(d||'')}"></td><td><input value="${esc(c||'')}"></td><td><input type="number" step="0.1" value="${k||''}"></td>`;$('fRows').tBodies[0].appendChild(tr)};addF('Body + Sleeve','Single Jersey 180 GSM','100% Cotton',15);addF('Neck','1x1 Rib 300 GSM F/F','95% Cotton, 5% Elastane',4);$('addF').onclick=()=>addF()}
   quotaBox()};
@@ -456,13 +465,50 @@ function newForm(s){
   const types=[t].concat([...document.querySelectorAll('#nAlso input:checked')].map(i=>i.value));
   const fabRows=$('fRows')?[...$('fRows').tBodies[0].rows].map(tr=>[...tr.querySelectorAll('input')].map(i=>i.value)):[];
   const kgTotal=fabRows.reduce((a,f)=>a+(+f[3]||0),0);const totalQty=colors.reduce((a,x)=>a+x.q,0);
-  const ta={};TA.forEach((k,i)=>ta[k]={s:$('ta-s-'+i).value,e:$('ta-e-'+i).value});
+  const ta=null;
   const bn=v('nBuyerName');const sample=DATA.find(r=>r.buyerName===bn)||{};
-  const os={bso:v('nBso'),styleName:v('nName'),garment:v('nGar'),size:v('nSize'),receivedBy:v('nRecv'),instructions:v('nInst'),ta,fabric:fabRows};const base=Date.now();
-  const recs=colors.map((x,i)=>({id:'N'+base+'-'+i,cat:t==='SMS'?'SMS':['PP','APP'].includes(t)?'PP':'Others',group:sample.group||bn,brand:sample.brand||bn,buyer:v('nSub'),merch:v('nMerch'),style:v('nStyle'),types,color:x.c,qty:x.q,rcvd:v('nRcvd'),coll:v('nColl'),sewDone:0,dyeClose:null,sewStart:ta.Sewing.s||null,sewClose:ta.Sewing.e||null,sewActual:null,delQty:0,delActual:null,due:v('nDue')||null,statusRaw:'',stage:v('nStage'),loc:v('nLoc'),finish:v('nFin'),reason:'',history:[[v('nRcvd')||TODAY,'Order sheet received']],note:'',os,
+  const os={bso:v('nBso'),styleName:v('nName'),garment:v('nGar'),size:v('nSize'),receivedBy:'',instructions:v('nInst'),ta,fabric:fabRows};const base=Date.now();
+  const recs=colors.map((x,i)=>({id:'N'+base+'-'+i,cat:t==='SMS'?'SMS':['PP','APP'].includes(t)?'PP':'Others',group:sample.group||bn,brand:sample.brand||bn,buyer:v('nSub'),merch:v('nMerch'),style:v('nStyle'),types,color:x.c,qty:x.q,rcvd:v('nRcvd'),coll:v('nColl'),sewDone:0,dyeClose:null,sewStart:null,sewClose:null,sewActual:null,delQty:0,delActual:null,due:null,reqDate:v('nReq')||null,approval:'Pending',sheetId:'S'+base,statusRaw:'',stage:FABRIC_TYPES.includes(t)?'Fabric due':'Ready for sewing',loc:'Sample room',finish:v('nFin'),reason:'',history:[[v('nRcvd')||TODAY,'Order sheet submitted by '+v('nMerch')+' to Sample Planning']],note:'',os,
    fabReq:FABRIC_TYPES.includes(t)?Math.round(kgTotal*x.q/totalQty*10)/10:null,knitQty:FABRIC_TYPES.includes(t)?0:null,dyeQty:FABRIC_TYPES.includes(t)?0:null}));
   recs.forEach(prep);DATA=recs.concat(DATA);persist(recs,true);newIds=new Set(recs.map(r=>r.id));E.q='';E.type='';E.buyer='';F.qline='';pageE=0;
-  toast(`${recs.length} colour row${recs.length>1?'s':''} of ${v('nStyle')} added under ${t}`);render()};
+  toast(`Order sheet ${v('nStyle')} (${recs.length} colour${recs.length>1?'s':''}) sent to Sample Planning for TNA approval`);render()};
+}
+function planningPage(m){
+ const sheets=pendingSheets();const ret=(()=>{const mm={};DATA.forEach(r=>{if(r.approval==='Returned')(mm[r.sheetId]=mm[r.sheetId]||[]).push(r)});return Object.values(mm)})();
+ const cur=sheets.find(sh=>sh[0].sheetId===planSel);
+ const qstat=sh=>{const r=sh[0];const c=catOf(r.types[0]);const ql=QUOTA.find(q=>q.codes.includes(r.buyer));if(!ql)return chip('No quota line','');const u=quotaRows(c).find(q=>q.line===ql.line);if(!u)return chip('No quota','bad');return u.used>u.quota?chip(`Over ${u.used}/${u.quota}`,'bad'):u.used===u.quota?chip(`Full ${u.used}/${u.quota}`,'warn'):chip(`${u.used}/${u.quota}`,'good')};
+ m.innerHTML=`<div class="kpis"><div class="kpi warn"><div class="n">${sheets.length}</div><div class="l">Order sheets waiting</div></div><div class="kpi"><div class="n">${n(sheets.reduce((a,sh)=>a+sh.reduce((b,r)=>b+r.qty,0),0))}</div><div class="l">Pcs waiting</div></div><div class="kpi bad"><div class="n">${sheets.filter(sh=>days(sh[0].rcvd,TODAY)>=2).length}</div><div class="l">Waiting 2 days or more</div></div><div class="kpi"><div class="n">${ret.length}</div><div class="l">Returned to merchandisers</div></div></div>
+ <div class="layout ${cur?'':'nopanel'}"><div style="min-width:0">
+ <div class="panel"><div class="tablewrap" style="min-height:0"><table><thead><tr><th>Submitted</th><th class="num">Days waiting</th><th>Buyer</th><th>Sub-brand</th><th>Merchandiser</th><th>Style No.</th><th>Sample type</th><th class="num">Colours</th><th class="num">Qty</th><th>Required (buyer)</th><th>Quota (this month)</th></tr></thead><tbody>
+ ${sheets.map(sh=>{const r=sh[0];return `<tr data-sheet="${r.sheetId}" class="${planSel===r.sheetId?'sel':''}"><td>${fmt(r.rcvd)}</td><td class="num">${days(r.rcvd,TODAY)}</td><td>${esc(r.buyerName)}</td><td>${esc(r.buyer)}</td><td>${esc(r.merch)}</td><td><b>${esc(r.style)}</b></td><td>${r.types.map(t=>chip(t)).join(' ')}</td><td class="num">${sh.length}</td><td class="num">${n(sh.reduce((a,x)=>a+x.qty,0))}</td><td>${fmt(r.reqDate)}</td><td>${qstat(sh)}</td></tr>`}).join('')}</tbody></table>
+ ${sheets.length?'':'<div class="empty">No order sheet is waiting. New sheets from merchandisers appear here.</div>'}</div></div>
+ ${ret.length?`<div class="panel pad" style="margin-top:12px"><div class="ptitle">Returned to merchandisers</div><div class="phint">They can correct and resubmit from New sample entry.</div>${ret.map(sh=>`<div style="font-size:13px;padding:3px 0"><b>${esc(sh[0].style)}</b> · ${esc(sh[0].buyer)} · ${esc(sh[0].merch)} · ${chip(sh[0].returnReason||'Returned','bad')}</div>`).join('')}</div>`:''}
+ </div>${cur?'<aside class="panel side entry open" id="pside"></aside>':''}</div>`;
+ m.querySelectorAll('[data-sheet]').forEach(tr=>tr.onclick=()=>{planSel=planSel===tr.dataset.sheet?null:tr.dataset.sheet;render()});
+ if(cur)planPanel(document.getElementById('pside'),cur);overlay.classList.toggle('open',!!cur&&mobile());
+}
+function planPanel(s,sh){const r=sh[0];const os=r.os||{};const c=catOf(r.types[0]);const ql=QUOTA.find(q=>q.codes.includes(r.buyer));const u=ql&&quotaRows(c).find(q=>q.line===ql.line);
+ const needs=r.fabReq!=null;const def=TA.map((k,i)=>{const skip=!needs&&(k==='Knitting'||k==='Dyeing');const st=addDays(TODAY,i*2+1);return skip?{s:'',e:''}:{s:st,e:addDays(st,1)}});
+ s.innerHTML=`<header><div><div class="muted" style="font-size:12.5px">${esc(r.buyerName)} · ${esc(r.buyer)} · ${esc(r.merch)} · submitted ${fmt(r.rcvd)}</div><h3>${esc(r.style)}${os.styleName?' · '+esc(os.styleName):''}</h3><div style="margin-top:4px">${r.types.map(t=>chip(t)).join(' ')} ${u?(u.used>u.quota?chip(QLABEL[c]+' quota over: '+u.used+'/'+u.quota,'bad'):chip(QLABEL[c]+' quota '+u.used+'/'+u.quota,'good')):''}</div></div><button class="btn sm" id="pclose">Close</button></header>
+ <div class="body">
+ <div class="secttl" style="margin-top:0">From the merchandiser (read only)</div>
+ <div class="kv"><div><span>Coll #</span>${esc(r.coll)||'—'}</div><div><span>Buyer sample order no</span>${esc(os.bso)||'—'}</div><div><span>Garment / size</span>${esc(os.garment)||'—'} ${esc(os.size)||''}</div><div><span>Print / Solid / Emb</span>${esc(r.finish)}</div><div><span>Required (buyer)</span>${fmt(r.reqDate)}</div><div><span>Instructions</span>${esc(os.instructions)||'—'}</div></div>
+ <table class="btab"><thead><tr><th>Colour</th><th class="num">Qty</th><th class="num">Fabric kg</th></tr></thead><tbody>${sh.map(x=>`<tr><td>${esc(x.color)}</td><td class="num">${x.qty}</td><td class="num">${x.fabReq==null?'Available':kg(x.fabReq)}</td></tr>`).join('')}</tbody></table>
+ ${(os.fabric||[]).length?`<table class="btab" style="margin-top:6px"><thead><tr><th>Part</th><th>GSM & fabric</th><th>Composition</th><th class="num">Kg</th></tr></thead><tbody>${os.fabric.map(f=>`<tr><td>${esc(f[0])}</td><td>${esc(f[1])}</td><td>${esc(f[2])}</td><td class="num">${esc(f[3])}</td></tr>`).join('')}</tbody></table>`:''}
+ <div class="secttl">Sample T&A (Sample Planning)</div>
+ <div style="overflow-x:auto"><table class="colorrows"><thead><tr><th></th>${TA.map(k=>`<th>${k}</th>`).join('')}</tr></thead><tbody>
+ <tr><td>Start</td>${TA.map((k,i)=>`<td><input type="date" id="pt-s-${i}" value="${def[i].s}"></td>`).join('')}</tr><tr><td>End</td>${TA.map((k,i)=>`<td><input type="date" id="pt-e-${i}" value="${def[i].e}"></td>`).join('')}</tr></tbody></table></div>
+ <div class="form" style="margin-top:8px"><label>Planned delivery date<input type="date" id="pDue"></label><label>Sewing place<select id="pLoc">${LOCS.map(x=>`<option>${x}</option>`).join('')}</select></label><div class="full" id="pGap"></div></div>
+ <div class="secttl">Return instead</div><div class="form"><label>Reason<select id="pRsn"><option>Quota full</option><option>Information missing</option><option>Sample capacity full</option><option>Fabric not possible in time</option><option>Other</option></select></label><label>Note<input type="text" id="pNote" placeholder="What the merchandiser should fix"></label></div>
+ </div><div class="foot"><button class="btn primary" id="pApprove">Approve with this TNA</button><button class="btn" id="pReturn">Return to merchandiser</button></div>`;
+ const $=id=>document.getElementById(id);
+ const sync=()=>{const se=$('pt-e-5').value;if(se&&!$('pDue').dataset.touched)$('pDue').value=addDays(se,1);const d=$('pDue').value;const g=d&&r.reqDate?days(r.reqDate,d):null;$('pGap').innerHTML=g==null?'':g>0?chip(g+' days later than the buyer date','bad'):chip('Meets the buyer date','good')};
+ $('pt-e-5').onchange=sync;$('pDue').oninput=()=>{$('pDue').dataset.touched='1';sync()};sync();
+ $('pclose').onclick=()=>{planSel=null;overlay.classList.remove('open');render()};
+ $('pApprove').onclick=()=>{const ta={};TA.forEach((k,i)=>ta[k]={s:$('pt-s-'+i).value,e:$('pt-e-'+i).value});if(!ta.Sewing.s||!ta.Sewing.e){toast('Give the sewing start and end dates');return}if(!$('pDue').value){toast('Give the planned delivery date');return}
+  sh.forEach(x=>{x.approval='Approved';x.os=Object.assign({},x.os,{ta});x.sewStart=ta.Sewing.s;x.sewClose=ta.Sewing.e;x.due=$('pDue').value;x.loc=$('pLoc').value;x.history.push([TODAY,'TNA given and approved by Sample Planning'])});
+  persist(sh);newIds=new Set(sh.map(x=>x.id));toast(`${r.style} approved. It is now in the Sample follow-up list.`);planSel=null;overlay.classList.remove('open');render()};
+ $('pReturn').onclick=()=>{const why=$('pRsn').value,note=$('pNote').value.trim();sh.forEach(x=>{x.approval='Returned';x.returnReason=why;x.returnNote=note;x.history.push([TODAY,'Returned by Sample Planning: '+why+(note?' ('+note+')':'')])});persist(sh);toast(`${r.style} returned to ${r.merch}`);planSel=null;overlay.classList.remove('open');render()};
 }
 document.getElementById('resetBtn').onclick=()=>{if(!confirm('Undo every change made in this demo?'))return;try{localStorage.removeItem(KEY)}catch(e){}loadData();newIds=new Set();selId=null;toast('Demo data reset');render()};
 render();

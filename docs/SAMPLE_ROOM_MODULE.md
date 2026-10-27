@@ -17,10 +17,19 @@ Status: prototype UI agreed with the sample team owner (27 Oct 2026). Data is ke
 - Main table: present status and delivery status first, then all Excel columns, plus fabric requirement, knitting kg and dyeing kg for SMS/PP/APP.
 - Row click opens an update panel: one-click steps (Fabric ok, Cut ok, Sent to print/emb, Sewing ok, Sent to buyer, Buyer comments ok, Revised), quantities, dates, delay reason, history.
 
-**New sample entry**
+**New sample entry** (merchandiser)
 - Quota on top, follows the sample type chosen in the form; warns when a sub-brand's quota is full.
-- Form = Sample Fabric & Sample Garment Order Sheet: sample type + add-on types, buyer, sub-brand, merchandiser, style, Coll #, buyer sample order no, garment, size, Print/Solid/Emb, colours with qty (one row per colour), fabric parts and kg (SMS/PP/APP only), Sample T&A (Knitting, Dyeing, AOP, Cutting, Print, Sewing), ex-factory date.
-- Main table below; new rows appear on top.
+- Form = Sample Fabric & Sample Garment Order Sheet: sample type + add-on types, buyer, sub-brand, merchandiser, style, Coll #, buyer sample order no, garment, size, Print/Solid/Emb, colours with qty (one row per colour), fabric parts and kg (SMS/PP/APP only), required delivery date (buyer).
+- No T&A here. Submit sends the order sheet to Sample Planning as **Pending**.
+- Table below shows the merchandiser's sheets with their state (Waiting for planning / Returned / live status). Returned sheets can be resubmitted.
+
+**Planning approval** (Sample Planning)
+- List of pending order sheets with days waiting, required date and the sub-brand's quota usage.
+- Opening a sheet shows the merchandiser's data read-only; planning only enters the Sample T&A (Knitting, Dyeing, AOP, Cutting, Print, Sewing start/end), planned delivery date and sewing place.
+- Gap between planned and required date is flagged.
+- **Approve** → the sheet joins the Sample follow-up list. **Return** (reason + note) → back to the merchandiser.
+
+Rule: each field is entered once by its owner. Merchandiser owns job/style/colour/fabric data; Sample Planning owns only the TNA and approval; Sample Room owns actual progress. Applies to sample order sheets only, not bulk.
 
 ## Business rules captured
 - Buyer is shown as ONLY, ONLY & SONS, NAME IT (not "Bestseller"); sub-brands (ONL-JRSY, NMT-Baby…) stay as their own column.
