@@ -183,6 +183,7 @@ type TaProcessRow = {
   maxOverlap: number;
   compressionPriority: number;
   basis: string;
+  fixed?: boolean; // optional: a row whose date must never be clamped (none set today)
 };
 
 function dayOnlyUtc(value: Date) {
