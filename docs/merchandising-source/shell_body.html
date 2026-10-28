@@ -1,0 +1,53 @@
+<body>
+<header class="top"><div class="logo">NOS<small>Merchandising · Northern Fashions Ltd.</small></div><div class="who"><span>Logged in as</span><span id="userSlot"></span></div><div class="asof">Report date 09.10.26</div><div class="sp"></div>
+<button class="topbtn" id="resetBtn">Reset demo</button><button class="topbtn" id="deskBtn" aria-pressed="false">Desktop view</button>
+<div class="themebtn" id="themeBtn" role="group" aria-label="Day or Night mode"><span data-th="light" tabindex="0" role="button">☀ Day</span><span data-th="dark" tabindex="0" role="button">☾ Night</span></div></header>
+<nav class="mainnav" id="mainnav" aria-label="Merchandising"></nav>
+<nav class="subnav" id="subnav" aria-label="Sections"></nav>
+<div class="app on" id="app-sample"><div style="display:none"><select id="whoSel" class="topsel" aria-label="Logged in as"></select></div><main id="main"></main><div class="overlay" id="overlay"></div><div class="toast" id="toast" role="status"></div></div>
+<div class="app" id="app-bulk"><div style="display:none"><select id="whoSel" class="topsel" aria-label="Logged in as"></select></div><main id="main"></main><div class="overlay" id="overlay"></div><div class="toast" id="toast" role="status"></div></div>
+<div id="printArea"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+__POIMPORT__
+</script>
+<script>
+window.NOS_SAMPLE_POS=__SAMPLEPOS__;
+const SAMPLE_RAW=__DATA__;
+const SAMPLE_PO=__PO__;
+const BULK_TRACK=__TRACK__;
+__COSTJS__
+__SAMPLE_MOUNT__
+__BULK_MOUNT__
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+function setTheme(t){document.documentElement.setAttribute('data-theme',t);document.querySelectorAll('[data-th]').forEach(b=>b.classList.toggle('on',b.dataset.th===t));try{localStorage.setItem('nos-theme',t)}catch(e){}}
+let th='light';try{th=localStorage.getItem('nos-theme')||'light'}catch(e){}setTheme(th);
+document.querySelectorAll('[data-th]').forEach(b=>{b.onclick=()=>setTheme(b.dataset.th);b.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setTheme(b.dataset.th)}}});
+const sels={sample:$('app-sample').querySelector('#whoSel'),bulk:$('app-bulk').querySelector('#whoSel')};
+const apps={sample:mountSample($('app-sample'),SAMPLE_RAW,SAMPLE_PO),bulk:mountBulk($('app-bulk'),BULK_TRACK)};
+let cur='sample';try{cur=localStorage.getItem('nos-app')||'sample'}catch(e){}if(!apps[cur])cur='sample';
+function showApp(a){cur=a;const slot=$('userSlot');slot.innerHTML='';if(sels[a])slot.appendChild(sels[a]);try{localStorage.setItem('nos-app',a)}catch(e){}['sample','bulk'].forEach(k=>$('app-'+k).classList.toggle('on',k===a));apps[a].rerender();renderNav()}
+const MAIN={sample:'Sample Merchandising',bulk:'Bulk Merchandising'};
+function renderNav(){$('mainnav').innerHTML=Object.keys(MAIN).map(k=>`<button class="${cur===k?'on':''}" data-a="${k}">${MAIN[k]}</button>`).join('');
+ const api=apps[cur];$('subnav').innerHTML=api.views.map(([k,l])=>`<button class="${api.view===k?'on':''}" data-v="${k}">${l}</button>`).join('');
+ document.querySelectorAll('#mainnav [data-a]').forEach(b=>b.onclick=()=>showApp(b.dataset.a));
+ document.querySelectorAll('#subnav [data-v]').forEach(b=>b.onclick=()=>{apps[cur].setView(b.dataset.v);renderNav();window.scrollTo(0,0)})}
+document.addEventListener('click',()=>setTimeout(renderNav,0),true);
+const deskBtn=$('deskBtn');
+function applyDesk(on){const r=document.documentElement;r.classList.toggle('desk',on);r.style.zoom=on?String(Math.min(1,window.innerWidth/1320)):'';deskBtn.classList.toggle('on',on);deskBtn.setAttribute('aria-pressed',on?'true':'false');deskBtn.textContent=on?'Mobile view':'Desktop view';try{localStorage.setItem('nos-desk',on?'1':'0')}catch(e){}}
+deskBtn.onclick=()=>{applyDesk(!document.documentElement.classList.contains('desk'));apps[cur].rerender()};
+window.addEventListener('resize',()=>{if(document.documentElement.classList.contains('desk'))applyDesk(true)});
+try{if(localStorage.getItem('nos-desk')==='1')applyDesk(true)}catch(e){}
+const rb=$('resetBtn');let rtm=null;
+rb.onclick=()=>{if(!rtm){rb.textContent='Click again to reset';rtm=setTimeout(()=>{rtm=null;rb.textContent='Reset demo'},4000);return}clearTimeout(rtm);rtm=null;rb.textContent='Reset demo';apps.sample.reset();apps.bulk.reset();renderNav()};
+function fitCards(){document.querySelectorAll('.kpi .n').forEach(el=>{el.style.fontSize='';let fs=parseFloat(getComputedStyle(el).fontSize)||24;let guard=0;while(el.scrollWidth>el.clientWidth+1&&fs>12&&guard++<20){fs-=1;el.style.fontSize=fs+'px'}})}
+let fitT=null;const fitSoon=()=>{clearTimeout(fitT);fitT=setTimeout(fitCards,30)};
+new MutationObserver(fitSoon).observe(document.body,{childList:true,subtree:true});window.addEventListener('resize',fitSoon);
+showApp(cur);fitSoon();
+})();
+</script>
+</body>
+</html>
