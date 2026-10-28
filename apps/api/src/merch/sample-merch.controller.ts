@@ -7,12 +7,24 @@ import { actorOf, audit, requireRole, toJson } from './merch.common';
 import { canAct, quotaCheck, sampleSheetNo } from './merch.rules';
 
 const SAMPLE_MERCH = ['MERCH_SAMPLE', 'MERCH_BOTH', 'MERCH_HEAD'];
-const SAMPLE_PLANNING = ['SAMPLE'];
+export const SAMPLE_PLANNING = ['SAMPLE'];
 const SAMPLE_TYPES = ['Offer', 'Development', 'Proto', 'SMS', 'PP', 'APP', 'Photo', 'BPS', 'Test', 'Salesman', 'Size set', 'Other'];
-const OD_TYPES = ['Offer', 'Development', 'Proto'];
+export const OD_TYPES = ['Offer', 'Development', 'Proto'];
 const TNA_ACTIVITIES = ['Knitting', 'Dyeing', 'AOP', 'Cutting', 'Print', 'Sewing'];
 const STATUS = ['NOT_STARTED', 'DRAFT', 'DONE', 'SUBMITTED', 'APPROVED', 'REJECTED', 'ORDERED', 'PARTLY_IN_HOUSE', 'IN_HOUSE', 'SENT_TO_PURCHASE', 'NOT_NEEDED'];
 const MERCH_STATUS = ['ORDER_SHEET_SENT', 'WAITING_BUYER_COMMENTS', 'COMMENTS_RECEIVED', 'APPROVED_BY_BUYER', 'DROPPED', 'ON_HOLD'];
+
+/** Monthly Offer/Development and SMS quota use for one buyer line (styles counted once). Shared with Planning approvals. */
+export async function sampleQuotaUse(prisma: PrismaService, line: string, m: string, types: string[]) {
+  const isOD = types.some((t) => OD_TYPES.includes(t)), isSMS = types.includes('SMS');
+  const q = await prisma.sampleQuota.findUnique({ where: { month_line: { month: m, line } } });
+  const sheets = await prisma.sampleOrderSheet.findMany({ where: { subBrand: line, status: { not: 'RETURNED' }, createdAt: { gte: new Date(m + '-01T00:00:00Z'), lt: new Date(new Date(m + '-01T00:00:00Z').setUTCMonth(new Date(m + '-01T00:00:00Z').getUTCMonth() + 1)) } }, select: { sampleType: true, styleNo: true } });
+  const styles = (pred: (t: string) => boolean) => new Set(sheets.filter((s) => s.sampleType.split('+').some((t) => pred(t.trim()))).map((s) => s.styleNo)).size;
+  return {
+    od: isOD ? quotaCheck(styles((t) => OD_TYPES.includes(t)), q?.odQuota || 0, 1) : null,
+    sms: isSMS ? quotaCheck(styles((t) => t === 'SMS'), q?.smsQuota || 0, 1) : null,
+  };
+}
 
 class ColorDto { @IsString() @MaxLength(80) color!: string; @Type(() => Number) @IsInt() @Min(1) qty!: number; }
 class SheetDto {
@@ -60,16 +72,7 @@ export class SampleMerchController {
     if (a.roles.includes('ADMIN') || a.roles.includes('MERCH_HEAD')) return;
     if ((s.merchandiserId || s.createdById) !== a.id) throw new ForbiddenException('Only the sheet merchandiser, merchandising head or admin can change this sheet');
   }
-  private async quotaUse(line: string, m: string, types: string[]) {
-    const isOD = types.some((t) => OD_TYPES.includes(t)), isSMS = types.includes('SMS');
-    const q = await this.prisma.sampleQuota.findUnique({ where: { month_line: { month: m, line } } });
-    const sheets = await this.prisma.sampleOrderSheet.findMany({ where: { subBrand: line, status: { not: 'RETURNED' }, createdAt: { gte: new Date(m + '-01T00:00:00Z'), lt: new Date(new Date(m + '-01T00:00:00Z').setUTCMonth(new Date(m + '-01T00:00:00Z').getUTCMonth() + 1)) } }, select: { sampleType: true, styleNo: true } });
-    const styles = (pred: (t: string) => boolean) => new Set(sheets.filter((s) => s.sampleType.split('+').some((t) => pred(t.trim()))).map((s) => s.styleNo)).size;
-    return {
-      od: isOD ? quotaCheck(styles((t) => OD_TYPES.includes(t)), q?.odQuota || 0, 1) : null,
-      sms: isSMS ? quotaCheck(styles((t) => t === 'SMS'), q?.smsQuota || 0, 1) : null,
-    };
-  }
+  private quotaUse(line: string, m: string, types: string[]) { return sampleQuotaUse(this.prisma, line, m, types); }
 
   @Get('sheets')
   async list(@Req() req: any, @Query('status') status?: string, @Query('buyer') buyer?: string, @Query('q') q?: string) {

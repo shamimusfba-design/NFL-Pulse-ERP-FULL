@@ -30,6 +30,8 @@ class ChecklistDto { @IsArray() lines!: Array<{ name: string; spec?: string; uni
 class LineOrderDto { @IsIn(['NOT_ORDERED', 'ORDERED']) status!: string; }
 class LineReceiveDto { @Type(() => Number) @IsNumber() @Min(0) receivedQty!: number; }
 
+/** When the merchandiser sends a returned document again, the 'Returned by Planning' task is done. */
+const closeReturned = (tx: any, styleId: string, doc: string) => tx.task.updateMany({ where: { module: 'MERCH', entityId: styleId, title: { startsWith: `Returned by Planning (${doc})` }, status: { in: ['PENDING', 'IN_PROGRESS'] } }, data: { status: 'COMPLETED', completedAt: new Date() } });
 const ymd = (d?: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
 const num = (v: unknown) => { const x = parseFloat(String(v ?? '')); return Number.isFinite(x) ? x : 0; };
 
@@ -131,7 +133,8 @@ export class BulkMerchController {
       const missing = colours.filter((c) => !String(dto.colorCodes[c] || '').trim());
       if (missing.length) throw new BadRequestException(`Add the colour / code for: ${missing.join(', ')}`);
       const finishKg = num(stepDataOf(s.merchSteps, 'CAD').finishKg);
-      return changeStep(tx, a, s, 'FABRIC_SHEET', 'SENT', { colorCodes: dto.colorCodes, lossPct: dto.lossPct, instructions: dto.instructions || '', finishKg, greyKg: greyFabricKg(finishKg, dto.lossPct) });
+      await closeReturned(tx, id, 'fabric order sheet');
+      return changeStep(tx, a, s, 'FABRIC_SHEET', 'SENT', { returned: null, colorCodes: dto.colorCodes, lossPct: dto.lossPct, instructions: dto.instructions || '', finishKg, greyKg: greyFabricKg(finishKg, dto.lossPct) });
     });
   }
 
@@ -141,6 +144,7 @@ export class BulkMerchController {
     return this.prisma.$transaction(async (tx) => {
       const s = await loadStyle(tx, id);
       if (stepMapOf(s.merchSteps).FABRIC_SHEET !== 'SENT') throw new BadRequestException('No fabric order sheet is waiting for approval');
+      if (!stepDataOf(s.merchSteps, 'FABRIC_SHEET').signedCopy) throw new BadRequestException('Record the signed physical fabric order sheet first (Planning approvals → Signed copy received)');
       return changeStep(tx, a, s, 'FABRIC_SHEET', 'DONE');
     });
   }
@@ -152,7 +156,8 @@ export class BulkMerchController {
     return this.prisma.$transaction(async (tx) => {
       const s = await loadStyle(tx, id); requireJobOwner(a, s.order);
       if (stepMapOf(s.merchSteps).TNA !== 'READY') throw new BadRequestException('TNA sheet is not due');
-      const res = await changeStep(tx, a, s, 'TNA', 'SENT');
+      await closeReturned(tx, id, 'TNA');
+      const res = await changeStep(tx, a, s, 'TNA', 'SENT', { returned: null });
       await tx.task.create({ data: { title: `Generate and approve TNA: ${s.order.jobNo} / ${s.styleNo}`, module: 'MERCH', entityType: 'STYLE', entityId: s.id, orderId: s.orderId, ownerRoleCode: 'PLANNING' } });
       return res;
     });
@@ -195,6 +200,7 @@ export class BulkMerchController {
       const s = await loadStyle(tx, id);
       if (stepMapOf(s.merchSteps).TNA !== 'SENT') throw new BadRequestException('No TNA is waiting for approval');
       if (!stepDataOf(s.merchSteps, 'TNA').rows) throw new BadRequestException('Generate the TNA dates first');
+      if (!stepDataOf(s.merchSteps, 'TNA').signedCopy) throw new BadRequestException('Record the signed physical TNA first (Planning approvals → Signed copy received)');
       const res = await changeStep(tx, a, s, 'TNA', 'DONE');
       await tx.task.updateMany({ where: { module: 'MERCH', entityId: id, title: { startsWith: 'Generate and approve TNA:' }, status: { in: ['PENDING', 'IN_PROGRESS'] } }, data: { status: 'COMPLETED', completedAt: new Date() } });
       return res;
