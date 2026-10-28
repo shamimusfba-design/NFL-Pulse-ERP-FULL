@@ -221,6 +221,15 @@ model Style {
   breakdowns      StyleBreakdown[]
   purchaseOrders  PurchaseOrder[]
   productionLots ProductionLot[]
+  merchSteps     MerchStep[]
+  trimsChecklist TrimsChecklist?
+  labDips        LabDip[]
+  fob               Decimal? @db.Decimal(12, 4)
+  printEmbType      String?
+  printEmbDesc      String?
+  planningItemDesc  String?
+  imageUrl          String?
+  packingListStatus String   @default("NOT_STARTED")
   @@unique([orderId, styleNo])
 }
 
@@ -1005,4 +1014,144 @@ model FinishedFabricDelivery {
   remarks                      String?
   createdAt                    DateTime     @default(now())
   @@index([fabricOrderId, deliveryDate])
+}
+
+
+// ---------- Merchandising: bulk workflow, trims checklist, lab dip, cost sheet, sample order sheet ----------
+model MerchStep {
+  id        String    @id @default(cuid())
+  styleId   String
+  style     Style     @relation(fields: [styleId], references: [id], onDelete: Cascade)
+  step      String
+  status    String    @default("WAIT")
+  data      Json?
+  doneById  String?
+  doneAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  @@unique([styleId, step])
+  @@index([step, status])
+}
+
+model TrimsChecklist {
+  id          String               @id @default(cuid())
+  styleId     String               @unique
+  style       Style                @relation(fields: [styleId], references: [id], onDelete: Cascade)
+  status      String               @default("DRAFT")
+  lines       TrimsChecklistLine[]
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+}
+
+model TrimsChecklistLine {
+  id          String         @id @default(cuid())
+  checklistId String
+  checklist   TrimsChecklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  sortNo      Int
+  name        String
+  spec        String?
+  unit        String         @default("pcs")
+  perPc       Decimal        @db.Decimal(12, 4)
+  wastePct    Decimal        @default(0) @db.Decimal(6, 2)
+  requiredQty Decimal        @db.Decimal(14, 2)
+  orderStatus String         @default("NOT_ORDERED")
+  orderedAt   DateTime?
+  receivedQty Decimal        @default(0) @db.Decimal(14, 2)
+  @@index([checklistId])
+}
+
+model LabDip {
+  id        String   @id @default(cuid())
+  styleId   String
+  style     Style    @relation(fields: [styleId], references: [id], onDelete: Cascade)
+  color     String
+  status    String   @default("NOT_STARTED")
+  rounds    Int      @default(0)
+  updatedAt DateTime @updatedAt
+  @@unique([styleId, color])
+}
+
+model CostSheet {
+  id          String   @id @default(cuid())
+  entityType  String
+  entityId    String
+  data        Json
+  fob         Decimal? @db.Decimal(12, 4)
+  status      String   @default("DRAFT")
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@unique([entityType, entityId])
+}
+
+model SampleOrderSheet {
+  id              String             @id @default(cuid())
+  sheetNo         String             @unique
+  buyerName       String
+  subBrand        String?
+  styleNo         String
+  styleName       String?
+  sampleType      String
+  coll            String?
+  merchandiserId  String?
+  requiredDate    DateTime?
+  status          String             @default("TNA_PENDING")
+  returnReason    String?
+  tna             Json?
+  plannedDelivery DateTime?
+  fabric          Json?
+  instructions    String?
+  createdById     String
+  merchStatus     String             @default("ORDER_SHEET_SENT")
+  labDipStatus    String             @default("NOT_STARTED")
+  costingStatus   String             @default("NOT_STARTED")
+  yarnReqStatus   String             @default("NOT_STARTED")
+  trimsStatus     String             @default("NOT_STARTED")
+  fob             Decimal?           @db.Decimal(12, 4)
+  colors          SampleOrderColor[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  @@index([status])
+  @@index([styleNo])
+}
+
+model SampleOrderColor {
+  id      String           @id @default(cuid())
+  sheetId String
+  sheet   SampleOrderSheet @relation(fields: [sheetId], references: [id], onDelete: Cascade)
+  color   String
+  qty     Int
+  @@index([sheetId])
+}
+
+model SampleQuota {
+  id       String @id @default(cuid())
+  month    String
+  line     String
+  odQuota  Int    @default(0)
+  smsQuota Int    @default(0)
+  @@unique([month, line])
+}
+
+model YarnRequisition {
+  id            String   @id @default(cuid())
+  reqNo         String   @unique
+  type          String
+  sampleSheetId String?
+  styleNo       String?
+  buyerName     String?
+  lines         Json
+  totalKg       Decimal  @db.Decimal(14, 2)
+  status        String   @default("SENT_TO_PURCHASE")
+  createdById   String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@index([status])
+}
+
+model CostRateSet {
+  id          String   @id
+  data        Json
+  updatedById String?
+  updatedAt   DateTime @updatedAt
 }

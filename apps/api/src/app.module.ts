@@ -21,10 +21,13 @@ import { DocumentsController } from './documents';
 import { ProductionLotsController } from './production-lots';
 import { MaintenanceController } from './maintenance';
 import { IeOperationsController } from './ie-operations';
+import { BulkMerchController } from './merch/bulk-merch.controller';
+import { SampleMerchController } from './merch/sample-merch.controller';
+import { CostController } from './merch/cost.controller';
 
 @Module({
   imports: [ConfigModule.forRoot({ isGlobal: true }), JwtModule.register({})],
-  controllers: [HealthController, AuthController, MastersController, OrdersController, OrderImportController, TasksController, DomainController, UploadsController, CadController, PlanningController, DemoController, IeController, ImportsController, DocumentsController, ProductionLotsController, MaintenanceController, IeOperationsController],
+  controllers: [HealthController, AuthController, MastersController, OrdersController, OrderImportController, TasksController, DomainController, UploadsController, CadController, PlanningController, DemoController, IeController, ImportsController, DocumentsController, ProductionLotsController, MaintenanceController, IeOperationsController, BulkMerchController, SampleMerchController, CostController],
   providers: [PrismaService, AuthService, JwtAuthGuard, OrderImportService, PdfTextService],
 })
 export class AppModule {}
