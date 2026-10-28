@@ -103,6 +103,7 @@ class GanttApproveDto {
 
 const DEFAULT_CAPACITY_POLICIES = {
   thresholds: { greenMax: 85, amberMax: 100 },
+  holidays: [] as string[],
   bulk: {
     knitting: {
       label: 'Knitting', unit: 'KG', dailyCapacity: 8500, sundayFactor: 0.5,
@@ -166,7 +167,7 @@ function dateOnly(value?: string | Date | null) {
   if (Number.isNaN(d.getTime())) return null;
   return d.toISOString().slice(0, 10);
 }
-function firstCcd(style: any) {
+export function firstCcd(style: any) {
   const values = (style.purchaseOrders || []).map((p: any) => p.ccd || p.shipmentDate).filter(Boolean).map((v: any) => new Date(v));
   values.sort((a: Date, b: Date) => a.getTime() - b.getTime());
   return values[0] || null;
@@ -303,7 +304,7 @@ function buildTaRows(style: any) {
   pushMilestone('ccd','CCD / Shipment Date','cargoClosingDate',1,'Fixed buyer CCD / shipment date');
   return { rows, facts, fb, gb };
 }
-function scheduleFromCcd(style: any) {
+export function scheduleFromCcd(style: any) {
   const ccd = firstCcd(style) || addDays(new Date(), 45);
   const today = dayOnlyUtc(new Date());
   const tomorrow = addDays(today, 1);
@@ -382,13 +383,18 @@ function slotForDate(date: Date) {
 }
 function monthKey(date: Date) { return date.toISOString().slice(0, 7); }
 function daysInMonth(year: number, monthIndex: number) { return new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate(); }
-function daysInSlot(year: number, monthIndex: number, slot: number, sundayFactor = 1) {
+export function holidaySet(policies: any): Set<string> {
+  const list = Array.isArray(policies?.holidays) ? policies.holidays : [];
+  return new Set(list.map((x: any) => String(x).slice(0, 10)).filter((x: string) => /^\d{4}-\d{2}-\d{2}$/.test(x)));
+}
+export function daysInSlot(year: number, monthIndex: number, slot: number, sundayFactor = 1, holidays: Set<string> = new Set()) {
   const maxDay = daysInMonth(year, monthIndex);
   const start = slot === 1 ? 1 : slot === 2 ? 11 : 21;
   const end = slot === 1 ? 10 : slot === 2 ? 20 : maxDay;
   let equivalent = 0;
   for (let day = start; day <= end; day += 1) {
     const d = new Date(Date.UTC(year, monthIndex, day));
+    if (holidays.has(d.toISOString().slice(0, 10))) continue; // factory closure (Eid, public holiday)
     equivalent += d.getUTCDay() === 0 ? sundayFactor : 1;
   }
   return equivalent;
@@ -486,11 +492,12 @@ export class PlanningController {
     const year = base.getUTCFullYear();
     const monthIndex = base.getUTCMonth();
     const key = `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+    const holidays = holidaySet(policies);
     const sections = Object.keys(policies.bulk || {});
     const rows: Record<string, any> = {};
     for (const section of sections) {
       const p = policies.bulk[section];
-      rows[section] = { section, label: p.label || section, unit: p.unit || 'PCS', slots: [1, 2, 3].map((slot) => ({ slot, demand: 0, capacity: Number(p.dailyCapacity || 0) * daysInSlot(year, monthIndex, slot, Number(p.sundayFactor ?? 1)), loadPct: 0, jobs: 0 })) };
+      rows[section] = { section, label: p.label || section, unit: p.unit || 'PCS', slots: [1, 2, 3].map((slot) => ({ slot, demand: 0, capacity: Number(p.dailyCapacity || 0) * daysInSlot(year, monthIndex, slot, Number(p.sundayFactor ?? 1), holidays), loadPct: 0, jobs: 0 })) };
     }
     // Capacity must include every relevant Job/Style. There is deliberately no business-data cap here.
     // A job count of 200, 2,000 or 20,000 changes query volume, not planning correctness.
@@ -554,9 +561,9 @@ export class PlanningController {
       sampleAgg.making[idx].styles += Number(sample.makingStyles || 0); sampleAgg.making[idx].jobs += 1;
     }
     const sampleRows = [
-      { section: 'sampleKnitting', label: 'Sample Knitting', unit: 'KG + COLOR', slots: sampleAgg.knitting.map((c: any) => { const days = daysInSlot(year, monthIndex, c.slot, 1); const kgCap = Number(policies.sample.knitting.dailyKg || 350) * days; const colorCap = Number(policies.sample.knitting.dailyColors || 40) * days; const kgPct = kgCap ? c.kg / kgCap * 100 : 0; const colorPct = colorCap ? c.colors / colorCap * 100 : 0; const loadPct = Number(Math.max(kgPct, colorPct).toFixed(1)); return { ...c, capacityText: `${kgCap} KG / ${colorCap} colors`, demandText: `${c.kg.toFixed(1)} KG / ${c.colors} colors`, loadPct, status: loadPct <= greenMax ? 'GOOD' : loadPct <= amberMax ? 'ATTENTION' : 'OVERLOAD' }; }) },
+      { section: 'sampleKnitting', label: 'Sample Knitting', unit: 'KG + COLOR', slots: sampleAgg.knitting.map((c: any) => { const days = daysInSlot(year, monthIndex, c.slot, 1, holidays); const kgCap = Number(policies.sample.knitting.dailyKg || 350) * days; const colorCap = Number(policies.sample.knitting.dailyColors || 40) * days; const kgPct = kgCap ? c.kg / kgCap * 100 : 0; const colorPct = colorCap ? c.colors / colorCap * 100 : 0; const loadPct = Number(Math.max(kgPct, colorPct).toFixed(1)); return { ...c, capacityText: `${kgCap} KG / ${colorCap} colors`, demandText: `${c.kg.toFixed(1)} KG / ${c.colors} colors`, loadPct, status: loadPct <= greenMax ? 'GOOD' : loadPct <= amberMax ? 'ATTENTION' : 'OVERLOAD' }; }) },
       { section: 'sampleDyeing', label: 'Sample Dyeing', unit: 'BATCH/COLOR', slots: sampleAgg.dyeing.map((c: any) => { const cap = Number(policies.sample.dyeing.slotCapacity || 185); const loadPct = Number((c.batches / cap * 100).toFixed(1)); return { ...c, capacityText: `${cap} batch`, demandText: `${c.batches} batch`, loadPct, status: loadPct <= greenMax ? 'GOOD' : loadPct <= amberMax ? 'ATTENTION' : 'OVERLOAD' }; }) },
-      { section: 'samplePrinting', label: 'Sample Printing', unit: 'STYLE + PCS', slots: sampleAgg.printing.map((c: any) => { const days = daysInSlot(year, monthIndex, c.slot, 1); const styleCap = Number(policies.sample.printing.dailyStyles || 60) * days; const pcsCap = Number(policies.sample.printing.dailyPcs || 800) * days; const loadPct = Number(Math.max(styleCap ? c.styles/styleCap*100 : 0, pcsCap ? c.pcs/pcsCap*100 : 0).toFixed(1)); return { ...c, capacityText: `${styleCap} styles / ${pcsCap} pcs`, demandText: `${c.styles} styles / ${c.pcs} pcs`, loadPct, status: loadPct <= greenMax ? 'GOOD' : loadPct <= amberMax ? 'ATTENTION' : 'OVERLOAD' }; }) },
+      { section: 'samplePrinting', label: 'Sample Printing', unit: 'STYLE + PCS', slots: sampleAgg.printing.map((c: any) => { const days = daysInSlot(year, monthIndex, c.slot, 1, holidays); const styleCap = Number(policies.sample.printing.dailyStyles || 60) * days; const pcsCap = Number(policies.sample.printing.dailyPcs || 800) * days; const loadPct = Number(Math.max(styleCap ? c.styles/styleCap*100 : 0, pcsCap ? c.pcs/pcsCap*100 : 0).toFixed(1)); return { ...c, capacityText: `${styleCap} styles / ${pcsCap} pcs`, demandText: `${c.styles} styles / ${c.pcs} pcs`, loadPct, status: loadPct <= greenMax ? 'GOOD' : loadPct <= amberMax ? 'ATTENTION' : 'OVERLOAD' }; }) },
       { section: 'sampleMaking', label: 'Sample Making', unit: 'STYLE', slots: sampleAgg.making.map((c: any) => { const cap = Number(policies.sample.making.monthlyStyles || 800) / 3; const loadPct = Number((c.styles / cap * 100).toFixed(1)); return { ...c, capacityText: `${Math.round(cap)} styles`, demandText: `${c.styles} styles`, loadPct, status: loadPct <= greenMax ? 'GOOD' : loadPct <= amberMax ? 'ATTENTION' : 'OVERLOAD' }; }) },
     ];
     return { month: key, thresholds: policies.thresholds, rows: list, sampleRows, samplePolicies: policies.sample, bulkPolicies: policies.bulk };
@@ -710,6 +717,10 @@ export class PlanningController {
     if (!body || typeof body !== 'object') throw new BadRequestException('Capacity policy object is required');
     const current = await this.capacityPolicies();
     const next = { ...current, ...body, thresholds: { ...(current as any).thresholds, ...(body.thresholds || {}) }, bulk: { ...(current as any).bulk, ...(body.bulk || {}) }, sample: { ...(current as any).sample, ...(body.sample || {}) } };
+    if (body.holidays !== undefined) {
+      if (!Array.isArray(body.holidays)) throw new BadRequestException('holidays must be a list of YYYY-MM-DD dates');
+      (next as any).holidays = Array.from(holidaySet({ holidays: body.holidays })).sort();
+    }
     await this.prisma.auditLog.create({ data: { userId: req.user.id, action: 'CAPACITY_POLICIES_UPDATED', entityType: 'SYSTEM_SETTING', entityId: 'CAPACITY_POLICIES', before: toPrismaJson({ policies: current }), after: toPrismaJson({ policies: next }) } });
     return next;
   }
@@ -924,6 +935,7 @@ export class PlanningController {
     for(const line of capacityLines){const key=`${line.floor.section.factory.code}|${line.floor.code}`;const mc=(line.machinePools||[]).filter((x:any)=>x.active).reduce((a:number,x:any)=>a+Number(x.machineCount||0),0);floorCapacity.set(key,(floorCapacity.get(key)||0)+mc)}
     const allStyles = await this.prisma.style.findMany({ select: { id: true, sourceMetadata: true } });
     const loads = new Map<string, { used: number; jobs: string[] }>();
+    const skipped: string[] = [];
     for (const row of allStyles) {
       const sm = (row.sourceMetadata || {}) as any;
       const g = sm.ganttPlan;
@@ -933,9 +945,9 @@ export class PlanningController {
       const factoryCode = g.factoryCode || 'NFL';
       const floorKey = `${factoryCode}|${g.floorCode}`;
       const cap = floorCapacity.get(floorKey)||0;
-      if (!cap) continue; // NCL / future floors stay configurable until their max is confirmed.
+      if (!cap) { if (targetIds.has(row.id)) skipped.push(`${floorKey}: no machine capacity set`); continue; } // NCL / future floors stay configurable until their max is confirmed.
       const machineQty = Math.max(0, Number(sm.ieBulletin?.machineQty || g.machineQty || 0));
-      if (!machineQty) continue;
+      if (!machineQty) { if (targetIds.has(row.id)) skipped.push(`${g.jobNo || row.id}: machine qty missing`); continue; }
       const start = new Date(g.startDate); const finish = new Date(g.finishDate);
       if (Number.isNaN(start.getTime()) || Number.isNaN(finish.getTime())) continue;
       const cursor = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()));
@@ -965,6 +977,8 @@ export class PlanningController {
       await this.prisma.style.update({ where: { id: style.id }, data: { sourceMetadata: toPrismaJson({ ...sm, ganttPlan: next }) } }); approved += 1;
       await this.prisma.auditLog.create({ data: { userId: req.user.id, action: 'GANTT_PLAN_APPROVED', entityType: 'STYLE', entityId: style.id, before: toPrismaJson(g), after: toPrismaJson(next) } });
     }
-    return { ok: true, approved, message: `${approved} Gantt plan item(s) approved as the current official line plan after floor machine-capacity validation.` };
+    const uniqueSkipped = Array.from(new Set(skipped));
+    const warn = uniqueSkipped.length ? ` Not capacity-checked (${uniqueSkipped.length}): ${uniqueSkipped.slice(0, 5).join('; ')}${uniqueSkipped.length > 5 ? ' …' : ''}.` : '';
+    return { ok: true, approved, notCapacityChecked: uniqueSkipped, message: `${approved} Gantt plan item(s) approved as the current official line plan after floor machine-capacity validation.${warn}` };
   }
 }

@@ -18,7 +18,8 @@
     "test:yk": "tsx --test src/yarn-knit/yk.rules.spec.ts",
     "test:yk:db": "YK_DB_TEST=1 tsx --test src/yarn-knit/yk.db.spec.ts",
     "test:pa": "tsx --test src/planning-approvals/pa.rules.spec.ts",
-    "test:pa:db": "PA_DB_TEST=1 tsx --test src/planning-approvals/pa.db.spec.ts"
+    "test:pa:db": "PA_DB_TEST=1 tsx --test src/planning-approvals/pa.db.spec.ts",
+    "test:planning": "tsx --test src/planning.rules.spec.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.2.5",

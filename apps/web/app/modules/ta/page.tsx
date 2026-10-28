@@ -30,7 +30,8 @@ const DATE_FIELDS = Array.from(new Set(PROCESS_ROWS.flatMap(r=>[r.start,r.end,r.
 function inputDate(v:any){ return v ? String(v).slice(0,10) : ''; }
 function num(v:any){ return Number(v||0).toLocaleString(); }
 function fmtDate(v:any){ return v ? new Date(v).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—'; }
-function firstCcd(style:any){ const p=(style.purchaseOrders||[])[0]; return p?.ccd||p?.shipmentDate||null; }
+// Same rule as the API: the earliest CCD across all POs of the style is the fixed T&A end date.
+function firstCcd(style:any){ const v=(style.purchaseOrders||[]).map((p:any)=>p?.ccd||p?.shipmentDate).filter(Boolean).map((x:any)=>String(x)).sort(); return v[0]||null; }
 function heatClass(status:string){ return status==='OVERLOAD'?'heat-red':status==='ATTENTION'?'heat-amber':'heat-green'; }
 function day(v:any){const x=v?new Date(`${String(v).slice(0,10)}T00:00:00Z`):null;return x&&!Number.isNaN(x.getTime())?x:null;}
 function dayDiff(a:any,b:any){const x=day(a),y=day(b);return x&&y?Math.round((y.getTime()-x.getTime())/86400000):null;}
