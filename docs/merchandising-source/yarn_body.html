@@ -1,7 +1,7 @@
 <body>
-<header class="top"><div class="logo">NOS<small>Yarn store &amp; Knitting · Northern Fashions Ltd.</small></div><div class="asof">Report date 09.10.26</div><div class="sp"></div>
-<div class="who"><span>Logged in as</span><span id="userSlot"></span></div></header>
-<nav class="subnav" id="subnav" aria-label="Sections" style="top:52px"></nav>
+<header class="top"><div class="logo">NOS<small>Yarn Store &amp; Knitting · Northern Fashions Ltd.</small></div><div class="asof">Report date 09.10.26</div><div class="sp"></div>
+<div class="themebtn" role="group" aria-label="Day or Night"><span data-th="light" role="button" tabindex="0">☀ Day</span><span data-th="dark" role="button" tabindex="0">☾ Night</span></div></header>
+<nav class="mainnav" id="mainnav" aria-label="Sections"></nav>
 <div class="app on" id="app-yarn"><div class="appbar"><span>Logged in as</span><select id="ysel" aria-label="Logged in as"></select></div><main id="ymain"></main><div class="toast" id="toast" role="status"></div></div>
 <div id="printArea"></div>
 <script>
@@ -9,11 +9,11 @@ __YARNDATA__
 __YARNJS__
 (function(){
 'use strict';
+function setTheme(t){document.documentElement.setAttribute('data-theme',t);document.querySelectorAll('[data-th]').forEach(b=>b.classList.toggle('on',b.dataset.th===t))}
+setTheme('light');document.querySelectorAll('[data-th]').forEach(b=>b.onclick=()=>setTheme(b.dataset.th));
 const api=mountYarn(document.getElementById('app-yarn'),'2026-10-09');
-function renderNav(){document.getElementById('subnav').innerHTML=api.views.map(([k,l])=>`<button class="${api.view===k?'on':''}" data-v="${k}">${l}</button>`).join('');document.querySelectorAll('#subnav [data-v]').forEach(b=>b.onclick=()=>{api.setView(b.dataset.v);renderNav();window.scrollTo(0,0)})}
-const oldRender=api.rerender;
-document.addEventListener('click',()=>setTimeout(renderNav,0),true);
-renderNav();
+function nav(){document.getElementById('mainnav').innerHTML=api.top.map(([k,l])=>`<button class="${api.top_===k?'on':''}" data-k="${k}">${l}</button>`).join('');document.querySelectorAll('#mainnav [data-k]').forEach(b=>b.onclick=()=>{api.setTop(b.dataset.k);nav();window.scrollTo(0,0)})}
+window.__yarnNav=nav;nav();
 })();
 </script>
 </body>

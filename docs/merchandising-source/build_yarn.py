@@ -1,6 +1,6 @@
 head=open('head3.html').read()
 css=''.join(open(f).read() for f in ['mf_extra.css','mf2_extra.css','mf3_extra.css','bulk_extra.css','shell_extra.css'])
 head=head.replace('</style>',css+'\n</style>').replace('<title>NOS · Sample Room</title>','<title>NOS · Yarn store & Knitting</title>')
-body=open('yarn_body.html').read().replace('__YARNDATA__',open('yarn_data.js').read()).replace('__YARNJS__',open('yarn.js').read())
+body=open('yarn_body.html').read().replace('__YARNDATA__',open('yarn_data.js').read()).replace('__YARNJS__',open('yarn2.js').read())
 open('/mnt/user-data/outputs/nos-yarn-knitting.html','w').write(head+body)
 print(len(head+body))
