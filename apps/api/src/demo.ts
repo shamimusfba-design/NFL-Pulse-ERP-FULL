@@ -25,7 +25,7 @@ export class DemoController {
       'fabric-finishing': 'fabricFinishing', 'finished-fabric': 'finishedFabricStore', cutting: 'cutting', printing: 'printing',
       embroidery: 'embroidery', 'special-process': 'specialProcess', sewing: 'sewing', finishing: 'finishing', quality: 'quality',
       'quality-history': 'quality', trims: 'trims', inventory: 'yarnStore', shipment: 'shipment',
-      'sample-merchandising': 'sample', 'central-sample': 'sample', 'sample-fabric-store': 'sample', technical: 'cad', cad: 'cad',
+      'sample-room': 'sample', 'central-sample': 'sample', 'sample-fabric-store': 'sample', technical: 'cad', cad: 'cad',
       capacity: 'sewing', 'sewing-planning': 'sewing', subcontract: 'printing', 'ie-overview': 'ie', 'ie-bulletin': 'ie',
       'ie-daily-target': 'ieDailyTarget', 'ie-npt': 'ieNpt', 'ie-skill-matrix': 'ieSkillMatrix', 'ie-production-checkpoints': 'ieCheckpoints', 'ie-reports': 'ie',
       management: 'shipment', 'job-360': 'shipment', reports: 'shipment', 'floor-display': 'sewing', 'lead-time-history': 'shipment',

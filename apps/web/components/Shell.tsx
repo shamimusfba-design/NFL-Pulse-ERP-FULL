@@ -16,12 +16,12 @@ function roleFilteredGroups(groups: ModuleGroup[], roles: string[]): ModuleGroup
   const hasRole = (targets: string[]) => roles.some(r => targets.includes(String(r).toUpperCase()));
 
   if (hasRole(['MERCH_BULK', 'MERCHANDISER', 'MERCH', 'MERCH_USER'])) add('Merchandising', ['merchandising', 'order-entry', 'bulk-followup', 'production-lots', 'forms-print']);
-  if (hasRole(['MERCH_SAMPLE'])) add('Merchandising', ['merchandising', 'order-entry', 'sample-merchandising', 'forms-print']);
-  if (hasRole(['MERCH_BOTH'])) add('Merchandising', ['merchandising', 'order-entry', 'bulk-followup', 'production-lots', 'sample-merchandising', 'forms-print']);
-  if (hasRole(['MERCH_HEAD', 'HEAD_MERCHANDISER'])) { add('Merchandising', ['merchandising', 'order-entry', 'bulk-followup', 'production-lots', 'projection', 'sample-merchandising', 'forms-print']); add('Sample / CAD / Technical', ['central-sample', 'sample-fabric-store', 'cad', 'technical']); }
+  if (hasRole(['MERCH_SAMPLE'])) add('Merchandising', ['merchandising', 'order-entry', 'sample-room', 'forms-print']);
+  if (hasRole(['MERCH_BOTH'])) add('Merchandising', ['merchandising', 'order-entry', 'bulk-followup', 'production-lots', 'sample-room', 'forms-print']);
+  if (hasRole(['MERCH_HEAD', 'HEAD_MERCHANDISER'])) { add('Merchandising', ['merchandising', 'order-entry', 'bulk-followup', 'production-lots', 'projection', 'sample-room', 'forms-print']); add('Sample / CAD / Technical', ['central-sample', 'sample-fabric-store', 'cad', 'technical']); }
   if (roles.includes('IE')) { add('Merchandising', ['merchandising', 'production-lots']); add('Industrial Production Engineering', ['ie-overview', 'ie-bulletin', 'ie-daily-target', 'ie-mis-import', 'ie-npt', 'ie-qco', 'ie-line-performance', 'ie-responsibility', 'ie-skill-matrix', 'ie-production-checkpoints', 'ie-reports']); add('Management', ['kpi-board','kaizen']); }
   if (roles.includes('CAD')) add('Sample / CAD / Technical', ['cad', 'technical']);
-  if (roles.includes('SAMPLE')) add('Sample / CAD / Technical', ['central-sample', 'sample-fabric-store']);
+  if (roles.includes('SAMPLE')) { add('Merchandising', ['sample-room']); add('Sample / CAD / Technical', ['central-sample', 'sample-fabric-store']); }
   if (roles.includes('PLANNING')) { add('Merchandising', ['merchandising', 'order-entry', 'production-lots', 'forms-print']); add('Central Planning', ['ta', 'capacity', 'sewing-planning', 'subcontract', 'lead-time-history']); add('Management', ['job-360']); }
   if (roles.includes('MANAGEMENT')) { add('Management', ['management', 'job-360', 'kpi-board', 'kaizen']); add('Central Planning', ['capacity', 'lead-time-history']); add('Quality & Stores', ['quality', 'quality-history']); add('Shipment & System', ['reports']); }
   if (roles.includes('QUALITY')) { add('Management', ['job-360']); add('Yarn & Fabric', ['lab']); add('Quality & Stores', ['quality', 'quality-history']); }
