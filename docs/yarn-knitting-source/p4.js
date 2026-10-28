@@ -6,20 +6,21 @@ function demoJobs(){const J=(id,job,buyer,merch,style,ship,appr,lines)=>({id,job
  J('FS-48912','BS-NMT 48912','BS-NMT','Alamgir','13284410 NKMVUX SS TEE','2026-12-10','2026-09-25',L([['Navy Blazer',3000],['Bright White',3000],['Dark Sapphire',2400]],[['Body','S/J',160,'30X24','30/1 BCI C',3.9],['Neck rib','Rib',280,'30X18','30/1 BCI C',0.31]])),
  J('FS-48915','BS-ONL 48915','BS-ONL','Shovon','15402331 ONLMAY LS TOP','2026-12-18','2026-09-26',L([['Black',4200],['Cloud Dancer',4200]],[['Body','S/J',170,'34X24','34/1 BCI C',3.7]])),
  J('FS-48905','BS-NMT 48905','BS-NMT','Alamgir','13281190 NBMLOGAN SS TEE','2026-12-15','2026-09-27',L([['Dark Sapphire',600],['Cloud Dancer',600],['Black',600],['Bright White',600]],[['Body','S/J',160,'30X24','30/1 ORG C',3.9],['Neck rib','Rib',280,'30X18','30/1 ORG C',0.31]]))]}
-function planJobDemo(j,modeOf){j.lines.forEach(x=>{x.mode=modeOf(x)});j.lines.filter(x=>x.mode!=='Outsource').forEach(x=>{const kg=sugOf(x);const opts=S.machines.filter(mc=>mc.dia===x.dia);let best=null;opts.forEach(mc=>{const dur=Math.max(1,Math.ceil(kg/num(mc.cap)));const st=freeFrom(mc.id,dur,TODAY,null);if(!best||st<best.st)best={mc,st}});if(!best){const mc=S.machines[0];best={mc,st:freeFrom(mc.id,Math.ceil(kg/mc.cap),TODAY,null)}}
-  const key=j.job+'|'+x.ctype+'|'+x.colour+'|'+x.dia+'|'+x.gsm+'|'+x.part;S.lines.push({key,jobId:j.id,buyer:j.buyer,job:j.job,count:'',ctype:x.ctype,brand:'',lot:'',gsm:x.gsm,colour:x.colour,part:x.part,des:x.fabric+' · '+x.part,fabric:x.fabric,dia:x.dia,fdia:'',finish:x.finish,mode:'In-house',stage:'Report',final:0,prod:0,deliv:0,fos:'',ship:j.ship,slot:'',season:'',merch:j.merch,remark:''});S.asg[key]={mc:best.mc.id,start:best.st};KCACHE=null});
- j.lines.filter(x=>x.mode==='Outsource').forEach(x=>{const key=j.job+'|'+x.ctype+'|'+x.colour+'|'+x.dia+'|'+x.gsm+'|'+x.part;S.lines.push({key,jobId:j.id,buyer:j.buyer,job:j.job,count:'',ctype:x.ctype,brand:'',lot:'',gsm:x.gsm,colour:x.colour,part:x.part,des:x.fabric+' · '+x.part,fabric:x.fabric,dia:x.dia,fdia:'',finish:x.finish,mode:'Outsource',stage:'Report',final:0,prod:0,deliv:0,fos:'',ship:j.ship,slot:'',season:'',merch:j.merch,remark:''})});j.status='Planned';KCACHE=null}
+function planJobDemo(j,modeOf){j.lines.forEach(x=>{x.mode=modeOf(x)});const used={};
+ j.lines.forEach(x=>{const key=j.job+'|'+x.ctype+'|'+x.colour+'|'+x.dia+'|'+x.gsm+'|'+x.part;S.lines.push({key,jobId:j.id,buyer:j.buyer,job:j.job,count:'',ctype:x.ctype,brand:'',lot:'',gsm:x.gsm,colour:x.colour,part:x.part,des:x.fabric+' · '+x.part,fabric:x.fabric,dia:x.dia,fdia:'',sl:'',finish:x.finish,mode:x.mode,stage:'Report',final:0,prod:0,deliv:0,fos:'',taE0:addDays(j.ship,-45),ship:j.ship,slot:'',season:'',merch:j.merch,remark:''});
+  if(x.mode!=='Outsource'){buildSched();let best=null;S.machines.forEach(mc=>{const same=dnorm(mc.dia)===dnorm(x.dia);const fin=Math.max(qEnd(mc.id),used[mc.id]||0)+sugOf(x)/num(mc.cap);if(!best||(same&&!best.same)||(same===best.same&&fin<best.fin))best={mc,fin,same}});(S.mq[best.mc.id]=S.mq[best.mc.id]||[]).push(key);used[best.mc.id]=best.fin}});j.status='Planned';KCACHE=null}
 function completeDemo(jobId,stage,brand){S.lines.filter(l=>l.jobId===jobId).forEach((l,i)=>{Object.assign(l,{count:parseCount(l.ctype).cnt,brand,lot:brand.slice(0,2).toUpperCase()+'-'+(2231+i),fdia:l.fabric==='Rib'?'34"':'72"',fos:l.ship?addDays(TODAY,-6):'',slot:"Oct'26 1st",season:'Collection-9',stage});if(stage==='Active')l.final=sugOf(l)});KCACHE=null}
-function seedDemo(){S.jobs=demoJobs();const P=id=>S.jobs.find(j=>j.id===id);
+function seedDemo(){S.mq={};S.hold={};const order=p=>p==='RUN'?0:/^\d+$/.test(p)?+p:null;
+ PLAN.forEach((p,i)=>{const o=order(p.pos);if(o===null){S.hold[PLANKEY(i)]={mc:p.mc,why:p.pos||'Not sequenced'}}});
+ S.machines.forEach(mc=>{S.mq[mc.id]=PLAN.map((p,i)=>({p,i,o:order(p.pos)})).filter(x=>x.p.mc===mc.id&&x.o!==null&&x.p.bal>0).sort((a,b)=>a.o-b.o||a.i-b.i).map(x=>PLANKEY(x.i))});
+ S.jobs=demoJobs();const P=id=>S.jobs.find(j=>j.id===id);
  planJobDemo(P('FS-48912'),()=>'In-house');planJobDemo(P('FS-48915'),()=>'In-house');
  planJobDemo(P('FS-48903'),x=>x.part==='Body'&&x.colour!=='Castor Gray'?'Outsource':'In-house');planJobDemo(P('FS-48906'),x=>x.part==='Body'?'Outsource':'In-house');planJobDemo(P('FS-48904'),x=>x.part==='Body'?'Outsource':'In-house');
- completeDemo('FS-48912','Active','NRG');completeDemo('FS-48915','Active','Square');completeDemo('FS-48903','Active','NRG');completeDemo('FS-48906','Qty','Akij');
- // a clash to show how the board warns: put one ONL line on the same machine and date as an NMT line
- const nmt=S.lines.find(l=>l.job==='BS-NMT 48912'&&l.part==='Body');const onl=S.lines.find(l=>l.job==='BS-ONL 48915'&&l.colour==='Cloud Dancer');if(nmt&&onl)S.asg[onl.key]={mc:S.asg[nmt.key].mc,start:addDays(S.asg[nmt.key].start,1)};
+ completeDemo('FS-48912','Active','NRG');completeDemo('FS-48915','Active','Square');completeDemo('FS-48903','Active','NRG');completeDemo('FS-48906','Qty','Akij');buildSched();
  const out=S.lines.filter(l=>l.mode==='Outsource'&&l.stage==='Active');const facs=['Parents','Khadiza'];out.forEach((l,i)=>{S.outAlloc[l.key]={fac:facs[i%2],prog:'P-'+(2201+i),start:addDays(TODAY,-2),end:addDays(TODAY,5+i),by:'Knitting production incharge',at:TODAY}});
  const o2=S.lines.filter(l=>l.job==='UT 48906'&&l.mode==='Outsource');if(o2[0])S.outAlloc[o2[0].key]={fac:'Corus',prog:'P-2210',start:TODAY,end:addDays(TODAY,9),by:'Knitting production incharge',at:TODAY};
  S.cap={Parents:2.5,Khadiza:1.5,Corus:1,'Fiber loop':1,Manarat:1,Arien:0.8,Ratul:0.5,Mondol:0.5};
- const y=addDays(TODAY,-1);KCACHE=null;const K=knitRows();Object.entries(S.asg).slice(0,6).forEach(([k,a],i)=>{const l=K.find(x=>x.key===k);if(l&&schedOf(k,num(l.order)).start<=y)S.daily.push({key:k,mc:a.mc,date:y,prod:380+i*10,deliv:300,rej:4,by:'Knitting reporter'})});
+ const y=addDays(TODAY,-1);KCACHE=null;const nmt=S.lines.find(l=>l.job==='BS-NMT 48912'&&l.part==='Body');S.machines.slice(0,8).forEach((mc,i)=>{const k=(S.mq[mc.id]||[])[0];if(k&&PLAN[+k.slice(2)]&&PLAN[+k.slice(2)].bal>300)S.daily.push({key:k,mc:mc.id,date:TODAY,prod:Math.round(num(mc.cap)*0.45),deliv:0,rej:2,by:'Knitting reporter'})});
  if(out[0])S.daily.push({key:out[0].key,date:y,prod:700,deliv:500,rej:0,by:'Knitting reporter'});
  if(nmt)S.remarks[nmt.key]=[{date:y,dept:'Knitting quality',type:'Quality issue',reason:'',text:'Hole marks in 2 rolls; needle changed',by:'Knitting quality'}];
  if(out[1])S.remarks[out[1].key]=[{date:TODAY,dept:'Knitting production',type:'Delay reason',reason:'Outside party delay',text:'Machine breakdown at party, about 2 days late',by:'Knitting production incharge'}];
@@ -42,19 +43,20 @@ function seedDemo(){S.jobs=demoJobs();const P=id=>S.jobs.find(j=>j.id===id);
  const iss=(l,line,party,kg,d,prog)=>{S.iss.push({no:'ISS-2609-'+String(S.iss.length+1).padStart(4,'0'),date:addDays(TODAY,d),key:l.key,lineKey:line.key,job:jcode(line),colour:line.colour,yarn:l.yarn,lot:l.lot,prog,party,chl:'GP-'+(551+S.iss.length),bags:Math.round(kg/50),cones:Math.round(kg/4.2),kg,count:l.count||line.ctype,by:'Yarn store'});LCACHE=null};
  const a1=S.lines.find(l=>l.job==='BS-NMT 48912');const a2=S.lines.find(l=>l.job==='BS-ONL 48915');if(a1)iss(pick(a1.ctype),a1,'NFL',1200,-1,'P-1101');if(a2)iss(pick(a2.ctype),a2,'NFL',1500,0,'P-1102');if(out[0])iss(pick(out[0].ctype),out[0],'Parents',900,0,'P-2201');if(out[1])iss(pick(out[1].ctype),out[1],'Khadiza',700,-2,'P-2202');
  S.ret.push({no:'RET-2609-0001',date:TODAY,key:big[2].key,yarn:big[2].yarn,lot:big[2].lot,party:'Khadiza',job:out[1]?jcode(out[1]):'',prog:'P-2202',chl:'RC-71',kg:85,why:'Unused yarn',count:big[2].count,loc:'Yarn Store',qc:'Passed',by:'Yarn store'});
- S.seeded=true;LCACHE=null;KCACHE=null}
+ KCACHE=null;buildSched();seedQc();S.seeded=true;LCACHE=null;KCACHE=null}
 // ================= render =================
 let TOP='yarn',YV='inv',KV='exec';
 const YV_LIST=[['inv','Inventory'],['min','MOQ vs stock'],['req','Yarn requisition'],['pur','Purchase & pipeline'],['rcv','Receive'],['iss','Issue']];
 const KV_LIST=[['exec','Production & execution'],['plan','Knitting planning'],['rep','Report completion'],['pic','Production incharge'],['day','Day plan & production'],['cap','Factory capacity']];
+const QV_LIST=[['qsum','Quality summary'],['qent','Inspection entry']];let QV='qsum';
 function VIEW_Y(v){YV=v;SELREQ=null;if(v!=='req')NEWREQ=null;MOQORD=false;QUICK='';render();if(window.__nav)window.__nav()}
-function render(){LCACHE=null;KCACHE=null;const ae=document.activeElement;const keep=ae&&ae.tagName==='INPUT'&&ae.type==='search'&&ae.id&&root.contains(ae)?ae:null;const m=G('ykmain');
- if(TOP==='yarn')({inv:yInv,min:yMin,req:yReq,pur:yPur,rcv:yRcv,iss:yIss})[YV](m);else({exec:kExec,plan:kPlan,rep:kRep,pic:kPic,day:kDay,cap:kCap})[KV](m);
+function render(){LCACHE=null;KCACHE=null;KM=null;closeFpop();buildSched();const ae=document.activeElement;const keep=ae&&ae.tagName==='INPUT'&&ae.type==='search'&&ae.id&&root.contains(ae)?ae:null;const m=G('ykmain');
+ if(TOP==='yarn')({inv:yInv,min:yMin,req:yReq,pur:yPur,rcv:yRcv,iss:yIss})[YV](m);else if(TOP==='knit')({exec:kExec,plan:kPlan,rep:kRep,pic:kPic,day:kDay,cap:kCap})[KV](m);else({qsum:qSum,qent:qEnt})[QV](m);
  if(keep){const nw=root.querySelector('#'+keep.id);if(nw&&nw!==keep){const hi=nw.oninput,hc=nw.onchange;keep.oninput=e=>{nw.value=keep.value;if(hi)hi.call(nw,e)};keep.onchange=e=>{nw.value=keep.value;if(hc)hc.call(nw,e)};nw.replaceWith(keep);try{keep.focus({preventScroll:true})}catch(e){}}}}
 const rs=G('ykRole');rs.innerHTML=ROLES.map(([k,l])=>`<option value="${k}">${esc(l)}</option>`).join('');rs.onchange=()=>{ROLE=rs.value;SELREQ=null;SELJOB=null;POP=null;PREVIEW=null;render()};
-if(!S.seeded){seedDemo();save()}
+if(!S.seeded){seedDemo();save()}buildSched();
 render();
-return{main:[['yarn','Yarn Store'],['knit','Knitting']],get top(){return TOP},get views(){return TOP==='yarn'?YV_LIST:KV_LIST},get view(){return TOP==='yarn'?YV:KV},
- setTop(t){TOP=t;QUICK='';SEL=null;SELJOB=null;SELREQ=null;POP=null;PREVIEW=null;render()},setView(v){if(TOP==='yarn'){YV=v;NEWREQ=null;MOQORD=false}else KV=v;QUICK='';SEL=null;SELJOB=null;SELREQ=null;POP=null;PREVIEW=null;render()},
+return{main:[['yarn','Yarn Store'],['knit','Knitting'],['qual','Knitting Quality']],get top(){return TOP},get views(){return TOP==='yarn'?YV_LIST:TOP==='knit'?KV_LIST:QV_LIST},get view(){return TOP==='yarn'?YV:TOP==='knit'?KV:QV},
+ setTop(t){TOP=t;QUICK='';SEL=null;SELJOB=null;SELREQ=null;POP=null;PREVIEW=null;render()},setView(v){if(TOP==='yarn'){YV=v;NEWREQ=null;MOQORD=false}else if(TOP==='knit')KV=v;else QV=v;QUICK='';SEL=null;SELJOB=null;SELREQ=null;POP=null;PREVIEW=null;render()},
  reset(){S=JSON.parse(JSON.stringify(DEF));Object.keys(TS).forEach(k=>delete TS[k]);seedDemo();save();render()},rerender:render,roleSel:rs};
 }

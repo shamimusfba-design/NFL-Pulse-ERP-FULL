@@ -15,7 +15,7 @@ const $=id=>document.getElementById(id);
 function setTheme(t){document.documentElement.setAttribute('data-theme',t);document.querySelectorAll('[data-th]').forEach(b=>b.classList.toggle('on',b.dataset.th===t));try{localStorage.setItem('nos-theme',t)}catch(e){}}
 let th='light';try{th=localStorage.getItem('nos-theme')||'light'}catch(e){}setTheme(th);
 document.querySelectorAll('[data-th]').forEach(b=>{b.onclick=()=>setTheme(b.dataset.th);b.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setTheme(b.dataset.th)}}});
-const api=mountYK($('app-yk'),'2026-09-28');
+const api=mountYK($('app-yk'),'2026-09-29');
 $('userSlot').appendChild(api.roleSel);
 function nav(){$('mainnav').innerHTML=api.main.map(([k,l])=>`<button class="${api.top===k?'on':''}" data-a="${k}">${l}</button>`).join('');
  $('subnav').innerHTML=api.views.map(([k,l])=>`<button class="${api.view===k?'on':''}" data-v="${k}">${l}</button>`).join('');
