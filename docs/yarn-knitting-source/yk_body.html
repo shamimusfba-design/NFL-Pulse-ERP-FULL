@@ -21,7 +21,7 @@ function nav(){$('mainnav').innerHTML=api.main.map(([k,l])=>`<button class="${ap
  $('subnav').innerHTML=api.views.map(([k,l])=>`<button class="${api.view===k?'on':''}" data-v="${k}">${l}</button>`).join('');
  document.querySelectorAll('#mainnav [data-a]').forEach(b=>b.onclick=()=>{api.setTop(b.dataset.a);nav();window.scrollTo(0,0)});
  document.querySelectorAll('#subnav [data-v]').forEach(b=>b.onclick=()=>{api.setView(b.dataset.v);nav();window.scrollTo(0,0)})}
-nav();
+window.__nav=nav;nav();
 const deskBtn=$('deskBtn');
 function applyDesk(on){const r=document.documentElement;r.classList.toggle('desk',on);r.style.zoom=on?String(Math.min(1,window.innerWidth/1320)):'';deskBtn.classList.toggle('on',on);deskBtn.textContent=on?'Mobile view':'Desktop view';try{localStorage.setItem('nos-desk',on?'1':'0')}catch(e){}}
 deskBtn.onclick=()=>{applyDesk(!document.documentElement.classList.contains('desk'));api.rerender()};

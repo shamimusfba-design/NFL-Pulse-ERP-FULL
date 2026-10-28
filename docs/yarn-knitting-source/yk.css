@@ -1,0 +1,15 @@
+.kc{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:0 0 10px}
+.kc .kpi{padding:8px 10px;min-height:0;text-align:left}.kc .kpi .n{font-size:18px;line-height:1.2}.kc .kpi .l{font-size:11.5px;line-height:1.25;margin-top:2px}
+@media (max-width:700px){:root:not(.desk) .kc{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}:root:not(.desk) .kc .kpi{padding:6px 8px}:root:not(.desk) .kc .kpi .n{font-size:14.5px}:root:not(.desk) .kc .kpi .l{font-size:10.5px}}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 10px;font-size:12.5px}
+.chipb{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:4px 11px;font-size:12.5px;cursor:pointer;color:var(--ink)}.chipb.on{background:var(--indigo);color:#fff;border-color:var(--indigo)}
+:root[data-theme="dark"] .chipb.on{color:#0b1016}
+.mini2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 10px}.mini2 .panel{max-height:200px;overflow:auto;padding:10px 12px}.mini2 .ptitle{font-size:13px;margin-bottom:4px}.mini2 .hrow{font-size:12px;padding:2px 0}.mini2 .hrow .hb{height:8px}
+@media (max-width:700px){:root:not(.desk) .mini2{grid-template-columns:1fr}:root:not(.desk) .mini2 .panel{max-height:150px}}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}.seg button{border:0;background:var(--paper);padding:6px 12px;font-size:13px;cursor:pointer;color:var(--ink)}.seg button.on{background:var(--indigo);color:#fff}
+:root[data-theme="dark"] .seg button.on{color:#0b1016}
+.neg{color:var(--bad)}
+.gantt{overflow-x:auto}.gantt table{border-collapse:collapse;font-size:11.5px}.gantt th,.gantt td{border:1px solid var(--line);padding:2px;min-width:26px;text-align:center;height:24px}.gantt .gm{position:sticky;left:0;background:var(--paper);min-width:96px;text-align:left;padding:2px 6px;z-index:1;white-space:nowrap}.gantt th.today{background:var(--chip)}
+.gb{display:inline-block;width:18px;height:14px;border-radius:3px;vertical-align:middle;margin:1px}
+.mq{padding:6px 0;border-bottom:1px solid var(--line)}.mqi{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:13px;padding:3px 0 3px 10px}
+.ldet{border-left:4px solid var(--indigo)}
