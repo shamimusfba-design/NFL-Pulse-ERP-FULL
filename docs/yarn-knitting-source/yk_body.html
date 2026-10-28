@@ -1,0 +1,35 @@
+<body>
+<header class="top"><div class="logo">NOS<small>Yarn Store &amp; Knitting · Northern Fashions Ltd.</small></div><div class="who"><span>Logged in as</span><span id="userSlot"></span></div><div class="sp"></div>
+<button class="topbtn" id="resetBtn">Reset entries</button><button class="topbtn" id="deskBtn" aria-pressed="false">Desktop view</button>
+<div class="themebtn" role="group" aria-label="Day or Night mode"><span data-th="light" tabindex="0" role="button">☀ Day</span><span data-th="dark" tabindex="0" role="button">☾ Night</span></div></header>
+<nav class="mainnav" id="mainnav" aria-label="Departments"></nav>
+<nav class="subnav" id="subnav" aria-label="Sections"></nav>
+<div class="app on" id="app-yk"><div style="display:none"><select id="ykRole" class="topsel" aria-label="Logged in as"></select></div><main id="ykmain"></main><div class="toast" id="toast" role="status"></div></div>
+<div id="printArea"></div>
+<script>
+__DATA__
+__JS__
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+function setTheme(t){document.documentElement.setAttribute('data-theme',t);document.querySelectorAll('[data-th]').forEach(b=>b.classList.toggle('on',b.dataset.th===t));try{localStorage.setItem('nos-theme',t)}catch(e){}}
+let th='light';try{th=localStorage.getItem('nos-theme')||'light'}catch(e){}setTheme(th);
+document.querySelectorAll('[data-th]').forEach(b=>{b.onclick=()=>setTheme(b.dataset.th);b.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setTheme(b.dataset.th)}}});
+const api=mountYK($('app-yk'),'2026-09-28');
+$('userSlot').appendChild(api.roleSel);
+function nav(){$('mainnav').innerHTML=api.main.map(([k,l])=>`<button class="${api.top===k?'on':''}" data-a="${k}">${l}</button>`).join('');
+ $('subnav').innerHTML=api.views.map(([k,l])=>`<button class="${api.view===k?'on':''}" data-v="${k}">${l}</button>`).join('');
+ document.querySelectorAll('#mainnav [data-a]').forEach(b=>b.onclick=()=>{api.setTop(b.dataset.a);nav();window.scrollTo(0,0)});
+ document.querySelectorAll('#subnav [data-v]').forEach(b=>b.onclick=()=>{api.setView(b.dataset.v);nav();window.scrollTo(0,0)})}
+nav();
+const deskBtn=$('deskBtn');
+function applyDesk(on){const r=document.documentElement;r.classList.toggle('desk',on);r.style.zoom=on?String(Math.min(1,window.innerWidth/1320)):'';deskBtn.classList.toggle('on',on);deskBtn.textContent=on?'Mobile view':'Desktop view';try{localStorage.setItem('nos-desk',on?'1':'0')}catch(e){}}
+deskBtn.onclick=()=>{applyDesk(!document.documentElement.classList.contains('desk'));api.rerender()};
+try{if(localStorage.getItem('nos-desk')==='1')applyDesk(true)}catch(e){}
+const rb=$('resetBtn');let rtm=null;rb.onclick=()=>{if(!rtm){rb.textContent='Click again to reset';rtm=setTimeout(()=>{rtm=null;rb.textContent='Reset entries'},4000);return}clearTimeout(rtm);rtm=null;rb.textContent='Reset entries';api.reset()};
+function fitCards(){document.querySelectorAll('.kpi .n').forEach(el=>{el.style.fontSize='';let fs=parseFloat(getComputedStyle(el).fontSize)||24,g=0;while(el.scrollWidth>el.clientWidth+1&&fs>12&&g++<20){fs-=1;el.style.fontSize=fs+'px'}})}
+let ft=null;const fitSoon=()=>{clearTimeout(ft);ft=setTimeout(fitCards,30)};new MutationObserver(fitSoon).observe(document.body,{childList:true,subtree:true});window.addEventListener('resize',fitSoon);fitSoon();
+})();
+</script>
+</body>
+</html>
