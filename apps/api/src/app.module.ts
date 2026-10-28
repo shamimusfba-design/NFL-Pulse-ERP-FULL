@@ -24,10 +24,13 @@ import { IeOperationsController } from './ie-operations';
 import { BulkMerchController } from './merch/bulk-merch.controller';
 import { SampleMerchController } from './merch/sample-merch.controller';
 import { CostController } from './merch/cost.controller';
+import { YarnController } from './yarn-knit/yarn.controller';
+import { KnittingController } from './yarn-knit/knitting.controller';
+import { KnitQualityController } from './yarn-knit/knit-quality.controller';
 
 @Module({
   imports: [ConfigModule.forRoot({ isGlobal: true }), JwtModule.register({})],
-  controllers: [HealthController, AuthController, MastersController, OrdersController, OrderImportController, TasksController, DomainController, UploadsController, CadController, PlanningController, DemoController, IeController, ImportsController, DocumentsController, ProductionLotsController, MaintenanceController, IeOperationsController, BulkMerchController, SampleMerchController, CostController],
+  controllers: [HealthController, AuthController, MastersController, OrdersController, OrderImportController, TasksController, DomainController, UploadsController, CadController, PlanningController, DemoController, IeController, ImportsController, DocumentsController, ProductionLotsController, MaintenanceController, IeOperationsController, BulkMerchController, SampleMerchController, CostController, YarnController, KnittingController, KnitQualityController],
   providers: [PrismaService, AuthService, JwtAuthGuard, OrderImportService, PdfTextService],
 })
 export class AppModule {}

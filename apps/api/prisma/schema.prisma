@@ -1143,6 +1143,13 @@ model YarnRequisition {
   lines         Json
   totalKg       Decimal  @db.Decimal(14, 2)
   status        String   @default("SENT_TO_PURCHASE")
+  source        String   @default("MERCHANDISER")
+  basis         String   @default("CONFIRMED")
+  requiredDate  DateTime?
+  note          String?
+  approvedById  String?
+  approvedAt    DateTime?
+  returnNote    String?
   createdById   String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -1154,4 +1161,286 @@ model CostRateSet {
   data        Json
   updatedById String?
   updatedAt   DateTime @updatedAt
+}
+
+// ================= Yarn store =================
+model YarnCount {
+  code        String   @id
+  cnt         String
+  composition String?
+  shade       String?
+  yarnType    String?
+  moqKg       Decimal  @default(0) @db.Decimal(14, 2)
+  updatedAt   DateTime @updatedAt
+}
+
+model YarnLot {
+  id         String       @id @default(cuid())
+  yarnDesc   String
+  countCode  String?
+  supplier   String?
+  lotNo      String
+  lpNo       String       @default("")
+  receivedAt DateTime?
+  lcNo       String?
+  location   String?
+  qcStatus   String       @default("PASSED")
+  createdAt  DateTime     @default(now())
+  ledger     YarnLedger[]
+  @@unique([yarnDesc, lotNo, lpNo])
+  @@index([countCode])
+}
+
+/// Every stock movement. Stock of a lot = sum of kg (receipts positive, issues negative).
+model YarnLedger {
+  id          String   @id @default(cuid())
+  lotId       String
+  lot         YarnLot  @relation(fields: [lotId], references: [id])
+  kind        String
+  kg          Decimal  @db.Decimal(14, 2)
+  date        DateTime
+  refType     String
+  refId       String
+  note        String?
+  createdById String
+  createdAt   DateTime @default(now())
+  @@index([lotId])
+  @@index([refType, refId])
+}
+
+model YarnPurchaseLine {
+  id            String    @id @default(cuid())
+  poNo          String
+  requisitionId String?
+  countCode     String
+  supplier      String
+  piNo          String?
+  lcNo          String?
+  lcDate        DateTime?
+  eta           DateTime?
+  orderedKg     Decimal   @db.Decimal(14, 2)
+  receivedKg    Decimal   @default(0) @db.Decimal(14, 2)
+  status        String    @default("ORDERED")
+  createdById   String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  @@unique([poNo, countCode])
+  @@index([countCode])
+  @@index([requisitionId])
+}
+
+model YarnReceipt {
+  id             String   @id @default(cuid())
+  grnNo          String   @unique
+  date           DateTime
+  purchaseLineId String
+  lotId          String
+  kg             Decimal  @db.Decimal(14, 2)
+  bags           Int?
+  cones          Int?
+  invoiceNo      String?
+  challanNo      String?
+  qcStatus       String
+  clientRef      String?  @unique
+  createdById    String
+  createdAt      DateTime @default(now())
+}
+
+model YarnIssue {
+  id          String   @id @default(cuid())
+  issueNo     String   @unique
+  date        DateTime
+  lotId       String
+  knitLineId  String?
+  jobCode     String
+  colour      String?
+  party       String
+  programNo   String?
+  kg          Decimal  @db.Decimal(14, 2)
+  bags        Int?
+  cones       Int?
+  challanNo   String?
+  clientRef   String?  @unique
+  createdById String
+  createdAt   DateTime @default(now())
+  @@index([jobCode])
+}
+
+model YarnReturn {
+  id          String   @id @default(cuid())
+  returnNo    String   @unique
+  date        DateTime
+  lotId       String
+  party       String
+  jobCode     String?
+  programNo   String?
+  kg          Decimal  @db.Decimal(14, 2)
+  reason      String?
+  createdById String
+  createdAt   DateTime @default(now())
+}
+
+model YarnDeadAction {
+  lotId       String   @id
+  action      String
+  note        String?
+  updatedById String
+  updatedAt   DateTime @updatedAt
+}
+
+// ================= Knitting =================
+model KnitMachine {
+  id       String  @id
+  dia      String
+  capKgDay Decimal @db.Decimal(10, 2)
+  active   Boolean @default(true)
+}
+
+/// A job approved by Central Planning (TNA + fabric order sheet), waiting for knitting planning.
+model KnitJob {
+  id           String     @id @default(cuid())
+  jobCode      String
+  buyer        String
+  style        String?
+  merchandiser String?
+  shipDate     DateTime?
+  taClose      DateTime?
+  approvedAt   DateTime
+  status       String     @default("PENDING_PLANNING")
+  lines        Json
+  createdById  String
+  createdAt    DateTime   @default(now())
+  knitLines    KnitLine[]
+  @@index([status])
+}
+
+model KnitLine {
+  id              String                 @id @default(cuid())
+  jobId           String?
+  job             KnitJob?               @relation(fields: [jobId], references: [id])
+  source          String
+  buyer           String
+  jobCode         String
+  colour          String
+  part            String?
+  fabric          String
+  fabricType      String?
+  gsm             String?
+  dia             String?
+  countType       String?
+  finishKg        Decimal?               @db.Decimal(14, 2)
+  orderKg         Decimal                @db.Decimal(14, 2)
+  finalKg         Decimal?               @db.Decimal(14, 2)
+  openingKnitKg   Decimal                @default(0) @db.Decimal(14, 2)
+  mode            String                 @default("IN_HOUSE")
+  stage           String                 @default("ACTIVE")
+  yarnCount       String?
+  brand           String?
+  yarnLot         String?
+  finishWidth     String?
+  stitchLength    String?
+  fosDate         DateTime?
+  slot            String?
+  season          String?
+  taClose         DateTime?
+  shipDate        DateTime?
+  merchandiser    String?
+  programNo       String?
+  programRcvDate  DateTime?
+  remarks         String?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  queue           KnitQueueItem?
+  outside         KnitOutsideAllocation?
+  production      KnitProduction[]
+  notes           KnitRemark[]
+  inspections     KnitInspection[]
+  @@index([jobId])
+  @@index([stage])
+  @@index([jobCode])
+}
+
+/// Machine queue: lines run one after another; start = previous finish or notBefore.
+model KnitQueueItem {
+  knitLineId String    @id
+  line       KnitLine  @relation(fields: [knitLineId], references: [id])
+  machineId  String
+  position   Int
+  notBefore  DateTime?
+  hold       Boolean   @default(false)
+  holdReason String?
+  updatedAt  DateTime  @updatedAt
+  @@index([machineId, position])
+}
+
+model KnitOutsideAllocation {
+  knitLineId    String    @id
+  line          KnitLine  @relation(fields: [knitLineId], references: [id])
+  factory       String
+  programNo     String?
+  startDate     DateTime?
+  endDate       DateTime?
+  allocatedById String
+  updatedAt     DateTime  @updatedAt
+}
+
+model KnitFactoryBooking {
+  factory    String   @id
+  tonsPerDay Decimal  @db.Decimal(10, 2)
+  updatedAt  DateTime @updatedAt
+}
+
+model KnitProduction {
+  id          String   @id @default(cuid())
+  knitLineId  String
+  line        KnitLine @relation(fields: [knitLineId], references: [id])
+  date        DateTime
+  machineId   String?
+  source      String   @default("EXECUTION")
+  knittedKg   Decimal  @db.Decimal(14, 2)
+  deliveredKg Decimal  @default(0) @db.Decimal(14, 2)
+  rejectedKg  Decimal  @default(0) @db.Decimal(14, 2)
+  createdById String
+  createdAt   DateTime @default(now())
+  @@index([knitLineId])
+  @@index([date])
+}
+
+model KnitRemark {
+  id          String   @id @default(cuid())
+  knitLineId  String
+  line        KnitLine @relation(fields: [knitLineId], references: [id])
+  date        DateTime
+  dept        String
+  type        String
+  reason      String?
+  text        String?
+  createdById String
+  createdAt   DateTime @default(now())
+  @@index([knitLineId])
+}
+
+model KnitInspection {
+  id          String   @id @default(cuid())
+  inspNo      String   @unique
+  knitLineId  String
+  line        KnitLine @relation(fields: [knitLineId], references: [id])
+  date        DateTime
+  machine     String?
+  rolls       Int?
+  inspectedKg Decimal  @db.Decimal(14, 2)
+  defect      String
+  defectKg    Decimal  @default(0) @db.Decimal(14, 2)
+  rejectedKg  Decimal  @default(0) @db.Decimal(14, 2)
+  decision    String
+  remarks     String?
+  createdById String
+  createdAt   DateTime @default(now())
+  @@index([date])
+  @@index([knitLineId])
+}
+
+model KnitLossRule {
+  fabricType String  @id
+  lossPct    Decimal @db.Decimal(5, 2)
 }
