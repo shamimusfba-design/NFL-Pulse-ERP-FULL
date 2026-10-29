@@ -3,6 +3,7 @@ import { Type } from 'class-transformer';
 import { IsArray, IsIn, IsNumber, IsObject, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 import { JwtAuthGuard } from '../auth';
 import { PrismaService } from '../prisma.service';
+import { styleReuse } from '../reuse/reuse.controller';
 import { actorOf, audit, changeStep, ensureWorkflow, loadStyle, requireJobOwner, requireRole, stepDataOf, stepMapOf, toJson } from './merch.common';
 import {
   checklistInHouse, checklistRequiredQty, finishFabricKg, generateTna, greyFabricKg, labDipSummary, LAB_DIP_STATUS, MERCH_EDIT_ROLES, MERCH_ROLES, PLANNING_ROLES, stage, Step, STEP_ROLES,
@@ -134,7 +135,13 @@ export class BulkMerchController {
       if (missing.length) throw new BadRequestException(`Add the colour / code for: ${missing.join(', ')}`);
       const finishKg = num(stepDataOf(s.merchSteps, 'CAD').finishKg);
       await closeReturned(tx, id, 'fabric order sheet');
-      return changeStep(tx, a, s, 'FABRIC_SHEET', 'SENT', { returned: null, colorCodes: dto.colorCodes, lossPct: dto.lossPct, instructions: dto.instructions || '', finishKg, greyKg: greyFabricKg(finishKg, dto.lossPct) });
+      // Reuse check: suggest left-over greige / finished fabric that matches this job before new knitting / dyeing
+      const reuse = await styleReuse(tx, s);
+      const res = await changeStep(tx, a, s, 'FABRIC_SHEET', 'SENT', { returned: null, colorCodes: dto.colorCodes, lossPct: dto.lossPct, instructions: dto.instructions || '', finishKg, greyKg: greyFabricKg(finishKg, dto.lossPct), reuse, reuseHold: null });
+      if (reuse.matchedLines) {
+        await tx.task.create({ data: { title: `Check reuse fabric before approving fabric order sheet: ${s.order.jobNo} / ${s.styleNo} (${reuse.matchKg} kg matching)`, module: 'MERCH', entityType: 'STYLE', entityId: s.id, orderId: s.orderId, ownerRoleCode: 'PLANNING' } });
+      }
+      return { ...(res as object), reuse };
     });
   }
 
@@ -145,6 +152,7 @@ export class BulkMerchController {
       const s = await loadStyle(tx, id);
       if (stepMapOf(s.merchSteps).FABRIC_SHEET !== 'SENT') throw new BadRequestException('No fabric order sheet is waiting for approval');
       if (!stepDataOf(s.merchSteps, 'FABRIC_SHEET').signedCopy) throw new BadRequestException('Record the signed physical fabric order sheet first (Planning approvals → Signed copy received)');
+      if (stepDataOf(s.merchSteps, 'FABRIC_SHEET').reuseHold?.open) throw new BadRequestException('Reuse fabric check is on hold — record "Use stock" or "Not suitable" in Planning approvals first');
       return changeStep(tx, a, s, 'FABRIC_SHEET', 'DONE');
     });
   }

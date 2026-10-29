@@ -15,13 +15,16 @@
     "prisma:factory-report-seed": "tsx prisma/factory-report-seed.ts",
     "prisma:master-cleanup": "tsx prisma/master-cleanup.ts",
     "prisma:dyeing-seed": "tsx prisma/dyeing-report-seed.ts",
+    "prisma:reuse-seed": "tsx prisma/reuse-stock-seed.ts",
     "test:merch": "tsx --test src/merch/merch.rules.spec.ts src/merch/merch.flow.spec.ts",
     "test:yk": "tsx --test src/yarn-knit/yk.rules.spec.ts",
     "test:yk:db": "YK_DB_TEST=1 tsx --test src/yarn-knit/yk.db.spec.ts",
     "test:pa": "tsx --test src/planning-approvals/pa.rules.spec.ts",
     "test:pa:db": "PA_DB_TEST=1 tsx --test src/planning-approvals/pa.db.spec.ts",
     "test:dyeing": "tsx --test src/dyeing/dyeing.rules.spec.ts",
-    "test:dyeing:db": "DYE_DB_TEST=1 tsx --test src/dyeing/dyeing.db.spec.ts"
+    "test:dyeing:db": "DYE_DB_TEST=1 tsx --test src/dyeing/dyeing.db.spec.ts",
+    "test:reuse": "tsx --test src/reuse/reuse.rules.spec.ts",
+    "test:reuse:db": "REUSE_DB_TEST=1 tsx --test src/reuse/reuse.db.spec.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.2.5",
