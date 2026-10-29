@@ -22,8 +22,8 @@ function roleFilteredGroups(groups: ModuleGroup[], roles: string[]): ModuleGroup
   if (roles.includes('IE')) { add('Merchandising', ['merchandising', 'production-lots']); add('Industrial Production Engineering', ['ie-overview', 'ie-bulletin', 'ie-daily-target', 'ie-mis-import', 'ie-npt', 'ie-qco', 'ie-line-performance', 'ie-responsibility', 'ie-skill-matrix', 'ie-production-checkpoints', 'ie-reports']); add('Management', ['kpi-board','kaizen']); }
   if (roles.includes('CAD')) add('Sample / CAD / Technical', ['cad', 'technical']);
   if (roles.includes('SAMPLE')) { add('Merchandising', ['sample-room']); add('Sample / CAD / Technical', ['central-sample', 'sample-fabric-store']); }
-  if (roles.includes('PLANNING')) { add('Merchandising', ['merchandising', 'order-entry', 'production-lots', 'forms-print']); add('Central Planning', ['ta', 'capacity', 'sewing-planning', 'subcontract', 'lead-time-history']); add('Management', ['job-360']); }
-  if (roles.includes('MANAGEMENT')) { add('Management', ['management', 'job-360', 'kpi-board', 'kaizen']); add('Central Planning', ['capacity', 'lead-time-history']); add('Quality & Stores', ['quality', 'quality-history']); add('Shipment & System', ['reports']); }
+  if (hasRole(['PLANNING', 'PLANNING_HEAD'])) { add('Merchandising', ['merchandising', 'order-entry', 'production-lots', 'forms-print']); add('Central Planning', ['ta', 'planning-approvals', 'capacity', 'sewing-planning', 'subcontract', 'lead-time-history']); add('Management', ['job-360']); }
+  if (roles.includes('MANAGEMENT')) { add('Management', ['management', 'job-360', 'kpi-board', 'kaizen']); add('Central Planning', ['ta', 'planning-approvals', 'capacity', 'subcontract', 'lead-time-history']); add('Quality & Stores', ['quality', 'quality-history']); add('Shipment & System', ['reports']); }
   if (roles.includes('QUALITY')) { add('Management', ['job-360']); add('Yarn & Fabric', ['lab']); add('Quality & Stores', ['quality', 'quality-history']); }
   if (roles.includes('YARN_MANAGEMENT')) add('Yarn & Fabric', ['yarn', 'yarn-store', 'yarn-dyeing', 'knitting']);
   if (roles.includes('PROCUREMENT')) add('Yarn & Fabric', ['procurement', 'yarn']);

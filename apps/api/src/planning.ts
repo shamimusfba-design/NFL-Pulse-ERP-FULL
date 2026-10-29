@@ -4,6 +4,45 @@ import { Type } from 'class-transformer';
 import { Prisma } from '@prisma/client';
 import { JwtAuthGuard } from './auth';
 import { PrismaService } from './prisma.service';
+import {
+  TA_DATE_FIELDS,
+  type TaDateField,
+  type HolidayEntry,
+  type TaActivityTrack,
+  addDays,
+  iso,
+  dateOnly,
+  dayOnlyUtc,
+  inclusiveDays,
+  diffDays,
+  firstCcd,
+  slotForDate,
+  monthKey,
+  daysInMonth,
+  daysInSlot,
+  styleFacts,
+  fabricBand,
+  garmentBand,
+  sewingLeadDays,
+  timelineSpan,
+  compressRows,
+  buildTaRows,
+  scheduleFromCcd,
+  computeCriticalPathAndRisk,
+  buildSectionTasksForApprovedTa,
+  validateGanttFloorCapacity,
+} from './planning.rules';
+
+export {
+  TA_DATE_FIELDS,
+  firstCcd,
+  daysInSlot,
+  buildTaRows,
+  scheduleFromCcd,
+  computeCriticalPathAndRisk,
+  buildSectionTasksForApprovedTa,
+  validateGanttFloorCapacity,
+};
 
 function toPrismaJson(value: unknown): Prisma.InputJsonValue | undefined {
   if (value === undefined) return undefined;
@@ -11,18 +50,7 @@ function toPrismaJson(value: unknown): Prisma.InputJsonValue | undefined {
 }
 
 const PLANNING_ROLES = ['ADMIN', 'PLANNING'];
-const NFL_SHIFTING_LINES=new Set(['D1','D2','E1','E2','F','G1','G2','H1','H2','U','V1','V2','W1','W2','ZA1','ZA2']);
-const TA_DATE_FIELDS = [
-  'yarnDyeingStart', 'yarnDyeingEnd', 'knittingStart', 'knittingEnd',
-  'dyeingFinishingStart', 'dyeingFinishingEnd', 'aopStart', 'aopEnd',
-  'trimsInhouseDate', 'fileHandoverDate', 'ppMeetingDate',
-  'cuttingStart', 'cuttingEnd', 'printingStart', 'printingEnd',
-  'stoneStart', 'stoneEnd', 'embroideryStart', 'embroideryEnd',
-  'sewingStartDate', 'sewingEnd', 'garmentWashStart', 'garmentWashEnd',
-  'finishingStart', 'finishingEnd', 'preFinalInspection', 'finalInspection', 'exFactoryDate', 'cargoClosingDate',
-] as const;
-
-type TaDateField = typeof TA_DATE_FIELDS[number];
+const NFL_SHIFTING_LINES = new Set(['D1', 'D2', 'E1', 'E2', 'F', 'G1', 'G2', 'H1', 'H2', 'U', 'V1', 'V2', 'W1', 'W2', 'ZA1', 'ZA2']);
 
 class TaStylePlanDto {
   @IsString() styleId!: string;
@@ -37,6 +65,7 @@ class TaStylePlanDto {
   @IsOptional() @IsDateString() trimsInhouseDate?: string;
   @IsOptional() @IsDateString() fileHandoverDate?: string;
   @IsOptional() @IsDateString() ppMeetingDate?: string;
+  @IsOptional() @IsDateString() testCuttingDate?: string;
   @IsOptional() @IsDateString() cuttingStart?: string;
   @IsOptional() @IsDateString() cuttingEnd?: string;
   @IsOptional() @IsDateString() printingStart?: string;
@@ -61,11 +90,15 @@ class TaStylePlanDto {
   @IsOptional() @IsString() outsideVendor?: string;
   @IsOptional() @IsString() outsideDescription?: string;
   @IsOptional() @IsString() remarks?: string;
+  @IsOptional() @IsString() replanReason?: string;
+  @IsOptional() actualDates?: Record<string, string>;
+  @IsOptional() activityTracking?: Record<string, TaActivityTrack>;
 }
 
 class SaveTaPlanDto {
   @IsArray() @ValidateNested({ each: true }) @Type(() => TaStylePlanDto) styles!: TaStylePlanDto[];
   @IsOptional() @IsString() remarks?: string;
+  @IsOptional() @IsString() replanReason?: string;
   @IsOptional() @IsBoolean() approve?: boolean;
   @IsOptional() @IsBoolean() capacityOverride?: boolean;
 }
@@ -99,9 +132,19 @@ class GanttUpdateDto {
 
 class GanttApproveDto {
   @IsOptional() @IsArray() styleIds?: string[];
+  @IsOptional() @IsBoolean() capacityOverride?: boolean;
 }
 
 const DEFAULT_CAPACITY_POLICIES = {
+  weeklyHoliday: 'SUNDAY',
+  holidays: [
+    { date: '2026-03-26', name: 'Independence Day', factor: 0 },
+    { date: '2026-03-30', name: 'Eid-ul-Fitr Closure', factor: 0 },
+    { date: '2026-03-31', name: 'Eid-ul-Fitr Closure', factor: 0 },
+    { date: '2026-04-01', name: 'Eid-ul-Fitr Closure', factor: 0 },
+    { date: '2026-04-14', name: 'Pohela Boishakh', factor: 0 },
+    { date: '2026-05-01', name: 'May Day', factor: 0 },
+  ] as HolidayEntry[],
   thresholds: { greenMax: 85, amberMax: 100 },
   bulk: {
     knitting: {
@@ -116,12 +159,12 @@ const DEFAULT_CAPACITY_POLICIES = {
         { dia: '34–38', fabric: 'Terry', minCount: 25, maxCount: 40, highKg: 400, lowKg: 300 },
       ],
     },
-    dyeing: { label: 'Dyeing', unit: 'KG', dailyCapacity: 9500, sundayFactor: 1 },
-    cutting: { label: 'Cutting', unit: 'PCS', dailyCapacity: 60000, sundayFactor: 1 },
-    printing: { label: 'Printing', unit: 'PCS', dailyCapacity: 30000, sundayFactor: 1 },
-    embroidery: { label: 'Embroidery', unit: 'PCS', dailyCapacity: 25000, sundayFactor: 1 },
-    sewing: { label: 'Sewing', unit: 'PCS', dailyCapacity: 42000, sundayFactor: 1 },
-    finishing: { label: 'Finishing & Packing', unit: 'PCS', dailyCapacity: 45000, sundayFactor: 1 },
+    dyeing: { label: 'Dyeing', unit: 'KG', dailyCapacity: 9500, sundayFactor: 0 },
+    cutting: { label: 'Cutting', unit: 'PCS', dailyCapacity: 60000, sundayFactor: 0 },
+    printing: { label: 'Printing', unit: 'PCS', dailyCapacity: 30000, sundayFactor: 0 },
+    embroidery: { label: 'Embroidery', unit: 'PCS', dailyCapacity: 25000, sundayFactor: 0 },
+    sewing: { label: 'Sewing', unit: 'PCS', dailyCapacity: 42000, sundayFactor: 0 },
+    finishing: { label: 'Finishing & Packing', unit: 'PCS', dailyCapacity: 45000, sundayFactor: 0 },
   },
   sample: {
     knitting: { label: 'Sample Knitting', primaryUnit: 'KG', dailyKg: 350, secondaryUnit: 'COLOR', dailyColors: 40 },
@@ -143,6 +186,12 @@ function cleanPlan(input: TaStylePlanDto) {
   if (input.outsideVendor?.trim()) result.outsideVendor = input.outsideVendor.trim();
   if (input.outsideDescription?.trim()) result.outsideDescription = input.outsideDescription.trim();
   if (input.remarks?.trim()) result.remarks = input.remarks.trim();
+  if (input.actualDates && typeof input.actualDates === 'object') {
+    result.actualDates = input.actualDates;
+  }
+  if (input.activityTracking && typeof input.activityTracking === 'object') {
+    result.activityTracking = input.activityTracking;
+  }
   const outsideRequired = Boolean(input.printOutsidePlan || input.embroideryOutsidePlan || input.outsideProcessType);
   result.outsidePlan = outsideRequired;
   result.outsideProcess = {
@@ -154,245 +203,6 @@ function cleanPlan(input: TaStylePlanDto) {
   return result;
 }
 
-function addDays(date: Date, days: number) {
-  const d = new Date(date);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d;
-}
-function iso(date: Date) { return date.toISOString(); }
-function dateOnly(value?: string | Date | null) {
-  if (!value) return null;
-  const d = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toISOString().slice(0, 10);
-}
-function firstCcd(style: any) {
-  const values = (style.purchaseOrders || []).map((p: any) => p.ccd || p.shipmentDate).filter(Boolean).map((v: any) => new Date(v));
-  values.sort((a: Date, b: Date) => a.getTime() - b.getTime());
-  return values[0] || null;
-}
-type TaProcessRow = {
-  key: string;
-  label: string;
-  startField?: TaDateField;
-  endField?: TaDateField;
-  dateField?: TaDateField;
-  duration: number;
-  minDuration: number;
-  slackBefore: number;
-  maxOverlap: number;
-  compressionPriority: number;
-  basis: string;
-  fixed?: boolean; // optional: a row whose date must never be clamped (none set today)
-};
-
-function dayOnlyUtc(value: Date) {
-  return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
-}
-function inclusiveDays(a: Date, b: Date) {
-  return Math.floor((dayOnlyUtc(b).getTime() - dayOnlyUtc(a).getTime()) / 86400000) + 1;
-}
-function scalarDays(start?: string, end?: string) {
-  if (!start || !end) return 0;
-  return Math.max(1, inclusiveDays(new Date(start), new Date(end)));
-}
-function styleFacts(style: any) {
-  const sm = (style.sourceMetadata || {}) as any;
-  const sectionData = sm.sectionData || {};
-  const production = sm.production || {};
-  const qty = Math.max(1, Number(style.quantity || 0));
-  const fabricKg = Math.max(0, Number(production.fabricRequired || sectionData.knitting?.requiredKg || qty * 0.22));
-  const route = Array.isArray(sm.processRouting) ? sm.processRouting.map((x: any) => String(x).toUpperCase()) : [];
-  const finishProcesses = Array.isArray(sectionData.fabricFinishing?.processes) ? sectionData.fabricFinishing.processes.map((x: any) => String(x).toUpperCase()) : [];
-  const printApplicable = route.includes('PRINTING') || sectionData.printing?.applicable === true || Number(production.printQty || 0) > 0 || sm.planning?.printOutsidePlan === true;
-  const embApplicable = route.includes('EMBROIDERY') || sectionData.embroidery?.applicable === true || Number(production.embroideryQty || 0) > 0 || sm.planning?.embroideryOutsidePlan === true;
-  const yarnDyeKg = Math.max(0, Number(sectionData.yarnDyeing?.requiredKg || sectionData.yarnDyeing?.greySentKg || 0));
-  const yarnDyeingApplicable = route.includes('YARN_DYEING') || yarnDyeKg > 0;
-  const aopApplicable = route.some((x: string) => ['AOP','BRUSH','PEACH','FABRIC_FINISHING'].includes(x)) || finishProcesses.some((x: string) => /(AOP|BRUSH|PEACH)/.test(x));
-  const washApplicable = route.some((x: string) => /(GARMENT_WASH|GARMENT_DYE|WASH)/.test(x)) || /WASH|DYE/.test(String(sectionData.specialProcess?.process || '').toUpperCase());
-  return { sm, sectionData, production, qty, fabricKg, yarnDyeKg, printApplicable, embApplicable, yarnDyeingApplicable, aopApplicable, washApplicable };
-}
-function fabricBand(kg: number) {
-  if (kg <= 1000) return { name: '≤1,000 KG', yarn: [5,3], knit: [4,2], dye: [10,6], aop: [3,2], yarnSlack: 1, knitSlack: 2, dyeSlack: 1 };
-  if (kg <= 5000) return { name: '1,001–5,000 KG', yarn: [7,4], knit: [7,4], dye: [15,9], aop: [5,3], yarnSlack: 2, knitSlack: 3, dyeSlack: 2 };
-  return { name: '>5,000 KG', yarn: [10,6], knit: [13,7], dye: [23,12], aop: [8,4], yarnSlack: 2, knitSlack: 4, dyeSlack: 3 };
-}
-function garmentBand(qty: number) {
-  if (qty <= 5000) return { name: '≤5,000 PCS', cutting:[2,1], print:[3,2], emb:[3,2], sewing:[3,1], finish:[2,1] };
-  if (qty <= 15000) return { name: '5,001–15,000 PCS', cutting:[3,2], print:[4,2], emb:[4,2], sewing:[6,3], finish:[3,2] };
-  if (qty <= 30000) return { name: '15,001–30,000 PCS', cutting:[4,2], print:[5,3], emb:[6,3], sewing:[8,4], finish:[4,2] };
-  return { name: '>30,000 PCS', cutting:[5,3], print:[7,4], emb:[8,4], sewing:[13,6], finish:[5,3] };
-}
-function sewingLeadDays(facts: ReturnType<typeof styleFacts>, fallback: [number,number]) {
-  const ie = facts.sm.ieBulletin || facts.sectionData.ie || {};
-  const smv = Number(ie.smv || 0);
-  const machines = Number(ie.machineQty || facts.sectionData.sewing?.machineQty || 0);
-  const hours = Math.max(1, Number(facts.sm.ganttPlan?.workingHours || facts.sm.planning?.workingHours || 8));
-  const efficiencyPct = Math.max(1, Number(ie.achievableEfficiencyPct || facts.sectionData.sewing?.efficiencyPct || 65));
-  if (smv > 0 && machines > 0) {
-    const requiredMinutes = facts.qty * smv;
-    const dailyMinutes = machines * hours * 60 * (efficiencyPct / 100);
-    return Math.max(1, Math.ceil(requiredMinutes / Math.max(1, dailyMinutes)));
-  }
-  return fallback[0];
-}
-function timelineSpan(rows: TaProcessRow[]) {
-  if (!rows.length) return 0;
-  return rows.reduce((sum, row, index) => sum + Math.max(1, row.duration) + (index ? row.slackBefore : 0), 0);
-}
-function compressRows(rows: TaProcessRow[], shortageInput: number) {
-  let shortage = Math.max(0, shortageInput);
-  const recovered = { slack: 0, leadTime: 0, overlap: 0, priority: 0 };
-  // 1) consume planned slack first.
-  for (const row of rows) {
-    while (shortage > 0 && row.slackBefore > 0) { row.slackBefore -= 1; shortage -= 1; recovered.slack += 1; }
-  }
-  // 2) reduce durations toward practical minimum, safest sections first.
-  const byPriority = [...rows].sort((a,b) => a.compressionPriority - b.compressionPriority);
-  for (const row of byPriority) {
-    while (shortage > 0 && row.duration > row.minDuration) { row.duration -= 1; shortage -= 1; recovered.leadTime += 1; }
-  }
-  // 3) use controlled overlap / partial lot release.
-  for (const row of rows) {
-    while (shortage > 0 && row.slackBefore > -row.maxOverlap) { row.slackBefore -= 1; shortage -= 1; recovered.overlap += 1; }
-  }
-  // 4) priority mode: if CCD still cannot fit, compress non-milestone work to 1 day before inventing past dates.
-  for (const row of byPriority) {
-    if (!row.startField || !row.endField) continue;
-    while (shortage > 0 && row.duration > 1) { row.duration -= 1; shortage -= 1; recovered.priority += 1; }
-  }
-  // 5) last-resort parallel release. This keeps the first planned process at tomorrow and CCD fixed.
-  let guard = 0;
-  while (shortage > 0 && rows.length > 1 && guard < 500) {
-    for (let i = 1; i < rows.length && shortage > 0; i += 1) {
-      rows[i].slackBefore -= 1; shortage -= 1; recovered.priority += 1;
-    }
-    guard += 1;
-  }
-  return { remaining: shortage, recovered };
-}
-function buildTaRows(style: any) {
-  const facts = styleFacts(style);
-  const fb = fabricBand(facts.fabricKg);
-  const gb = garmentBand(facts.qty);
-  const rows: TaProcessRow[] = [];
-  const pushDuration = (row: Omit<TaProcessRow,'duration'|'minDuration'> & { duration:[number,number] | number, minDuration?: number }) => {
-    const duration = Array.isArray(row.duration) ? row.duration[0] : row.duration;
-    const minDuration = row.minDuration ?? (Array.isArray(row.duration) ? row.duration[1] : Math.max(1, Math.ceil(duration * .6)));
-    rows.push({ ...row, duration, minDuration } as TaProcessRow);
-  };
-  const pushMilestone = (key:string,label:string,dateField:TaDateField,slackBefore:number,basis:string) => rows.push({ key,label,dateField,duration:1,minDuration:1,slackBefore,maxOverlap:0,compressionPriority:99,basis });
-
-  if (facts.yarnDyeingApplicable) pushDuration({ key:'yarnDyeing', label:'Yarn Dyeing', startField:'yarnDyeingStart', endField:'yarnDyeingEnd', duration:fb.yarn as [number,number], slackBefore:0, maxOverlap:1, compressionPriority:5, basis:`${Math.round(facts.yarnDyeKg || facts.fabricKg)} KG yarn dyeing` });
-  pushDuration({ key:'knitting', label:'Knitting', startField:'knittingStart', endField:'knittingEnd', duration:fb.knit as [number,number], slackBefore:facts.yarnDyeingApplicable?fb.yarnSlack:0, maxOverlap:2, compressionPriority:6, basis:`${Math.round(facts.fabricKg)} KG fabric · ${fb.name}` });
-  pushDuration({ key:'dyeing', label:'Dyeing / Fabric Finishing', startField:'dyeingFinishingStart', endField:'dyeingFinishingEnd', duration:fb.dye as [number,number], slackBefore:fb.knitSlack, maxOverlap:2, compressionPriority:7, basis:`${Math.round(facts.fabricKg)} KG fabric · ${fb.name}` });
-  if (facts.aopApplicable) pushDuration({ key:'aop', label:'AOP / Brush / Peach', startField:'aopStart', endField:'aopEnd', duration:fb.aop as [number,number], slackBefore:fb.dyeSlack, maxOverlap:2, compressionPriority:4, basis:`Applicable fabric process · ${fb.name}` });
-  pushMilestone('trims','Trims In-house','trimsInhouseDate',facts.aopApplicable?1:fb.dyeSlack,'Material readiness milestone');
-  pushMilestone('file','File Handover','fileHandoverDate',0,'Technical / merchandising handover milestone');
-  pushMilestone('pp','PP Meeting','ppMeetingDate',1,'Pre-production milestone');
-  pushDuration({ key:'cutting', label:'Cutting', startField:'cuttingStart', endField:'cuttingEnd', duration:gb.cutting as [number,number], slackBefore:1, maxOverlap:1, compressionPriority:3, basis:`${facts.qty.toLocaleString()} PCS · ${gb.name}` });
-  if (facts.printApplicable) pushDuration({ key:'printing', label:'Printing', startField:'printingStart', endField:'printingEnd', duration:gb.print as [number,number], slackBefore:1, maxOverlap:2, compressionPriority:2, basis:`Applicable print quantity · ${gb.name}` });
-  if (facts.embApplicable) pushDuration({ key:'embroidery', label:'Embroidery', startField:'embroideryStart', endField:'embroideryEnd', duration:gb.emb as [number,number], slackBefore:facts.printApplicable?0:1, maxOverlap:2, compressionPriority:2, basis:`Applicable embroidery quantity · ${gb.name}` });
-  const sewDays = sewingLeadDays(facts, gb.sewing as [number,number]);
-  pushDuration({ key:'sewing', label:'Sewing', startField:'sewingStartDate', endField:'sewingEnd', duration:sewDays, minDuration:(gb.sewing as [number,number])[1], slackBefore:1, maxOverlap:2, compressionPriority:1, basis:`${facts.qty.toLocaleString()} PCS${facts.sm.ieBulletin?.smv ? ` · SMV ${facts.sm.ieBulletin.smv}` : ''}` });
-  if (facts.washApplicable) pushDuration({ key:'garmentWash', label:'Garment Wash / Dye', startField:'garmentWashStart', endField:'garmentWashEnd', duration:Math.max(4, Math.ceil(facts.qty/8000)), minDuration:2, slackBefore:0, maxOverlap:1, compressionPriority:4, basis:'Applicable garment wash / dye process' });
-  pushDuration({ key:'finishing', label:'Finishing / Packing', startField:'finishingStart', endField:'finishingEnd', duration:gb.finish as [number,number], slackBefore:0, maxOverlap:2, compressionPriority:2, basis:`${facts.qty.toLocaleString()} PCS · ${gb.name}` });
-  pushMilestone('preFinal','Pre-Final Inspection','preFinalInspection',1,'Inspection milestone');
-  pushMilestone('final','Final Inspection','finalInspection',1,'Final inspection milestone');
-  pushMilestone('exFactory','Ex-Factory','exFactoryDate',2,'Shipment release milestone');
-  pushMilestone('ccd','CCD / Shipment Date','cargoClosingDate',1,'Fixed buyer CCD / shipment date');
-  return { rows, facts, fb, gb };
-}
-function scheduleFromCcd(style: any) {
-  const ccd = firstCcd(style) || addDays(new Date(), 45);
-  const today = dayOnlyUtc(new Date());
-  const tomorrow = addDays(today, 1);
-  const { rows, facts, fb, gb } = buildTaRows(style);
-  const baselineRequiredDays = timelineSpan(rows);
-  const availableDays = Math.max(1, inclusiveDays(tomorrow, ccd));
-  const shortageDays = Math.max(0, baselineRequiredDays - availableDays);
-  const { remaining, recovered } = compressRows(rows, shortageDays);
-  const result: Record<string, any> = {};
-  let cursor = dayOnlyUtc(ccd);
-  for (let i = rows.length - 1; i >= 0; i -= 1) {
-    const row = rows[i];
-    if (row.dateField) {
-      result[row.dateField] = iso(cursor);
-    } else if (row.startField && row.endField) {
-      const end = new Date(cursor);
-      const start = addDays(end, -(Math.max(1,row.duration)-1));
-      result[row.startField] = iso(start);
-      result[row.endField] = iso(end);
-    }
-    if (i > 0) {
-      const currentStart = row.dateField ? cursor : new Date(result[row.startField!]);
-      cursor = addDays(currentStart, -(row.slackBefore + 1));
-    }
-  }
-  const firstRow = rows[0];
-  const firstStart = firstRow.dateField ? new Date(result[firstRow.dateField]) : new Date(result[firstRow.startField!]);
-  // Newly generated T&A must never leave an editable process date in the past.
-  // Keep buyer CCD fixed; if remaining lead time is infeasible, clamp process dates to today
-  // and flag the schedule for Planning review instead of presenting past dates as valid.
-  const todayIso = iso(today);
-  const firstProcessViolation = firstStart < today;
-  let clampedPastProcessDates = false;
-  for (const row of rows) {
-    if (row.dateField && !row.fixed) {
-      const value = result[row.dateField];
-      if (value && value < todayIso) { result[row.dateField] = todayIso; clampedPastProcessDates = true; }
-    }
-    if (row.startField && row.endField) {
-      const startValue = result[row.startField];
-      const endValue = result[row.endField];
-      if (startValue && startValue < todayIso) { result[row.startField] = todayIso; clampedPastProcessDates = true; }
-      if (endValue && endValue < todayIso) { result[row.endField] = todayIso; clampedPastProcessDates = true; }
-      if (result[row.endField] < result[row.startField]) result[row.endField] = result[row.startField];
-    }
-  }
-  result.taGeneration = {
-    engineVersion: '2.0',
-    generatedAt: new Date().toISOString(),
-    fixedCcd: iso(dayOnlyUtc(ccd)),
-    earliestAllowedStart: iso(tomorrow),
-    firstProcess: firstRow.label,
-    firstProcessStart: iso(firstProcessViolation ? today : firstStart),
-    clampedPastProcessDates,
-    scheduleFeasibility: firstProcessViolation || clampedPastProcessDates ? 'PLANNING_REVIEW_REQUIRED' : 'FEASIBLE',
-    baselineRequiredDays,
-    availableDays,
-    shortageDays,
-    recoveredDays: recovered.slack + recovered.leadTime + recovered.overlap + recovered.priority,
-    recovery: recovered,
-    remainingGapDays: Math.max(0, remaining + (firstProcessViolation ? inclusiveDays(firstStart, addDays(today,-1)) : 0)),
-    mode: shortageDays <= 0 ? 'STANDARD' : recovered.priority > 0 ? 'AGGRESSIVE_COMPRESSION' : 'COMPRESSED',
-    fabricRequiredKg: Number(facts.fabricKg.toFixed(2)),
-    garmentOrderQty: facts.qty,
-    fabricQtyBand: fb.name,
-    garmentQtyBand: gb.name,
-    note: 'CCD is fixed. New auto-plan never intentionally starts before tomorrow; shortage is recovered from slack, practical lead-time compression and allowed overlap / partial release.',
-    processBasis: rows.map((row) => ({ process: row.label, leadTimeDays: row.dateField ? null : row.duration, slackBeforeDays: row.slackBefore, basis: row.basis })),
-  };
-  return result;
-}
-
-function slotForDate(date: Date) {
-  const day = date.getUTCDate();
-  return day <= 10 ? 1 : day <= 20 ? 2 : 3;
-}
-function monthKey(date: Date) { return date.toISOString().slice(0, 7); }
-function daysInMonth(year: number, monthIndex: number) { return new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate(); }
-function daysInSlot(year: number, monthIndex: number, slot: number, sundayFactor = 1) {
-  const maxDay = daysInMonth(year, monthIndex);
-  const start = slot === 1 ? 1 : slot === 2 ? 11 : 21;
-  const end = slot === 1 ? 10 : slot === 2 ? 20 : maxDay;
-  let equivalent = 0;
-  for (let day = start; day <= end; day += 1) {
-    const d = new Date(Date.UTC(year, monthIndex, day));
-    equivalent += d.getUTCDay() === 0 ? sundayFactor : 1;
-  }
-  return equivalent;
-}
 function unitDemand(style: any, section: string) {
   const sm = (style.sourceMetadata || {}) as any;
   const production = sm.production || {};
@@ -403,15 +213,6 @@ function unitDemand(style: any, section: string) {
   if (section === 'printing') return sectionData.printing?.applicable === false ? 0 : Number(production.printQty || (sm.planning?.printOutsidePlan ? qty : qty * 0.35));
   if (section === 'embroidery') return sectionData.embroidery?.applicable === false ? 0 : Number(production.embroideryQty || (sm.planning?.embroideryOutsidePlan ? qty : qty * 0.2));
   return qty;
-}
-function planDateForSection(style: any, section: string) {
-  const p = ((style.sourceMetadata || {}) as any).planning || {};
-  const map: Record<string, string> = {
-    knitting: 'knittingStart', dyeing: 'dyeingFinishingStart', cutting: 'cuttingStart', printing: 'printingStart',
-    embroidery: 'embroideryStart', sewing: 'sewingStartDate', finishing: 'finishingStart',
-  };
-  const value = p[map[section]] || p.sewingStartDate;
-  return value ? new Date(value) : null;
 }
 
 function planRangeForSection(style: any, section: string) {
@@ -476,11 +277,19 @@ export class PlanningController {
       where: { entityType: 'SYSTEM_SETTING', entityId: 'CAPACITY_POLICIES', action: 'CAPACITY_POLICIES_UPDATED' },
       orderBy: { createdAt: 'desc' },
     });
-    return (latest?.after as any)?.policies || DEFAULT_CAPACITY_POLICIES;
+    const stored = (latest?.after as any)?.policies;
+    if (!stored) return DEFAULT_CAPACITY_POLICIES;
+    return {
+      ...DEFAULT_CAPACITY_POLICIES,
+      ...stored,
+      weeklyHoliday: 'SUNDAY',
+      holidays: Array.isArray(stored.holidays) ? stored.holidays : DEFAULT_CAPACITY_POLICIES.holidays,
+    };
   }
 
   private async heatmap(month?: string) {
     const policies: any = await this.capacityPolicies();
+    const holidays: HolidayEntry[] = Array.isArray(policies.holidays) ? policies.holidays : [];
     const target = /^\d{4}-\d{2}$/.test(month || '') ? `${month}-01T00:00:00.000Z` : new Date().toISOString();
     const base = new Date(target);
     const year = base.getUTCFullYear();
@@ -490,10 +299,26 @@ export class PlanningController {
     const rows: Record<string, any> = {};
     for (const section of sections) {
       const p = policies.bulk[section];
-      rows[section] = { section, label: p.label || section, unit: p.unit || 'PCS', slots: [1, 2, 3].map((slot) => ({ slot, demand: 0, capacity: Number(p.dailyCapacity || 0) * daysInSlot(year, monthIndex, slot, Number(p.sundayFactor ?? 1)), loadPct: 0, jobs: 0 })) };
+      const sundayFactor = Number(p.sundayFactor ?? (section === 'knitting' ? 0.5 : 0));
+      rows[section] = {
+        section,
+        label: p.label || section,
+        unit: p.unit || 'PCS',
+        sundayFactor,
+        slots: [1, 2, 3].map((slot) => {
+          const effectiveDays = daysInSlot(year, monthIndex, slot, sundayFactor, holidays);
+          return {
+            slot,
+            effectiveDays,
+            demand: 0,
+            capacity: Number(p.dailyCapacity || 0) * effectiveDays,
+            loadPct: 0,
+            jobs: 0,
+          };
+        }),
+      };
     }
-    // Capacity must include every relevant Job/Style. There is deliberately no business-data cap here.
-    // A job count of 200, 2,000 or 20,000 changes query volume, not planning correctness.
+
     const styles = await this.prisma.style.findMany({
       where: { sourceMetadata: { not: Prisma.DbNull } },
       select: { id: true, quantity: true, sourceMetadata: true },
@@ -554,12 +379,21 @@ export class PlanningController {
       sampleAgg.making[idx].styles += Number(sample.makingStyles || 0); sampleAgg.making[idx].jobs += 1;
     }
     const sampleRows = [
-      { section: 'sampleKnitting', label: 'Sample Knitting', unit: 'KG + COLOR', slots: sampleAgg.knitting.map((c: any) => { const days = daysInSlot(year, monthIndex, c.slot, 1); const kgCap = Number(policies.sample.knitting.dailyKg || 350) * days; const colorCap = Number(policies.sample.knitting.dailyColors || 40) * days; const kgPct = kgCap ? c.kg / kgCap * 100 : 0; const colorPct = colorCap ? c.colors / colorCap * 100 : 0; const loadPct = Number(Math.max(kgPct, colorPct).toFixed(1)); return { ...c, capacityText: `${kgCap} KG / ${colorCap} colors`, demandText: `${c.kg.toFixed(1)} KG / ${c.colors} colors`, loadPct, status: loadPct <= greenMax ? 'GOOD' : loadPct <= amberMax ? 'ATTENTION' : 'OVERLOAD' }; }) },
+      { section: 'sampleKnitting', label: 'Sample Knitting', unit: 'KG + COLOR', slots: sampleAgg.knitting.map((c: any) => { const days = daysInSlot(year, monthIndex, c.slot, 0, holidays); const kgCap = Number(policies.sample.knitting.dailyKg || 350) * days; const colorCap = Number(policies.sample.knitting.dailyColors || 40) * days; const kgPct = kgCap ? c.kg / kgCap * 100 : 0; const colorPct = colorCap ? c.colors / colorCap * 100 : 0; const loadPct = Number(Math.max(kgPct, colorPct).toFixed(1)); return { ...c, capacityText: `${kgCap} KG / ${colorCap} colors`, demandText: `${c.kg.toFixed(1)} KG / ${c.colors} colors`, loadPct, status: loadPct <= greenMax ? 'GOOD' : loadPct <= amberMax ? 'ATTENTION' : 'OVERLOAD' }; }) },
       { section: 'sampleDyeing', label: 'Sample Dyeing', unit: 'BATCH/COLOR', slots: sampleAgg.dyeing.map((c: any) => { const cap = Number(policies.sample.dyeing.slotCapacity || 185); const loadPct = Number((c.batches / cap * 100).toFixed(1)); return { ...c, capacityText: `${cap} batch`, demandText: `${c.batches} batch`, loadPct, status: loadPct <= greenMax ? 'GOOD' : loadPct <= amberMax ? 'ATTENTION' : 'OVERLOAD' }; }) },
-      { section: 'samplePrinting', label: 'Sample Printing', unit: 'STYLE + PCS', slots: sampleAgg.printing.map((c: any) => { const days = daysInSlot(year, monthIndex, c.slot, 1); const styleCap = Number(policies.sample.printing.dailyStyles || 60) * days; const pcsCap = Number(policies.sample.printing.dailyPcs || 800) * days; const loadPct = Number(Math.max(styleCap ? c.styles/styleCap*100 : 0, pcsCap ? c.pcs/pcsCap*100 : 0).toFixed(1)); return { ...c, capacityText: `${styleCap} styles / ${pcsCap} pcs`, demandText: `${c.styles} styles / ${c.pcs} pcs`, loadPct, status: loadPct <= greenMax ? 'GOOD' : loadPct <= amberMax ? 'ATTENTION' : 'OVERLOAD' }; }) },
+      { section: 'samplePrinting', label: 'Sample Printing', unit: 'STYLE + PCS', slots: sampleAgg.printing.map((c: any) => { const days = daysInSlot(year, monthIndex, c.slot, 0, holidays); const styleCap = Number(policies.sample.printing.dailyStyles || 60) * days; const pcsCap = Number(policies.sample.printing.dailyPcs || 800) * days; const loadPct = Number(Math.max(styleCap ? c.styles / styleCap * 100 : 0, pcsCap ? c.pcs / pcsCap * 100 : 0).toFixed(1)); return { ...c, capacityText: `${styleCap} styles / ${pcsCap} pcs`, demandText: `${c.styles} styles / ${c.pcs} pcs`, loadPct, status: loadPct <= greenMax ? 'GOOD' : loadPct <= amberMax ? 'ATTENTION' : 'OVERLOAD' }; }) },
       { section: 'sampleMaking', label: 'Sample Making', unit: 'STYLE', slots: sampleAgg.making.map((c: any) => { const cap = Number(policies.sample.making.monthlyStyles || 800) / 3; const loadPct = Number((c.styles / cap * 100).toFixed(1)); return { ...c, capacityText: `${Math.round(cap)} styles`, demandText: `${c.styles} styles`, loadPct, status: loadPct <= greenMax ? 'GOOD' : loadPct <= amberMax ? 'ATTENTION' : 'OVERLOAD' }; }) },
     ];
-    return { month: key, thresholds: policies.thresholds, rows: list, sampleRows, samplePolicies: policies.sample, bulkPolicies: policies.bulk };
+    return {
+      month: key,
+      weeklyHoliday: 'SUNDAY',
+      holidays,
+      thresholds: policies.thresholds,
+      rows: list,
+      sampleRows,
+      samplePolicies: policies.sample,
+      bulkPolicies: policies.bulk,
+    };
   }
 
   private async autoLoadGanttForOrder(orderId: string, user: any) {
@@ -632,7 +466,11 @@ export class PlanningController {
     const tasks = await this.prisma.task.findMany({ where: { module: 'T&A', status: { in: ['PENDING', 'IN_PROGRESS', 'BLOCKED'] }, OR: [{ ownerUserId: req.user.id }, { ownerRoleCode: 'PLANNING' }] }, orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }] });
     const taskByOrder = new Map(tasks.filter((t) => t.orderId).map((t) => [t.orderId as string, t]));
     return orders.map((order) => {
-      const styles = order.styles.map((style) => { const sm = (style.sourceMetadata || {}) as Record<string, any>; return { ...style, planning: sm.planning || {}, ganttPlan: sm.ganttPlan || null }; });
+      const styles = order.styles.map((style) => {
+        const sm = (style.sourceMetadata || {}) as Record<string, any>;
+        const cp = computeCriticalPathAndRisk(style);
+        return { ...style, planning: sm.planning || {}, ganttPlan: sm.ganttPlan || null, criticalPathSummary: cp };
+      });
       const approved = styles.length > 0 && styles.every((s) => s.planning?.taStatus === 'APPROVED');
       const draft = styles.some((s) => s.planning?.taStatus === 'DRAFT');
       return { ...order, styles, taStatus: approved ? 'APPROVED' : draft ? 'DRAFT' : 'PENDING', taTask: taskByOrder.get(order.id) || null };
@@ -644,7 +482,14 @@ export class PlanningController {
     this.ensurePlanning(req);
     const order = await this.prisma.order.findUnique({ where: { id: orderId }, include: { buyer: true, styles: { include: { purchaseOrders: true, breakdowns: true } } } });
     if (!order) throw new BadRequestException('Order not found');
-    return { ...order, styles: order.styles.map((style) => { const sm = (style.sourceMetadata || {}) as any; return { ...style, planning: sm.planning || {}, ganttPlan: sm.ganttPlan || null }; }) };
+    return {
+      ...order,
+      styles: order.styles.map((style) => {
+        const sm = (style.sourceMetadata || {}) as any;
+        const cp = computeCriticalPathAndRisk(style);
+        return { ...style, planning: sm.planning || {}, ganttPlan: sm.ganttPlan || null, criticalPathSummary: cp };
+      }),
+    };
   }
 
   @Post('ta/generate-pending')
@@ -709,7 +554,15 @@ export class PlanningController {
     this.ensurePlanning(req);
     if (!body || typeof body !== 'object') throw new BadRequestException('Capacity policy object is required');
     const current = await this.capacityPolicies();
-    const next = { ...current, ...body, thresholds: { ...(current as any).thresholds, ...(body.thresholds || {}) }, bulk: { ...(current as any).bulk, ...(body.bulk || {}) }, sample: { ...(current as any).sample, ...(body.sample || {}) } };
+    const next = {
+      ...current,
+      ...body,
+      weeklyHoliday: 'SUNDAY',
+      holidays: Array.isArray(body.holidays) ? body.holidays : (current as any).holidays,
+      thresholds: { ...(current as any).thresholds, ...(body.thresholds || {}) },
+      bulk: { ...(current as any).bulk, ...(body.bulk || {}) },
+      sample: { ...(current as any).sample, ...(body.sample || {}) },
+    };
     await this.prisma.auditLog.create({ data: { userId: req.user.id, action: 'CAPACITY_POLICIES_UPDATED', entityType: 'SYSTEM_SETTING', entityId: 'CAPACITY_POLICIES', before: toPrismaJson({ policies: current }), after: toPrismaJson({ policies: next }) } });
     return next;
   }
@@ -743,34 +596,171 @@ export class PlanningController {
     if (dto.approve) {
       for (const item of dto.styles) {
         if (!item.fileHandoverDate || !item.trimsInhouseDate || !item.sewingStartDate) {
-          const style: any = styleMap.get(item.styleId); throw new BadRequestException(`${style?.styleNo || 'Style'}: File Handover, Trims In-house and Sewing Start dates are required before approval`);
+          const style: any = styleMap.get(item.styleId);
+          throw new BadRequestException(`${style?.styleNo || 'Style'}: File Handover, Trims In-house and Sewing Start dates are required before approval`);
         }
       }
       const check = await this.capacityCheck(orderId, req);
       if (!check.ok && !dto.capacityOverride) throw new BadRequestException(`Capacity heatmap is overloaded (max ${check.maxLoadPct}%). Review dates or use Planning override.`);
     }
-    const now = new Date(); const nowIso = now.toISOString(); const status = dto.approve ? 'APPROVED' : 'DRAFT';
+
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const status = dto.approve ? 'APPROVED' : 'DRAFT';
+    let createdTasksCount = 0;
+
     await this.prisma.$transaction(async (tx) => {
       for (const input of dto.styles) {
-        const current = await tx.style.findUnique({ where: { id: input.styleId } }); if (!current) continue;
-        const sm = (current.sourceMetadata || {}) as Record<string, any>; const before = sm.planning || {}; const clean = cleanPlan(input);
-        const nextPlanning = { ...before, ...clean, taStatus: status, taPlanDate: before.taPlanDate || nowIso, taLastUpdatedAt: nowIso, taLastUpdatedByUserId: req.user.id, taLastUpdatedByName: req.user.name, ...(dto.approve ? { taApprovedAt: nowIso, taApprovedByUserId: req.user.id, taApprovedByName: req.user.name, capacityOverride: Boolean(dto.capacityOverride) } : {}) };
+        const current = await tx.style.findUnique({ where: { id: input.styleId } });
+        if (!current) continue;
+        const sm = (current.sourceMetadata || {}) as Record<string, any>;
+        const before = sm.planning || {};
+        const clean = cleanPlan(input);
+
+        // Gap 3: Re-plan record & version check when modifying planned dates on an already APPROVED T&A
+        const wasApproved = before.taStatus === 'APPROVED';
+        const changedFields: string[] = [];
+        if (wasApproved) {
+          for (const field of TA_DATE_FIELDS) {
+            const oldDate = dateOnly(before[field]);
+            const newDate = dateOnly(clean[field] ?? before[field]);
+            if (oldDate && newDate && oldDate !== newDate) {
+              changedFields.push(field);
+            }
+          }
+        }
+        const effectiveReplanReason = (input.replanReason || dto.replanReason || '').trim();
+        if (wasApproved && changedFields.length > 0 && !effectiveReplanReason) {
+          throw new BadRequestException(`Style ${current.styleNo}: Re-plan reason is required when changing planned dates (${changedFields.join(', ')}) on an approved T&A.`);
+        }
+
+        const prevVersion = Number(before.taVersion || 1);
+        const nextVersion = wasApproved && changedFields.length > 0 ? prevVersion + 1 : prevVersion;
+        const baselinePlan = before.baselinePlan || (dto.approve || wasApproved ? TA_DATE_FIELDS.reduce((acc, f) => {
+          if (before[f] || clean[f]) acc[f] = before[f] || clean[f];
+          return acc;
+        }, {} as Record<string, any>) : null);
+
+        const replanHistory = Array.isArray(before.replanHistory) ? [...before.replanHistory] : [];
+        if (wasApproved && changedFields.length > 0) {
+          replanHistory.unshift({
+            version: nextVersion,
+            previousVersion: prevVersion,
+            reason: effectiveReplanReason,
+            changedFields,
+            replannedAt: nowIso,
+            replannedByUserId: req.user.id,
+            replannedByName: req.user.name,
+          });
+        }
+
+        const nextPlanning = {
+          ...before,
+          ...clean,
+          taStatus: status,
+          taVersion: nextVersion,
+          baselinePlan,
+          replanHistory,
+          taPlanDate: before.taPlanDate || nowIso,
+          taLastUpdatedAt: nowIso,
+          taLastUpdatedByUserId: req.user.id,
+          taLastUpdatedByName: req.user.name,
+          ...(dto.approve ? { taApprovedAt: nowIso, taApprovedByUserId: req.user.id, taApprovedByName: req.user.name, capacityOverride: Boolean(dto.capacityOverride) } : {}),
+        };
         await tx.style.update({ where: { id: input.styleId }, data: { sourceMetadata: toPrismaJson({ ...sm, planning: nextPlanning }) } });
-        await tx.auditLog.create({ data: { userId: req.user.id, action: dto.approve ? 'TA_PLAN_APPROVED' : 'TA_PLAN_DRAFT_SAVED', entityType: 'STYLE', entityId: input.styleId, before: toPrismaJson(before), after: toPrismaJson(nextPlanning) } });
+        await tx.auditLog.create({
+          data: {
+            userId: req.user.id,
+            action: wasApproved && changedFields.length > 0 ? 'TA_PLAN_REPLANNED' : dto.approve ? 'TA_PLAN_APPROVED' : 'TA_PLAN_DRAFT_SAVED',
+            entityType: 'STYLE',
+            entityId: input.styleId,
+            before: toPrismaJson(before),
+            after: toPrismaJson(nextPlanning),
+          },
+        });
+
+        // Gap 10: Auto-create section tasks on T&A approval
+        if (dto.approve) {
+          const sectionTasks = buildSectionTasksForApprovedTa({ id: order.id, jobNo: order.jobNo }, { id: current.id, styleNo: current.styleNo }, nextPlanning);
+          for (const st of sectionTasks) {
+            const exists = await tx.task.findFirst({
+              where: { orderId: order.id, entityId: current.id, module: st.module, title: st.title },
+            });
+            if (!exists) {
+              await tx.task.create({
+                data: {
+                  title: st.title,
+                  module: st.module,
+                  ownerRoleCode: st.ownerRoleCode,
+                  orderId: st.orderId,
+                  entityType: st.entityType,
+                  entityId: st.entityId,
+                  dueAt: st.dueDate,
+                  priority: st.priority,
+                  status: 'PENDING',
+                },
+              });
+              createdTasksCount += 1;
+            }
+          }
+        }
       }
       const orderMeta = (order.sourceMetadata || {}) as Record<string, any>;
       await tx.order.update({ where: { id: orderId }, data: { sourceMetadata: toPrismaJson({ ...orderMeta, taPlan: { ...(orderMeta.taPlan || {}), status, remarks: dto.remarks?.trim() || '', updatedAt: nowIso, updatedByUserId: req.user.id, updatedByName: req.user.name, ...(dto.approve ? { approvedAt: nowIso, approvedByUserId: req.user.id, approvedByName: req.user.name, capacityOverride: Boolean(dto.capacityOverride) } : {}) } }) } });
       if (dto.approve) await tx.task.updateMany({ where: { orderId, module: 'T&A', status: { in: ['PENDING', 'IN_PROGRESS', 'BLOCKED'] } }, data: { status: 'COMPLETED', completedAt: now, blockedReason: null } });
     });
     if (dto.approve) await this.autoLoadGanttForOrder(orderId, req.user);
-    return { ok: true, status, merchandisingDatesReleased: Boolean(dto.approve), ganttDraftAutoLoaded: Boolean(dto.approve), message: dto.approve ? 'T&A approved and released. Key dates flow to Merchandising and a Sewing Gantt draft is auto-loaded for Central Planning review.' : 'T&A draft saved. Merchandising will not see draft dates until approval.' };
+    return {
+      ok: true,
+      status,
+      sectionTasksCreated: createdTasksCount,
+      merchandisingDatesReleased: Boolean(dto.approve),
+      ganttDraftAutoLoaded: Boolean(dto.approve),
+      message: dto.approve
+        ? `T&A approved and released. ${createdTasksCount} downstream section tasks created and Sewing Gantt draft auto-loaded.`
+        : 'T&A draft saved. Merchandising will not see draft dates until approval.',
+    };
+  }
+
+  @Get('control-tower')
+  async controlTower(@Req() req: any) {
+    this.ensurePlanningView(req);
+    const orders = await this.prisma.order.findMany({
+      include: { buyer: true, styles: { include: { purchaseOrders: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+    const riskList = orders.flatMap((order) =>
+      order.styles.map((style) => {
+        const cp = computeCriticalPathAndRisk(style);
+        const sm = (style.sourceMetadata || {}) as any;
+        const p = sm.planning || {};
+        return {
+          orderId: order.id,
+          styleId: style.id,
+          jobNo: order.jobNo,
+          styleNo: style.styleNo,
+          buyer: order.buyer?.name || 'Buyer',
+          quantity: style.quantity,
+          taStatus: p.taStatus || 'DRAFT',
+          taVersion: Number(p.taVersion || 1),
+          ccdDate: cp.ccdDate,
+          projectedExFactoryDate: cp.projectedExFactoryDate,
+          projectedShipmentDate: cp.projectedShipmentDate,
+          ccdSlipDays: cp.ccdSlipDays,
+          riskLevel: cp.riskLevel,
+          delayedCount: cp.delayedActivities.length,
+          failedCount: cp.failedActivities.length,
+          criticalActivities: cp.criticalPath.map((c) => c.label),
+          topDelayReason: cp.delayedActivities.find((d) => d.delayReason)?.delayReason || '',
+        };
+      }),
+    );
+    return { riskList };
   }
 
   @Get('gantt')
   async gantt(@Req() req: any, @Query('from') from?: string, @Query('to') to?: string, @Query('factory') factory?: string, @Query('q') q?: string) {
     this.ensurePlanning(req);
-    // Read styles directly instead of loading every Order + every Style. This keeps the Gantt responsive
-    // after large canonical imports (2,000+ jobs) and still preserves all information needed by the planner.
     const styles = await this.prisma.style.findMany({
       where: { sourceMetadata: { not: Prisma.DbNull } },
       select: {
@@ -781,22 +771,31 @@ export class PlanningController {
       },
       orderBy: { id: 'asc' },
     });
-    const fromDate=from?new Date(`${from}T00:00:00.000Z`):null; const toDate=to?new Date(`${to}T23:59:59.999Z`):null; const search=String(q||'').trim().toLowerCase();
+    const fromDate = from ? new Date(`${from}T00:00:00.000Z`) : null;
+    const toDate = to ? new Date(`${to}T23:59:59.999Z`) : null;
+    const search = String(q || '').trim().toLowerCase();
     const rows: any[] = [];
     for (const style of styles) {
-      const order=style.order; const sm = (style.sourceMetadata || {}) as any; const p = sm.planning || {}; const g = sm.ganttPlan || null;
+      const order = style.order;
+      const sm = (style.sourceMetadata || {}) as any;
+      const p = sm.planning || {};
+      const g = sm.ganttPlan || null;
       if (p.taStatus !== 'APPROVED') continue;
-      const rowFactory=String(g?.factoryCode||'NFL').toUpperCase(); if(factory&&factory!=='ALL'&&rowFactory!==String(factory).toUpperCase())continue;
-      if(search&&!`${order.jobNo} ${style.styleNo} ${style.itemDescription||''} ${order.buyer?.name||''}`.toLowerCase().includes(search))continue;
-      if(fromDate||toDate){
-        const startValue=g?.startDate||p.sewingStartDate||p.cuttingStart||p.taPlanDate; const finishValue=g?.finishDate||p.sewingEnd||startValue;
-        const start=startValue?new Date(startValue):null; const finish=finishValue?new Date(finishValue):start;
-        if(start&&finish&&!Number.isNaN(start.getTime())&&!Number.isNaN(finish.getTime())){if(fromDate&&finish<fromDate)continue;if(toDate&&start>toDate)continue;}
+      const rowFactory = String(g?.factoryCode || 'NFL').toUpperCase();
+      if (factory && factory !== 'ALL' && rowFactory !== String(factory).toUpperCase()) continue;
+      if (search && !`${order.jobNo} ${style.styleNo} ${style.itemDescription || ''} ${order.buyer?.name || ''}`.toLowerCase().includes(search)) continue;
+      if (fromDate || toDate) {
+        const startValue = g?.startDate || p.sewingStartDate || p.cuttingStart || p.taPlanDate;
+        const finishValue = g?.finishDate || p.sewingEnd || startValue;
+        const start = startValue ? new Date(startValue) : null;
+        const finish = finishValue ? new Date(finishValue) : start;
+        if (start && finish && !Number.isNaN(start.getTime()) && !Number.isNaN(finish.getTime())) {
+          if (fromDate && finish < fromDate) continue;
+          if (toDate && start > toDate) continue;
+        }
       }
       const colors = Array.from(new Set((style.breakdowns || []).map((b: any) => b.color).filter(Boolean)));
       const fullSectionData = sm.sectionData || {};
-      // Gantt only needs sewing-readiness facts. Avoid sending the whole Yarn→Shipment payload
-      // for every job in the visible window; full operational data remains in the database.
       const sectionData = {
         finishedFabricStore: fullSectionData.finishedFabricStore || {},
         fabricFinishing: fullSectionData.fabricFinishing || {},
@@ -813,10 +812,12 @@ export class PlanningController {
   }
 
   @Get('gantt/find')
-  async ganttFind(@Req() req:any,@Query('q') q?:string){
-    this.ensurePlanning(req); const search=String(q||'').trim(); if(!search)return null;
-    const rows=await this.gantt(req,undefined,undefined,undefined,search);
-    return rows[0]||null;
+  async ganttFind(@Req() req: any, @Query('q') q?: string) {
+    this.ensurePlanning(req);
+    const search = String(q || '').trim();
+    if (!search) return null;
+    const rows = await this.gantt(req, undefined, undefined, undefined, search);
+    return rows[0] || null;
   }
 
   @Post('gantt/generate')
@@ -826,7 +827,9 @@ export class PlanningController {
     let eligible = 0;
     for (const order of orders) {
       const hasApproved = order.styles.some((s) => ((s.sourceMetadata || {}) as any).planning?.taStatus === 'APPROVED');
-      if (!hasApproved) continue; eligible += 1; await this.autoLoadGanttForOrder(order.id, req.user);
+      if (!hasApproved) continue;
+      eligible += 1;
+      await this.autoLoadGanttForOrder(order.id, req.user);
     }
     return { ok: true, eligibleOrders: eligible, message: 'Approved T&A Jobs are loaded into the Sewing Gantt as planning drafts.' };
   }
@@ -836,14 +839,15 @@ export class PlanningController {
     this.ensurePlanning(req);
     const style = await this.prisma.style.findUnique({ where: { id: styleId }, include: { order: true, purchaseOrders: true } });
     if (!style) throw new BadRequestException('Style not found');
-    const sm = (style.sourceMetadata || {}) as any; const before = sm.ganttPlan || {};
+    const sm = (style.sourceMetadata || {}) as any;
+    const before = sm.ganttPlan || {};
     if (!before.lineCode) throw new BadRequestException('Auto load this Job into Gantt first');
     const ie = sm.ieBulletin || {};
     const sectionSewing = sm.sectionData?.sewing || {};
     if (before.locked && dto.locked !== false) throw new BadRequestException('This approved / frozen plan is locked. Unlock it before changing line, date or capacity inputs.');
-    const effectiveFactory=String(dto.factoryCode ?? before.factoryCode ?? 'NFL').toUpperCase();
-    const effectiveLine=String(dto.lineCode ?? before.lineCode ?? '').toUpperCase();
-    const isShifting=effectiveFactory==='NFL'&&NFL_SHIFTING_LINES.has(effectiveLine);
+    const effectiveFactory = String(dto.factoryCode ?? before.factoryCode ?? 'NFL').toUpperCase();
+    const effectiveLine = String(dto.lineCode ?? before.lineCode ?? '').toUpperCase();
+    const isShifting = effectiveFactory === 'NFL' && NFL_SHIFTING_LINES.has(effectiveLine);
     const workingHours = isShifting ? 16 : Number(dto.workingHours ?? before.workingHours ?? 8);
     const overtimeHours = isShifting ? 0 : Number(dto.overtimeHours ?? before.overtimeHours ?? 0);
     const totalHours = Math.max(1, workingHours + overtimeHours);
@@ -856,7 +860,7 @@ export class PlanningController {
     const actualQty = Math.max(0, Number(dto.actualQty ?? before.actualQty ?? sectionSewing.productionQty ?? 0));
     const remainingQty = Math.max(0, Number(style.quantity || 0) - actualQty);
     const startDate = dto.startDate ? new Date(dto.startDate) : before.startDate ? new Date(before.startDate) : new Date();
-    const standardTarget=Number(ie.dailyTarget||before.standardTarget||before.baseDailyTarget||before.dailyTarget||1400);
+    const standardTarget = Number(ie.dailyTarget || before.standardTarget || before.baseDailyTarget || before.dailyTarget || 1400);
     let dailyTarget = standardTarget;
     const blendedEfficiency = Math.min(efficiencyPct, Math.max(1, learningEfficiencyPct + (efficiencyPct - learningEfficiencyPct) * 0.65));
     if (smv > 0 && manpower > 0) dailyTarget = Math.max(1, Math.round((manpower * totalHours * 60 * (blendedEfficiency / 100)) / smv));
@@ -865,22 +869,31 @@ export class PlanningController {
     const requiredDays = Math.max(1, Math.ceil((remainingQty / Math.max(1, dailyTarget)) + changeoverDays));
     let autoFinish = addDays(startDate, requiredDays - 1);
     if (dto.skipSunday ?? before.skipSunday ?? true) {
-      let cursor = new Date(startDate); let work = 1;
-      while (work < requiredDays) { cursor = addDays(cursor, 1); if (cursor.getDay() !== 0) work += 1; }
+      let cursor = new Date(startDate);
+      let work = 1;
+      while (work < requiredDays) {
+        cursor = addDays(cursor, 1);
+        if (cursor.getUTCDay() !== 0) work += 1;
+      }
       autoFinish = cursor;
     }
     const finishDate = dto.finishDate ? new Date(dto.finishDate) : autoFinish;
     const splitPlan = dto.splitPlanJson !== undefined ? (() => { try { return JSON.parse(dto.splitPlanJson || '[]'); } catch { return []; } })() : before.splitPlan || [];
-    const next = { ...before,
+    const next = {
+      ...before,
       ...(dto.lineId ? { lineId: dto.lineId } : {}), ...(dto.lineCode ? { lineCode: dto.lineCode } : {}), ...(dto.factoryCode ? { factoryCode: dto.factoryCode } : {}), ...(dto.floorCode ? { floorCode: dto.floorCode } : {}),
-      workingHours, overtimeHours, totalHours, smv: smv || undefined, manpower: manpower || undefined, efficiencyPct, learningEfficiencyPct, achievementPct: dto.achievementPct ?? before.achievementPct ?? sectionSewing.achievementPct ?? 0, machineQty, machineRequirements:ie.machineRequirements||before.machineRequirements||[], standardTarget, changeoverMinutes, actualQty, remainingQty,
+      workingHours, overtimeHours, totalHours, smv: smv || undefined, manpower: manpower || undefined, efficiencyPct, learningEfficiencyPct, achievementPct: dto.achievementPct ?? before.achievementPct ?? sectionSewing.achievementPct ?? 0, machineQty, machineRequirements: ie.machineRequirements || before.machineRequirements || [], standardTarget, changeoverMinutes, actualQty, remainingQty,
       dailyTarget, requiredDays, preStartDate: dto.preStartDate ? new Date(dto.preStartDate).toISOString() : before.preStartDate, startDate: startDate.toISOString(), finishDate: finishDate.toISOString(), autoCalculatedFinishDate: autoFinish.toISOString(), plannerManualOverride: true,
       ieInputStatus: (smv > 0 && manpower > 0 && machineQty > 0) ? 'READY' : 'PENDING_IE_OR_PLANNER_INPUT',
       skipSunday: dto.skipSunday ?? before.skipSunday ?? true, locked: dto.locked ?? before.locked ?? false, shiftProfile: isShifting ? 'A+B' : (dto.shiftProfile ?? before.shiftProfile ?? 'GENERAL'), planningStatus: dto.planningStatus ?? before.planningStatus ?? 'PLANNED', splitPlan,
       baselineStartDate: before.baselineStartDate || (before.status === 'APPROVED' ? before.startDate : undefined), baselineFinishDate: before.baselineFinishDate || (before.status === 'APPROVED' ? before.finishDate : undefined),
-      ...(dto.remark !== undefined ? { remark: dto.remark } : {}), status: dto.status || 'REVIEWED', reviewedAt: new Date().toISOString(), reviewedByUserId: req.user.id, reviewedByName: req.user.name };
-    const ccd = firstCcd(style); const finish = next.finishDate ? new Date(next.finishDate) : null; const bufferDays = ccd && finish ? Math.floor((ccd.getTime() - finish.getTime()) / 86400000) : null;
-    next.bufferDays = bufferDays; next.risk = bufferDays === null ? 'UNKNOWN' : bufferDays < 0 ? 'CRITICAL' : bufferDays <= 2 ? 'RISK' : 'ON_TRACK';
+      ...(dto.remark !== undefined ? { remark: dto.remark } : {}), status: dto.status || 'REVIEWED', reviewedAt: new Date().toISOString(), reviewedByUserId: req.user.id, reviewedByName: req.user.name,
+    };
+    const ccd = firstCcd(style);
+    const finish = next.finishDate ? new Date(next.finishDate) : null;
+    const bufferDays = ccd && finish ? Math.floor((ccd.getTime() - finish.getTime()) / 86400000) : null;
+    next.bufferDays = bufferDays;
+    next.risk = bufferDays === null ? 'UNKNOWN' : bufferDays < 0 ? 'CRITICAL' : bufferDays <= 2 ? 'RISK' : 'ON_TRACK';
     await this.prisma.style.update({ where: { id: styleId }, data: { sourceMetadata: toPrismaJson({ ...sm, ganttPlan: next }) } });
     await this.prisma.auditLog.create({ data: { userId: req.user.id, action: 'GANTT_PLAN_REVIEWED', entityType: 'STYLE', entityId: styleId, before: toPrismaJson(before), after: toPrismaJson(next) } });
     return next;
@@ -889,23 +902,24 @@ export class PlanningController {
   @Get('gantt/styles/:styleId/history')
   async ganttHistory(@Param('styleId') styleId: string, @Req() req: any) {
     this.ensurePlanning(req);
-    const logs = await this.prisma.auditLog.findMany({ where: { entityType: 'STYLE', entityId: styleId, action: { in: ['GANTT_PLAN_REVIEWED','GANTT_PLAN_APPROVED','GANTT_PLAN_UNDONE'] } }, orderBy: { createdAt: 'desc' }, take: 20 });
-    return logs.map((x:any) => ({ id:x.id, action:x.action, createdAt:x.createdAt, userId:x.userId, before:x.before, after:x.after }));
+    const logs = await this.prisma.auditLog.findMany({ where: { entityType: 'STYLE', entityId: styleId, action: { in: ['GANTT_PLAN_REVIEWED', 'GANTT_PLAN_APPROVED', 'GANTT_PLAN_UNDONE'] } }, orderBy: { createdAt: 'desc' }, take: 20 });
+    return logs.map((x: any) => ({ id: x.id, action: x.action, createdAt: x.createdAt, userId: x.userId, before: x.before, after: x.after }));
   }
 
   @Post('gantt/styles/:styleId/undo')
   async ganttUndo(@Param('styleId') styleId: string, @Req() req: any) {
     this.ensurePlanning(req);
-    const style = await this.prisma.style.findUnique({ where:{ id:styleId } });
+    const style = await this.prisma.style.findUnique({ where: { id: styleId } });
     if (!style) throw new BadRequestException('Style not found');
-    const sm = (style.sourceMetadata || {}) as any; const current = sm.ganttPlan || {};
+    const sm = (style.sourceMetadata || {}) as any;
+    const current = sm.ganttPlan || {};
     if (current.locked) throw new BadRequestException('Unlock the plan before undo.');
-    const latest = await this.prisma.auditLog.findFirst({ where:{ entityType:'STYLE', entityId:styleId, action:'GANTT_PLAN_REVIEWED' }, orderBy:{ createdAt:'desc' } });
+    const latest = await this.prisma.auditLog.findFirst({ where: { entityType: 'STYLE', entityId: styleId, action: 'GANTT_PLAN_REVIEWED' }, orderBy: { createdAt: 'desc' } });
     const previous = latest?.before as any;
     if (!previous) throw new BadRequestException('No previous Gantt review is available to restore.');
-    const restored = { ...previous, status:'REVIEWED', undoneAt:new Date().toISOString(), undoneByUserId:req.user.id, undoneByName:req.user.name };
-    await this.prisma.style.update({ where:{id:styleId}, data:{ sourceMetadata:toPrismaJson({ ...sm, ganttPlan:restored }) } });
-    await this.prisma.auditLog.create({ data:{ userId:req.user.id, action:'GANTT_PLAN_UNDONE', entityType:'STYLE', entityId:styleId, before:toPrismaJson(current), after:toPrismaJson(restored) } });
+    const restored = { ...previous, status: 'REVIEWED', undoneAt: new Date().toISOString(), undoneByUserId: req.user.id, undoneByName: req.user.name };
+    await this.prisma.style.update({ where: { id: styleId }, data: { sourceMetadata: toPrismaJson({ ...sm, ganttPlan: restored }) } });
+    await this.prisma.auditLog.create({ data: { userId: req.user.id, action: 'GANTT_PLAN_UNDONE', entityType: 'STYLE', entityId: styleId, before: toPrismaJson(current), after: toPrismaJson(restored) } });
     return restored;
   }
 
@@ -918,53 +932,37 @@ export class PlanningController {
       return g && ['DRAFT', 'REVIEWED'].includes(g.status);
     }).map((style) => style.id));
 
-    // Hard validation uses the live Line/Machine master, not stale hard-coded floor totals.
-    const capacityLines=dedupePhysicalLines(await this.prisma.line.findMany({where:{active:true},include:{machinePools:true,floor:{include:{section:{include:{factory:true}}}}}}));
-    const floorCapacity=new Map<string,number>();
-    for(const line of capacityLines){const key=`${line.floor.section.factory.code}|${line.floor.code}`;const mc=(line.machinePools||[]).filter((x:any)=>x.active).reduce((a:number,x:any)=>a+Number(x.machineCount||0),0);floorCapacity.set(key,(floorCapacity.get(key)||0)+mc)}
-    const allStyles = await this.prisma.style.findMany({ select: { id: true, sourceMetadata: true } });
-    const loads = new Map<string, { used: number; jobs: string[] }>();
-    for (const row of allStyles) {
-      const sm = (row.sourceMetadata || {}) as any;
-      const g = sm.ganttPlan;
-      if (!g?.startDate || !g?.finishDate || !g?.floorCode) continue;
-      const include = g.status === 'APPROVED' || targetIds.has(row.id);
-      if (!include) continue;
-      const factoryCode = g.factoryCode || 'NFL';
-      const floorKey = `${factoryCode}|${g.floorCode}`;
-      const cap = floorCapacity.get(floorKey)||0;
-      if (!cap) continue; // NCL / future floors stay configurable until their max is confirmed.
-      const machineQty = Math.max(0, Number(sm.ieBulletin?.machineQty || g.machineQty || 0));
-      if (!machineQty) continue;
-      const start = new Date(g.startDate); const finish = new Date(g.finishDate);
-      if (Number.isNaN(start.getTime()) || Number.isNaN(finish.getTime())) continue;
-      const cursor = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()));
-      const end = new Date(Date.UTC(finish.getUTCFullYear(), finish.getUTCMonth(), finish.getUTCDate()));
-      while (cursor <= end) {
-        const day = cursor.toISOString().slice(0, 10);
-        const key = `${floorKey}|${day}`;
-        const current = loads.get(key) || { used: 0, jobs: [] };
-        current.used += machineQty; current.jobs.push(row.id); loads.set(key, current);
-        cursor.setUTCDate(cursor.getUTCDate() + 1);
-      }
+    const capacityLines = dedupePhysicalLines(await this.prisma.line.findMany({ where: { active: true }, include: { machinePools: true, floor: { include: { section: { include: { factory: true } } } } } }));
+    const floorCapacity = new Map<string, number>();
+    for (const line of capacityLines) {
+      const key = `${line.floor.section.factory.code}|${line.floor.code}`;
+      const mc = (line.machinePools || []).filter((x: any) => x.active).reduce((a: number, x: any) => a + Number(x.machineCount || 0), 0);
+      floorCapacity.set(key, (floorCapacity.get(key) || 0) + mc);
     }
-    for (const [key, load] of loads.entries()) {
-      const [factoryCode, floorCode, day] = key.split('|');
-      const floorKey = `${factoryCode}|${floorCode}`;
-      const cap = floorCapacity.get(floorKey)||0;
-      if (cap && load.used > cap) {
-        throw new BadRequestException(`${floorKey} machine capacity exceeded on ${day}: ${load.used} planned / ${cap} max. Reduce machine load, change floor/line, date or working hours before official approval.`);
-      }
+    const allStyles = await this.prisma.style.findMany({ select: { id: true, styleNo: true, sourceMetadata: true } });
+
+    // Bug Fix 3: Do not silently skip lines with 0 machine count or floors with 0 capacity
+    const validation = validateGanttFloorCapacity(allStyles, targetIds, floorCapacity);
+    if (!validation.ok && !dto.capacityOverride) {
+      const details = [...validation.unconfiguredIssues, ...validation.overloads].join('; ');
+      throw new BadRequestException(`Gantt floor capacity validation failed: ${details}. Configure machine counts/floor capacity or pass capacityOverride.`);
     }
 
     let approved = 0;
     for (const style of styles) {
-      const sm = (style.sourceMetadata || {}) as any; const g = sm.ganttPlan;
+      const sm = (style.sourceMetadata || {}) as any;
+      const g = sm.ganttPlan;
       if (!g || !['DRAFT', 'REVIEWED'].includes(g.status)) continue;
       const next = { ...g, status: 'APPROVED', approvedAt: new Date().toISOString(), approvedByUserId: req.user.id, approvedByName: req.user.name, baselineVersion: Number(g.baselineVersion || 0) + 1, baselineStartDate: g.baselineStartDate || g.startDate, baselineFinishDate: g.baselineFinishDate || g.finishDate };
-      await this.prisma.style.update({ where: { id: style.id }, data: { sourceMetadata: toPrismaJson({ ...sm, ganttPlan: next }) } }); approved += 1;
+      await this.prisma.style.update({ where: { id: style.id }, data: { sourceMetadata: toPrismaJson({ ...sm, ganttPlan: next }) } });
+      approved += 1;
       await this.prisma.auditLog.create({ data: { userId: req.user.id, action: 'GANTT_PLAN_APPROVED', entityType: 'STYLE', entityId: style.id, before: toPrismaJson(g), after: toPrismaJson(next) } });
     }
-    return { ok: true, approved, message: `${approved} Gantt plan item(s) approved as the current official line plan after floor machine-capacity validation.` };
+    return {
+      ok: true,
+      approved,
+      unconfiguredWarnings: validation.unconfiguredIssues,
+      message: `${approved} Gantt plan item(s) approved as the current official line plan after floor machine-capacity validation.`,
+    };
   }
 }

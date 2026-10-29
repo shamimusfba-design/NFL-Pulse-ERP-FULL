@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseBuyerPoFile } from '../../../lib/buyer-po-parser';
+import { DEFAULT_MASTER_ITEM_RATES, generateDefaultItemizedCostsForStyle, calculateCostSheetTotals, calculateItemCostPerPc } from '../../../lib/costing-engine';
 import demo2000DataRaw from '../../../data/demo-2000-master.json';
 import factoryDataRaw from '../../../data/dyeing-factory-data.json';
 import factoryKpiMasterRaw from '../../../data/factory-kpi-master.json';
@@ -323,6 +324,8 @@ function createNewFormForStyle(styleId: string, type: string, productionLotId?: 
   form.status = 'DRAFT';
   return form;
 }
+let memoryMasterRates: any[] = [...DEFAULT_MASTER_ITEM_RATES];
+
 let memoryCostSheets: any[] = [
   {
     id: 'cs-22014574',
@@ -414,6 +417,7 @@ let memoryCostSheets: any[] = [
       { id: 'acc-7', item: 'Carton (7-ply)', supplier: 'In-house', costPerDzn: 0.96, costPerPc: 0.08 },
       { id: 'acc-8', item: 'Others / Flag Label', supplier: 'Local', costPerDzn: 0.24, costPerPc: 0.02 }
     ],
+    itemizedCosts: generateDefaultItemizedCostsForStyle('22014574', 'onsAB REG AOP TEE', 'ONS'),
     otherCosts: {
       collarCuffPerPc: 0.15,
       totalFabricCostPerPc: 1.73,
@@ -451,6 +455,339 @@ let memoryCostSheets: any[] = [
     ],
     createdAt: '2018-11-12T10:00:00Z',
     updatedAt: '2018-11-12T14:15:00Z'
+  },
+  {
+    id: 'cs-10023411',
+    version: 2,
+    approvalStatus: 'APPROVED',
+    header: {
+      garmentDescription: 'onlLUX PIQUE POLO SHIRT',
+      buyer: 'ONLY',
+      divGroup: 'Mens Premium',
+      orderQty: 8000,
+      styleRef: '10023411',
+      date: '15.02.26',
+      season: 'Spring/Summer',
+      currency: 'USD'
+    },
+    fabrics: [
+      {
+        id: 'fab-p1',
+        fabricTag: 'Fabric A',
+        fabricDescription: '100% Combed Cotton Honeycomb Pique 200 GSM',
+        bWidth: 62,
+        bLength: 74,
+        slCm: 24,
+        mqPc: 1,
+        consumptionKg: 0.24,
+        wastePct: 8,
+        totalConsumptionKg: 0.259,
+        dozen: 3.11,
+        gsm: 200,
+        formula: 'Pique Standard',
+        wastageKg: 0.019,
+        knittingCost: 0.52,
+        dyeingFinishingCost: 1.20,
+        convertCost: 0.22
+      },
+      {
+        id: 'fab-p2',
+        fabricTag: 'Fabric B',
+        fabricDescription: 'Flat Knit Jacquard Collar & Sleeve Cuffs',
+        bWidth: 9,
+        bLength: 42,
+        slCm: 0,
+        mqPc: 1,
+        consumptionKg: 0.045,
+        wastePct: 6,
+        totalConsumptionKg: 0.048,
+        dozen: 0.58,
+        gsm: 320,
+        formula: 'Flat Collar',
+        wastageKg: 0.003,
+        knittingCost: 0.65,
+        dyeingFinishingCost: 1.30,
+        convertCost: 0.25
+      }
+    ],
+    fabricACost: {
+      yarnPricePerKg: 3.95,
+      yarnPriceExtraPerKg: 0,
+      knittingCostPerKg: 0.52,
+      aopOilDyePerKg: 0,
+      dyeingFinishingPerKg: 1.20,
+      brushedPerKg: 0,
+      wastageKnittingDyeingPerKg: 0.28,
+      totalCostFabricAPerKg: 5.95
+    },
+    fabricBCost: {
+      yarnPricePerKg: 4.25,
+      spandexPerKg: 0,
+      knittingCostPerKg: 0.65,
+      yarnDyeingPerKg: 0.40,
+      carbonizedPerKg: 0,
+      wastageKnittingDyeingPerKg: 0.30,
+      totalCostFabricBPerKg: 5.60
+    },
+    fabricCCost: { yarnPricePerKg: 0, knittingCostPerKg: 0, dyeingFinishingPerKg: 0, wastageKnittingDyeingPerKg: 0, totalCostFabricCPerKg: 0 },
+    accessories: [
+      { id: 'acc-p1', item: 'Main Damask Label', supplier: 'Avery', costPerDzn: 0.42, costPerPc: 0.035 },
+      { id: 'acc-p2', item: 'Satin Care Label', supplier: 'Paxar', costPerDzn: 0.24, costPerPc: 0.020 },
+      { id: 'acc-p3', item: 'Hang Tag & Cord', supplier: 'Avery', costPerDzn: 0.84, costPerPc: 0.070 },
+      { id: 'acc-p4', item: 'Placket Resin Buttons (3 pcs)', supplier: 'Dekko', costPerDzn: 0.54, costPerPc: 0.045 },
+      { id: 'acc-p5', item: 'Neck Twill Tape', supplier: 'Apex', costPerDzn: 0.26, costPerPc: 0.022 },
+      { id: 'acc-p6', item: 'Sewing Thread 40/2', supplier: 'Coats', costPerDzn: 0.78, costPerPc: 0.065 },
+      { id: 'acc-p7', item: 'Poly Bag & Carton Box', supplier: 'In-house', costPerDzn: 1.32, costPerPc: 0.110 }
+    ],
+    itemizedCosts: generateDefaultItemizedCostsForStyle('10023411', 'onlLUX PIQUE POLO SHIRT', 'ONLY'),
+    otherCosts: {
+      collarCuffPerPc: 0.25,
+      totalFabricCostPerPc: 2.10,
+      cmCuttingMakingPerPc: 1.25,
+      screenPrintPerPc: 0.00,
+      embroideryPerPc: 0.28,
+      sequinPerPc: 0.00,
+      stonePerPc: 0.00,
+      garmentWashPerPc: 0.08,
+      accessoriesPerPc: 0.38,
+      smsPerPc: 0.05,
+      commercialOverheadPct: 3.5,
+      commercialOverheadPerPc: 0.145,
+      profitPct: 8.0,
+      profitPerPc: 0.345,
+      buyingCommissionPct: 5.0,
+      buyingCommissionPerPc: 0.23,
+      chemicalTestPerPc: 0.04,
+      totalGarmentPriceFobPerPc: 4.65
+    },
+    revisions: [
+      {
+        version: 2,
+        revisedAt: '15-Feb-2026',
+        revisedBy: 'Imran Merchandiser',
+        reason: 'Adjusted placket button specs and flat collar knitting',
+        fobPrice: 4.65,
+        changedValues: 'Placket buttons & collar rate',
+        approvalStatus: 'APPROVED'
+      }
+    ],
+    approvalHistory: [
+      { status: 'APPROVED', changedAt: '16-Feb-2026 11:20', actor: 'Head Merchandiser', remarks: 'Approved for ONLY bulk booking' }
+    ],
+    createdAt: '2026-02-15T08:00:00Z',
+    updatedAt: '2026-02-16T11:20:00Z'
+  },
+  {
+    id: 'cs-12055689',
+    version: 1,
+    approvalStatus: 'APPROVED',
+    header: {
+      garmentDescription: 'carmaVINTAGE FLEECE HOODIE',
+      buyer: 'CARMA',
+      divGroup: 'Mens Outerwear',
+      orderQty: 3500,
+      styleRef: '12055689',
+      date: '20.02.26',
+      season: 'Autumn/Winter',
+      currency: 'USD'
+    },
+    fabrics: [
+      {
+        id: 'fab-h1',
+        fabricTag: 'Fabric A',
+        fabricDescription: '3-End Fleece 280 GSM (80/20 Cotton Poly)',
+        bWidth: 64,
+        bLength: 76,
+        slCm: 65,
+        mqPc: 1,
+        consumptionKg: 0.42,
+        wastePct: 8,
+        totalConsumptionKg: 0.454,
+        dozen: 5.45,
+        gsm: 280,
+        formula: 'Fleece Formula',
+        wastageKg: 0.034,
+        knittingCost: 0.65,
+        dyeingFinishingCost: 1.25,
+        convertCost: 0.30
+      },
+      {
+        id: 'fab-h2',
+        fabricTag: 'Fabric B',
+        fabricDescription: '2x2 Heavy Spandex Rib for Bottom Hem & Cuffs',
+        bWidth: 12,
+        bLength: 90,
+        slCm: 0,
+        mqPc: 1,
+        consumptionKg: 0.08,
+        wastePct: 8,
+        totalConsumptionKg: 0.086,
+        dozen: 1.03,
+        gsm: 360,
+        formula: 'Rib Hem',
+        wastageKg: 0.006,
+        knittingCost: 0.60,
+        dyeingFinishingCost: 1.30,
+        convertCost: 0.25
+      }
+    ],
+    fabricACost: {
+      yarnPricePerKg: 3.85,
+      yarnPriceExtraPerKg: 0,
+      knittingCostPerKg: 0.65,
+      aopOilDyePerKg: 0,
+      dyeingFinishingPerKg: 1.25,
+      brushedPerKg: 0.35,
+      wastageKnittingDyeingPerKg: 0.35,
+      totalCostFabricAPerKg: 6.45
+    },
+    fabricBCost: {
+      yarnPricePerKg: 4.20,
+      spandexPerKg: 0.45,
+      knittingCostPerKg: 0.60,
+      yarnDyeingPerKg: 0,
+      carbonizedPerKg: 0,
+      wastageKnittingDyeingPerKg: 0.30,
+      totalCostFabricBPerKg: 5.55
+    },
+    fabricCCost: { yarnPricePerKg: 0, knittingCostPerKg: 0, dyeingFinishingPerKg: 0, wastageKnittingDyeingPerKg: 0, totalCostFabricCPerKg: 0 },
+    accessories: [
+      { id: 'acc-h1', item: 'Woven Neck Label', supplier: 'Avery', costPerDzn: 0.48, costPerPc: 0.040 },
+      { id: 'acc-h2', item: 'Care & Content Label', supplier: 'Paxar', costPerDzn: 0.24, costPerPc: 0.020 },
+      { id: 'acc-h3', item: 'Metal Eyelets (2 pcs)', supplier: 'YKK', costPerDzn: 0.72, costPerPc: 0.060 },
+      { id: 'acc-h4', item: 'Braided Cotton Drawcord with Aglets', supplier: 'Apex', costPerDzn: 0.96, costPerPc: 0.080 },
+      { id: 'acc-h5', item: 'Hang Tag & Cord', supplier: 'Avery', costPerDzn: 0.84, costPerPc: 0.070 },
+      { id: 'acc-h6', item: 'Heavy Export Carton & Poly', supplier: 'In-house', costPerDzn: 1.68, costPerPc: 0.140 }
+    ],
+    itemizedCosts: generateDefaultItemizedCostsForStyle('12055689', 'carmaVINTAGE FLEECE HOODIE', 'CARMA'),
+    otherCosts: {
+      collarCuffPerPc: 0.35,
+      totalFabricCostPerPc: 3.45,
+      cmCuttingMakingPerPc: 1.85,
+      screenPrintPerPc: 0.32,
+      embroideryPerPc: 0.00,
+      sequinPerPc: 0.00,
+      stonePerPc: 0.00,
+      garmentWashPerPc: 0.14,
+      accessoriesPerPc: 0.45,
+      smsPerPc: 0.06,
+      commercialOverheadPct: 3.5,
+      commercialOverheadPerPc: 0.22,
+      profitPct: 8.0,
+      profitPerPc: 0.52,
+      buyingCommissionPct: 5.0,
+      buyingCommissionPerPc: 0.35,
+      chemicalTestPerPc: 0.05,
+      totalGarmentPriceFobPerPc: 6.95
+    },
+    revisions: [
+      {
+        version: 1,
+        revisedAt: '20-Feb-2026',
+        revisedBy: 'Imran Merchandiser',
+        reason: 'Fleece brushing and vintage wash inclusion',
+        fobPrice: 6.95,
+        changedValues: 'Brushing surcharge and wash rate',
+        approvalStatus: 'APPROVED'
+      }
+    ],
+    approvalHistory: [
+      { status: 'APPROVED', changedAt: '21-Feb-2026 15:00', actor: 'Head Merchandiser', remarks: 'FOB $6.95 confirmed for CARMA' }
+    ],
+    createdAt: '2026-02-20T09:00:00Z',
+    updatedAt: '2026-02-21T15:00:00Z'
+  },
+  {
+    id: 'cs-22045512',
+    version: 1,
+    approvalStatus: 'APPROVED',
+    header: {
+      garmentDescription: 'onlBASIC CREWNECK TEE',
+      buyer: 'ONLY',
+      divGroup: 'Mens Core',
+      orderQty: 12000,
+      styleRef: '22045512',
+      date: '01.03.26',
+      season: 'Core Basics 2026',
+      currency: 'USD'
+    },
+    fabrics: [
+      {
+        id: 'fab-b1',
+        fabricTag: 'Fabric A',
+        fabricDescription: '100% Cotton Single Jersey 150 GSM Solid',
+        bWidth: 66,
+        bLength: 70,
+        slCm: 20,
+        mqPc: 1,
+        consumptionKg: 0.19,
+        wastePct: 7,
+        totalConsumptionKg: 0.203,
+        dozen: 2.44,
+        gsm: 150,
+        formula: 'Jersey Basic',
+        wastageKg: 0.013,
+        knittingCost: 0.42,
+        dyeingFinishingCost: 1.10,
+        convertCost: 0.18
+      }
+    ],
+    fabricACost: {
+      yarnPricePerKg: 3.75,
+      yarnPriceExtraPerKg: 0,
+      knittingCostPerKg: 0.42,
+      aopOilDyePerKg: 0,
+      dyeingFinishingPerKg: 1.10,
+      brushedPerKg: 0,
+      wastageKnittingDyeingPerKg: 0.22,
+      totalCostFabricAPerKg: 5.49
+    },
+    fabricBCost: { yarnPricePerKg: 0, spandexPerKg: 0, knittingCostPerKg: 0, yarnDyeingPerKg: 0, carbonizedPerKg: 0, wastageKnittingDyeingPerKg: 0, totalCostFabricBPerKg: 0 },
+    fabricCCost: { yarnPricePerKg: 0, knittingCostPerKg: 0, dyeingFinishingPerKg: 0, wastageKnittingDyeingPerKg: 0, totalCostFabricCPerKg: 0 },
+    accessories: [
+      { id: 'acc-b1', item: 'Tagless Size Transfer', supplier: 'Avery', costPerDzn: 0.18, costPerPc: 0.015 },
+      { id: 'acc-b2', item: 'Care Label', supplier: 'Paxar', costPerDzn: 0.24, costPerPc: 0.020 },
+      { id: 'acc-b3', item: 'Hang Tag & Cord', supplier: 'Avery', costPerDzn: 0.60, costPerPc: 0.050 },
+      { id: 'acc-b4', item: 'Sewing Thread 40/2', supplier: 'Coats', costPerDzn: 0.60, costPerPc: 0.050 },
+      { id: 'acc-b5', item: 'Poly Bag & Carton', supplier: 'In-house', costPerDzn: 0.96, costPerPc: 0.080 }
+    ],
+    itemizedCosts: generateDefaultItemizedCostsForStyle('22045512', 'onlBASIC CREWNECK TEE', 'ONLY'),
+    otherCosts: {
+      collarCuffPerPc: 0.10,
+      totalFabricCostPerPc: 1.48,
+      cmCuttingMakingPerPc: 0.88,
+      screenPrintPerPc: 0.00,
+      embroideryPerPc: 0.00,
+      sequinPerPc: 0.00,
+      stonePerPc: 0.00,
+      garmentWashPerPc: 0.05,
+      accessoriesPerPc: 0.25,
+      smsPerPc: 0.03,
+      commercialOverheadPct: 3.5,
+      commercialOverheadPerPc: 0.098,
+      profitPct: 8.0,
+      profitPerPc: 0.232,
+      buyingCommissionPct: 5.0,
+      buyingCommissionPerPc: 0.155,
+      chemicalTestPerPc: 0.03,
+      totalGarmentPriceFobPerPc: 3.25
+    },
+    revisions: [
+      {
+        version: 1,
+        revisedAt: '01-Mar-2026',
+        revisedBy: 'Imran Merchandiser',
+        reason: 'Large volume core basic quote',
+        fobPrice: 3.25,
+        changedValues: 'High volume discounted rate',
+        approvalStatus: 'APPROVED'
+      }
+    ],
+    approvalHistory: [
+      { status: 'APPROVED', changedAt: '02-Mar-2026 09:30', actor: 'Head Merchandiser', remarks: 'Competitive high volume FOB $3.25 approved' }
+    ],
+    createdAt: '2026-03-01T07:30:00Z',
+    updatedAt: '2026-03-02T09:30:00Z'
   }
 ];
 
@@ -494,6 +831,598 @@ let memoryQcoRecords = [
 ];
 
 let memoryTargets: any[] = [];
+
+// Central Planning & Control in-memory state
+let memoryCapacityPolicies: any = {
+  weeklyHoliday: 'SUNDAY',
+  holidays: [
+    { date: '2026-03-26', name: 'Independence Day', factor: 0 },
+    { date: '2026-03-30', name: 'Eid-ul-Fitr Closure', factor: 0 },
+    { date: '2026-03-31', name: 'Eid-ul-Fitr Day', factor: 0 },
+    { date: '2026-04-01', name: 'Eid-ul-Fitr Holiday', factor: 0 },
+    { date: '2026-05-01', name: 'May Day', factor: 0 },
+    { date: '2026-06-06', name: 'Eid-ul-Adha Closure', factor: 0 },
+    { date: '2026-06-07', name: 'Eid-ul-Adha Day', factor: 0 },
+    { date: '2026-06-08', name: 'Eid-ul-Adha Holiday', factor: 0 },
+    { date: '2026-10-21', name: 'Durga Puja / Autumn Closure', factor: 0 },
+    { date: '2026-12-16', name: 'Victory Day', factor: 0 },
+  ],
+  bulk: {
+    knitting: { dailyCapacity: 13000, unit: 'KG', sundayFactor: 0.5, label: 'Knitting (Greige)' },
+    dyeing: { dailyCapacity: 15000, unit: 'KG', sundayFactor: 0, label: 'Dyeing & Finishing' },
+    printing: { dailyCapacity: 12000, unit: 'PCS', sundayFactor: 0, label: 'Printing' },
+    embroidery: { dailyCapacity: 8000, unit: 'PCS', sundayFactor: 0, label: 'Embroidery' },
+    cutting: { dailyCapacity: 48000, unit: 'PCS', sundayFactor: 0, label: 'Cutting' },
+    sewing: { dailyCapacity: 45000, unit: 'PCS', sundayFactor: 0, label: 'Sewing (91 Lines)' },
+    finishing: { dailyCapacity: 48000, unit: 'PCS', sundayFactor: 0, label: 'Finishing & Packing' },
+  },
+  sample: {
+    knitting: { dailyKg: 200, dailyColors: 20, unit: 'KG / Colors', label: 'Sample Knitting' },
+    dyeing: { slotCapacity: 150, ppDevelopmentSlot: 50, smsSlot: 100, unit: 'Colors / 10-day Slot', label: 'Sample Dyeing' },
+    printing: { dailyStyles: 5, dailyPcs: 500, unit: 'Styles / Pcs per day', label: 'Sample Printing' },
+    making: { monthlyStyles: 450, unit: 'Styles / Month', label: 'Sample Making' },
+  },
+  thresholds: { greenMax: 85, amberMax: 100 },
+};
+
+let memoryTaPlansByStyle: Record<string, any> = {};
+let memoryGanttPlansByStyle: Record<string, any> = {};
+let memoryApprovalStatesByStyle: Record<string, any> = {};
+let memorySampleTnaByForm: Record<string, any> = {};
+
+let memorySubcontractOrders: any[] = [
+  {
+    styleId: 's-48085',
+    jobNo: '48085',
+    styleNo: '13251506',
+    buyer: 'ONLY',
+    workOrderNo: 'WO-PRT-2601',
+    processType: 'PRINTING',
+    vendorName: 'Apex Screen Print & Graphics Ltd.',
+    sentDate: '2026-09-18',
+    sentQty: 12000,
+    expectedReturnDate: '2026-09-25',
+    receivedDate: '2026-09-25',
+    receivedQty: 11920,
+    rejectQty: 80,
+    balanceQty: 0,
+    challanNo: 'CH-99412',
+    status: 'COMPLETED',
+    remarks: 'Chest placement pigment print 100% received',
+    updatedAt: '2026-09-25T14:20:00Z',
+  },
+  {
+    styleId: 's-48061',
+    jobNo: '48061',
+    styleNo: '13251509',
+    buyer: 'OVS',
+    workOrderNo: 'WO-EMB-2604',
+    processType: 'EMBROIDERY',
+    vendorName: 'Tajima Multi-Head Embroidery Park',
+    sentDate: '2026-09-28',
+    sentQty: 8500,
+    expectedReturnDate: '2026-10-06',
+    receivedDate: '2026-10-05',
+    receivedQty: 5400,
+    rejectQty: 40,
+    balanceQty: 3060,
+    challanNo: 'CH-10248',
+    status: 'PARTIAL_RECEIVED',
+    remarks: 'Lot-1 & Lot-2 received; Lot-3 on machine',
+    updatedAt: '2026-10-05T16:10:00Z',
+  },
+  {
+    styleId: 's-46755',
+    jobNo: '46755',
+    styleNo: '13251480',
+    buyer: 'Name It',
+    workOrderNo: 'WO-PRT-2609',
+    processType: 'PRINTING',
+    vendorName: 'ColorCraft All-Over & Placement Print',
+    sentDate: '2026-10-01',
+    sentQty: 9600,
+    expectedReturnDate: '2026-10-07',
+    receivedDate: '',
+    receivedQty: 2200,
+    rejectQty: 15,
+    balanceQty: 7385,
+    challanNo: 'CH-10411',
+    status: 'DELAYED',
+    remarks: 'Curing dryer maintenance at vendor caused 2-day slip',
+    updatedAt: '2026-10-07T11:00:00Z',
+  },
+];
+
+let memoryFabricTrimsFollowup: Record<string, any> = {
+  's-48085': {
+    styleId: 's-48085',
+    jobNo: '48085',
+    styleNo: '13251506',
+    buyer: 'ONLY',
+    orderQty: 14500,
+    weekLabel: 'Wk 41 (Oct 2026)',
+    fabricDueDate: '2026-09-22',
+    fabricRequiredKg: 3150,
+    fabricReceivedKg: 3150,
+    fabricBalanceKg: 0,
+    fabricSupplier: 'In-House NFL Dyeing',
+    fabricStatus: 'IN_HOUSE',
+    trimsDueDate: '2026-09-24',
+    trimsItems: [
+      { item: 'Main Woven Label', dueDate: '2026-09-22', requiredQty: 14800, receivedQty: 14800, unit: 'PCS', status: 'IN_HOUSE' },
+      { item: 'Care & Content Satin Label', dueDate: '2026-09-23', requiredQty: 14800, receivedQty: 14800, unit: 'PCS', status: 'IN_HOUSE' },
+      { item: 'Sewing Thread 40/2', dueDate: '2026-09-20', requiredQty: 1250, receivedQty: 1250, unit: 'CONE', status: 'IN_HOUSE' },
+      { item: 'Export Poly & Carton', dueDate: '2026-09-28', requiredQty: 620, receivedQty: 620, unit: 'CTN', status: 'IN_HOUSE' },
+    ],
+    remarks: 'All bulk fabric and trims 100% in-house',
+  },
+  's-48061': {
+    styleId: 's-48061',
+    jobNo: '48061',
+    styleNo: '13251509',
+    buyer: 'OVS',
+    orderQty: 9200,
+    weekLabel: 'Wk 41 (Oct 2026)',
+    fabricDueDate: '2026-10-04',
+    fabricRequiredKg: 2480,
+    fabricReceivedKg: 1920,
+    fabricBalanceKg: 560,
+    fabricSupplier: 'In-House NFL Dyeing',
+    fabricStatus: 'PARTIAL',
+    trimsDueDate: '2026-10-05',
+    trimsItems: [
+      { item: 'Main Label', dueDate: '2026-10-02', requiredQty: 9500, receivedQty: 9500, unit: 'PCS', status: 'IN_HOUSE' },
+      { item: 'Metal Eyelet & Drawcord', dueDate: '2026-10-05', requiredQty: 9500, receivedQty: 6000, unit: 'SET', status: 'PARTIAL' },
+      { item: 'Barcode Hangtag', dueDate: '2026-10-06', requiredQty: 9500, receivedQty: 0, unit: 'PCS', status: 'DELAYED' },
+    ],
+    remarks: '560 Kg Navy fleece compacting in progress; Hangtag supplier expedited for tomorrow morning',
+  },
+};
+
+let memorySamplePlanningList: any[] = [
+  {
+    styleId: 's-48085',
+    jobNo: '48085',
+    styleNo: '13251506',
+    buyer: 'ONLY',
+    sampleType: 'PP / Size Set Sample',
+    sampleQty: 24,
+    yarnDate: '2026-09-02',
+    knittingDate: '2026-09-05',
+    dyeingDate: '2026-09-08',
+    sewingDate: '2026-09-12',
+    targetDispatchDate: '2026-09-14',
+    actualDispatchDate: '2026-09-14',
+    awbNo: 'DHL-884120994',
+    status: 'APPROVED',
+    remarks: 'PP & Size Set approved on time by ONLY Denmark',
+  },
+  {
+    styleId: 's-48061',
+    jobNo: '48061',
+    styleNo: '13251509',
+    buyer: 'OVS',
+    sampleType: 'SMS / Salesman Sample',
+    sampleQty: 36,
+    yarnDate: '2026-09-18',
+    knittingDate: '2026-09-21',
+    dyeingDate: '2026-09-25',
+    sewingDate: '2026-09-29',
+    targetDispatchDate: '2026-10-02',
+    actualDispatchDate: '2026-10-03',
+    awbNo: 'FDX-771290412',
+    status: 'DISPATCHED',
+    remarks: 'Dispatched via FedEx International Priority',
+  },
+  {
+    styleId: 's-46755',
+    jobNo: '46755',
+    styleNo: '13251480',
+    buyer: 'Name It',
+    sampleType: 'Gold Seal / Counter Sample',
+    sampleQty: 18,
+    yarnDate: '2026-09-26',
+    knittingDate: '2026-09-29',
+    dyeingDate: '2026-10-03',
+    sewingDate: '2026-10-07',
+    targetDispatchDate: '2026-10-09',
+    actualDispatchDate: '',
+    awbNo: '',
+    status: 'IN_SEWING',
+    remarks: 'In sample room finishing for QC measurement check',
+  },
+];
+
+let memoryShipmentMeetings: any[] = [
+  {
+    id: 'mtg-1',
+    meetingDate: '2026-10-06',
+    jobNo: '48061',
+    styleNo: '13251509',
+    buyer: 'OVS',
+    orderQty: 9200,
+    ccd: '2026-10-22',
+    projectedDate: '2026-10-21',
+    bottleneck: 'Embroidery Lot-3 partial balance (3,060 pcs) & Hangtag in-house delay',
+    decision: 'Allocate 2 additional Tajima heads on night shift and split sewing across Line 02A + Line 03A for 4 days',
+    revisedCommitmentDate: '2026-10-20',
+    recordedBy: 'Shahidul Alam (Head of Planning)',
+    actionItems: [
+      { owner: 'Basir Hossain', department: 'Merchandising', action: 'Confirm air-courier delivery of OVS barcode hangtags', dueDate: '2026-10-08', status: 'IN_PROGRESS' },
+      { owner: 'Sub-contract Cell', department: 'Embroidery', action: 'Collect 3,060 pcs balance from Tajima Park by 6 PM', dueDate: '2026-10-08', status: 'OPEN' },
+      { owner: 'Kabir Hossain', department: 'Sewing Floor 1', action: 'Prepare Line 03A folder & machine layout for split input', dueDate: '2026-10-09', status: 'DONE' },
+    ],
+  },
+  {
+    id: 'mtg-2',
+    meetingDate: '2026-10-06',
+    jobNo: '46755',
+    styleNo: '13251480',
+    buyer: 'Name It',
+    orderQty: 9600,
+    ccd: '2026-10-19',
+    projectedDate: '2026-10-21',
+    bottleneck: 'Outside placement print vendor dryer breakdown (2-day delay)',
+    decision: 'Transfer 4,000 cut panels to in-house M&R automatic print carousel and run 2-hour OT in sewing',
+    revisedCommitmentDate: '2026-10-18',
+    recordedBy: 'Shahidul Alam (Head of Planning)',
+    actionItems: [
+      { owner: 'Printing In-charge', department: 'In-house Printing', action: 'Load 4,000 panels on Carousel #2 tonight', dueDate: '2026-10-07', status: 'DONE' },
+      { owner: 'Mizanur Rahman', department: 'Sewing Floor 2', action: 'Run 2 hours planned OT on Line 05B to recover 2 days', dueDate: '2026-10-14', status: 'IN_PROGRESS' },
+    ],
+  },
+];
+
+function pToIso(d?: any): string | null {
+  if (!d) return null;
+  const parsed = parseMasterDate(String(d));
+  if (parsed && !isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+  const dt = new Date(d);
+  if (!isNaN(dt.getTime())) return dt.toISOString().slice(0, 10);
+  return null;
+}
+
+function pAddDays(baseIso: string, delta: number): string {
+  const dt = new Date(`${baseIso.slice(0, 10)}T00:00:00Z`);
+  dt.setUTCDate(dt.getUTCDate() + delta);
+  return dt.toISOString().slice(0, 10);
+}
+
+function pDiffDays(fromIso?: string | null, toIso?: string | null): number | null {
+  if (!fromIso || !toIso) return null;
+  const a = new Date(`${fromIso.slice(0, 10)}T00:00:00Z`).getTime();
+  const b = new Date(`${toIso.slice(0, 10)}T00:00:00Z`).getTime();
+  if (isNaN(a) || isNaN(b)) return null;
+  return Math.round((b - a) / 86400000);
+}
+
+function pDaysInSlot(
+  year: number,
+  month0: number,
+  startDay: number,
+  endDay: number,
+  sundayFactor = 0,
+  holidays: Array<{ date: string; name?: string; factor?: number }> = []
+): number {
+  const lastDay = new Date(Date.UTC(year, month0 + 1, 0)).getUTCDate();
+  const limit = Math.min(endDay, lastDay);
+  const holidayMap = new Map<string, number>();
+  for (const h of holidays || []) {
+    if (h?.date) holidayMap.set(String(h.date).slice(0, 10), Number(h.factor ?? 0));
+  }
+  let count = 0;
+  for (let d = startDay; d <= limit; d++) {
+    const dt = new Date(Date.UTC(year, month0, d));
+    const iso = dt.toISOString().slice(0, 10);
+    if (holidayMap.has(iso)) count += holidayMap.get(iso)!;
+    else if (dt.getUTCDay() === 0) count += sundayFactor; // Sunday weekly holiday
+    else count += 1;
+  }
+  return count;
+}
+
+function buildPlanAndRowsForMasterJob(j: any, overridePlan?: Record<string, any>) {
+  const styleId = `s-${j.jobNo}`;
+  const saved = { ...(memoryTaPlansByStyle[styleId] || {}), ...(overridePlan || {}) };
+  const ccd = pToIso(saved.cargoClosingDate || j.dates?.cargoClosing || j.dates?.exFactory) || '2026-10-25';
+  const orderConfirmDate = pToIso(saved.orderConfirmDate || j.dates?.poReceived) || pAddDays(ccd, -42);
+  const exFactoryDate = pToIso(saved.exFactoryDate || j.dates?.exFactory) || pAddDays(ccd, -2);
+  const finalInspection = pToIso(saved.finalInspection) || pAddDays(exFactoryDate, -1);
+  const finishingEnd = pToIso(saved.finishingEnd) || finalInspection;
+  const finishingStart = pToIso(saved.finishingStart) || pAddDays(finishingEnd, -4);
+  const sewingEndDate = pToIso(saved.sewingEndDate || j.dates?.sewingEnd) || pAddDays(finishingEnd, -2);
+  const sewingStartDate = pToIso(saved.sewingStartDate || j.dates?.sewingStart) || pAddDays(sewingEndDate, -9);
+  const cuttingEnd = pToIso(saved.cuttingEnd || j.dates?.cuttingEnd) || pAddDays(sewingEndDate, -2);
+  const cuttingStart = pToIso(saved.cuttingStart || j.dates?.cuttingStart) || pAddDays(sewingStartDate, -3);
+  const ppMeetingDate = pToIso(saved.ppMeetingDate) || pAddDays(sewingStartDate, -2);
+  const testCuttingDate = pToIso(saved.testCuttingDate) || pAddDays(cuttingStart, -1);
+  const fileHandoverDate = pToIso(saved.fileHandoverDate) || pAddDays(cuttingStart, -2);
+  const ppSampleApprovalDate = pToIso(saved.ppSampleApprovalDate) || pAddDays(fileHandoverDate, -2);
+  const trimsInhouseDate = pToIso(saved.trimsInhouseDate) || pAddDays(sewingStartDate, -3);
+  const dyeingFinishingEnd = pToIso(saved.dyeingFinishingEnd) || pAddDays(cuttingStart, 2);
+  const dyeingFinishingStart = pToIso(saved.dyeingFinishingStart) || pAddDays(dyeingFinishingEnd, -6);
+  const knittingEnd = pToIso(saved.knittingEnd) || pAddDays(dyeingFinishingEnd, -3);
+  const knittingStart = pToIso(saved.knittingStart) || pAddDays(knittingEnd, -7);
+  const desc = `${j.itemDescription || ''} ${j.fabric?.fabricType || ''} ${j.printEmb?.type || ''}`.toLowerCase();
+  const hasYd = saved.applicableProcesses?.yarnDyeing ?? (desc.includes('yd') || desc.includes('stripe'));
+  const hasPrint = saved.applicableProcesses?.printing ?? (desc.includes('print') || Boolean(j.printEmb?.type?.includes('Print')));
+  const hasEmb = saved.applicableProcesses?.embroidery ?? (desc.includes('emb') || Boolean(j.printEmb?.type?.includes('Emb')));
+  const hasWash = saved.applicableProcesses?.wash ?? desc.includes('wash');
+
+  const yarnDyeingEnd = hasYd ? pToIso(saved.yarnDyeingEnd) || pAddDays(knittingStart, 2) : '';
+  const yarnDyeingStart = hasYd ? pToIso(saved.yarnDyeingStart) || pAddDays(yarnDyeingEnd, -5) : '';
+  const yarnInhouseDate = pToIso(saved.yarnInhouseDate) || (hasYd ? pAddDays(yarnDyeingStart, -2) : pAddDays(knittingStart, -2));
+  const printingStart = hasPrint ? pToIso(saved.printingStart) || pAddDays(cuttingStart, 1) : '';
+  const printingEnd = hasPrint ? pToIso(saved.printingEnd) || pAddDays(printingStart, 4) : '';
+  const embroideryStart = hasEmb ? pToIso(saved.embroideryStart) || pAddDays(cuttingStart, 1) : '';
+  const embroideryEnd = hasEmb ? pToIso(saved.embroideryEnd) || pAddDays(embroideryStart, 4) : '';
+  const washStart = hasWash ? pToIso(saved.washStart) || pAddDays(sewingStartDate, 2) : '';
+  const washEnd = hasWash ? pToIso(saved.washEnd) || pAddDays(washStart, 3) : '';
+
+  // Seed realistic actual dates for completed/in-progress milestones if not yet edited
+  const defaultActuals: Record<string, string> = {
+    orderConfirmDate,
+    yarnInhouseDate,
+    knittingStart,
+    knittingEnd,
+    dyeingFinishingStart,
+    ppSampleApprovalDate,
+    fileHandoverDate,
+  };
+  if (String(j.jobNo) === '48061') {
+    defaultActuals.dyeingFinishingEnd = pAddDays(dyeingFinishingEnd, 3); // 3 days late
+  } else {
+    defaultActuals.dyeingFinishingEnd = dyeingFinishingEnd;
+    defaultActuals.trimsInhouseDate = trimsInhouseDate;
+    defaultActuals.ppMeetingDate = ppMeetingDate;
+    defaultActuals.testCuttingDate = testCuttingDate;
+  }
+
+  const defaultTracking: Record<string, any> =
+    String(j.jobNo) === '48061'
+      ? {
+          dyeing: {
+            actualStart: dyeingFinishingStart,
+            actualFinish: pAddDays(dyeingFinishingEnd, 3),
+            status: 'DELAYED',
+            delayReason: 'Navy lot re-compacting for shrinkage control',
+          },
+          trimsInhouse: {
+            status: 'DELAYED',
+            delayReason: 'Barcode hangtag air-shipment awaited from supplier',
+          },
+        }
+      : String(j.jobNo) === '46755'
+      ? {
+          printing: {
+            actualStart: printingStart,
+            status: 'FAILED',
+            delayReason: 'Outside print vendor curing dryer breakdown (2-day slip)',
+          },
+        }
+      : {};
+
+  const plan: Record<string, any> = {
+    styleId,
+    styleNo: j.styleNo,
+    taStatus: saved.taStatus || 'APPROVED',
+    taVersion: Number(saved.taVersion || 1),
+    orderConfirmDate,
+    taPlanDate: pToIso(saved.taPlanDate || j.dates?.tnaPlan) || orderConfirmDate,
+    yarnInhouseDate,
+    yarnDyeingStart,
+    yarnDyeingEnd,
+    knittingStart,
+    knittingEnd,
+    dyeingFinishingStart,
+    dyeingFinishingEnd,
+    printingStart,
+    printingEnd,
+    embroideryStart,
+    embroideryEnd,
+    washStart,
+    washEnd,
+    trimsInhouseDate,
+    ppSampleApprovalDate,
+    fileHandoverDate,
+    ppMeetingDate,
+    testCuttingDate,
+    cuttingStart,
+    cuttingEnd,
+    sewingStartDate,
+    sewingEndDate,
+    finishingStart,
+    finishingEnd,
+    finalInspection,
+    exFactoryDate,
+    cargoClosingDate: ccd,
+    fabricRequiredKg: Number(saved.fabricRequiredKg || j.fabric?.fabricReqKg || Math.round((Number(j.orderQty || 5000) / 12) * 2.45)),
+    applicableProcesses: {
+      yarnDyeing: hasYd,
+      knitting: true,
+      dyeing: true,
+      printing: hasPrint,
+      embroidery: hasEmb,
+      wash: hasWash,
+      cutting: true,
+      sewing: true,
+      finishing: true,
+      ...(saved.applicableProcesses || {}),
+    },
+    outsidePlan: saved.outsidePlan || {
+      printing: { outside: hasPrint, vendor: hasPrint ? 'Apex Screen Print Ltd.' : '', dailyCapacity: 4000 },
+      embroidery: { outside: hasEmb, vendor: hasEmb ? 'Tajima Embroidery Park' : '', dailyCapacity: 3000 },
+    },
+    actualDates: { ...defaultActuals, ...(saved.actualDates || {}) },
+    activityTracking: { ...defaultTracking, ...(saved.activityTracking || {}) },
+    baselinePlan: saved.baselinePlan || {
+      orderConfirmDate,
+      yarnInhouseDate,
+      knittingEnd,
+      dyeingFinishingEnd,
+      trimsInhouseDate,
+      fileHandoverDate,
+      testCuttingDate,
+      cuttingStart,
+      cuttingEnd,
+      sewingStartDate,
+      sewingEndDate,
+      exFactoryDate,
+      cargoClosingDate: ccd,
+      version: 1,
+      lockedAt: orderConfirmDate,
+    },
+    replanHistory: Array.isArray(saved.replanHistory)
+      ? saved.replanHistory
+      : [
+          {
+            version: 1,
+            replannedAt: `${orderConfirmDate}T09:00:00Z`,
+            replannedBy: 'Shahidul Alam',
+            reason: 'Initial T&A Baseline Approval',
+            changedFields: [],
+          },
+        ],
+    taHistory: Array.isArray(saved.taHistory) ? saved.taHistory : [],
+    remarks: saved.remarks || '',
+  };
+
+  const actualDates = plan.actualDates || {};
+  const tracking = plan.activityTracking || {};
+
+  const mkRow = (
+    key: string,
+    process: string,
+    section: string,
+    s?: string | null,
+    f?: string | null,
+    applicable = true,
+    pred?: string | null,
+    sField?: string,
+    fField?: string
+  ) => {
+    const start = s || f || null;
+    const finish = f || s || null;
+    const durationDays = start && finish ? Math.max(1, (pDiffDays(start, finish) || 0) + 1) : null;
+    const slackDays = pred && start ? pDiffDays(pred, start) : null;
+    const overlapDays = slackDays !== null && slackDays < 0 ? Math.abs(slackDays) : 0;
+    const out = plan.outsidePlan?.[key] || { outside: false };
+    const tr = tracking[key] || {};
+    const actualStart = tr.actualStart || (sField ? actualDates[sField] : '') || actualDates[key] || null;
+    const actualFinish = tr.actualFinish || (fField ? actualDates[fField] : '') || actualDates[key] || null;
+    const varianceDays = finish && actualFinish ? pDiffDays(finish, actualFinish) : null;
+    let activityStatus = tr.status || 'PENDING';
+    if (!tr.status) {
+      if (actualFinish) activityStatus = varianceDays !== null && varianceDays > 0 ? 'DELAYED' : 'DONE';
+      else if (actualStart) activityStatus = 'IN_PROGRESS';
+    }
+    return {
+      key,
+      process,
+      section,
+      applicable,
+      plannedStart: start,
+      plannedFinish: finish,
+      actualStart,
+      actualFinish,
+      varianceDays,
+      activityStatus,
+      delayReason: tr.delayReason || '',
+      remarks: tr.remarks || '',
+      durationDays,
+      slackDays,
+      overlapDays,
+      outside: Boolean(out.outside),
+      vendor: out.vendor || '',
+      dailyCapacity: out.dailyCapacity || null,
+    };
+  };
+
+  const rows = [
+    mkRow('orderConfirm', 'Order Confirm', 'MERCHANDISING', plan.orderConfirmDate, plan.orderConfirmDate, true, null, 'orderConfirmDate', 'orderConfirmDate'),
+    mkRow('yarnInhouse', 'Yarn In-house', 'YARN_STORE', plan.yarnInhouseDate, plan.yarnInhouseDate, true, plan.orderConfirmDate, 'yarnInhouseDate', 'yarnInhouseDate'),
+    mkRow('yarnDyeing', 'Yarn Dyeing', 'YARN_DYEING', plan.yarnDyeingStart, plan.yarnDyeingEnd, plan.applicableProcesses.yarnDyeing, plan.yarnInhouseDate, 'yarnDyeingStart', 'yarnDyeingEnd'),
+    mkRow('knitting', 'Knitting (Greige)', 'KNITTING', plan.knittingStart, plan.knittingEnd, true, plan.applicableProcesses.yarnDyeing ? plan.yarnDyeingEnd : plan.yarnInhouseDate, 'knittingStart', 'knittingEnd'),
+    mkRow('dyeing', 'Dyeing & Finishing', 'DYEING', plan.dyeingFinishingStart, plan.dyeingFinishingEnd, true, plan.knittingEnd, 'dyeingFinishingStart', 'dyeingFinishingEnd'),
+    mkRow('trimsInhouse', 'Trims & Accessories In-house', 'TRIMS_STORE', plan.trimsInhouseDate, plan.trimsInhouseDate, true, plan.orderConfirmDate, 'trimsInhouseDate', 'trimsInhouseDate'),
+    mkRow('ppSample', 'PP Sample Approval', 'SAMPLE', plan.ppSampleApprovalDate, plan.ppSampleApprovalDate, true, plan.orderConfirmDate, 'ppSampleApprovalDate', 'ppSampleApprovalDate'),
+    mkRow('fileHandover', 'File Handover to Production', 'MERCHANDISING', plan.fileHandoverDate, plan.fileHandoverDate, true, plan.ppSampleApprovalDate, 'fileHandoverDate', 'fileHandoverDate'),
+    mkRow('ppMeeting', 'PP Meeting', 'QUALITY', plan.ppMeetingDate, plan.ppMeetingDate, true, plan.fileHandoverDate, 'ppMeetingDate', 'ppMeetingDate'),
+    mkRow('testCutting', 'Test Cutting / Size Set', 'CUTTING', plan.testCuttingDate, plan.testCuttingDate, true, plan.ppMeetingDate, 'testCuttingDate', 'testCuttingDate'),
+    mkRow('cutting', 'Bulk Cutting', 'CUTTING', plan.cuttingStart, plan.cuttingEnd, true, plan.dyeingFinishingEnd, 'cuttingStart', 'cuttingEnd'),
+    mkRow('printing', 'Printing', 'PRINTING', plan.printingStart, plan.printingEnd, plan.applicableProcesses.printing, plan.cuttingStart, 'printingStart', 'printingEnd'),
+    mkRow('embroidery', 'Embroidery', 'EMBROIDERY', plan.embroideryStart, plan.embroideryEnd, plan.applicableProcesses.embroidery, plan.cuttingStart, 'embroideryStart', 'embroideryEnd'),
+    mkRow('sewing', 'Sewing', 'SEWING', plan.sewingStartDate, plan.sewingEndDate, true, plan.cuttingEnd, 'sewingStartDate', 'sewingEndDate'),
+    mkRow('wash', 'Garment Wash', 'WASH', plan.washStart, plan.washEnd, plan.applicableProcesses.wash, plan.sewingStartDate, 'washStart', 'washEnd'),
+    mkRow('finishing', 'Finishing & Packing', 'FINISHING', plan.finishingStart, plan.finishingEnd, true, plan.sewingEndDate, 'finishingStart', 'finishingEnd'),
+    mkRow('finalInspection', 'Final Inspection (FRI)', 'QUALITY', plan.finalInspection, plan.finalInspection, true, plan.finishingEnd, 'finalInspection', 'finalInspection'),
+    mkRow('exFactory', 'Ex-Factory', 'SHIPMENT', plan.exFactoryDate, plan.exFactoryDate, true, plan.finalInspection, 'exFactoryDate', 'exFactoryDate'),
+    mkRow('ccd', 'Cargo Closing Date (CCD)', 'SHIPMENT', plan.cargoClosingDate, plan.cargoClosingDate, true, plan.exFactoryDate, 'cargoClosingDate', 'cargoClosingDate'),
+  ];
+
+  const coreKeys = new Set(['yarnInhouse', 'knitting', 'dyeing', 'testCutting', 'cutting', 'sewing', 'finishing', 'finalInspection', 'exFactory']);
+  const applicableRows = rows.filter((r) => r.applicable);
+  const criticalPathRows = applicableRows.filter((r) => coreKeys.has(r.key) || (r.slackDays !== null && r.slackDays <= 0));
+  const delayedActivities: any[] = [];
+  const failedActivities: any[] = [];
+  let maxDelayDays = 0;
+
+  for (const r of applicableRows) {
+    let delayDays = 0;
+    if (r.varianceDays !== null && r.varianceDays > 0) delayDays = r.varianceDays;
+    if (r.activityStatus === 'FAILED') {
+      failedActivities.push({
+        key: r.key,
+        process: r.process,
+        section: r.section,
+        plannedFinish: r.plannedFinish,
+        delayReason: r.delayReason || 'Failed gate',
+      });
+    }
+    if (delayDays > 0 || r.activityStatus === 'DELAYED' || r.activityStatus === 'FAILED') {
+      const eff = Math.max(delayDays, r.activityStatus === 'FAILED' ? 3 : 2);
+      maxDelayDays = Math.max(maxDelayDays, eff);
+      delayedActivities.push({
+        key: r.key,
+        process: r.process,
+        section: r.section,
+        plannedFinish: r.plannedFinish,
+        actualFinish: r.actualFinish,
+        delayDays: eff,
+        status: r.activityStatus,
+        delayReason: r.delayReason || 'Behind T&A schedule',
+      });
+    }
+  }
+
+  const projectedExFactoryDate = pAddDays(plan.exFactoryDate, maxDelayDays);
+  const projectedShipmentDate = pAddDays(projectedExFactoryDate, 2);
+  const ccdSlipDays = Math.max(0, pDiffDays(plan.cargoClosingDate, projectedExFactoryDate) || 0);
+  const riskLevel =
+    failedActivities.length > 0 || ccdSlipDays > 0 || maxDelayDays >= 4
+      ? 'CRITICAL'
+      : delayedActivities.length > 0 || maxDelayDays > 0
+      ? 'AT_RISK'
+      : 'ON_TRACK';
+
+  return {
+    plan,
+    rows,
+    criticalPathAnalysis: {
+      criticalPath: criticalPathRows.map((r) => r.key),
+      criticalPathLabels: criticalPathRows.map((r) => r.process),
+      delayedActivities,
+      failedActivities,
+      maxDelayDays,
+      plannedExFactoryDate: plan.exFactoryDate,
+      projectedExFactoryDate,
+      ccd: plan.cargoClosingDate,
+      projectedShipmentDate,
+      ccdSlipDays,
+      riskLevel,
+    },
+  };
+}
 
 function formatDetailFromMaster(j: any) {
   return {
@@ -1480,6 +2409,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     });
   }
 
+  // 0f-rates. /api/merchandising/costing/rates
+  if (pathStr === 'merchandising/costing/rates') {
+    return NextResponse.json({
+      success: true,
+      rates: memoryMasterRates
+    });
+  }
+
   // 0g. /api/merchandising/costing
   if (pathStr === 'merchandising/costing') {
     const role = (url.searchParams.get('role') || 'MERCHANDISER').toUpperCase();
@@ -1513,6 +2450,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       });
     }
 
+    filtered.forEach((c: any) => {
+      if (!c.itemizedCosts || c.itemizedCosts.length === 0) {
+        c.itemizedCosts = generateDefaultItemizedCostsForStyle(
+          c.header?.styleRef || 'REF',
+          c.header?.garmentDescription || 'Knit Tee',
+          c.header?.buyer || 'ONLY'
+        );
+      }
+    });
+
     return NextResponse.json({
       success: true,
       role,
@@ -1522,6 +2469,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       costSheets: filtered
     });
   }
+
 
   // 0h. /api/merchandising/costing/:id
   if (pathStr.startsWith('merchandising/costing/')) {
@@ -1851,40 +2799,159 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   // 3. /api/planning/capacity/heatmap
   if (pathStr === 'planning/capacity/heatmap') {
+    const targetMonth = url.searchParams.get('month') || '2026-10';
+    const [yrStr, moStr] = targetMonth.split('-');
+    const year = Number(yrStr || 2026);
+    const month0 = Number(moStr || 10) - 1;
+    const holidays = memoryCapacityPolicies.holidays || [];
+    const slotRanges = [
+      { slotNo: 1, label: 'Slot 1 (1–10)', startDay: 1, endDay: 10 },
+      { slotNo: 2, label: 'Slot 2 (11–20)', startDay: 11, endDay: 20 },
+      { slotNo: 3, label: 'Slot 3 (21–End)', startDay: 21, endDay: 31 },
+    ];
+    const secDefs = [
+      { key: 'knitting', demandMulti: 0.88 },
+      { key: 'dyeing', demandMulti: 0.91 },
+      { key: 'printing', demandMulti: 0.78 },
+      { key: 'embroidery', demandMulti: 0.74 },
+      { key: 'cutting', demandMulti: 0.84 },
+      { key: 'sewing', demandMulti: 0.93 },
+      { key: 'finishing', demandMulti: 0.87 },
+    ];
+    const rows = secDefs.map((sec, sIdx) => {
+      const pol = memoryCapacityPolicies.bulk[sec.key];
+      const dailyCap = Number(pol?.dailyCapacity || 15000);
+      const sundayFactor = Number(pol?.sundayFactor || 0);
+      const slots = slotRanges.map((sr, slIdx) => {
+        const workDays = pDaysInSlot(year, month0, sr.startDay, sr.endDay, sundayFactor, holidays);
+        const capacity = Math.round(dailyCap * workDays);
+        const factor = sec.demandMulti + (slIdx === 1 ? 0.04 : slIdx === 2 ? -0.02 : 0);
+        const demand = Math.round(capacity * factor);
+        const loadPct = capacity > 0 ? Math.round((demand / capacity) * 100) : 0;
+        const status =
+          loadPct > memoryCapacityPolicies.thresholds.amberMax
+            ? 'OVERLOAD'
+            : loadPct > memoryCapacityPolicies.thresholds.greenMax
+            ? 'ATTENTION'
+            : 'NORMAL';
+        const topJobs = masterJobs.slice(sIdx * 3 + slIdx * 2, sIdx * 3 + slIdx * 2 + 4).map((j: any) => ({
+          jobNo: j.jobNo,
+          styleNo: j.styleNo,
+          buyer: j.buyer,
+          demand: pol?.unit === 'KG' ? j.fabric?.fabricReqKg || 2400 : j.orderQty || 8500,
+          date: `${targetMonth}-${String(sr.startDay + 2).padStart(2, '0')}`,
+        }));
+        return {
+          slotNo: sr.slotNo,
+          slot: sr.label,
+          workDays,
+          demand,
+          capacity,
+          balance: capacity - demand,
+          loadPct,
+          jobs: 18 + slIdx * 4,
+          status,
+          topJobs,
+        };
+      });
+      const monthDemand = slots.reduce((s, x) => s + x.demand, 0);
+      const monthCapacity = slots.reduce((s, x) => s + x.capacity, 0);
+      return {
+        section: sec.key,
+        label: pol?.label || sec.key,
+        unit: pol?.unit || 'PCS',
+        dailyCapacity: dailyCap,
+        sundayFactor,
+        monthDemand,
+        monthCapacity,
+        monthLoadPct: monthCapacity > 0 ? Math.round((monthDemand / monthCapacity) * 100) : 0,
+        slots,
+      };
+    });
+
+    const sp = memoryCapacityPolicies.sample;
+    const sampleRows = [
+      {
+        section: 'sampleKnitting',
+        label: sp.knitting.label || 'Sample Knitting',
+        unit: sp.knitting.unit || 'KG / Colors',
+        policyText: `${sp.knitting.dailyKg} Kg / ${sp.knitting.dailyColors} Colors per day`,
+        slots: slotRanges.map((sr) => {
+          const days = pDaysInSlot(year, month0, sr.startDay, sr.endDay, 0.5, holidays);
+          const capKg = Math.round(sp.knitting.dailyKg * days);
+          const demKg = Math.round(capKg * 0.76);
+          return {
+            slot: sr.label,
+            demandText: `${demKg} Kg`,
+            capacityText: `${capKg} Kg (${Math.round(sp.knitting.dailyColors * days)} colors)`,
+            loadPct: 76,
+          };
+        }),
+      },
+      {
+        section: 'sampleDyeing',
+        label: sp.dyeing.label || 'Sample Dyeing',
+        unit: sp.dyeing.unit || 'Colors / Slot',
+        policyText: `${sp.dyeing.slotCapacity} Colors/slot (${sp.dyeing.ppDevelopmentSlot} PP/Dev + ${sp.dyeing.smsSlot} SMS)`,
+        slots: slotRanges.map((sr, idx) => {
+          const cap = Number(sp.dyeing.slotCapacity || 150);
+          const dem = Math.round(cap * (0.78 + idx * 0.03));
+          return {
+            slot: sr.label,
+            demandText: `${dem} Colors`,
+            capacityText: `${cap} Colors (${sp.dyeing.ppDevelopmentSlot} PP + ${sp.dyeing.smsSlot} SMS)`,
+            loadPct: Math.round((dem / cap) * 100),
+          };
+        }),
+      },
+      {
+        section: 'samplePrinting',
+        label: sp.printing.label || 'Sample Printing',
+        unit: sp.printing.unit || 'Styles / Pcs',
+        policyText: `${sp.printing.dailyStyles} Styles / ${sp.printing.dailyPcs} Pcs per day`,
+        slots: slotRanges.map((sr) => {
+          const days = pDaysInSlot(year, month0, sr.startDay, sr.endDay, 0, holidays);
+          const capStyles = Math.round(sp.printing.dailyStyles * days);
+          const demStyles = Math.round(capStyles * 0.72);
+          return {
+            slot: sr.label,
+            demandText: `${demStyles} Styles`,
+            capacityText: `${capStyles} Styles / ${sp.printing.dailyPcs * days} Pcs`,
+            loadPct: 72,
+          };
+        }),
+      },
+      {
+        section: 'sampleMaking',
+        label: sp.making.label || 'Sample Making',
+        unit: sp.making.unit || 'Styles / Month',
+        policyText: `${sp.making.monthlyStyles} Styles per month (~${Math.round(sp.making.monthlyStyles / 3)} per 10-day slot)`,
+        slots: slotRanges.map((sr) => {
+          const cap = Math.round(sp.making.monthlyStyles / 3);
+          const dem = Math.round(cap * 0.81);
+          return {
+            slot: sr.label,
+            demandText: `${dem} Styles`,
+            capacityText: `${cap} Styles`,
+            loadPct: 81,
+          };
+        }),
+      },
+    ];
+
     return NextResponse.json({
-      thresholds: { greenMax: 85, amberMax: 100 },
-      rows: [
-        { section: 'knitting', label: 'Knitting', unit: 'KG/day', slots: [{ slot: 'Slot 1', loadPct: 92, demand: 18400, capacity: 20000, jobs: 42, status: 'ATTENTION' }, { slot: 'Slot 2', loadPct: 88, demand: 17600, capacity: 20000, jobs: 38, status: 'NORMAL' }, { slot: 'Slot 3', loadPct: 94, demand: 18800, capacity: 20000, jobs: 46, status: 'ATTENTION' }] },
-        { section: 'dyeing', label: 'Dyeing', unit: 'KG/day', slots: [{ slot: 'Slot 1', loadPct: 96, demand: 19200, capacity: 20000, jobs: 35, status: 'ATTENTION' }, { slot: 'Slot 2', loadPct: 91, demand: 18200, capacity: 20000, jobs: 31, status: 'NORMAL' }, { slot: 'Slot 3', loadPct: 89, demand: 17800, capacity: 20000, jobs: 29, status: 'NORMAL' }] },
-        { section: 'cutting', label: 'Cutting', unit: 'Pcs/day', slots: [{ slot: 'Slot 1', loadPct: 85, demand: 51000, capacity: 60000, jobs: 24, status: 'NORMAL' }, { slot: 'Slot 2', loadPct: 90, demand: 54000, capacity: 60000, jobs: 26, status: 'ATTENTION' }, { slot: 'Slot 3', loadPct: 84, demand: 50400, capacity: 60000, jobs: 22, status: 'NORMAL' }] },
-        { section: 'sewing', label: 'Sewing', unit: 'Pcs/day', slots: [{ slot: 'Slot 1', loadPct: 94, demand: 56400, capacity: 60000, jobs: 48, status: 'ATTENTION' }, { slot: 'Slot 2', loadPct: 98, demand: 58800, capacity: 60000, jobs: 52, status: 'ATTENTION' }, { slot: 'Slot 3', loadPct: 95, demand: 57000, capacity: 60000, jobs: 49, status: 'ATTENTION' }] },
-        { section: 'finishing', label: 'Finishing', unit: 'Pcs/day', slots: [{ slot: 'Slot 1', loadPct: 89, demand: 53400, capacity: 60000, jobs: 38, status: 'NORMAL' }, { slot: 'Slot 2', loadPct: 86, demand: 51600, capacity: 60000, jobs: 36, status: 'NORMAL' }, { slot: 'Slot 3', loadPct: 92, demand: 55200, capacity: 60000, jobs: 40, status: 'ATTENTION' }] }
-      ],
-      sampleRows: [
-        { section: 'sample_knitting', label: 'Sample Knitting', unit: 'KG/day', slots: [{ slot: 'Slot 1', loadPct: 75, demandText: '45 KG', capacityText: '60 KG', status: 'NORMAL' }, { slot: 'Slot 2', loadPct: 80, demandText: '48 KG', capacityText: '60 KG', status: 'NORMAL' }, { slot: 'Slot 3', loadPct: 70, demandText: '42 KG', capacityText: '60 KG', status: 'NORMAL' }] },
-        { section: 'sample_dyeing', label: 'Sample Dyeing', unit: 'Batch', slots: [{ slot: 'Slot 1', loadPct: 82, demandText: '14 Batch', capacityText: '17 Batch', status: 'NORMAL' }, { slot: 'Slot 2', loadPct: 85, demandText: '15 Batch', capacityText: '17 Batch', status: 'NORMAL' }, { slot: 'Slot 3', loadPct: 78, demandText: '13 Batch', capacityText: '17 Batch', status: 'NORMAL' }] }
-      ]
+      month: targetMonth,
+      weeklyHoliday: 'SUNDAY',
+      holidays,
+      thresholds: memoryCapacityPolicies.thresholds,
+      rows,
+      sampleRows,
     });
   }
 
   // 3b. /api/planning/capacity/policies
   if (pathStr === 'planning/capacity/policies') {
-    return NextResponse.json({
-      bulk: {
-        knitting: { label: 'Knitting Bulk Capacity', unit: 'KG', dailyCapacity: 18500 },
-        dyeing: { label: 'Dyeing Bulk Capacity', unit: 'KG', dailyCapacity: 18500 },
-        cutting: { label: 'Cutting Bulk Capacity', unit: 'Pcs', dailyCapacity: 58000 },
-        sewing: { label: 'Sewing Bulk Capacity', unit: 'Pcs', dailyCapacity: 55000 },
-        finishing: { label: 'Finishing Bulk Capacity', unit: 'Pcs', dailyCapacity: 55000 }
-      },
-      sample: {
-        knitting: { dailyKg: 60, dailyColors: 8 },
-        dyeing: { slotCapacity: 18, ppDevelopmentSlot: 10, smsSlot: 8 },
-        printing: { dailyStyles: 6, dailyPcs: 120 },
-        making: { monthlyStyles: 90 }
-      },
-      thresholds: { greenMax: 85, amberMax: 100 }
-    });
+    return NextResponse.json(memoryCapacityPolicies);
   }
 
   // 4. /api/demo/module/:slug (all sections)
@@ -2184,69 +3251,119 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   // 12b. /api/planning/gantt
   if (pathStr === 'planning/gantt') {
-    const list = masterJobs.map((j: any) => {
-      const fac = j.lineAllocation?.factory || 'NFL';
-      const line = j.lineAllocation?.line || 'A1';
-      const rawStart = j.dates?.sewingStart || '15-Aug-2026';
-      const rawEnd = j.dates?.sewingEnd || '25-Aug-2026';
-      const startDt = new Date(rawStart);
-      const endDt = new Date(rawEnd);
-      const startDate = !isNaN(startDt.getTime()) ? startDt.toISOString().split('T')[0] : '2026-08-15';
-      const finishDate = !isNaN(endDt.getTime()) ? endDt.toISOString().split('T')[0] : '2026-08-25';
-      const ccdDt = new Date(j.dates?.cargoClosing || j.dates?.exFactory || rawEnd);
-      const ccd = !isNaN(ccdDt.getTime()) ? ccdDt.toISOString().split('T')[0] : finishDate;
+    const allJobs = [...memoryCreatedJobs, ...masterJobs];
+    const list = allJobs.map((j: any) => {
+      const styleId = `s-${j.jobNo}`;
+      const savedGantt = memoryGanttPlansByStyle[styleId] || {};
+      const fac = savedGantt.factoryCode || j.lineAllocation?.factory || 'NFL';
+      const line = savedGantt.lineCode || j.lineAllocation?.line || 'A1';
+      const rawStart = savedGantt.startDate || j.dates?.sewingStart || '15-Aug-2026';
+      const rawEnd = savedGantt.endDate || savedGantt.finishDate || j.dates?.sewingEnd || '25-Aug-2026';
+      const startDate = pToIso(rawStart) || '2026-10-12';
+      const finishDate = pToIso(rawEnd) || '2026-10-22';
+      const ccd = pToIso(j.dates?.cargoClosing || j.dates?.exFactory || rawEnd) || finishDate;
+      const fabricReq = Number(j.fabric?.fabricReqKg || 2400);
+      const fabricRecv = Number(j.fabric?.fabricReceivedKg || fabricReq);
+      const cutQty = Number(j.cutting?.cuttingQty || j.orderQty || 0);
 
       return {
         id: j.id,
+        styleId,
+        orderId: j.id,
         jobNo: j.jobNo,
         buyer: j.buyer,
         buyerCode: j.buyer,
-        styleId: `s-${j.jobNo}`,
+        factory: fac,
         styleNo: j.styleNo,
         itemDescription: j.itemDescription,
+        quantity: j.orderQty,
         orderQty: j.orderQty,
         ccd,
         presentStatus: j.presentStatus || 'Confirmed',
+        taPlan: memoryTaPlansByStyle[styleId] || {
+          taStatus: 'APPROVED',
+          sewingStartDate: startDate,
+          sewingEndDate: finishDate,
+          exFactoryDate: ccd,
+          trimsInhouseDate: pAddDays(startDate, -3),
+          fileHandoverDate: pAddDays(startDate, -4),
+          ppSampleApprovalDate: pAddDays(startDate, -6),
+        },
+        ieBulletin: {
+          smv: j.ie?.smv || 8.5,
+          dailyTarget: j.ie?.dailyTarget || 1800,
+          manpower: j.ie?.manpower || 30,
+          machineQty: j.ie?.machineQty || 22,
+          achievableEfficiencyPct: j.ie?.efficiencyPct || 75,
+        },
         ganttPlan: {
-          lineId: `${fac.toLowerCase()}-${line.toLowerCase()}`,
+          lineId: savedGantt.lineId || `${fac.toLowerCase()}-${line.toLowerCase()}`,
           factoryCode: fac,
-          floorCode: j.lineAllocation?.floor || (fac === 'NCL' ? 'S-01' : 'FL-01'),
+          floorCode: savedGantt.floorCode || j.lineAllocation?.floor || (fac === 'NCL' ? 'S-01' : 'FL-01'),
           lineCode: line,
           startDate,
           finishDate,
           endDate: finishDate,
-          status: j.lineAllocation?.status || 'RELEASED',
-          dailyTarget: j.ie?.dailyTarget || 1800,
-          smv: j.ie?.smv || 7.5,
-          manpower: j.ie?.manpower || 30,
-          efficiencyPct: j.ie?.efficiencyPct || 80,
-          machineQty: j.ie?.machineQty || 19,
-          workingHours: j.lineAllocation?.hours || 8,
-          actualQty: j.sewing?.sewingActualQty || 0,
-          risk: j.riskStatus || 'ON_TRACK',
-          splitPlan: []
+          status: savedGantt.status || j.lineAllocation?.status || 'APPROVED',
+          versionLabel: savedGantt.versionLabel || 'v1',
+          baselineStartDate: savedGantt.baselineStartDate || startDate,
+          baselineEndDate: savedGantt.baselineEndDate || finishDate,
+          dailyTarget: Number(savedGantt.dailyTarget || j.ie?.dailyTarget || 1800),
+          plannedQty: Number(savedGantt.plannedQty || j.orderQty || 5000),
+          smv: Number(savedGantt.smv || j.ie?.smv || 8.5),
+          manpower: Number(savedGantt.manpower || j.ie?.manpower || 30),
+          efficiencyPct: Number(savedGantt.efficiencyPct || j.ie?.efficiencyPct || 75),
+          machineQty: Number(savedGantt.machineQty ?? j.ie?.machineQty ?? 22),
+          workingHours: Number(savedGantt.workingHours || j.lineAllocation?.hours || 8),
+          actualQty: Number(j.sewing?.sewingActualQty || 0),
+          risk: finishDate > ccd ? 'CRITICAL' : j.riskStatus || 'ON_TRACK',
+          splitPlan: savedGantt.splitPlan || [],
+          remarks: savedGantt.remarks || '',
+        },
+        readiness: {
+          fabricReady: fabricReq > 0 ? fabricRecv >= fabricReq * 0.8 : true,
+          fabricPct: fabricReq > 0 ? Math.min(100, Math.round((fabricRecv / fabricReq) * 100)) : 100,
+          cuttingReady: cutQty > 0,
+          cutQty,
+          trimsReady: true,
+          ppReady: true,
+        },
+        production: {
+          fabricRequired: fabricReq,
+          fabricReceived: fabricRecv,
+          cuttingQty: cutQty,
+          sewingQty: j.sewing?.sewingActualQty || 0,
         },
         sectionData: {
           sewing: {
             productionQty: j.sewing?.sewingActualQty || 0,
             status: j.sewing?.status || 'RUNNING',
-            machineQty: j.ie?.machineQty || 19,
+            machineQty: j.ie?.machineQty || 22,
             manpower: j.ie?.manpower || 30,
-            efficiencyPct: j.ie?.efficiencyPct || 80
+            efficiencyPct: j.ie?.efficiencyPct || 75,
           },
           finishedFabricStore: {
-            receivedKg: j.fabric?.fabricReceivedKg || 0,
-            status: 'READY'
+            receivedKg: fabricRecv,
+            status: 'READY',
           },
           cutting: {
-            cutQty: j.cutting?.cuttingQty || 0,
-            status: j.cutting?.status || 'COMPLETED'
+            cutQty,
+            status: j.cutting?.status || 'COMPLETED',
           },
           trims: {
             inhousePct: 100,
-            status: 'RELEASED'
-          }
-        }
+            status: 'RELEASED',
+          },
+        },
+        ganttHistory: savedGantt.ganttHistory || [],
+        ganttVersions: savedGantt.ganttVersions || [
+          {
+            versionNo: 1,
+            versionLabel: 'v1',
+            approvedAt: '2026-09-20T10:00:00Z',
+            approvedBy: 'Shahidul Alam',
+          },
+        ],
       };
     });
     return NextResponse.json(list);
@@ -2254,19 +3371,370 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   // 13. /api/planning/ta/workqueue
   if (pathStr === 'planning/ta/workqueue') {
-    const tnaList = masterJobs.slice(0, 50).map((j: any) => ({
-      id: j.id,
-      jobNo: j.jobNo,
-      buyer: j.buyer,
-      styleNo: j.styleNo,
-      orderQty: j.orderQty,
-      tnaStatus: 'APPROVED',
-      tnaPlanDate: j.dates?.tnaPlan,
-      exFactoryDate: j.dates?.exFactory,
-      cargoClosingDate: j.dates?.cargoClosing,
-      presentStatus: j.presentStatus
+    const allJobs = [...memoryCreatedJobs, ...masterJobs].slice(0, 60);
+    const tnaQueue = allJobs.map((j: any) => {
+      const styleId = `s-${j.jobNo}`;
+      const { plan, criticalPathAnalysis } = buildPlanAndRowsForMasterJob(j);
+      return {
+        id: `task-ta-${j.jobNo}`,
+        orderId: j.id,
+        title: `Prepare & Track T&A Plan for Job ${j.jobNo}`,
+        section: 'PLANNING',
+        status: plan.taStatus === 'APPROVED' ? 'DONE' : 'OPEN',
+        dueDate: plan.taPlanDate,
+        order: {
+          id: j.id,
+          jobNo: j.jobNo,
+          buyer: { id: `b-${j.buyer}`, name: j.buyer, code: j.buyer },
+          factory: { id: 'f-nfl', name: 'Northern Fashions Ltd.', code: j.lineAllocation?.factory || 'NFL' },
+          styles: [
+            {
+              id: styleId,
+              styleNo: j.styleNo,
+              itemDescription: j.itemDescription,
+              quantity: j.orderQty,
+              purchaseOrders: [
+                {
+                  id: `po-${j.jobNo}-1`,
+                  poNumber: `PO-${j.jobNo}-A`,
+                  ccd: plan.cargoClosingDate,
+                  shipmentDate: plan.exFactoryDate,
+                  totalQty: Math.round(Number(j.orderQty || 5000) * 0.6),
+                },
+                {
+                  id: `po-${j.jobNo}-2`,
+                  poNumber: `PO-${j.jobNo}-B`,
+                  ccd: pAddDays(plan.cargoClosingDate, 4),
+                  shipmentDate: pAddDays(plan.exFactoryDate, 4),
+                  totalQty: Math.round(Number(j.orderQty || 5000) * 0.4),
+                },
+              ],
+              sourceMetadata: {
+                planning: {
+                  ...plan,
+                  riskLevel: criticalPathAnalysis.riskLevel,
+                },
+              },
+            },
+          ],
+        },
+      };
+    });
+    return NextResponse.json(tnaQueue);
+  }
+
+  // 13b. /api/planning/ta/orders/:id
+  if (pathStr.startsWith('planning/ta/orders/')) {
+    const orderId = decodeURIComponent(pathStr.replace('planning/ta/orders/', '').trim());
+    const allJobs = [...memoryCreatedJobs, ...masterJobs];
+    const found =
+      allJobs.find((j: any) => String(j.id) === orderId || String(j.jobNo) === orderId || `s-${j.jobNo}` === orderId) ||
+      allJobs[0];
+    const styleId = `s-${found.jobNo}`;
+    const { plan, rows, criticalPathAnalysis } = buildPlanAndRowsForMasterJob(found);
+
+    return NextResponse.json({
+      order: {
+        id: found.id,
+        jobNo: found.jobNo,
+        buyer: { id: `b-${found.buyer}`, name: found.buyer, code: found.buyer },
+        factory: { id: 'f-nfl', name: 'Northern Fashions Ltd.', code: found.lineAllocation?.factory || 'NFL' },
+        styles: [
+          {
+            id: styleId,
+            styleNo: found.styleNo,
+            itemDescription: found.itemDescription,
+            quantity: found.orderQty,
+            ccd: plan.cargoClosingDate,
+            purchaseOrders: [
+              {
+                id: `po-${found.jobNo}-2`,
+                poNumber: `PO-${found.jobNo}-B`,
+                ccd: pAddDays(plan.cargoClosingDate, 4),
+                shipmentDate: pAddDays(plan.exFactoryDate, 4),
+                totalQty: Math.round(Number(found.orderQty || 5000) * 0.4),
+              },
+              {
+                id: `po-${found.jobNo}-1`,
+                poNumber: `PO-${found.jobNo}-A`,
+                ccd: plan.cargoClosingDate,
+                shipmentDate: plan.exFactoryDate,
+                totalQty: Math.round(Number(found.orderQty || 5000) * 0.6),
+              },
+            ],
+            taPlan: plan,
+            autoPlan: plan,
+            taRows: rows,
+            criticalPathAnalysis,
+            taHistory: plan.taHistory || [],
+            replanHistory: plan.replanHistory || [],
+          },
+        ],
+      },
+    });
+  }
+
+  // 13c. /api/planning/control-tower
+  if (pathStr === 'planning/control-tower') {
+    const allJobs = [...memoryCreatedJobs, ...masterJobs].slice(0, 40);
+    const riskList = allJobs.map((j: any) => {
+      const styleId = `s-${j.jobNo}`;
+      const { plan, criticalPathAnalysis } = buildPlanAndRowsForMasterJob(j);
+      return {
+        styleId,
+        orderId: j.id,
+        jobNo: j.jobNo,
+        styleNo: j.styleNo,
+        buyer: j.buyer,
+        orderQty: j.orderQty,
+        taStatus: plan.taStatus,
+        taVersion: plan.taVersion,
+        ...criticalPathAnalysis,
+      };
+    });
+
+    const fabricTrimsTracker = allJobs.slice(0, 15).map((j: any) => {
+      const styleId = `s-${j.jobNo}`;
+      if (memoryFabricTrimsFollowup[styleId]) return memoryFabricTrimsFollowup[styleId];
+      const { plan } = buildPlanAndRowsForMasterJob(j);
+      const reqKg = Number(j.fabric?.fabricReqKg || plan.fabricRequiredKg || 2400);
+      const recvKg = Number(j.fabric?.fabricReceivedKg ?? reqKg);
+      const balKg = Math.max(0, reqKg - recvKg);
+      return {
+        styleId,
+        jobNo: j.jobNo,
+        styleNo: j.styleNo,
+        buyer: j.buyer,
+        orderQty: j.orderQty,
+        weekLabel: 'Wk 41 (Oct 2026)',
+        fabricDueDate: plan.dyeingFinishingEnd,
+        fabricRequiredKg: reqKg,
+        fabricReceivedKg: recvKg,
+        fabricBalanceKg: balKg,
+        fabricSupplier: 'In-House NFL Dyeing',
+        fabricStatus: balKg === 0 ? 'IN_HOUSE' : recvKg > 0 ? 'PARTIAL' : 'PENDING',
+        trimsDueDate: plan.trimsInhouseDate,
+        trimsItems: [
+          { item: 'Main & Care Label', dueDate: plan.trimsInhouseDate, requiredQty: j.orderQty, receivedQty: j.orderQty, unit: 'PCS', status: 'IN_HOUSE' },
+          { item: 'Sewing Thread 40/2', dueDate: plan.trimsInhouseDate, requiredQty: Math.round(j.orderQty / 12), receivedQty: Math.round(j.orderQty / 12), unit: 'CONE', status: 'IN_HOUSE' },
+          { item: 'Polybag & Export Carton', dueDate: plan.sewingStartDate, requiredQty: Math.ceil(j.orderQty / 24), receivedQty: Math.ceil(j.orderQty / 24), unit: 'CTN', status: 'IN_HOUSE' },
+        ],
+        remarks: balKg === 0 ? 'On schedule' : `${balKg} Kg balance in finishing`,
+      };
+    });
+
+    return NextResponse.json({
+      riskList,
+      subcontractOrders: memorySubcontractOrders,
+      fabricTrimsTracker,
+      samplePlanning: memorySamplePlanningList,
+      shipmentMeetings: memoryShipmentMeetings,
+      buyerQuota: factoryKpi.buyerQuota || [
+        { buyer: 'ONLY', monthlyLineQuota: 26, allocatedLines: 25, sampleQuotaStyles: 140, sampleUsedStyles: 128 },
+        { buyer: 'OVS', monthlyLineQuota: 20, allocatedLines: 19, sampleQuotaStyles: 95, sampleUsedStyles: 88 },
+        { buyer: 'Name It', monthlyLineQuota: 18, allocatedLines: 18, sampleQuotaStyles: 110, sampleUsedStyles: 104 },
+        { buyer: 'UTG', monthlyLineQuota: 16, allocatedLines: 15, sampleQuotaStyles: 65, sampleUsedStyles: 58 },
+        { buyer: 'New Look', monthlyLineQuota: 11, allocatedLines: 10, sampleQuotaStyles: 40, sampleUsedStyles: 34 },
+      ],
+    });
+  }
+
+  // 13d. /api/planning/approvals/*
+  if (pathStr === 'planning/approvals/queue') {
+    const statusFilter = url.searchParams.get('status') || '';
+    const buyerFilter = (url.searchParams.get('buyer') || '').toLowerCase();
+    const qFilter = (url.searchParams.get('q') || '').toLowerCase();
+
+    const allJobs = [...memoryCreatedJobs, ...masterJobs].slice(0, 35);
+    let queue = allJobs.map((j: any, idx: number) => {
+      const styleId = `s-${j.jobNo}`;
+      const stState = memoryApprovalStatesByStyle[styleId] || {};
+      const defaultStatus =
+        idx === 0
+          ? 'PENDING_REVIEW'
+          : idx === 1
+          ? 'SIGNED_COPY_RECORDED'
+          : idx === 2
+          ? 'APPROVED'
+          : idx === 3
+          ? 'RETURNED'
+          : 'RELEASED_TO_KNITTING';
+      const status = stState.status || defaultStatus;
+      const signedFabric = stState.signedCopy?.fabricSheet ?? (status !== 'PENDING_REVIEW' && status !== 'RETURNED');
+      const signedTna = stState.signedCopy?.tna ?? (status !== 'PENDING_REVIEW' && status !== 'RETURNED');
+      const totalFinishKg = Number(j.fabric?.fabricReqKg || Math.round((Number(j.orderQty || 6000) / 12) * 2.45));
+
+      return {
+        styleId,
+        orderId: j.id,
+        jobNo: j.jobNo,
+        styleNo: j.styleNo,
+        itemDescription: j.itemDescription,
+        buyer: j.buyer,
+        buyerCode: j.buyer,
+        factory: j.lineAllocation?.factory || 'NFL',
+        orderQty: j.orderQty,
+        ccd: pToIso(j.dates?.cargoClosing || j.dates?.exFactory) || '2026-10-25',
+        merchandiser: j.merchandiser || 'Md. Imran',
+        status,
+        fabricSheetNo: `FOS-${j.jobNo}-R1`,
+        fabricSheetRevision: stState.revision || 1,
+        totalFinishKg,
+        totalGreyKg: Math.round(totalFinishKg * 1.09),
+        tnaStatus: status === 'RETURNED' ? 'RETURNED' : 'SUBMITTED',
+        signedCopy: {
+          fabricSheet: signedFabric,
+          tna: signedTna,
+          referenceNo: stState.signedCopy?.referenceNo || (signedFabric ? `PHY-SIG-${j.jobNo}` : ''),
+          receivedBy: stState.signedCopy?.receivedBy || (signedFabric ? 'Shahidul Alam' : ''),
+          receivedAt: stState.signedCopy?.receivedAt || (signedFabric ? '2026-10-02T10:30:00Z' : null),
+          remarks: stState.signedCopy?.remarks || '',
+        },
+        returnReason: stState.returnReason || (status === 'RETURNED' ? 'Collar rib consumption & wastage % mismatch with CAD marker' : ''),
+        releasedAt: stState.releasedAt || (status === 'RELEASED_TO_KNITTING' ? '2026-10-03T11:15:00Z' : null),
+        releasedBy: stState.releasedBy || (status === 'RELEASED_TO_KNITTING' ? 'Shahidul Alam' : ''),
+      };
+    });
+
+    if (statusFilter && statusFilter !== 'ALL') {
+      queue = queue.filter((item) => item.status === statusFilter);
+    }
+    if (buyerFilter && buyerFilter !== 'all') {
+      queue = queue.filter((item) => item.buyer.toLowerCase().includes(buyerFilter));
+    }
+    if (qFilter) {
+      queue = queue.filter((item) => `${item.jobNo} ${item.styleNo} ${item.buyer} ${item.merchandiser}`.toLowerCase().includes(qFilter));
+    }
+
+    return NextResponse.json(queue);
+  }
+
+  if (pathStr.startsWith('planning/approvals/jobs/') && pathStr.endsWith('/release-draft')) {
+    const styleId = path[3];
+    const jobNo = styleId.replace(/^s-/, '');
+    const found = [...memoryCreatedJobs, ...masterJobs].find((j: any) => String(j.jobNo) === jobNo || j.id === styleId) || masterJobs[0];
+    const stState = memoryApprovalStatesByStyle[styleId] || {};
+    const totalFinishKg = Number(found.fabric?.fabricReqKg || 2400);
+    const bodyFinish = Math.round(totalFinishKg * 0.85);
+    const ribFinish = totalFinishKg - bodyFinish;
+
+    const draftRows = stState.releaseRows || [
+      {
+        id: `${styleId}-r1`,
+        colour: found.fabric?.colors || 'Navy Blazer',
+        part: 'Main Body',
+        fabricType: found.fabric?.fabricType || '100% Cotton Single Jersey',
+        composition: '100% Combed Cotton',
+        yarnCount: '30/1 Combed Compact',
+        stitchLength: '2.75 mm',
+        gsm: Number(found.fabric?.gsm || 180),
+        dia: '74" Open',
+        processLossPct: 8,
+        finishKg: Math.round(bodyFinish * 0.6),
+        greyKg: Math.round(bodyFinish * 0.6 * 1.087),
+      },
+      {
+        id: `${styleId}-r2`,
+        colour: 'Optical White',
+        part: 'Main Body',
+        fabricType: found.fabric?.fabricType || '100% Cotton Single Jersey',
+        composition: '100% Combed Cotton',
+        yarnCount: '30/1 Combed Compact',
+        stitchLength: '2.75 mm',
+        gsm: Number(found.fabric?.gsm || 180),
+        dia: '74" Open',
+        processLossPct: 8,
+        finishKg: bodyFinish - Math.round(bodyFinish * 0.6),
+        greyKg: Math.round((bodyFinish - Math.round(bodyFinish * 0.6)) * 1.087),
+      },
+      {
+        id: `${styleId}-r3`,
+        colour: found.fabric?.colors || 'Navy Blazer',
+        part: 'Neck Rib 1x1',
+        fabricType: '1x1 Lycra Rib',
+        composition: '95% Cotton 5% Elastane',
+        yarnCount: '30/1 + 20D Spandex',
+        stitchLength: '2.45 mm',
+        gsm: 240,
+        dia: '64" Tubular',
+        processLossPct: 9,
+        finishKg: ribFinish,
+        greyKg: Math.round(ribFinish * 1.099),
+      },
+    ];
+
+    return NextResponse.json({
+      styleId,
+      jobNo: found.jobNo,
+      styleNo: found.styleNo,
+      buyer: found.buyer,
+      orderQty: found.orderQty,
+      fabricSheetTotalFinishKg: totalFinishKg,
+      rows: draftRows,
+    });
+  }
+
+  if (pathStr.startsWith('planning/approvals/jobs/') && pathStr.endsWith('/history')) {
+    const styleId = path[3];
+    const jobNo = styleId.replace(/^s-/, '');
+    const stState = memoryApprovalStatesByStyle[styleId] || {};
+    const history = stState.history || [
+      {
+        id: `h-${jobNo}-1`,
+        action: 'FABRIC_SHEET_SUBMITTED',
+        actor: 'Md. Imran (Merchandiser)',
+        timestamp: '2026-10-01T09:15:00Z',
+        remarks: 'Fabric Order Sheet & T&A submitted to Central Planning Approval Desk',
+      },
+      {
+        id: `h-${jobNo}-2`,
+        action: 'SIGNED_COPY_RECORDED',
+        actor: 'Shahidul Alam (Planning Head)',
+        timestamp: '2026-10-02T10:30:00Z',
+        remarks: `Physical signed copy verified (Ref: PHY-SIG-${jobNo})`,
+      },
+    ];
+    return NextResponse.json(history);
+  }
+
+  if (pathStr === 'planning/approvals/sample-orders') {
+    const forms = memorySamplePlanningList.map((sp, i) => ({
+      id: `smp-form-${i + 1}`,
+      formNo: `SMS-2026-0${i + 1}`,
+      styleId: sp.styleId,
+      jobNo: sp.jobNo,
+      styleNo: sp.styleNo,
+      buyer: sp.buyer,
+      sampleType: sp.sampleType,
+      sampleQty: sp.sampleQty,
+      tna: memorySampleTnaByForm[`smp-form-${i + 1}`] || {
+        yarnDate: sp.yarnDate,
+        knittingDate: sp.knittingDate,
+        dyeingDate: sp.dyeingDate,
+        printingDate: pAddDays(sp.dyeingDate, 2),
+        sewingDate: sp.sewingDate,
+        dispatchDate: sp.targetDispatchDate,
+        actualDispatchDate: sp.actualDispatchDate,
+        awbNo: sp.awbNo,
+        status: sp.status,
+        remarks: sp.remarks,
+      },
     }));
-    return NextResponse.json(tnaList);
+    return NextResponse.json(forms);
+  }
+
+  if (pathStr === 'planning/approvals/quota') {
+    return NextResponse.json({
+      month: url.searchParams.get('month') || '2026-10',
+      samplePolicy: memoryCapacityPolicies.sample,
+      buyerQuota: [
+        { buyer: 'ONLY', odQuota: 60, odUsed: 52, smsQuota: 80, smsUsed: 76, bulkLineQuota: 26, bulkLinesUsed: 25 },
+        { buyer: 'OVS', odQuota: 40, odUsed: 36, smsQuota: 55, smsUsed: 52, bulkLineQuota: 20, bulkLinesUsed: 19 },
+        { buyer: 'Name It', odQuota: 45, odUsed: 42, smsQuota: 65, smsUsed: 62, bulkLineQuota: 18, bulkLinesUsed: 18 },
+        { buyer: 'UTG', odQuota: 30, odUsed: 26, smsQuota: 35, smsUsed: 32, bulkLineQuota: 16, bulkLinesUsed: 15 },
+        { buyer: 'New Look', odQuota: 20, odUsed: 16, smsQuota: 20, smsUsed: 18, bulkLineQuota: 11, bulkLinesUsed: 10 },
+      ],
+    });
   }
 
   // 14. /api/cad/workqueue
@@ -3076,6 +4544,25 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ success: true, style: updated });
   }
 
+  // 0f-rates-POST. /api/merchandising/costing/rates
+  if (pathStr === 'merchandising/costing/rates') {
+    const body = await request.json().catch(() => ({}));
+    const { action, rateItem, rates } = body;
+    if (action === 'RESET') {
+      memoryMasterRates = [...DEFAULT_MASTER_ITEM_RATES];
+    } else if (action === 'SAVE_ALL' && Array.isArray(rates)) {
+      memoryMasterRates = rates;
+    } else if (rateItem && rateItem.id) {
+      const idx = memoryMasterRates.findIndex(r => r.id === rateItem.id);
+      if (idx >= 0) {
+        memoryMasterRates[idx] = { ...memoryMasterRates[idx], ...rateItem };
+      } else {
+        memoryMasterRates.push(rateItem);
+      }
+    }
+    return NextResponse.json({ success: true, rates: memoryMasterRates, message: 'Master rates updated successfully' });
+  }
+
   // 0g-POST. /api/merchandising/costing (Save or update real cost sheet)
   if (pathStr === 'merchandising/costing') {
     const body = await request.json().catch(() => ({}));
@@ -3085,6 +4572,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const now = new Date();
     const dateFormatted = `${now.getDate()}.${now.getMonth() + 1}.${String(now.getFullYear()).slice(2)}`;
 
+    // Calculate totals including itemized costs
+    const computedTotals = calculateCostSheetTotals(body);
+
     if (existingIndex >= 0) {
       const prev = memoryCostSheets[existingIndex];
       const nextVer = (prev.version || 1) + 1;
@@ -3092,9 +4582,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         version: nextVer,
         revisedAt: dateFormatted,
         revisedBy: body.revisedBy || 'Merchandiser',
-        reason: body.revisionReason || 'Updated consumption and rates',
-        fobPrice: Number(body.otherCosts?.totalGarmentPriceFobPerPc || body.fobPrice || prev.otherCosts?.totalGarmentPriceFobPerPc || 3.78),
-        changedValues: body.changedValues || 'Updated lines',
+        reason: body.revisionReason || 'Updated itemized costs and consumption',
+        fobPrice: Number(computedTotals?.finalFobPrice || body.otherCosts?.totalGarmentPriceFobPerPc || body.fobPrice || prev.otherCosts?.totalGarmentPriceFobPerPc || 3.78),
+        changedValues: body.changedValues || 'Updated itemized rates',
         approvalStatus: body.approvalStatus || 'SUBMITTED'
       };
 
@@ -3103,6 +4593,18 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         ...body,
         version: nextVer,
         approvalStatus: body.approvalStatus || 'SUBMITTED',
+        itemizedCosts: body.itemizedCosts || prev.itemizedCosts || [],
+        otherCosts: {
+          ...(prev.otherCosts || {}),
+          ...(body.otherCosts || {}),
+          totalFabricCostPerPc: computedTotals.totalFabricCostPerPc,
+          accessoriesPerPc: computedTotals.totalAccessoriesPerPc,
+          cmCuttingMakingPerPc: computedTotals.totalCmPerPc || body.otherCosts?.cmCuttingMakingPerPc || 0.92,
+          commercialOverheadPerPc: computedTotals.commercialOverheadPerPc,
+          profitPerPc: computedTotals.profitPerPc,
+          buyingCommissionPerPc: computedTotals.buyingCommissionPerPc,
+          totalGarmentPriceFobPerPc: computedTotals.finalFobPrice
+        },
         revisions: [...(prev.revisions || []), newRev],
         updatedAt: now.toISOString()
       };
@@ -3128,15 +4630,25 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         fabricBCost: body.fabricBCost || {},
         fabricCCost: body.fabricCCost || {},
         accessories: body.accessories || [],
-        otherCosts: body.otherCosts || {},
+        itemizedCosts: body.itemizedCosts || generateDefaultItemizedCostsForStyle(styleRef, body.header?.garmentDescription || 'Knit T-Shirt', body.header?.buyer || 'ONLY'),
+        otherCosts: {
+          ...(body.otherCosts || {}),
+          totalFabricCostPerPc: computedTotals.totalFabricCostPerPc,
+          accessoriesPerPc: computedTotals.totalAccessoriesPerPc,
+          cmCuttingMakingPerPc: computedTotals.totalCmPerPc || body.otherCosts?.cmCuttingMakingPerPc || 0.92,
+          commercialOverheadPerPc: computedTotals.commercialOverheadPerPc,
+          profitPerPc: computedTotals.profitPerPc,
+          buyingCommissionPerPc: computedTotals.buyingCommissionPerPc,
+          totalGarmentPriceFobPerPc: computedTotals.finalFobPrice
+        },
         revisions: [
           {
             version: 1,
             revisedAt: dateFormatted,
             revisedBy: body.revisedBy || 'Merchandiser',
             reason: 'Initial creation',
-            fobPrice: Number(body.otherCosts?.totalGarmentPriceFobPerPc || 3.78),
-            changedValues: 'Initial cost sheet',
+            fobPrice: computedTotals.finalFobPrice || 3.78,
+            changedValues: 'Initial cost sheet with itemized breakdown',
             approvalStatus: body.approvalStatus || 'DRAFT'
           }
         ],
@@ -4119,6 +5631,503 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     return NextResponse.json({ success: true, workflow: wf, message: `Job ${jobNo} workflow stage updated.` });
+  }
+
+  // POST /api/planning/ta/auto-plan
+  if (pathStr === 'planning/ta/auto-plan') {
+    const body = await request.json().catch(() => ({}));
+    const orderId = String(body.orderId || '');
+    const allJobs = [...memoryCreatedJobs, ...masterJobs];
+    const found =
+      allJobs.find((j: any) => String(j.id) === orderId || String(j.jobNo) === orderId || `s-${j.jobNo}` === orderId) ||
+      allJobs[0];
+    const styleId = `s-${found.jobNo}`;
+    const { plan, rows, criticalPathAnalysis } = buildPlanAndRowsForMasterJob(found, body.overrides || {});
+    memoryTaPlansByStyle[styleId] = plan;
+    return NextResponse.json({
+      orderId: found.id,
+      jobNo: found.jobNo,
+      plans: [
+        {
+          styleId,
+          styleNo: found.styleNo,
+          plan,
+          rows,
+          criticalPathAnalysis,
+        },
+      ],
+    });
+  }
+
+  // POST /api/planning/ta
+  if (pathStr === 'planning/ta') {
+    const body = await request.json().catch(() => ({}));
+    const orderId = String(body.orderId || '');
+    const approve = Boolean(body.approve);
+    const styles = Array.isArray(body.styles) ? body.styles : [];
+    const allJobs = [...memoryCreatedJobs, ...masterJobs];
+    const found =
+      allJobs.find((j: any) => String(j.id) === orderId || String(j.jobNo) === orderId || `s-${j.jobNo}` === orderId) ||
+      allJobs[0];
+    const now = new Date().toISOString();
+
+    for (const s of styles) {
+      const styleId = s.styleId || `s-${found.jobNo}`;
+      const existing = memoryTaPlansByStyle[styleId] || buildPlanAndRowsForMasterJob(found).plan;
+      const wasApproved = existing.taStatus === 'APPROVED';
+
+      if (approve && (!s.fileHandoverDate || !s.trimsInhouseDate || !s.sewingStartDate)) {
+        return NextResponse.json(
+          { message: 'Approval requires File Handover Date, Trims In-house Date, and Sewing Start Date for every style.' },
+          { status: 400 }
+        );
+      }
+
+      const dateKeys = [
+        'orderConfirmDate',
+        'yarnInhouseDate',
+        'knittingStart',
+        'knittingEnd',
+        'dyeingFinishingStart',
+        'dyeingFinishingEnd',
+        'trimsInhouseDate',
+        'ppSampleApprovalDate',
+        'fileHandoverDate',
+        'ppMeetingDate',
+        'testCuttingDate',
+        'cuttingStart',
+        'cuttingEnd',
+        'sewingStartDate',
+        'sewingEndDate',
+        'finishingStart',
+        'finishingEnd',
+        'finalInspection',
+        'exFactoryDate',
+        'cargoClosingDate',
+      ];
+      const changedFields = dateKeys
+        .filter((k) => s[k] !== undefined && String(s[k] || '') !== String(existing[k] || ''))
+        .map((k) => ({ field: k, from: existing[k] || null, to: s[k] || null }));
+
+      const replanReason = String(s.replanReason || body.replanReason || '').trim();
+      if (wasApproved && changedFields.length > 0 && !replanReason) {
+        return NextResponse.json(
+          {
+            message: `Style ${found.styleNo}: Re-plan reason is required when modifying planned dates on an already-approved T&A.`,
+          },
+          { status: 400 }
+        );
+      }
+
+      const prevVer = Number(existing.taVersion || 1);
+      const nextVer = wasApproved && changedFields.length > 0 ? prevVer + 1 : prevVer;
+      const replanHistory = Array.isArray(existing.replanHistory) ? [...existing.replanHistory] : [];
+      if (wasApproved && changedFields.length > 0) {
+        replanHistory.unshift({
+          version: nextVer,
+          replannedAt: now,
+          replannedBy: 'Shahidul Alam (Central Planning)',
+          reason: replanReason,
+          changedFields,
+        });
+      }
+
+      const taHistory = Array.isArray(existing.taHistory) ? [...existing.taHistory] : [];
+      taHistory.unshift({
+        changedAt: now,
+        changedBy: 'Shahidul Alam',
+        action: approve ? (wasApproved ? 'REPLAN_APPROVED' : 'APPROVED') : wasApproved ? 'REPLANNED' : 'SAVED',
+        version: nextVer,
+        replanReason: replanReason || null,
+        capacityOverride: Boolean(body.capacityOverride),
+        overrideReason: body.overrideReason || null,
+      });
+
+      memoryTaPlansByStyle[styleId] = {
+        ...existing,
+        ...s,
+        taStatus: approve ? 'APPROVED' : s.taStatus || existing.taStatus || 'DRAFT',
+        taVersion: nextVer,
+        replanHistory,
+        taHistory,
+        updatedAt: now,
+      };
+
+      // Gap 10: Auto-create downstream section due-date tasks on T&A approval
+      if (approve) {
+        const curPlan = memoryTaPlansByStyle[styleId];
+        const secTasks = [
+          { section: 'KNITTING', module: 'knitting', title: `Complete Greige Knitting (${found.styleNo})`, dueDate: curPlan.knittingEnd },
+          { section: 'DYEING', module: 'dyeing', title: `Complete Fabric Dyeing & Finishing (${found.styleNo})`, dueDate: curPlan.dyeingFinishingEnd },
+          { section: 'TRIMS_STORE', module: 'merchandising', title: `Ensure 100% Bulk Trims In-House (${found.styleNo})`, dueDate: curPlan.trimsInhouseDate },
+          { section: 'CAD', module: 'cad', title: `Complete Production File Handover & PP Gate (${found.styleNo})`, dueDate: curPlan.fileHandoverDate },
+          { section: 'CUTTING', module: 'cutting', title: `Execute Test Cutting / Size Set (${found.styleNo})`, dueDate: curPlan.testCuttingDate },
+          { section: 'CUTTING', module: 'cutting', title: `Start Bulk Cutting (${found.styleNo})`, dueDate: curPlan.cuttingStart },
+          { section: 'SEWING', module: 'sewing', title: `Start Bulk Sewing Input (${found.styleNo})`, dueDate: curPlan.sewingStartDate },
+          { section: 'FINISHING', module: 'finishing', title: `Complete FRI & Export Packing (${found.styleNo})`, dueDate: curPlan.finalInspection },
+        ];
+        for (const st of secTasks) {
+          if (!st.dueDate) continue;
+          const exists = memoryTasks.some((t: any) => String(t.jobNo) === String(found.jobNo) && t.title === st.title);
+          if (!exists) {
+            memoryTasks.unshift({
+              id: `task-${found.jobNo}-${st.section}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+              orderId: found.id,
+              jobNo: found.jobNo,
+              title: st.title,
+              section: st.section,
+              department: st.section,
+              module: st.module,
+              dueDate: st.dueDate,
+              status: 'OPEN',
+              priority: 'HIGH',
+              order: { id: found.id, jobNo: found.jobNo, buyer: { name: found.buyer, code: found.buyer } },
+            });
+          }
+        }
+      }
+    }
+
+    const styleId = `s-${found.jobNo}`;
+    const { plan, rows, criticalPathAnalysis } = buildPlanAndRowsForMasterJob(found);
+    return NextResponse.json({
+      order: {
+        id: found.id,
+        jobNo: found.jobNo,
+        buyer: { id: `b-${found.buyer}`, name: found.buyer, code: found.buyer },
+        factory: { id: 'f-nfl', name: 'Northern Fashions Ltd.', code: found.lineAllocation?.factory || 'NFL' },
+        styles: [
+          {
+            id: styleId,
+            styleNo: found.styleNo,
+            itemDescription: found.itemDescription,
+            quantity: found.orderQty,
+            ccd: plan.cargoClosingDate,
+            purchaseOrders: [
+              { id: `po-${found.jobNo}-1`, poNumber: `PO-${found.jobNo}-A`, ccd: plan.cargoClosingDate, shipmentDate: plan.exFactoryDate, totalQty: Math.round(Number(found.orderQty || 5000) * 0.6) },
+              { id: `po-${found.jobNo}-2`, poNumber: `PO-${found.jobNo}-B`, ccd: pAddDays(plan.cargoClosingDate, 4), shipmentDate: pAddDays(plan.exFactoryDate, 4), totalQty: Math.round(Number(found.orderQty || 5000) * 0.4) },
+            ],
+            taPlan: plan,
+            autoPlan: plan,
+            taRows: rows,
+            criticalPathAnalysis,
+            taHistory: plan.taHistory || [],
+            replanHistory: plan.replanHistory || [],
+          },
+        ],
+      },
+      capacityCheck: { overloadedSlots: [] },
+    });
+  }
+
+  // POST /api/planning/gantt
+  if (pathStr === 'planning/gantt') {
+    const body = await request.json().catch(() => ({}));
+    const styleId = String(body.styleId || '');
+    const prev = memoryGanttPlansByStyle[styleId] || {};
+    const hist = Array.isArray(prev.ganttHistory) ? [...prev.ganttHistory] : [];
+    hist.unshift({
+      changedAt: new Date().toISOString(),
+      changedBy: 'Shahidul Alam',
+      before: { ...prev },
+      after: { ...prev, ...body },
+    });
+    memoryGanttPlansByStyle[styleId] = {
+      ...prev,
+      ...body,
+      finishDate: body.endDate || body.finishDate || prev.finishDate,
+      ganttHistory: hist.slice(0, 30),
+    };
+    return NextResponse.json({ success: true, ganttPlan: memoryGanttPlansByStyle[styleId] });
+  }
+
+  // POST /api/planning/gantt/undo
+  if (pathStr === 'planning/gantt/undo') {
+    const body = await request.json().catch(() => ({}));
+    const styleId = String(body.styleId || '');
+    const prev = memoryGanttPlansByStyle[styleId] || {};
+    const hist = Array.isArray(prev.ganttHistory) ? [...prev.ganttHistory] : [];
+    if (!hist.length) {
+      return NextResponse.json({ message: 'No previous Gantt revision to undo.' }, { status: 400 });
+    }
+    const last = hist.shift();
+    memoryGanttPlansByStyle[styleId] = {
+      ...(last?.before || {}),
+      ganttHistory: hist,
+    };
+    return NextResponse.json({ restored: true, styleId, ganttPlan: memoryGanttPlansByStyle[styleId] });
+  }
+
+  // POST /api/planning/gantt/approve
+  if (pathStr === 'planning/gantt/approve') {
+    const body = await request.json().catch(() => ({}));
+    const now = new Date().toISOString();
+    // Validate that no edited Gantt style has 0 machineQty unless capacityOverride is set
+    const unconfigured: string[] = [];
+    for (const [stId, gp] of Object.entries(memoryGanttPlansByStyle)) {
+      if (gp && gp.machineQty !== undefined && Number(gp.machineQty) <= 0) {
+        unconfigured.push(`Style ${stId} on line ${gp.lineCode || gp.lineId || 'UNASSIGNED'} has 0 machine count configured`);
+      }
+    }
+    if (unconfigured.length > 0 && !body.capacityOverride) {
+      return NextResponse.json(
+        { message: `Floor machine capacity validation failed: ${unconfigured.join('; ')}`, overloads: unconfigured },
+        { status: 400 }
+      );
+    }
+
+    let approvedCount = 0;
+    for (const j of masterJobs.slice(0, 40)) {
+      const styleId = `s-${j.jobNo}`;
+      const prev = memoryGanttPlansByStyle[styleId] || {};
+      const versions = Array.isArray(prev.ganttVersions) ? [...prev.ganttVersions] : [];
+      const versionNo = versions.length + 1;
+      const versionLabel = body.versionLabel || `v${versionNo}`;
+      versions.unshift({
+        versionNo,
+        versionLabel,
+        approvedAt: now,
+        approvedBy: 'Shahidul Alam',
+      });
+      memoryGanttPlansByStyle[styleId] = {
+        ...prev,
+        status: 'APPROVED',
+        versionLabel,
+        ganttVersions: versions,
+      };
+      approvedCount++;
+    }
+    return NextResponse.json({
+      approved: true,
+      approvedCount,
+      approvedAt: now,
+      overloads: unconfigured,
+      capacityOverride: Boolean(body.capacityOverride),
+    });
+  }
+
+  // POST /api/planning/capacity/policies
+  if (pathStr === 'planning/capacity/policies') {
+    const body = await request.json().catch(() => ({}));
+    memoryCapacityPolicies = {
+      ...memoryCapacityPolicies,
+      weeklyHoliday: 'SUNDAY',
+      holidays: Array.isArray(body.holidays) ? body.holidays : memoryCapacityPolicies.holidays,
+      bulk: { ...memoryCapacityPolicies.bulk, ...(body.bulk || {}) },
+      sample: { ...memoryCapacityPolicies.sample, ...(body.sample || {}) },
+      thresholds: { ...memoryCapacityPolicies.thresholds, ...(body.thresholds || {}) },
+      updatedAt: new Date().toISOString(),
+    };
+    return NextResponse.json(memoryCapacityPolicies);
+  }
+
+  // POST /api/planning/subcontract
+  if (pathStr === 'planning/subcontract') {
+    const body = await request.json().catch(() => ({}));
+    const sentQty = Number(body.sentQty || 0);
+    const receivedQty = Number(body.receivedQty || 0);
+    const rejectQty = Number(body.rejectQty || 0);
+    const balanceQty = Math.max(0, sentQty - receivedQty - rejectQty);
+    const entry = {
+      styleId: body.styleId || `s-${body.jobNo || '48085'}`,
+      jobNo: body.jobNo || String(body.styleId || '').replace(/^s-/, '') || '48085',
+      styleNo: body.styleNo || '13251506',
+      buyer: body.buyer || 'ONLY',
+      workOrderNo: body.workOrderNo || `WO-${Date.now().toString().slice(-4)}`,
+      processType: body.processType || 'PRINTING',
+      vendorName: body.vendorName || 'Apex Screen Print Ltd.',
+      sentDate: body.sentDate || new Date().toISOString().slice(0, 10),
+      sentQty,
+      expectedReturnDate: body.expectedReturnDate || '',
+      receivedDate: body.receivedDate || '',
+      receivedQty,
+      rejectQty,
+      balanceQty,
+      challanNo: body.challanNo || '',
+      status: body.status || (balanceQty === 0 && sentQty > 0 ? 'COMPLETED' : receivedQty > 0 ? 'PARTIAL_RECEIVED' : 'SENT_TO_VENDOR'),
+      remarks: body.remarks || '',
+      updatedAt: new Date().toISOString(),
+    };
+    const idx = memorySubcontractOrders.findIndex((x) => x.workOrderNo === entry.workOrderNo);
+    if (idx >= 0) memorySubcontractOrders[idx] = { ...memorySubcontractOrders[idx], ...entry };
+    else memorySubcontractOrders.unshift(entry);
+    return NextResponse.json({ success: true, item: entry, subcontractOrders: memorySubcontractOrders });
+  }
+
+  // POST /api/planning/fabric-trims-followup
+  if (pathStr === 'planning/fabric-trims-followup') {
+    const body = await request.json().catch(() => ({}));
+    const styleId = body.styleId || `s-${body.jobNo || '48085'}`;
+    const reqKg = Number(body.fabricRequiredKg || 2500);
+    const recvKg = Number(body.fabricReceivedKg || 0);
+    const balKg = Math.max(0, reqKg - recvKg);
+    const item = {
+      ...(memoryFabricTrimsFollowup[styleId] || {}),
+      ...body,
+      styleId,
+      fabricRequiredKg: reqKg,
+      fabricReceivedKg: recvKg,
+      fabricBalanceKg: balKg,
+      fabricStatus: body.fabricStatus || (balKg === 0 ? 'IN_HOUSE' : recvKg > 0 ? 'PARTIAL' : 'PENDING'),
+      updatedAt: new Date().toISOString(),
+    };
+    memoryFabricTrimsFollowup[styleId] = item;
+    return NextResponse.json({ success: true, fabricTrimsFollowup: item });
+  }
+
+  // POST /api/planning/sample-planning
+  if (pathStr === 'planning/sample-planning') {
+    const body = await request.json().catch(() => ({}));
+    const styleId = body.styleId || `s-${body.jobNo || '48085'}`;
+    const entry = {
+      styleId,
+      jobNo: body.jobNo || styleId.replace(/^s-/, ''),
+      styleNo: body.styleNo || '13251506',
+      buyer: body.buyer || 'ONLY',
+      sampleType: body.sampleType || 'PP Sample',
+      sampleQty: Number(body.sampleQty || 18),
+      yarnDate: body.yarnDate || '',
+      knittingDate: body.knittingDate || '',
+      dyeingDate: body.dyeingDate || '',
+      sewingDate: body.sewingDate || '',
+      targetDispatchDate: body.targetDispatchDate || '',
+      actualDispatchDate: body.actualDispatchDate || '',
+      awbNo: body.awbNo || '',
+      status: body.status || (body.actualDispatchDate ? 'DISPATCHED' : 'IN_PROGRESS'),
+      remarks: body.remarks || '',
+    };
+    const idx = memorySamplePlanningList.findIndex((x) => x.styleId === styleId && x.sampleType === entry.sampleType);
+    if (idx >= 0) memorySamplePlanningList[idx] = { ...memorySamplePlanningList[idx], ...entry };
+    else memorySamplePlanningList.unshift(entry);
+    return NextResponse.json({ success: true, samplePlanning: entry, list: memorySamplePlanningList });
+  }
+
+  // POST /api/planning/shipment-meetings
+  if (pathStr === 'planning/shipment-meetings') {
+    const body = await request.json().catch(() => ({}));
+    const mtg = {
+      id: body.id || `mtg-${Date.now()}`,
+      meetingDate: body.meetingDate || new Date().toISOString().slice(0, 10),
+      jobNo: body.jobNo || '48085',
+      styleNo: body.styleNo || '13251506',
+      buyer: body.buyer || 'ONLY',
+      orderQty: Number(body.orderQty || 9000),
+      ccd: body.ccd || '2026-10-25',
+      projectedDate: body.projectedDate || '2026-10-24',
+      bottleneck: body.bottleneck || '',
+      decision: body.decision || '',
+      revisedCommitmentDate: body.revisedCommitmentDate || body.ccd || '',
+      recordedBy: 'Shahidul Alam (Head of Planning)',
+      actionItems: Array.isArray(body.actionItems) ? body.actionItems : [],
+    };
+    const idx = memoryShipmentMeetings.findIndex((m) => m.id === mtg.id);
+    if (idx >= 0) memoryShipmentMeetings[idx] = mtg;
+    else memoryShipmentMeetings.unshift(mtg);
+    return NextResponse.json({ success: true, meeting: mtg, meetings: memoryShipmentMeetings });
+  }
+
+  // POST /api/planning/approvals/jobs/:styleId/signed-copy
+  if (pathStr.startsWith('planning/approvals/jobs/') && pathStr.endsWith('/signed-copy')) {
+    const styleId = path[3];
+    const body = await request.json().catch(() => ({}));
+    const prev = memoryApprovalStatesByStyle[styleId] || {};
+    const hist = Array.isArray(prev.history) ? [...prev.history] : [];
+    const signedCopy = {
+      fabricSheet: Boolean(body.fabricSheet ?? true),
+      tna: Boolean(body.tna ?? true),
+      referenceNo: body.referenceNo || `PHY-SIG-${styleId.replace(/^s-/, '')}`,
+      receivedBy: body.receivedBy || 'Shahidul Alam (Planning Head)',
+      receivedAt: new Date().toISOString(),
+      remarks: body.remarks || 'Physical signed Fabric Sheet & T&A copy verified',
+    };
+    hist.unshift({
+      id: `h-${Date.now()}`,
+      action: 'SIGNED_COPY_RECORDED',
+      actor: signedCopy.receivedBy,
+      timestamp: signedCopy.receivedAt,
+      remarks: `${signedCopy.remarks} (Ref: ${signedCopy.referenceNo})`,
+    });
+    memoryApprovalStatesByStyle[styleId] = {
+      ...prev,
+      status: signedCopy.fabricSheet && signedCopy.tna ? 'SIGNED_COPY_RECORDED' : prev.status || 'PENDING_REVIEW',
+      signedCopy,
+      history: hist,
+    };
+    return NextResponse.json({ success: true, styleId, state: memoryApprovalStatesByStyle[styleId] });
+  }
+
+  // POST /api/planning/approvals/jobs/:styleId/return
+  if (pathStr.startsWith('planning/approvals/jobs/') && pathStr.endsWith('/return')) {
+    const styleId = path[3];
+    const body = await request.json().catch(() => ({}));
+    if (!String(body.reason || '').trim()) {
+      return NextResponse.json({ message: 'Return reason is required when returning a job to Merchandising.' }, { status: 400 });
+    }
+    const prev = memoryApprovalStatesByStyle[styleId] || {};
+    const hist = Array.isArray(prev.history) ? [...prev.history] : [];
+    const ts = new Date().toISOString();
+    hist.unshift({
+      id: `h-${Date.now()}`,
+      action: 'RETURNED_TO_MERCHANDISER',
+      actor: 'Shahidul Alam (Planning Head)',
+      timestamp: ts,
+      remarks: `Returned (${body.target || 'BOTH'}): ${body.reason}`,
+    });
+    memoryApprovalStatesByStyle[styleId] = {
+      ...prev,
+      status: 'RETURNED',
+      returnReason: body.reason,
+      history: hist,
+    };
+    return NextResponse.json({ success: true, styleId, state: memoryApprovalStatesByStyle[styleId] });
+  }
+
+  // POST /api/planning/approvals/jobs/:styleId/release
+  if (pathStr.startsWith('planning/approvals/jobs/') && pathStr.endsWith('/release')) {
+    const styleId = path[3];
+    const body = await request.json().catch(() => ({}));
+    const prev = memoryApprovalStatesByStyle[styleId] || {};
+    const rows = Array.isArray(body.rows) ? body.rows : [];
+    const totalFinishKg = rows.reduce((s: number, r: any) => s + Number(r.finishKg || 0), 0);
+    const expectedFinishKg = Number(body.expectedFinishKg || totalFinishKg);
+    if (rows.length > 0 && Math.abs(totalFinishKg - expectedFinishKg) > 1 && !body.overrideMismatch) {
+      return NextResponse.json(
+        {
+          message: `Release finish Kg (${totalFinishKg} Kg) does not match Fabric Order Sheet total (${expectedFinishKg} Kg) within ±1.0 Kg tolerance.`,
+        },
+        { status: 400 }
+      );
+    }
+    const ts = new Date().toISOString();
+    const hist = Array.isArray(prev.history) ? [...prev.history] : [];
+    hist.unshift({
+      id: `h-${Date.now()}`,
+      action: body.approveOnly ? 'PLANNING_APPROVED' : 'RELEASED_TO_KNITTING',
+      actor: 'Shahidul Alam (Planning Head)',
+      timestamp: ts,
+      remarks: body.remarks || (body.approveOnly ? 'Approved by Central Planning' : `Released ${rows.length} colour × part rows (${totalFinishKg} Finish Kg) to Knitting & Dyeing`),
+    });
+    memoryApprovalStatesByStyle[styleId] = {
+      ...prev,
+      status: body.approveOnly ? 'APPROVED' : 'RELEASED_TO_KNITTING',
+      releaseRows: rows.length > 0 ? rows : prev.releaseRows,
+      releasedAt: ts,
+      releasedBy: 'Shahidul Alam',
+      history: hist,
+    };
+    return NextResponse.json({ success: true, styleId, state: memoryApprovalStatesByStyle[styleId] });
+  }
+
+  // POST /api/planning/approvals/sample-orders/:formId/tna
+  if (pathStr.startsWith('planning/approvals/sample-orders/') && pathStr.endsWith('/tna')) {
+    const formId = path[3];
+    const body = await request.json().catch(() => ({}));
+    memorySampleTnaByForm[formId] = {
+      ...(memorySampleTnaByForm[formId] || {}),
+      ...body,
+      updatedAt: new Date().toISOString(),
+    };
+    return NextResponse.json({ success: true, formId, tna: memorySampleTnaByForm[formId] });
   }
 
   if (pathStr === 'demo/load') {

@@ -233,8 +233,17 @@ function JobsListContent() {
     cardIndexParam !== null && cardIndexParam !== undefined ? parseInt(cardIndexParam, 10) : null
   );
 
+  // Pre-production filtered jobs based on search query
+  const filteredPreProdJobs = useMemo(() => {
+    if (!searchQuery?.trim()) return preProdJobs;
+    return preProdJobs.filter((j: any) => matchesJobSearch(j, searchQuery));
+  }, [preProdJobs, searchQuery]);
+
   React.useEffect(() => {
-    if (qParam) setSearchQuery(qParam);
+    if (qParam) {
+      setSearchQuery(qParam);
+      setMyJobsOnly(false); // URL search should search across all factory jobs
+    }
   }, [qParam]);
 
   React.useEffect(() => {
@@ -254,8 +263,12 @@ function JobsListContent() {
       if (myJobsOnly && currentUser) {
         const uMerch = (currentUser.merchandiserName || '').toLowerCase();
         const rMerch = (r.merchandiser || '').toLowerCase();
-        if (uMerch && !rMerch.includes(uMerch) && !r.isNewlyImported) {
-          return false;
+        const hasSearch = Boolean(searchQuery && searchQuery.trim());
+        // Only enforce strict personal scope when NOT actively searching for a specific job/style/buyer
+        if (!hasSearch) {
+          if (uMerch && !rMerch.includes(uMerch) && !r.isNewlyImported) {
+            return false;
+          }
         }
       }
 
@@ -617,7 +630,7 @@ function JobsListContent() {
 
           {/* Pre-Production Stage Division Table */}
           <div className="panel" style={{ padding: '16px', border: '1px solid #cbd5e1' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
               <div>
                 <h3 style={{ fontSize: '15px', fontWeight: 900, color: '#0f172a', margin: 0 }}>
                   Pre-Production Workflow & Stage Control (Central Planning Follow-up)
@@ -625,6 +638,32 @@ function JobsListContent() {
                 <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0' }}>
                   Tracks from PO import to Sewing Line Plan & Planning Approval. Approval dispatches auto-copy to Knitting & Dyeing.
                 </p>
+              </div>
+
+              {/* Pre-Production Search Box */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', background: '#ffffff', border: '1.5px solid #2563eb', borderRadius: '6px', padding: '3px 8px', gap: '6px' }}>
+                  <span style={{ fontSize: '12px', color: '#64748b' }}>🔍</span>
+                  <input
+                    type="text"
+                    placeholder="Search Job #, Style, Buyer..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{ border: 'none', outline: 'none', fontSize: '12px', fontWeight: 600, width: '220px', color: '#0f172a' }}
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      style={{ border: 'none', background: 'transparent', color: '#94a3b8', cursor: 'pointer', fontSize: '11px', fontWeight: 800 }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+                <span style={{ fontSize: '11px', background: '#dbeafe', color: '#1e40af', padding: '3px 8px', borderRadius: '4px', fontWeight: 800 }}>
+                  {filteredPreProdJobs.length} Jobs
+                </span>
               </div>
             </div>
 
@@ -645,7 +684,25 @@ function JobsListContent() {
                   </tr>
                 </thead>
                 <tbody>
-                  {preProdJobs.slice(0, 30).map((j: any) => {
+                  {filteredPreProdJobs.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} style={{ textAlign: 'center', padding: '30px', color: '#64748b' }}>
+                        No pre-production jobs found matching &ldquo;{searchQuery}&rdquo;.
+                        {searchQuery && (
+                          <div style={{ marginTop: '6px' }}>
+                            <button
+                              type="button"
+                              onClick={() => setSearchQuery('')}
+                              style={{ border: 'none', background: 'transparent', color: '#2563eb', fontWeight: 700, cursor: 'pointer', fontSize: '11.5px' }}
+                            >
+                              Clear search query
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredPreProdJobs.slice(0, 50).map((j: any) => {
                     const wf = j.workflow || {};
                     const isFosApproved = wf.fabricOrderSheet?.status === 'PLANNING_APPROVED';
                     const isFosPrepared = wf.fabricOrderSheet?.status === 'PREPARED_OK' || isFosApproved;
@@ -734,7 +791,7 @@ function JobsListContent() {
                         </td>
                       </tr>
                     );
-                  })}
+                  }))}
                 </tbody>
               </table>
             </div>
@@ -1139,19 +1196,43 @@ function JobsListContent() {
               {pageRows.length === 0 && (
                 <tr>
                   <td colSpan={11} style={{ textAlign: 'center', padding: '36px', color: '#94a3b8' }}>
-                    <div style={{ fontSize: '24px', marginBottom: '4px' }}>🔍</div>
-                    <div style={{ fontWeight: 700, color: '#475569' }}>No records found matching your filters</div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setWeekFilter('ALL'); setMonthFilter('ALL'); setFloorUnitFilter('ALL');
-                        setMerchFilter('ALL'); setPresentStatusFilter('ALL'); setBuyerFilter('ALL');
-                        setSearchQuery(''); setActiveCardIndex(null); setCurrentPage(1);
-                      }}
-                      style={{ marginTop: '8px', border: 0, background: 'transparent', color: '#2563eb', fontWeight: 700, cursor: 'pointer', fontSize: '12px' }}
-                    >
-                      Reset all filters
-                    </button>
+                    <div style={{ fontSize: '26px', marginBottom: '6px' }}>🔍</div>
+                    <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '14px' }}>
+                      {searchQuery ? `No jobs found matching "${searchQuery}"` : 'No records found matching your active filters'}
+                    </div>
+                    {myJobsOnly && (
+                      <div style={{ marginTop: '10px' }}>
+                        <button
+                          type="button"
+                          onClick={() => { setMyJobsOnly(false); }}
+                          style={{
+                            background: '#0f172a',
+                            color: '#ffffff',
+                            padding: '6px 14px',
+                            borderRadius: '6px',
+                            border: 'none',
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                            fontSize: '12px'
+                          }}
+                        >
+                          🌐 Expand Search across all 2,000+ Factory Jobs
+                        </button>
+                      </div>
+                    )}
+                    <div style={{ marginTop: '10px' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setWeekFilter('ALL'); setMonthFilter('ALL'); setFloorUnitFilter('ALL');
+                          setMerchFilter('ALL'); setPresentStatusFilter('ALL'); setBuyerFilter('ALL');
+                          setSearchQuery(''); setActiveCardIndex(null); setCurrentPage(1); setMyJobsOnly(false);
+                        }}
+                        style={{ border: 0, background: 'transparent', color: '#2563eb', fontWeight: 800, cursor: 'pointer', fontSize: '12.5px' }}
+                      >
+                        Reset all filters &amp; view all jobs →
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )}

@@ -49,11 +49,12 @@ export const MODULE_GROUPS: ModuleGroup[] = [
     label: 'Central Planning',
     overviewSlug: 'central-planning',
     items: [
-      { slug: 'ta', name: 'Time & Action Planning', short: 'TA', status: 'Foundation', description: 'Central Planning issued T&A with capacity-aware dates and milestone tracking.' },
-      { slug: 'capacity', name: 'Capacity Balancing', short: 'CB', status: 'Foundation', description: 'Slot-wise and section-wise capacity heatmaps for bulk and sample.' },
-      { slug: 'sewing-planning', name: 'Sewing Line Planning', short: 'LP', status: 'Foundation', description: 'Drag-and-drop Gantt, line allocation, plan revision and plan vs actual.' },
-      { slug: 'subcontract', name: 'Subcontract / Outside Process Planning', short: 'SC', status: 'Planned', description: 'Outside process planning, work-order dependency and return follow-up.' },
-      { slug: 'lead-time-history', name: 'Lead Time & Delivery History', short: 'LT', status: 'Foundation', description: 'Job-wise planned vs actual section lead time, production delivery, variance days and delay reason.' },
+      { slug: 'ta', name: 'Time & Action & Control Tower', short: 'TA', status: 'Live', description: 'Backward T&A engine, Plan vs Actual, Critical Path & Shipment Risk, Fabric/Trims Weekly Follow-up, Sample Planning & Shipment Meetings.' },
+      { slug: 'planning-approvals', name: 'Approval Desk & Release', short: 'AD', status: 'Live', description: 'Physical signed copy verification, Merchandiser return, and colour × part Finish/Grey Kg release to Knitting & Dyeing.' },
+      { slug: 'capacity', name: 'Capacity & Holiday Calendar', short: 'CB', status: 'Live', description: '10-day slot-wise and section-wise capacity heatmaps with Sunday weekly holiday and Eid/closure holiday calendar.' },
+      { slug: 'sewing-planning', name: 'Sewing Line Gantt', short: 'LP', status: 'Live', description: 'Drag-and-drop Gantt, line allocation, machine capacity validation, baseline versioning and plan vs actual.' },
+      { slug: 'subcontract', name: 'Subcontract / Print-Emb Follow-up', short: 'SC', status: 'Live', description: 'Outside Print, Embroidery & Wash work order dispatch, challan receive, reject and balance follow-up.' },
+      { slug: 'lead-time-history', name: 'Lead Time & Delivery History', short: 'LT', status: 'Live', description: 'Job-wise planned vs actual section lead time, production delivery, variance days and delay reason.' },
     ],
   },
   {

@@ -9,6 +9,7 @@ const FINISHED = '/finished-fabric/index.html'; // Finished Fabric Store (protot
 const DYE = '/dyeing/index.html'; // Dyeing & Finishing desk (Finish Fabric Plan & Execution), served by /api/dyeing
 
 const nextConfig: NextConfig = {
+  distDir: process.env.NEXT_BUILD_DIR || '.next',
   output: 'standalone',
   async redirects() {
     return [
@@ -23,7 +24,6 @@ const nextConfig: NextConfig = {
       { source: '/modules/dyeing', destination: DYE, permanent: false },
       { source: '/dyeing', destination: DYE, permanent: false },
       { source: '/modules/greige-store', destination: GREIGE, permanent: false },
-      { source: '/modules/finished-fabric', destination: FINISHED, permanent: false },
     ];
   },
 };

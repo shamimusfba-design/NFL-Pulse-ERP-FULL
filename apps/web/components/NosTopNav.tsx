@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { api } from '../lib/api';
+import { displayJobNo } from '../lib/display';
 
 export type MerchandiserPersona = {
   id: string;
@@ -152,8 +154,43 @@ export function useActivePersona() {
 
 export default function NosTopNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const { persona, switchPersona } = useActivePersona();
   const [showPersonaMenu, setShowPersonaMenu] = useState(false);
+  const [jobQuery, setJobQuery] = useState('');
+  const [searchHits, setSearchHits] = useState<any[]>([]);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const q = jobQuery.trim();
+    if (!q) {
+      setSearchHits([]);
+      setShowSearchDropdown(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      api(`/jobs?q=${encodeURIComponent(q)}`)
+        .then((res: any) => {
+          if (res?.jobs && Array.isArray(res.jobs)) {
+            setSearchHits(res.jobs.slice(0, 6));
+            setShowSearchDropdown(true);
+          }
+        })
+        .catch(() => {});
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [jobQuery]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setShowSearchDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
     <header className="nos-top-nav">
@@ -188,6 +225,155 @@ export default function NosTopNav() {
 
         {/* Right Tools & Role Authorization Persona */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          {/* Quick Global Job Search in Merchandising Nav */}
+          <div ref={searchContainerRef} style={{ position: 'relative' }}>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const clean = jobQuery.trim();
+                if (!clean) return;
+                if (searchHits.length > 0) {
+                  router.push(`/jobs/${encodeURIComponent(searchHits[0].jobNo)}`);
+                } else {
+                  router.push(`/jobs?q=${encodeURIComponent(clean)}`);
+                }
+                setShowSearchDropdown(false);
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid rgba(255, 255, 255, 0.18)',
+                borderRadius: '7px',
+                padding: '4px 9px',
+                gap: '6px'
+              }}
+            >
+              <span style={{ fontSize: '12px', color: '#94a3b8' }}>🔍</span>
+              <input
+                type="text"
+                value={jobQuery}
+                onChange={(e) => setJobQuery(e.target.value)}
+                onFocus={() => { if (searchHits.length > 0) setShowSearchDropdown(true); }}
+                placeholder="Search Job # (e.g. 22041, 48093)..."
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  outline: 'none',
+                  color: '#ffffff',
+                  fontSize: '11.5px',
+                  fontWeight: 600,
+                  width: '185px'
+                }}
+              />
+              {jobQuery && (
+                <button
+                  type="button"
+                  onClick={() => { setJobQuery(''); setSearchHits([]); setShowSearchDropdown(false); }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#94a3b8',
+                    cursor: 'pointer',
+                    fontSize: '11px',
+                    padding: '0 2px'
+                  }}
+                >
+                  ✕
+                </button>
+              )}
+              <button
+                type="submit"
+                style={{
+                  background: '#2563eb',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  padding: '2px 7px',
+                  fontSize: '10.5px',
+                  fontWeight: 800,
+                  cursor: 'pointer'
+                }}
+              >
+                GO
+              </button>
+            </form>
+
+            {/* Live Search Results Dropdown */}
+            {showSearchDropdown && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  marginTop: '5px',
+                  width: '340px',
+                  background: '#0f172a',
+                  border: '1px solid #334155',
+                  borderRadius: '8px',
+                  boxShadow: '0 12px 30px rgba(0,0,0,0.5)',
+                  zIndex: 200,
+                  overflow: 'hidden'
+                }}
+              >
+                <div style={{ padding: '6px 10px', background: '#1e293b', borderBottom: '1px solid #334155', fontSize: '10.5px', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Matching Jobs ({searchHits.length})</span>
+                  <span>Enter to Open</span>
+                </div>
+                {searchHits.map((h: any) => (
+                  <Link
+                    key={h.id || h.jobNo}
+                    href={`/jobs/${encodeURIComponent(h.jobNo)}`}
+                    onClick={() => setShowSearchDropdown(false)}
+                    style={{
+                      display: 'block',
+                      padding: '8px 10px',
+                      borderBottom: '1px solid rgba(255,255,255,0.06)',
+                      textDecoration: 'none',
+                      color: '#ffffff',
+                      transition: 'background 0.1s ease'
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <strong style={{ fontSize: '12.5px', color: '#60a5fa' }}>{displayJobNo(h.jobNo, h.buyer)}</strong>
+                      <span style={{ fontSize: '10px', fontWeight: 800, color: '#6ee7b7', background: 'rgba(16, 185, 129, 0.2)', padding: '1px 5px', borderRadius: '3px' }}>{h.buyer}</span>
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#cbd5e1', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      Style: <strong>{h.styleNo}</strong> · {h.itemDescription || 'Garment'}
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#94a3b8', display: 'flex', justifyContent: 'space-between', marginTop: '2px' }}>
+                      <span>Qty: {Number(h.orderQty || 0).toLocaleString()} pcs</span>
+                      <span>Merch: <strong style={{ color: '#e2e8f0' }}>{h.merchandiser || 'Md. Jahidul Islam'}</strong></span>
+                    </div>
+                  </Link>
+                ))}
+                {searchHits.length === 0 && (
+                  <div style={{ padding: '12px', fontSize: '12px', color: '#94a3b8', textAlign: 'center' }}>
+                    No matching jobs found for &quot;{jobQuery}&quot;.
+                  </div>
+                )}
+                <Link
+                  href={`/jobs?q=${encodeURIComponent(jobQuery.trim())}`}
+                  onClick={() => setShowSearchDropdown(false)}
+                  style={{
+                    display: 'block',
+                    padding: '8px',
+                    textAlign: 'center',
+                    background: '#1e293b',
+                    fontSize: '11.5px',
+                    fontWeight: 800,
+                    color: '#38bdf8',
+                    textDecoration: 'none'
+                  }}
+                >
+                  View All Results in All Jobs Register →
+                </Link>
+              </div>
+            )}
+          </div>
+
           {/* Active Merchandiser Scope Badge */}
           <div style={{ position: 'relative' }}>
             <button
