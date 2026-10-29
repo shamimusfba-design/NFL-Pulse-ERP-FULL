@@ -28,7 +28,7 @@ Must match: fabric type **and** construction (1x1 / 2x2 / 2x1 rib, loop back, br
 - Starting stock: `npm run prisma:reuse-seed -w @nfl/api` — 688 finished-fabric lines (166,233 kg) from the Jan-26 Fabric Store Inventory closing stock and 88 greige "useable excess" lines from the 28.09.26 greige report.
 
 ## Store pages
-`/greige-store/index.html` and `/finished-fabric/index.html` (old `/modules/...` links redirect). They are the approved layout with real report data, and still keep entries in the browser (demo records are labelled and can be cleared). Connecting them to this API and to knitting / dyeing deliveries is the next step.
+`/greige-store/index.html` and `/finished-fabric/index.html` are connected to `/api/stores` (STORES_API.md). Sending fabric to reuse there creates / updates the `ReuseStock` row (`ref` GREIGE:G:n / FINISHED:F:n, source LEFT_AFTER_DYEING / LEFT_AFTER_CUTTING).
 
 ## Tests
 - `npm run test:reuse -w @nfl/api` — 4 rule tests.

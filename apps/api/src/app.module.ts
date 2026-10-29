@@ -30,10 +30,11 @@ import { KnitQualityController } from './yarn-knit/knit-quality.controller';
 import { PlanningApprovalsController } from './planning-approvals/planning-approvals.controller';
 import { DyeingController } from './dyeing/dyeing.controller';
 import { ReuseController } from './reuse/reuse.controller';
+import { StoresController } from './stores/stores.controller';
 
 @Module({
   imports: [ConfigModule.forRoot({ isGlobal: true }), JwtModule.register({})],
-  controllers: [HealthController, AuthController, MastersController, OrdersController, OrderImportController, TasksController, DomainController, UploadsController, CadController, PlanningController, DemoController, IeController, ImportsController, DocumentsController, ProductionLotsController, MaintenanceController, IeOperationsController, BulkMerchController, SampleMerchController, CostController, YarnController, KnittingController, KnitQualityController, PlanningApprovalsController, DyeingController, ReuseController],
+  controllers: [HealthController, AuthController, MastersController, OrdersController, OrderImportController, TasksController, DomainController, UploadsController, CadController, PlanningController, DemoController, IeController, ImportsController, DocumentsController, ProductionLotsController, MaintenanceController, IeOperationsController, BulkMerchController, SampleMerchController, CostController, YarnController, KnittingController, KnitQualityController, PlanningApprovalsController, DyeingController, ReuseController, StoresController],
   providers: [PrismaService, AuthService, JwtAuthGuard, OrderImportService, PdfTextService],
 })
 export class AppModule {}

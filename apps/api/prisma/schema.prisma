@@ -1506,6 +1506,7 @@ model ReuseStock {
   reservedKg   Decimal            @default(0) @db.Decimal(14, 2)
   location     String?
   status       String             @default("AVAILABLE") // AVAILABLE | USED | NOT_REUSABLE
+  ref          String?            @unique // set when a store desk sends fabric to reuse, e.g. GREIGE:G:123
   note         String?
   createdById  String?
   createdAt    DateTime           @default(now())
@@ -1526,4 +1527,39 @@ model ReuseReservation {
   createdById  String
   createdAt    DateTime   @default(now())
   @@index([styleId])
+}
+
+// ---------- Greige Fabric Store + Finished Fabric Store desks ----------
+// Lines from the store reports (greige: G report lines + A advance/excess rows; finished: F lines + R inventory leftovers).
+// `sourceRow` is the line's position in its report file and is the key the pages use, so re-seeding keeps references.
+model StoreLine {
+  id        String   @id @default(cuid())
+  desk      String   // GREIGE | FINISHED
+  kind      String   // G | A | F | R
+  sourceRow Int
+  data      Json
+  createdAt DateTime @default(now())
+  @@unique([desk, kind, sourceRow])
+}
+
+// Working records of a store desk (receipts, delivery requests, issues, reuse …), versioned per slice like the dyeing desk.
+model StoreSlice {
+  desk        String
+  slice       String
+  data        Json
+  version     Int      @default(0)
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+  @@id([desk, slice])
+}
+
+model StoreChange {
+  id        String   @id @default(cuid())
+  desk      String
+  slice     String
+  summary   String
+  actorId   String
+  actorName String?
+  createdAt DateTime @default(now())
+  @@index([desk, createdAt])
 }

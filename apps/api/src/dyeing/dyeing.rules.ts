@@ -1,3 +1,4 @@
+import { canon } from '../stores/stores.rules';
 /**
  * Dyeing & Finishing desk — pure rules (no database) so they can be unit-tested.
  *
@@ -65,7 +66,7 @@ export type Ctx = {
 };
 
 const has = (c: Ctx, roles: string[]) => roles.some((r) => c.ui.includes(r));
-const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+const same = (a: unknown, b: unknown) => canon(a) === canon(b); // key order free: PostgreSQL JSONB does not keep key order
 const isDay = (d: unknown) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : NaN);
 const changedKeys = (o: any, n: any) => [...new Set([...Object.keys(o || {}), ...Object.keys(n || {})])].filter((k) => !same(o?.[k], n?.[k]));
