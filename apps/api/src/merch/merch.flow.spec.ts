@@ -31,6 +31,7 @@ function fakeDb() {
       },
       update: async ({ where, data }: any) => { const r = style.merchSteps.find((x: any) => x.step === where.styleId_step.step); Object.assign(r, data); return r; },
     },
+    reuseStock: { findMany: async () => [] }, // no reuse fabric in this flow
     task: {
       create: async ({ data }: any) => { tasks.push({ ...data, status: 'PENDING' }); },
       findFirst: async ({ where }: any) => tasks.find((t) => t.title.startsWith(where.title.startsWith)) || null,

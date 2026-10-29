@@ -1484,3 +1484,46 @@ model DyeingChange {
   createdAt DateTime @default(now())
   @@index([slice, createdAt])
 }
+
+// ---------- Fabric reuse (greige + finished fabric stores) ----------
+// Left-over fabric that can be used for another job: greige left after a job's batches are dyed,
+// finished fabric left after cutting OK + shipment, the useable excess list, and old inventory closing stock.
+model ReuseStock {
+  id           String             @id @default(cuid())
+  store        String             // GREIGE | FINISHED
+  source       String             // INVENTORY_JAN26 | GREIGE_EXCESS_LIST | LEFT_AFTER_DYEING | LEFT_AFTER_CUTTING
+  buyer        String?
+  jobNo        String?
+  fabric       String
+  fabricType   String
+  construction String
+  composition  String?
+  gsm          Int?
+  dia          String?
+  colour       String?
+  process      String?
+  kg           Decimal            @db.Decimal(14, 2)
+  reservedKg   Decimal            @default(0) @db.Decimal(14, 2)
+  location     String?
+  status       String             @default("AVAILABLE") // AVAILABLE | USED | NOT_REUSABLE
+  note         String?
+  createdById  String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  reservations ReuseReservation[]
+  @@index([store, fabricType])
+  @@index([status])
+}
+
+model ReuseReservation {
+  id           String     @id @default(cuid())
+  reuseStockId String
+  stock        ReuseStock @relation(fields: [reuseStockId], references: [id])
+  styleId      String
+  jobNo        String
+  kg           Decimal    @db.Decimal(14, 2)
+  status       String     @default("HELD") // HELD | RELEASED
+  createdById  String
+  createdAt    DateTime   @default(now())
+  @@index([styleId])
+}

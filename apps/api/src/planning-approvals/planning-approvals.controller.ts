@@ -6,6 +6,7 @@ import { PrismaService } from '../prisma.service';
 import { actorOf, audit, changeStep, loadStyle, requireRole, stepDataOf, stepMapOf, STYLE_INCLUDE, toJson } from '../merch/merch.common';
 import { canAct, PLANNING_ROLES } from '../merch/merch.rules';
 import { OD_TYPES, SAMPLE_PLANNING, sampleQuotaUse } from '../merch/sample-merch.controller';
+import { styleReuse } from '../reuse/reuse.controller';
 import { ageDays, checkRelease, colourQty, DocKey, nextAction, releaseDraft, ReleaseLine } from './pa.rules';
 
 const DOCS = ['FABRIC_SHEET', 'TNA'];
@@ -19,6 +20,9 @@ class LineDto {
   @IsString() @MaxLength(120) fabric!: string; @IsOptional() @IsString() @MaxLength(20) gsm?: string; @IsOptional() @IsString() @MaxLength(120) composition?: string;
   @Type(() => Number) @IsNumber() @Min(0.1) finishKg!: number;
 }
+class HoldDto { @IsOptional() @IsString() @MaxLength(300) note?: string; }
+class ReserveDto { @IsString() stockId!: string; @Type(() => Number) @IsNumber() @Min(0.1) kg!: number; }
+class DecisionDto { @IsIn(['USE', 'NOT_SUITABLE']) decision!: 'USE' | 'NOT_SUITABLE'; @IsOptional() @IsString() @MaxLength(300) note?: string; @IsOptional() @IsArray() @ValidateNested({ each: true }) @Type(() => ReserveDto) reserve?: ReserveDto[]; }
 class ReleaseDto { @IsArray() @ValidateNested({ each: true }) @Type(() => LineDto) lines!: LineDto[]; }
 
 const ymd = (d?: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
@@ -63,6 +67,7 @@ export class PlanningApprovalsController {
           tna: { status: st.TNA, generated: !!td.rows, signedCopy: td.signedCopy || null, returned: td.returned || null },
           descriptions: { item: s.planningItemDesc, printEmbType: s.printEmbType, printEmb: s.printEmbDesc, missing: flags.descMissing },
           release: fd.release || null, nextAction: action, ageDays: ageDays(waitingSince, now),
+          reuse: fd.reuse ? { matchKg: fd.reuse.matchKg, matchedLines: fd.reuse.matchedLines, hold: fd.reuseHold || null } : null,
         });
       }
       out.bulk.sort((x, y) => y.ageDays - x.ageDays);
@@ -157,6 +162,58 @@ export class PlanningApprovalsController {
       await tx.merchStep.update({ where: { styleId_step: { styleId: id, step: 'FABRIC_SHEET' } }, data: { data: toJson({ ...fd, release }) } });
       await audit(tx, a, 'PLANNING_RELEASED_TO_KNITTING', 'STYLE', id, null, { release, lines });
       return { release, knitJobId: job.id, warnings: chk.warnings };
+    });
+  }
+
+  /** Reuse fabric that matches this job (fresh), the hold state and reservations. */
+  @Get('jobs/:styleId/reuse')
+  async reuse(@Param('styleId') id: string, @Req() req: any) {
+    const a = actorOf(req); requireRole(a, [...PLANNING_ROLES, 'MERCH_BULK', 'MERCH_BOTH', 'MERCH_HEAD'], 'Reuse check');
+    const s = await loadStyle(this.prisma, id);
+    const fd = stepDataOf(s.merchSteps, 'FABRIC_SHEET');
+    const reservations = await this.prisma.reuseReservation.findMany({ where: { styleId: id }, include: { stock: true } });
+    return { ...(await styleReuse(this.prisma, s)), hold: fd.reuseHold || null, reservations };
+  }
+
+  /** Planning holds the fabric order sheet approval until the matching reuse fabric is checked physically. */
+  @Put('jobs/:styleId/reuse-hold')
+  async reuseHold(@Param('styleId') id: string, @Body() dto: HoldDto, @Req() req: any) {
+    const a = actorOf(req); requireRole(a, PLANNING_ROLES, 'Reuse hold');
+    return this.prisma.$transaction(async (tx) => {
+      const s = await loadStyle(tx, id);
+      if (stepMapOf(s.merchSteps).FABRIC_SHEET !== 'SENT') throw new BadRequestException('No fabric order sheet is waiting with Planning');
+      const fd = stepDataOf(s.merchSteps, 'FABRIC_SHEET');
+      const reuseHold = { open: true, note: dto.note || null, byId: a.id, by: a.name || null, at: new Date().toISOString() };
+      await tx.merchStep.update({ where: { styleId_step: { styleId: id, step: 'FABRIC_SHEET' } }, data: { data: toJson({ ...fd, reuseHold }) } });
+      await tx.task.create({ data: { title: `Check reuse fabric physically: ${s.order.jobNo} / ${s.styleNo}${dto.note ? ' — ' + dto.note : ''}`.slice(0, 250), module: 'MERCH', entityType: 'STYLE', entityId: id, orderId: s.orderId, ownerUserId: s.order.merchandiserId || s.order.createdById } });
+      await audit(tx, a, 'PLANNING_REUSE_HOLD', 'STYLE', id, fd.reuseHold || null, reuseHold);
+      return { reuseHold };
+    });
+  }
+
+  /** After the physical check: use the stock (reserve kg so it is not given to another job) or mark it not suitable. */
+  @Post('jobs/:styleId/reuse-decision')
+  async reuseDecision(@Param('styleId') id: string, @Body() dto: DecisionDto, @Req() req: any) {
+    const a = actorOf(req); requireRole(a, PLANNING_ROLES, 'Reuse decision');
+    if (dto.decision === 'NOT_SUITABLE' && !String(dto.note || '').trim()) throw new BadRequestException('Write why the reuse fabric is not suitable (shade, handfeel, GSM …)');
+    if (dto.decision === 'USE' && !(dto.reserve || []).length) throw new BadRequestException('Choose the reuse stock and kg to use');
+    return this.prisma.$transaction(async (tx) => {
+      const s = await loadStyle(tx, id);
+      const fd = stepDataOf(s.merchSteps, 'FABRIC_SHEET');
+      let reservedKg = 0;
+      for (const r of dto.reserve || []) {
+        const st = await tx.reuseStock.findUnique({ where: { id: r.stockId } });
+        if (!st || st.status !== 'AVAILABLE') throw new BadRequestException('Reuse stock is no longer available');
+        const avail = num(st.kg) - num(st.reservedKg);
+        if (r.kg > avail + 0.01) throw new BadRequestException(`Only ${Math.round(avail)} kg left on that reuse stock`);
+        await tx.reuseStock.update({ where: { id: st.id }, data: { reservedKg: { increment: r.kg } } });
+        await tx.reuseReservation.create({ data: { reuseStockId: st.id, styleId: id, jobNo: s.order.jobNo, kg: r.kg, createdById: a.id } });
+        reservedKg += r.kg;
+      }
+      const reuseHold = { ...(fd.reuseHold || {}), open: false, decision: dto.decision, decisionNote: dto.note || null, reservedKg, decidedById: a.id, decidedBy: a.name || null, decidedAt: new Date().toISOString() };
+      await tx.merchStep.update({ where: { styleId_step: { styleId: id, step: 'FABRIC_SHEET' } }, data: { data: toJson({ ...fd, reuseHold }) } });
+      await audit(tx, a, 'PLANNING_REUSE_DECISION', 'STYLE', id, fd.reuseHold || null, reuseHold);
+      return { reuseHold };
     });
   }
 
