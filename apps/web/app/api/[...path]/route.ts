@@ -17,7 +17,7 @@ const knittingExecution = knittingExecutionMasterRaw as any;
 // ---------- Paths served by the NestJS API (apps/api) ----------
 // These are forwarded unchanged (method, body, Authorization header) instead of being answered by the mock data below.
 // Set NEST_API_URL when the API does not run on this machine at the default port.
-const NEST_PREFIXES = ['dyeing/'];
+const NEST_PREFIXES = ['dyeing/', 'stores/', 'reuse/'];
 const NEST_API_URL = (process.env.NEST_API_URL || 'http://127.0.0.1:4000/api').replace(/\/$/, '');
 function isNestPath(pathStr: string) { return NEST_PREFIXES.some((p) => pathStr.startsWith(p)); }
 async function proxyToNest(request: NextRequest, pathStr: string) {

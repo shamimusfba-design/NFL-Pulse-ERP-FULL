@@ -163,6 +163,25 @@ tbody tr{cursor:pointer}tbody tr:hover td{background:var(--sel)}
 #printarea{display:none}
 @media print{body.printing>*:not(#printarea){display:none!important}body.printing #printarea{display:block}body{background:#fff;color:#000}#printarea{font:12px Arial,sans-serif;color:#000}#printarea table{border-collapse:collapse;width:100%;margin:6px 0}#printarea th,#printarea td{border:1px solid #555;padding:3px 5px;color:#000;background:#fff;position:static}#printarea .bc{border:1.5px solid #000;padding:8px;margin:0 0 12px;page-break-inside:avoid}#printarea .pb{page-break-before:always}}
 @media (prefers-reduced-motion:reduce){.drawer,.toast{transition:none}}
+.subtabs{flex-wrap:wrap}
+.hf{border:0;background:none;color:var(--ink-2);cursor:pointer;font-size:11px;padding:0 2px;margin-left:2px;border-radius:3px}
+.hf:hover,.hf.on{background:var(--indigo);color:#fff}
+:root[data-theme="dark"] .hf.on{color:#0f141b}
+.hfpop{position:fixed;z-index:70;width:260px;background:var(--paper);border:1px solid var(--line);border-radius:6px;box-shadow:0 6px 24px rgba(0,0,0,.18);padding:8px;font-size:12.5px}
+.hfpop .hfq{width:100%;border:1px solid var(--line);border-radius:4px;padding:4px 6px;background:var(--paper)}
+.hfpop .hfl{max-height:260px;overflow:auto;margin:6px 0;display:flex;flex-direction:column;gap:2px}
+.hfpop .hfl label{display:flex;gap:6px;align-items:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hfpop .hfb{display:flex;gap:4px;justify-content:flex-end}
+.demob{background:var(--thread)!important;color:#1b1b1b!important;border:0!important;border-radius:12px!important;font-size:12px;font-weight:600}
+.cbx{position:relative;display:inline-block}
+.cbx input{border:1px solid var(--line);background:var(--paper);border-radius:5px;padding:3px 6px;font-size:13px;width:150px}
+.cbx input::placeholder{color:var(--ink-2)}
+.cbx .cbl{display:none;position:absolute;z-index:60;top:100%;left:0;min-width:100%;max-width:320px;max-height:280px;overflow:auto;background:var(--paper);border:1px solid var(--line);border-radius:5px;box-shadow:0 6px 20px rgba(0,0,0,.16);margin-top:2px}
+.cbx .cbl.on{display:block}
+.cbx .cbo{padding:4px 8px;font-size:12.5px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cbx .cbo.hi,.cbx .cbo:hover{background:var(--sel)}
+.cbx .cbo.all{color:var(--ink-2);border-bottom:1px solid var(--line)}
+.cbx .cbo.none{color:var(--ink-2);cursor:default}
 </style>
 </head>
 <body>
@@ -242,6 +261,38 @@ tbody tr{cursor:pointer}tbody tr:hover td{background:var(--sel)}
 <div class="modal-bg" id="mbg"><div class="modal" role="dialog"><header><b id="m-title"></b><button class="btn sm" id="m-close">Close</button></header><div class="body" id="m-body"></div><footer id="m-foot"></footer></div></div>
 <div class="tip" id="tip"></div>
 
+<script>/* ---------- type-ahead filters (NOS rule: every filter with many values) ----------
+   Any <select> inside a .filters bar becomes an empty search box: typing suggests the matching values,
+   values that START with the typed text first ("b" → buyers starting with b, "bl" → Black …). Empty box = all. */
+(function(){
+  const rank=(t,q)=>{t=t.toLowerCase();if(!q)return 2;if(t.startsWith(q))return 0;if(t.split(/[\s\-/(]+/).some(w=>w.startsWith(q)))return 1;return t.includes(q)?2:9};
+  function enhance(sel){
+    if(sel.dataset.combo||sel.disabled||sel.options.length<2)return;sel.dataset.combo='1';
+    const all=sel.options[0].value===''?sel.options[0].text:'All';
+    const wrap=document.createElement('span');wrap.className='cbx';
+    const inp=document.createElement('input');inp.type='search';inp.placeholder=all;inp.autocomplete='off';inp.setAttribute('aria-label',all);
+    const cur=sel.options[sel.selectedIndex];if(cur&&cur.value!=='')inp.value=cur.text;
+    if(sel.title)inp.title=sel.title;
+    const list=document.createElement('div');list.className='cbl';
+    sel.style.display='none';sel.parentNode.insertBefore(wrap,sel);wrap.appendChild(inp);wrap.appendChild(list);wrap.appendChild(sel);
+    let hi=0,items=[];
+    const pick=o=>{sel.value=o?o.value:'';inp.value=o&&o.value!==''?o.text:'';list.classList.remove('on');sel.dispatchEvent(new Event('change',{bubbles:true}))};
+    const draw=()=>{const q=inp.value.trim().toLowerCase();
+      items=[...sel.options].filter(o=>o.value!=='').map(o=>({o,r:rank(o.text,q)})).filter(x=>x.r<9).sort((a,b)=>a.r-b.r).slice(0,200).map(x=>x.o);
+      hi=0;list.innerHTML=(q?'':`<div class="cbo all" data-k="-1">${all}</div>`)+items.map((o,k)=>`<div class="cbo" data-k="${k}">${o.text.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</div>`).join('')+(items.length?'':'<div class="cbo none">No match</div>');
+      list.classList.add('on');mark()};
+    const mark=()=>list.querySelectorAll('.cbo[data-k]').forEach(e=>e.classList.toggle('hi',+e.dataset.k===hi));
+    inp.addEventListener('focus',()=>{inp.select();draw()});inp.addEventListener('input',draw);
+    inp.addEventListener('keydown',e=>{if(e.key==='ArrowDown'){hi=Math.min(items.length-1,hi+1);mark();e.preventDefault()}else if(e.key==='ArrowUp'){hi=Math.max(0,hi-1);mark();e.preventDefault()}
+      else if(e.key==='Enter'){e.preventDefault();inp.value.trim()?pick(items[hi]):pick(null)}else if(e.key==='Escape'){list.classList.remove('on');inp.blur()}});
+    list.addEventListener('mousedown',e=>{const d=e.target.closest('.cbo[data-k]');if(!d)return;e.preventDefault();const k=+d.dataset.k;pick(k<0?null:items[k])});
+    inp.addEventListener('blur',()=>setTimeout(()=>{list.classList.remove('on');const c=sel.options[sel.selectedIndex];if(!inp.value.trim()&&sel.value!=='')pick(null);else inp.value=c&&c.value!==''?c.text:''},120));
+  }
+  const run=()=>document.querySelectorAll('.filters select').forEach(enhance);
+  new MutationObserver(run).observe(document.documentElement,{childList:true,subtree:true});
+  document.addEventListener('DOMContentLoaded',run);run();
+})();
+</script>
 <script>
 function APP(BOOT){
 const ROWS=BOOT.lines;
@@ -476,12 +527,32 @@ function ffBase(){
    &&(!FF.wip||(FF.wip==='dsub'?(r.sq&&!r.dt&&!r.rd):(r[FF.wip]&&r[FF.wip][3]&&!r[FF.wip][6])))
    &&(!q||(r.j+' '+(r.st||'')+' '+(r.c||'')+' '+(r.it||'')+' '+(r.bn||'')).toLowerCase().includes(q)));
 }
+
+/* ---------- Excel-style ▾ filter in the table header (replaces the blank filter row) ---------- */
+function dyCell(id,r){if(id==='fz')return jobCode(r);const c=COLS[id];let t;if(c.f)t=String(c.f(r)??'');else{const d=document.createElement('div');d.innerHTML=c.v(r);t=d.textContent.trim()}return t||'(blank)'}
+function dyHF(btn,id){
+  document.querySelectorAll('.hfpop').forEach(x=>x.remove());
+  const L0=ffBase(),cnt=new Map();L0.forEach(r=>{const v=dyCell(id,r);cnt.set(v,(cnt.get(v)||0)+1)});
+  const vals=[...cnt.keys()].sort((a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true}));
+  const cur=FF.cf[id] instanceof Set?FF.cf[id]:null;const sel=new Set(cur&&cur.size?cur:vals);
+  const pop=document.createElement('div');pop.className='hfpop';pop.innerHTML=`<input class="hfq" placeholder="Search"><div class="hfl"></div><div class="hfb"><button class="btn sm" data-a="all">All</button><button class="btn sm" data-a="clear">Clear filter</button><button class="btn sm pri" data-a="ok">OK</button></div>`;
+  document.body.appendChild(pop);const rc=btn.getBoundingClientRect();pop.style.top=(rc.bottom+4)+'px';pop.style.left=Math.max(6,Math.min(innerWidth-270,rc.left-200))+'px';
+  const draw=()=>{const q=pop.querySelector('.hfq').value.toLowerCase();const rk=v=>{v=String(v).toLowerCase();return !q?0:v.startsWith(q)?0:v.split(/[\s\-/(]+/).some(w=>w.startsWith(q))?1:2};
+    const show=vals.filter(v=>String(v).toLowerCase().includes(q)).sort((a,b)=>rk(a)-rk(b)).slice(0,400);
+    pop.querySelector('.hfl').innerHTML=show.map(v=>`<label><input type="checkbox" value="${esc(v)}" ${sel.has(v)?'checked':''}> ${esc(v)} <span class="muted">(${cnt.get(v)})</span></label>`).join('')+(vals.length>400?'<div class="muted">Type to search more…</div>':'');
+    pop.querySelectorAll('.hfl input').forEach(x=>x.onchange=()=>{x.checked?sel.add(x.value):sel.delete(x.value)})};
+  pop.querySelector('.hfq').oninput=()=>{const q=pop.querySelector('.hfq').value.toLowerCase();if(q){sel.clear();vals.filter(v=>String(v).toLowerCase().includes(q)).forEach(v=>sel.add(v))}draw()};
+  draw();pop.querySelector('.hfq').focus();
+  pop.onclick=e=>{const a=e.target.dataset?.a;if(!a)return;if(a==='all'){vals.forEach(v=>sel.add(v));draw();return}
+    if(a==='clear')delete FF.cf[id];else FF.cf[id]=sel.size===vals.length?null:new Set(sel);pop.remove();FF.page=0;renderFF(false)};
+  setTimeout(()=>document.addEventListener('mousedown',function h(ev){if(!pop.contains(ev.target)&&ev.target!==btn){pop.remove();document.removeEventListener('mousedown',h)}}),0);
+}
 function ffFiltered(){
   let L=ffBase();
   const cf=Object.entries(FF.cf).filter(([,v])=>v);
   if(cf.length&&FF.mode==='colour'){
     const tmp=document.createElement('div');
-    L=L.filter(r=>cf.every(([id,v])=>{let t;if(id==='fz')t=jobCode(r);else{const c=COLS[id];t=c.f?String(c.f(r)??''):(tmp.innerHTML=c.v(r),tmp.textContent)}return t.toLowerCase().includes(v.toLowerCase())}));
+    L=L.filter(r=>cf.every(([id,v])=>{if(v instanceof Set)return !v.size||v.has(dyCell(id,r));let t;if(id==='fz')t=jobCode(r);else{const c=COLS[id];t=c.f?String(c.f(r)??''):(tmp.innerHTML=c.v(r),tmp.textContent)}return t.toLowerCase().includes(String(v).toLowerCase())}));
   }
   return L;
 }
@@ -628,13 +699,14 @@ function ffTable(L){
   let gh='<tr class="gh"><th class="fz"></th>',last=null,span=0;const gs=[];
   vis.forEach(c=>{if(c.g!==last){if(last)gs.push([last,span]);last=c.g;span=0}span++});if(last)gs.push([last,span]);
   gh+=gs.map(([g,s])=>`<th colspan="${s}">${esc(g)}</th>`).join('')+'</tr>';
-  const ch='<tr class="ch"><th class="fz">Buyer-Job</th>'+vis.map(c=>`<th class="${c.n?'n':''}">${esc(c.h)}</th>`).join('')+'</tr>';
-  const fr='<tr class="fr"><th class="fz"><input size="1" data-cf="fz" value="'+esc(FF.cf.fz||'')+'"></th>'+vis.map(c=>`<th><input size="1" data-cf="${c.id}" value="${esc(FF.cf[c.id]||'')}"></th>`).join('')+'</tr>';
+  const hon=id=>FF.cf[id]&&(FF.cf[id] instanceof Set?FF.cf[id].size:true)?'on':'';
+  const ch='<tr class="ch"><th class="fz">Buyer-Job <button class="hf '+hon('fz')+'" data-hf="fz" title="Filter">▾</button></th>'+vis.map(c=>`<th class="${c.n?'n':''}">${esc(c.h)} <button class="hf ${hon(c.id)}" data-hf="${c.id}" title="Filter">▾</button></th>`).join('')+'</tr>';
+  const fr='';
   let pj=null,band=0;
   const body=P.map(r=>{const jk=r.b+'|'+r.j;let cls='';if(jk!==pj){if(pj!==null){band^=1;cls='jb'}pj=jk}if(band)cls+=' jz';
     return `<tr data-i="${r.i}" class="${cls}"><td class="fz">${esc(jobCode(r))}</td>${vis.map(c=>`<td class="${c.n?'n':''}">${c.v(r)}</td>`).join('')}</tr>`}).join('');
   $('#ff-tw').innerHTML=`<table><thead>${gh}${ch}${fr}</thead><tbody>${body||`<tr><td class="empty" colspan="${vis.length+1}">No rows match these filters</td></tr>`}</tbody></table>`;
-  $('#ff-tw').querySelectorAll('[data-cf]').forEach(inp=>inp.addEventListener('change',()=>{FF.cf[inp.dataset.cf]=inp.value;FF.page=0;renderFF(false)}));
+  $('#ff-tw').querySelectorAll('.hf').forEach(b=>b.onclick=e=>{e.stopPropagation();dyHF(b,b.dataset.hf==='fz'?'fz':+b.dataset.hf)});
   $('#ff-tw').querySelectorAll('tbody tr[data-i]').forEach(tr=>tr.onclick=()=>openRow(+tr.dataset.i));
   pager(L.length,pages,'colour lines',()=>ffTable(L));stickyHead();
 }

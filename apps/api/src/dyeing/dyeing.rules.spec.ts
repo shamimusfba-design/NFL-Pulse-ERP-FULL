@@ -67,3 +67,10 @@ test('machine board: safe load, lab dip gate, issued cards locked', () => {
   assert.match(checkSlice('batches', [issued], [], ctx(['Dyeing Planner'], ok)).join(), /already issued/);
   assert.match(checkSlice('batches', [], [b], ctx(['Dyeing Production'], ok)).join(), /Dyeing Planner/);
 });
+
+test('records read back from PostgreSQL (keys re-ordered) are not seen as changed', () => {
+  const wo = { no: 'DWO-26-0001', route: 'In-house', fac: 'NFL', rows: ['L1'], st: 'Approved', apBy: 'Planning & Control' };
+  const fromDb = { apBy: 'Planning & Control', fac: 'NFL', no: 'DWO-26-0001', route: 'In-house', rows: ['L1'], st: 'Approved' };
+  const wo2 = { no: 'DWO-26-0002', route: 'Subcontract', fac: 'Newage', rows: ['L2'], st: 'Awaiting approval' };
+  assert.deepEqual(checkSlice('wos', [fromDb], [wo, wo2], ctx(['Dyeing Planner'])), []);
+});
