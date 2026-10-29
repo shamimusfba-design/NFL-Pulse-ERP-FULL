@@ -8,7 +8,7 @@ import {
   computeCriticalPathAndRisk,
   buildSectionTasksForApprovedTa,
   validateGanttFloorCapacity,
-} from './planning.rules.ts';
+} from './planning.rules';
 
 test('firstCcd picks the earliest CCD across multiple POs regardless of array order', () => {
   const style = {

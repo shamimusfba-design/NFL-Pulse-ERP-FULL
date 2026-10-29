@@ -476,7 +476,7 @@ export function buildSectionTasksForApprovedTa(order: { id: string; jobNo: strin
     entityType: string;
     entityId: string;
     dueDate: Date;
-    priority: 'HIGH' | 'MEDIUM';
+    priority: 'HIGH' | 'NORMAL';
   }> = [];
 
   for (const item of candidates) {
@@ -492,7 +492,7 @@ export function buildSectionTasksForApprovedTa(order: { id: string; jobNo: strin
       entityType: 'STYLE',
       entityId: style.id,
       dueDate: due,
-      priority: ['sewingStartDate', 'testCuttingDate', 'trimsInhouseDate', 'fileHandoverDate'].includes(item.dateField) ? 'HIGH' : 'MEDIUM',
+      priority: ['sewingStartDate', 'testCuttingDate', 'trimsInhouseDate', 'fileHandoverDate'].includes(item.dateField) ? 'HIGH' : 'NORMAL',
     });
   }
   return tasks;

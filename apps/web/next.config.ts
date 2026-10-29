@@ -24,6 +24,7 @@ const nextConfig: NextConfig = {
       { source: '/modules/dyeing', destination: DYE, permanent: false },
       { source: '/dyeing', destination: DYE, permanent: false },
       { source: '/modules/greige-store', destination: GREIGE, permanent: false },
+      { source: '/modules/finished-fabric', destination: FINISHED, permanent: false },
     ];
   },
 };
