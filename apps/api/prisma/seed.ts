@@ -16,7 +16,7 @@ async function main() {
     ['PLANNING', 'Central Planning'], ['IE', 'Industrial Production Engineering'], ['CAD', 'CAD / Pattern'], ['SAMPLE', 'Central Sample Department'],
     ['YARN_MANAGEMENT', 'Yarn Management'], ['PROCUREMENT', 'Procurement / SCM'], ['YARN_STORE', 'Yarn Store'], ['YARN_DYEING', 'Yarn Dyeing'], ['KNITTING', 'Knitting'], ['GREIGE_STORE', 'Greige Fabric Store'],
     ['KNIT_PLANNER', 'Knitting Planner'], ['KNIT_REPORTER', 'Knitting Reporter'], ['KNIT_INCHARGE', 'Knitting Production Incharge'], ['KNIT_QUALITY', 'Knitting Quality'],
-    ['DYEING', 'Dyeing'], ['LAB', 'Lab & Testing'], ['FABRIC_FINISHING', 'Fabric Finishing'], ['FINISHED_FABRIC_STORE', 'Finished Fabric Store'], ['CUTTING', 'Cutting'], ['PRINTING', 'Printing'], ['EMBROIDERY', 'Embroidery'],
+    ['DYEING', 'Dyeing'], ['DYEING_PLANNER', 'Dyeing Planner'], ['DYEING_LAB', 'Dyeing Lab'], ['LAB', 'Lab & Testing'], ['FABRIC_FINISHING', 'Fabric Finishing'], ['FINISHED_FABRIC_STORE', 'Finished Fabric Store'], ['CUTTING', 'Cutting'], ['PRINTING', 'Printing'], ['EMBROIDERY', 'Embroidery'],
     ['SEWING', 'Sewing'], ['FINISHING', 'Finishing & Packing'], ['QUALITY', 'Quality Management'], ['TRIMS_STORE', 'Trims & Accessories Store'], ['SHIPMENT', 'Shipment & Commercial'], ['MAINTENANCE', 'Maintenance & Engineering'],
   ];
   const roles = new Map<string, any>();
@@ -32,7 +32,7 @@ async function main() {
   await grant('PLANNING',['MASTER_READ','ORDER_READ','TASK_READ','TASK_UPDATE','PLANNING_WRITE','REPORT_READ']);
   await grant('IE',['MASTER_READ','ORDER_READ','TASK_READ','TASK_UPDATE','PRODUCTION_WRITE','REPORT_READ']);
   await grant('CAD',['MASTER_READ','ORDER_READ','TASK_READ','TASK_UPDATE','PRODUCTION_WRITE','REPORT_READ']);
-  for (const r of ['SAMPLE','YARN_MANAGEMENT','PROCUREMENT','YARN_STORE','YARN_DYEING','KNITTING','GREIGE_STORE','DYEING','LAB','FABRIC_FINISHING','FINISHED_FABRIC_STORE','CUTTING','PRINTING','EMBROIDERY','SEWING','FINISHING','TRIMS_STORE','SHIPMENT','MAINTENANCE','KNIT_PLANNER','KNIT_REPORTER','KNIT_INCHARGE']) await grant(r,['MASTER_READ','ORDER_READ','TASK_READ','TASK_UPDATE','PRODUCTION_WRITE','REPORT_READ']);
+  for (const r of ['SAMPLE','YARN_MANAGEMENT','PROCUREMENT','YARN_STORE','YARN_DYEING','KNITTING','GREIGE_STORE','DYEING','DYEING_PLANNER','DYEING_LAB','LAB','FABRIC_FINISHING','FINISHED_FABRIC_STORE','CUTTING','PRINTING','EMBROIDERY','SEWING','FINISHING','TRIMS_STORE','SHIPMENT','MAINTENANCE','KNIT_PLANNER','KNIT_REPORTER','KNIT_INCHARGE']) await grant(r,['MASTER_READ','ORDER_READ','TASK_READ','TASK_UPDATE','PRODUCTION_WRITE','REPORT_READ']);
   await grant('QUALITY',['MASTER_READ','ORDER_READ','TASK_READ','TASK_UPDATE','QUALITY_WRITE','REPORT_READ']);
   await grant('KNIT_QUALITY',['MASTER_READ','ORDER_READ','TASK_READ','TASK_UPDATE','QUALITY_WRITE','REPORT_READ']);
 
@@ -40,7 +40,7 @@ async function main() {
   const users: Array<[string,string,string]> = [
     ['admin@nfl.local','NFL Pulse Admin','ADMIN'], ['planning@nfl.local','Central Planning','PLANNING'], ['ie@nfl.local','IE User','IE'], ['cad@nfl.local','CAD User','CAD'], ['quality@nfl.local','Quality User','QUALITY'],
     ['merch@nfl.local','Bulk Merchandising User','MERCH_BULK'], ['samplemerch@nfl.local','Sample Merchandising User','MERCH_SAMPLE'], ['bothmerch@nfl.local','Sample + Bulk Merchandising User','MERCH_BOTH'], ['merchhead@nfl.local','Merchandising Head','MERCH_HEAD'], ['sample@nfl.local','Sample User','SAMPLE'], ['yarn@nfl.local','Yarn Management User','YARN_MANAGEMENT'], ['scm@nfl.local','Procurement / SCM User','PROCUREMENT'],
-    ['yarnstore@nfl.local','Yarn Store User','YARN_STORE'], ['yarndyeing@nfl.local','Yarn Dyeing User','YARN_DYEING'], ['knitting@nfl.local','Knitting User','KNITTING'], ['knitplan@nfl.local','Knitting Planner','KNIT_PLANNER'], ['knitreport@nfl.local','Knitting Reporter','KNIT_REPORTER'], ['knitincharge@nfl.local','Knitting Production Incharge','KNIT_INCHARGE'], ['knitqc@nfl.local','Knitting Quality','KNIT_QUALITY'], ['dyeing@nfl.local','Dyeing User','DYEING'],
+    ['yarnstore@nfl.local','Yarn Store User','YARN_STORE'], ['yarndyeing@nfl.local','Yarn Dyeing User','YARN_DYEING'], ['knitting@nfl.local','Knitting User','KNITTING'], ['knitplan@nfl.local','Knitting Planner','KNIT_PLANNER'], ['knitreport@nfl.local','Knitting Reporter','KNIT_REPORTER'], ['knitincharge@nfl.local','Knitting Production Incharge','KNIT_INCHARGE'], ['knitqc@nfl.local','Knitting Quality','KNIT_QUALITY'], ['dyeing@nfl.local','Dyeing User','DYEING'], ['dyeplan@nfl.local','Dyeing Planner','DYEING_PLANNER'], ['dyelab@nfl.local','Dyeing Lab User','DYEING_LAB'], ['greige@nfl.local','Greige Store User','GREIGE_STORE'], ['fabricqc@nfl.local','Fabric Finishing QC','FABRIC_FINISHING'], ['management@nfl.local','Management User','MANAGEMENT'],
     ['lab@nfl.local','Lab User','LAB'], ['cutting@nfl.local','Cutting User','CUTTING'], ['printing@nfl.local','Printing User','PRINTING'], ['embroidery@nfl.local','Embroidery User','EMBROIDERY'],
     ['sewing@nfl.local','Sewing User','SEWING'], ['finishing@nfl.local','Finishing User','FINISHING'], ['shipment@nfl.local','Shipment User','SHIPMENT'], ['maintenance@nfl.local','Maintenance User','MAINTENANCE'],
   ];

@@ -1444,3 +1444,43 @@ model KnitLossRule {
   fabricType String  @id
   lossPct    Decimal @db.Decimal(5, 2)
 }
+
+// ---------- Dyeing & Finishing workspace (Finish Fabric Plan & Execution) ----------
+// One row per job-colour line of the Finish Fabric Plan & Execution report. `data` keeps every report column
+// (compact keys, see docs/DYEING_API.md); month/slot/buyer/jobNo/colour are copied out for filtering.
+model DyeingLine {
+  id        String   @id @default(cuid())
+  source    String
+  sourceRow Int
+  month     String
+  slot      String?
+  buyer     String
+  jobNo     String
+  colour    String?
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([source, sourceRow])
+  @@index([month])
+  @@index([jobNo])
+}
+
+// Working records of the dyeing desk, one row per slice (entries, work orders, lab dips, tests, batches …).
+// Every save is checked by dyeing.rules.ts (roles, gates, machine load) and versioned to stop two users overwriting each other.
+model DyeingStateSlice {
+  slice       String   @id
+  data        Json
+  version     Int      @default(0)
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+}
+
+model DyeingChange {
+  id        String   @id @default(cuid())
+  slice     String
+  summary   String
+  actorId   String
+  actorName String?
+  createdAt DateTime @default(now())
+  @@index([slice, createdAt])
+}
