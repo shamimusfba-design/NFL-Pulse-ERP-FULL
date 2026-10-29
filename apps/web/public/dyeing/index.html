@@ -1,0 +1,1176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" id="vp" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NOS · Dyeing & Finishing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--indigo:#1f3a5f;--indigo-2:#2c5282;--chalk:#f4f6f9;--paper:#fff;--ink:#18202b;--ink-2:#5a667c;--line:#e1e5ec;--thread:#c9a227;--good:#2e7d4f;--warn:#a86a12;--bad:#c0392b;--info:#2c5282;--good-bg:#e6f4ec;--warn-bg:#fcf1d9;--bad-bg:#fbe8e5;--info-bg:#e7eef8;--chip:#edf0f5;--sel:#eef3fb;--freeze:#fbfcfe;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--indigo:#8fb3e6;--indigo-2:#9dbbe8;--chalk:#0f141b;--paper:#171f2a;--ink:#e8edf4;--ink-2:#9ba8bc;--line:#283241;--thread:#d9b64a;--good:#5cc08a;--warn:#e2b04f;--bad:#ef7a6c;--info:#8fb3e6;--good-bg:#15332a;--warn-bg:#382d13;--bad-bg:#3b1c19;--info-bg:#1a2a40;--chip:#212b38;--sel:#1c2a3d;--freeze:#1a2330;color-scheme:dark}}
+:root[data-theme="dark"]{--indigo:#8fb3e6;--indigo-2:#9dbbe8;--chalk:#0f141b;--paper:#171f2a;--ink:#e8edf4;--ink-2:#9ba8bc;--line:#283241;--thread:#d9b64a;--good:#5cc08a;--warn:#e2b04f;--bad:#ef7a6c;--info:#8fb3e6;--good-bg:#15332a;--warn-bg:#382d13;--bad-bg:#3b1c19;--info-bg:#1a2a40;--chip:#212b38;--sel:#1c2a3d;--freeze:#1a2330;color-scheme:dark}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--chalk);color:var(--ink);font:14px/1.45 "Hind Siliguri",system-ui,-apple-system,"Segoe UI",sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--thread);outline-offset:1px}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:var(--indigo);color:#fff;display:flex;align-items:center;gap:14px;padding:8px 16px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:31;background:var(--indigo)}
+:root[data-theme="dark"] .top{color:#0f141b}
+.brand{font-weight:700;letter-spacing:.2px;white-space:nowrap}.brand small{font-weight:500;opacity:.8;margin-left:6px}
+.top .sp{flex:1}
+.top select,.top button{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:4px 8px;color:inherit}
+.top select option{color:#18202b}
+.asof{font-size:12px;opacity:.85;white-space:nowrap}
+.sect{display:flex;gap:4px;padding:8px 16px 0;background:var(--paper);border-bottom:1px solid var(--line);position:sticky;top:calc(env(safe-area-inset-top,0px) + 44px);z-index:25;overflow-x:auto}
+.sect button{border:0;background:none;padding:8px 14px;border-bottom:3px solid transparent;font-weight:600;color:var(--ink-2);cursor:pointer;white-space:nowrap}
+.sect button.on{color:var(--ink);border-bottom-color:var(--thread)}
+.sect .cnt{display:inline-block;min-width:20px;margin-left:6px;padding:0 6px;border-radius:10px;background:var(--chip);font-size:12px;color:var(--ink-2)}
+main{padding:12px 16px 40px}
+.view{display:none}.view.on{display:block}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+#ff-cards{grid-template-columns:repeat(8,minmax(0,1fr))}
+.card.w2{grid-column:span 2}.card.w3{grid-column:span 3}
+.mini{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:10px;margin-top:2px}
+.mini>div{min-width:0}.mini .t{font-size:11.5px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mini .v{font-size:17px;font-weight:700;line-height:1.2;white-space:nowrap}.mini .s{font-size:11.5px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rr{width:100%;font-size:12px;border-collapse:collapse;margin-top:2px}.rr td,.rr th{border:0;padding:1px 4px;max-width:none;background:none!important;position:static;font-weight:400}.rr th{color:var(--ink-2);font-size:11px;text-align:right}.rr th:first-child,.rr td:first-child{text-align:left}.rr td{text-align:right;font-weight:600}
+@media (max-width:820px){#ff-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.card.w3,.card.w2{grid-column:span 2}}
+.chart h4 .tot{font-weight:400;color:var(--ink-2);font-size:11.5px;margin-left:4px}
+.hb.f{cursor:pointer}.hb.f:hover{background:var(--sel);border-radius:3px}
+.cols .g.f{cursor:pointer}
+.modal-bg{position:fixed;inset:0;background:rgba(10,15,25,.45);z-index:70;display:none;align-items:flex-start;justify-content:center;padding:calc(30px + env(safe-area-inset-top,0px)) 12px 20px}
+.modal-bg.on{display:flex}
+.modal{background:var(--paper);border:1px solid var(--line);border-radius:8px;width:min(860px,100%);max-height:calc(100vh - 60px);display:flex;flex-direction:column}
+.modal header{padding:10px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.modal .body{overflow:auto;padding:10px 14px}
+.modal footer{padding:8px 14px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.etable select{width:104px}.etable input,.etable select{min-width:78px;border:1px solid var(--line);border-radius:4px;padding:1px 4px;background:var(--paper);font-size:12.5px}
+.etable td,.etable th{max-width:none}
+.sug{border:1px solid var(--line);border-radius:6px;padding:6px 8px;margin:5px 0;display:flex;gap:8px;align-items:center;justify-content:space-between}
+.sug .why{font-size:12px;color:var(--ink-2)}
+.tip{position:fixed;z-index:80;background:var(--ink);color:var(--paper);font-size:12px;padding:6px 8px;border-radius:5px;pointer-events:none;max-width:280px;display:none;line-height:1.35}
+.blk.prop{border:1.5px dashed var(--ink-2)}.blk.ok{border:1.5px solid var(--good)}
+.pi[draggable=true]{cursor:grab}
+.card{background:var(--paper);border:1px solid var(--line);border-left:3px solid var(--line);border-radius:6px;padding:7px 10px;cursor:default}
+.card.click{cursor:pointer}.card.click:hover{background:var(--sel)}
+.card .l{font-size:12px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .n{font-size:20px;font-weight:700;line-height:1.2}
+.card .k{font-size:12px;color:var(--ink-2)}
+.card.good{border-left-color:var(--good)}.card.warn{border-left-color:var(--warn)}.card.bad{border-left-color:var(--bad)}.card.info{border-left-color:var(--info)}
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:8px;margin-top:8px}
+.chart{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:8px 10px;min-width:0}
+.chart h4{margin:0 0 6px;font-size:13px;font-weight:600}
+.legend{display:flex;gap:10px;font-size:11px;color:var(--ink-2);margin-bottom:4px;flex-wrap:wrap}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.hb{display:grid;grid-template-columns:minmax(80px,40%) minmax(40px,1fr) auto;gap:6px;align-items:center;font-size:12px;margin:3px 0}
+.hb .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hb .bar{height:12px;background:var(--chip);border-radius:3px;position:relative;overflow:hidden}
+.hb .bar span{position:absolute;top:0;bottom:0;left:0}
+.hb .v{white-space:nowrap;text-align:right;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.cols{display:flex;align-items:flex-end;gap:4px;height:120px;padding-top:6px;overflow-x:auto}
+.cols .g{display:flex;flex-direction:column;align-items:center;min-width:34px;flex:1}
+.cols .bars{display:flex;align-items:flex-end;gap:2px;height:100px}
+.cols .bars span{width:10px;border-radius:2px 2px 0 0}
+.cols .x{font-size:10px;color:var(--ink-2);white-space:nowrap;margin-top:2px}
+.filters{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:10px 0 6px;background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:6px 8px}
+.filters select,.filters input{border:1px solid var(--line);background:var(--paper);border-radius:5px;padding:3px 6px;font-size:13px;max-width:150px}
+.filters label{font-size:13px;color:var(--ink-2);display:flex;gap:4px;align-items:center;white-space:nowrap}
+.btn{border:1px solid var(--line);background:var(--paper);border-radius:5px;padding:4px 10px;cursor:pointer;font-size:13px;white-space:nowrap}
+.btn:hover{background:var(--sel)}
+.btn.pri{background:var(--indigo);border-color:var(--indigo);color:#fff;font-weight:600}
+:root[data-theme="dark"] .btn.pri{color:#0f141b}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.sm{padding:1px 7px;font-size:12px}
+.grp{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 6px}
+.chipb{border:1px solid var(--line);background:var(--chip);border-radius:12px;padding:1px 9px;font-size:12px;cursor:pointer;color:var(--ink-2)}
+.chipb.on{background:var(--indigo);border-color:var(--indigo);color:#fff}
+:root[data-theme="dark"] .chipb.on{color:#0f141b}
+.tw{background:var(--paper);border:1px solid var(--line);border-radius:6px;overflow:auto;max-height:70vh}
+#ff-tw{height:calc(100vh - var(--stickH,180px) - 120px);min-height:300px;max-height:none}
+.stick{position:sticky;top:calc(env(safe-area-inset-top,0px) + 85px);z-index:20;background:var(--chalk);padding-top:4px}
+.stick .filters{margin-top:4px}
+.grp .lbl{font-size:12px;color:var(--ink-2);align-self:center;margin-right:2px}
+.charts{grid-template-columns:repeat(auto-fill,minmax(310px,1fr))}
+table{border-collapse:separate;border-spacing:0;font-size:12.5px;width:max-content}
+th,td{padding:3px 6px;max-width:170px;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid var(--line);white-space:nowrap;text-align:left;font-variant-numeric:tabular-nums}
+thead th{position:sticky;top:0;background:var(--chip);z-index:2;font-weight:600;white-space:normal;line-height:1.15;vertical-align:bottom;max-width:92px}
+thead tr.gh th{max-width:none;white-space:nowrap}
+thead tr.gh th{font-size:11px;color:var(--ink-2);border-right:1px solid var(--line);text-align:center}
+thead tr.fr th{padding:2px 3px;background:var(--paper)}
+thead tr.fr input{width:100%;min-width:0;max-width:none;border:1px solid var(--line);border-radius:3px;padding:1px 4px;font-size:11px;background:var(--paper)}
+td.n,th.n{text-align:right}
+.fz{position:sticky;left:0;z-index:1;background:var(--freeze);border-right:1px solid var(--line);font-weight:600}
+thead .fz{z-index:3;background:var(--chip)}
+thead tr.fr .fz{background:var(--paper)}
+tbody tr.jb td{border-top:2px solid var(--thread)}
+tbody tr.jz td{background:var(--sel)}
+tbody tr.jz td.fz{background:var(--sel)}
+tbody tr{cursor:pointer}tbody tr:hover td{background:var(--sel)}
+.pill{display:inline-block;padding:0 7px;border-radius:9px;font-size:11.5px;font-weight:600;background:var(--chip);color:var(--ink-2)}
+.pill.good{background:var(--good-bg);color:var(--good)}.pill.warn{background:var(--warn-bg);color:var(--warn)}.pill.bad{background:var(--bad-bg);color:var(--bad)}.pill.info{background:var(--info-bg);color:var(--info)}
+.neg{color:var(--bad)}.muted{color:var(--ink-2)}
+.multi{border-bottom:1px dotted var(--ink-2)}
+.pager{display:flex;gap:6px;align-items:center;justify-content:flex-end;padding:6px 0;font-size:12px;color:var(--ink-2)}
+.split{display:grid;grid-template-columns:320px 1fr;gap:10px;margin-top:8px;align-items:start}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:6px}
+.panel>h3{margin:0;padding:8px 10px;font-size:13.5px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:6px}
+.plist{max-height:62vh;overflow:auto}
+.pi{display:grid;grid-template-columns:18px 1fr auto;gap:6px;padding:6px 10px;border-bottom:1px solid var(--line);font-size:12.5px;cursor:pointer;align-items:start}
+.pi:hover,.pi.sel{background:var(--sel)}
+.pi .a{font-weight:600}.pi .b{color:var(--ink-2);font-size:12px}
+.form{padding:10px;display:grid;gap:8px}
+.form .row{display:grid;grid-template-columns:140px 1fr;gap:8px;align-items:center}
+.form .row>span{color:var(--ink-2);font-size:13px}
+.form input,.form select,.form textarea{border:1px solid var(--line);background:var(--paper);border-radius:5px;padding:4px 7px;width:100%}
+.checks{display:flex;flex-wrap:wrap;gap:4px 10px}
+.checks label{display:flex;gap:4px;align-items:center;font-size:13px}
+.empty{padding:22px;text-align:center;color:var(--ink-2)}
+.sw{display:inline-block;width:11px;height:11px;border-radius:3px;border:1px solid rgba(0,0,0,.25);vertical-align:-1px;margin-right:4px}
+.s-White{background:#fbfbf7}.s-Light{background:#e9cfd9}.s-Medium{background:#7fa3b8}.s-Dark{background:#2e3d5c}.s-Black{background:#141414}
+.gantt{overflow:auto;max-height:66vh}
+.gantt table{font-size:12px}
+.gantt td{vertical-align:top;border-right:1px solid var(--line);min-width:150px;padding:3px;height:40px;cursor:default}
+.gantt td.m{min-width:110px;font-weight:600;position:sticky;left:0;background:var(--freeze);z-index:1}
+.gantt tbody tr:hover td{background:inherit}
+.gantt td.over{outline:2px dashed var(--thread);outline-offset:-2px}
+.gantt td.today{background:var(--sel)}
+.blk{border-radius:4px;padding:2px 5px;margin:2px 0;font-size:11.5px;cursor:grab;border:1px solid rgba(0,0,0,.2);line-height:1.25}
+.blk.s-White,.blk.s-Light{color:#1b1b1b}.blk.s-Medium,.blk.s-Dark,.blk.s-Black{color:#fff}
+.blk .late{background:#c0392b;color:#fff;border-radius:3px;padding:0 3px;font-size:10px;margin-left:3px}
+.ramp{display:flex;height:6px;border-radius:3px;overflow:hidden;margin:4px 0 0}
+.ramp i{flex:1}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(460px,100%);background:var(--paper);border-left:1px solid var(--line);z-index:50;transform:translateX(105%);transition:transform .18s ease;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.drawer.on{transform:none}
+.drawer.wide{width:min(760px,100%)}
+.drawer header{padding:10px 12px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+.drawer .body{overflow:auto;padding:10px 12px;flex:1}
+.kv{display:grid;grid-template-columns:150px 1fr;gap:3px 8px;font-size:13px;margin-bottom:10px}
+.kv b{font-weight:500;color:var(--ink-2)}
+.dsec{font-weight:700;margin:12px 0 4px;font-size:13px;border-bottom:1px solid var(--line);padding-bottom:2px}
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:7px 14px;border-radius:6px;font-size:13px;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+.subtabs{display:flex;gap:4px;margin:10px 0 0}
+.subtabs button{border:1px solid var(--line);background:var(--paper);padding:4px 12px;border-radius:5px 5px 0 0;cursor:pointer;font-size:13px}
+.subtabs button.on{background:var(--indigo);color:#fff;border-color:var(--indigo)}
+:root[data-theme="dark"] .subtabs button.on{color:#0f141b}
+.toolbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:8px 0}
+.toolbar .sp{flex:1}
+.set{display:flex;gap:6px;align-items:center;font-size:12.5px;color:var(--ink-2)}
+.set input{width:62px;border:1px solid var(--line);border-radius:4px;padding:1px 5px;background:var(--paper)}
+@media (max-width:820px){.split{grid-template-columns:1fr}.asof{display:none}}
+#printarea{display:none}
+@media print{body.printing>*:not(#printarea){display:none!important}body.printing #printarea{display:block}body{background:#fff;color:#000}#printarea{font:12px Arial,sans-serif;color:#000}#printarea table{border-collapse:collapse;width:100%;margin:6px 0}#printarea th,#printarea td{border:1px solid #555;padding:3px 5px;color:#000;background:#fff;position:static}#printarea .bc{border:1.5px solid #000;padding:8px;margin:0 0 12px;page-break-inside:avoid}#printarea .pb{page-break-before:always}}
+@media (prefers-reduced-motion:reduce){.drawer,.toast{transition:none}}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="brand">NOS<small>Dyeing &amp; Finishing</small></div>
+  <div class="sp"></div>
+  <span class="asof" id="asof"></span><span class="asof" id="savestate" aria-live="polite"></span>
+  <label style="font-size:12px;display:flex;gap:6px;align-items:center">Logged in as
+    <select id="role">
+      <option>Dyeing Planner</option><option>Greige Store</option><option>Finishing QC</option><option>Dyeing Production</option><option>Planning &amp; Control</option><option>Dyeing Lab</option><option>Testing Lab</option><option>Merchandiser</option><option>Management</option>
+    </select></label>
+  <button id="dview" type="button" title="Switch between desktop and mobile layout">Desktop view</button>
+  <button id="theme" type="button" title="Day / Night">◐</button>
+</div>
+<nav class="sect" id="sect">
+  <button data-v="dp">Dyeing Planning<span class="cnt" id="c-dp"></span></button>
+  <button data-v="ml">Machine Loading Plan<span class="cnt" id="c-ml"></span></button>
+  <button data-v="ff" class="on">Finish Fabric Plan &amp; Execution</button>
+  <button data-v="qa">Quality<span class="cnt" id="c-qa"></span></button>
+</nav>
+<div id="boot" class="empty" style="padding:60px 20px">Loading dyeing desk…</div>
+<main style="display:none">
+<section class="view on" id="v-ff">
+  <div class="cards" id="ff-cards"></div>
+  <div class="charts" id="ff-charts"></div>
+  <div class="stick"><div class="filters" id="ff-filters"></div>
+  <div class="grp" id="ff-groups"></div></div>
+  <div class="tw" id="ff-tw"></div>
+  <div class="pager" id="ff-pager"></div>
+</section>
+<section class="view" id="v-dp">
+  <div class="cards" id="dp-cards"></div>
+  <div class="filters" id="dp-filters"></div>
+  <div class="split">
+    <div class="panel"><h3><span>Jobs pending dyeing plan</span><span class="muted" style="font-weight:400;font-size:12px" id="dp-lsum"></span></h3><div class="plist" id="dp-list"></div></div>
+    <div class="panel"><h3><span id="dp-ftitle">Review and plan</span></h3><div id="dp-form"></div></div>
+  </div>
+  <div class="panel" style="margin-top:10px"><h3><span>Subcontract work orders</span><span><select id="wo-st" class="btn sm"><option value="">All status</option><option>Awaiting approval</option><option>Approved</option></select></span></h3><div class="tw" style="max-height:40vh;border:0" id="wo-table"></div></div>
+</section>
+<section class="view" id="v-ml">
+  <div class="cards" id="ml-cards"></div>
+  <div class="toolbar">
+    <span class="set">Greige allowance % <input type="number" id="set-allow" min="0" max="40"></span>
+    <span class="set" title="Never load more than this share of machine capacity">Max load % <input type="number" id="set-maxl" min="50" max="100"></span>
+    <span class="set" title="Batches below this fill are flagged">Min fill % <input type="number" id="set-minf" min="20" max="95"></span>
+    <span class="set" title="Same colour lines whose T&amp;A delivery falls within this many days can share a batch">Combine window (days) <input type="number" id="set-win" min="0" max="30"></span>
+    <span class="set">Combine <select id="set-grp" style="border:1px solid var(--line);border-radius:4px;background:var(--paper)"><option value="c">Same colour, any fabric</option><option value="cf">Same colour + fabric</option></select></span>
+    <span class="set" title="Only jobs with T&amp;A dyeing delivery within this many days are suggested">Look-ahead (days) <input type="number" id="set-look" min="3" max="90"></span>
+    <label class="set"><input type="checkbox" id="set-idle"> Fill idle machines with later jobs</label>
+    <label class="set"><input type="checkbox" id="set-gonly"> Only colours with greige in store</label>
+    <span class="set">Batches / machine / day <input type="number" id="set-cyc" min="1" max="4"></span>
+    <span class="set">Days <input type="number" id="set-days" min="3" max="21"></span>
+    <span class="sp"></span>
+    <button class="btn" id="ml-suggest">Suggest loading</button><button class="btn" id="ml-apall">Approve all proposed</button>
+    <button class="btn" id="ml-clear">Clear unconfirmed</button>
+    <button class="btn" id="ml-csv">Export today</button>
+    <button class="btn pri" id="ml-today">Today's dyeing plan &amp; batch cards</button>
+  </div>
+  <div class="split">
+    <div class="panel"><h3><span>Loading pending</span><span class="muted" style="font-weight:400;font-size:12px" id="ml-lsum"></span></h3><div class="plist" id="ml-list"></div></div>
+    <div class="panel"><h3><span>Machine board</span><span class="muted" style="font-weight:400;font-size:12px"><span class="sw s-White"></span>White <span class="sw s-Light"></span>Light <span class="sw s-Medium"></span>Medium <span class="sw s-Dark"></span>Dark <span class="sw s-Black"></span>Black · dashed = proposed</span></h3><div class="gantt" id="ml-gantt"></div></div>
+  </div>
+</section>
+<section class="view" id="v-qa">
+  <div class="cards" id="qa-cards"></div>
+  <div class="charts" id="qa-charts"></div>
+  <div class="subtabs" id="qa-tabs">
+    <button data-t="shade" class="on">Shade / Lab dip</button><button data-t="rft">Bulk shade (RFT)</button><button data-t="fqc">Final inspection</button><button data-t="test">Testing lab</button><button data-t="find">Findings</button>
+  </div>
+  <div class="filters" id="qa-filters" style="margin-top:0;border-top-left-radius:0"></div>
+  <div id="qa-body"></div>
+</section>
+</main>
+<aside class="drawer" id="drawer" aria-hidden="true"><header><b id="dr-title"></b><button class="btn sm" id="dr-close">Close</button></header><div class="body" id="dr-body"></div></aside>
+<div class="toast" id="toast"></div>
+<div id="printarea"></div>
+<div class="modal-bg" id="mbg"><div class="modal" role="dialog"><header><b id="m-title"></b><button class="btn sm" id="m-close">Close</button></header><div class="body" id="m-body"></div><footer id="m-foot"></footer></div></div>
+<div class="tip" id="tip"></div>
+
+<script>
+function APP(BOOT){
+const ROWS=BOOT.lines;
+
+const AS_OF = BOOT.asOf;
+const TODAY = (()=>{const d=new Date();return d.toISOString().slice(0,10)})();
+const MACHINES = BOOT.machines.map(m=>({id:m.id,cap:m.cap,brand:m.brand,sample:m.id.startsWith('SM')})).sort((a,b)=>a.sample-b.sample||b.cap-a.cap);
+const BULK = MACHINES.filter(m=>!m.sample);
+const PROC = [['heat','Heat set'],['aop','AOP'],['peach','Peach'],['brush','Brush'],['shear','Shearing'],['singe','Singeing'],['fin','Finishing']];
+const SHADES=['White','Light','Medium','Dark','Black'];
+const TESTS=['Shrinkage','GSM','Wash fastness','Rubbing fastness','pH','Spirality'];
+/*init*/ROWS.forEach((r,i)=>{r.b0=r.b;r.b=r.b.replace(/-(Main|Sub)$/,'');['rb','rl','rs','rt','gb','gl','gs','sq','db','dl','ds','dt','vb','vl','vs','vt','iq'].forEach(k=>r[k]=r[k]||0);r.i=i;r.key=r.j+'|'+(r.c||r.it||'');r.gt=(r.gb||0)+(r.gl||0)+(r.gs||0)});
+
+/* ---------- server sync (ERP database via /api/dyeing) ---------- */
+const ID2I=new Map(ROWS.map((r,i)=>[r.id,i]));
+const BYI=['ent','hold','plan','edit','rowWo'];
+function toSrv(n,d){
+  if(BYI.includes(n)){const o={};for(const[k,v]of Object.entries(d||{})){const r=ROWS[+k];if(r)o[r.id]=v}return o}
+  if(n==='wos')return (d||[]).map(w=>({...w,rows:(w.rows||[]).map(i=>ROWS[i]?.id)}));
+  if(n==='batches')return (d||[]).map(b=>({...b,parts:(b.parts||[]).map(p=>({...p,i:ROWS[p.i]?.id}))}));
+  return d;
+}
+function fromSrv(n,d){
+  if(BYI.includes(n)){const o={};for(const[k,v]of Object.entries(d||{})){if(ID2I.has(k))o[ID2I.get(k)]=v}return o}
+  if(n==='wos')return (d||[]).map(w=>({...w,rows:(w.rows||[]).map(id=>ID2I.get(id)).filter(i=>i!=null)}));
+  if(n==='batches')return (d||[]).map(b=>({...b,parts:(b.parts||[]).map(p=>({...p,i:ID2I.get(p.i)})).filter(p=>p.i!=null)}));
+  return d;
+}
+const SYNC={ver:{},last:{},timer:null,busy:false,again:false};
+function fromServer(st){
+  for(const[n,x]of Object.entries(st||{})){
+    SYNC.ver[n]=x.version;
+    if(n==='set'){S.set=Object.assign(S.set,x.data||{})}else S[n]=fromSrv(n,x.data);
+    SYNC.last[n]=JSON.stringify(toSrv(n,S[n]));
+  }
+}
+SYNC.queue=()=>{clearTimeout(SYNC.timer);SYNC.timer=setTimeout(SYNC.flush,350)};
+SYNC.flush=async()=>{
+  if(SYNC.busy){SYNC.again=true;return}
+  const slices={};
+  for(const n of Object.keys(SYNC.ver)){const j=JSON.stringify(toSrv(n,S[n]));if(j!==SYNC.last[n])slices[n]={version:SYNC.ver[n],data:JSON.parse(j),_j:j}}
+  const names=Object.keys(slices);if(!names.length)return;
+  SYNC.busy=true;
+  const body={slices:Object.fromEntries(names.map(n=>[n,{version:slices[n].version,data:slices[n].data}]))};
+  try{
+    const res=await NOS.api('/dyeing/state',{method:'PUT',body:JSON.stringify(body)});
+    for(const n of names){SYNC.ver[n]=res.versions[n];SYNC.last[n]=slices[n]._j}
+    NOS.mark('Saved');
+  }catch(e){
+    NOS.mark('Not saved');toast(e.message||'Not saved');
+    setTimeout(()=>{SYNC.leaving=true;location.reload()},2600); // reload shows what the server really holds
+  }finally{SYNC.busy=false;if(SYNC.again){SYNC.again=false;SYNC.flush()}}
+};
+NOS.pending=()=>Object.keys(SYNC.ver).filter(n=>JSON.stringify(toSrv(n,S[n]))!==SYNC.last[n]);
+addEventListener('beforeunload',e=>{if(SYNC.leaving)return;const p=Object.keys(SYNC.ver).some(n=>JSON.stringify(toSrv(n,S[n]))!==SYNC.last[n]);if(p||SYNC.busy){e.preventDefault();e.returnValue=''}});
+
+/* ---------- persistent prototype state ---------- */
+const SKEY='nos-dyeing-proto-v2';
+let S={ent:{},hold:{},plan:{},edit:{},wos:[],woSeq:0,rowWo:{},labdip:{},tests:{},fqc:{},cond:{},rft:[],batches:[],bcSeq:0,shadeOv:{},
+  set:{allow:12,cyc:2,days:7,maxl:85,minf:60,win:7,look:21,idle:false,gonly:false,grp:'c'}};
+fromServer(BOOT.state);
+function save(){SYNC.queue()}
+/* ---------- daily entries (added on top of the report values) ---------- */
+const ETYPES=[
+ ['grcv','Knitting delivery received in greige store','Greige Store'],
+ ['giss','Greige delivered to NFL dyeing','Greige Store'],
+ ['gsub','Greige delivered to subcontract dyeing','Greige Store'],
+ ['gheat','Greige sent to heat set','Greige Store'],
+ ['rheat','Received from heat set','Greige Store'],
+ ['dye','Dyed in-house (batch unloaded)','Dyeing Production'],
+ ['drcv','Dyed fabric received from subcontract','Dyeing Production'],
+ ['psend','Sent to process (AOP, peach, brush…)','Dyeing Production'],
+ ['prcv','Received from process','Dyeing Production'],
+ ['offer','Finished, offered for QC','Dyeing Production'],
+ ['dlv','Delivered to finished fabric store','Dyeing Production']];
+const ENEED={gsub:'f',gheat:'f',psend:'fk',prcv:'k',dye:'b'};
+function applyEntry(r,e){
+  const P=k=>{r[k]=r[k]||['','','',0,'','',0,0];return r[k]};
+  if(e.t==='grcv'){r.gb+=e.q;r.gt+=e.q}
+  else if(e.t==='giss'){r.gi=(r.gi||0)+e.q}
+  else if(e.t==='gsub'){r.sq+=e.q;if(!r.sd)r.sd=e.d;if(e.f)r.df=e.f}
+  else if(e.t==='gheat'){const p=P('heat');p[0]=e.f||p[0];p[3]+=e.q;if(!p[1])p[1]=e.d;p[7]=p[6]-p[3]}
+  else if(e.t==='rheat'){const p=P('heat');p[6]+=e.q;p[4]=e.d;p[7]=p[6]-p[3]}
+  else if(e.t==='dye'){r.dt+=e.q;r.db+=e.q;if(!r.dd)r.dd=e.d;if(e.b&&!r.bn)r.bn=e.b}
+  else if(e.t==='drcv'){r.dt+=e.q;r.db+=e.q;r.rd=e.d}
+  else if(e.t==='psend'){const p=P(e.k);p[0]=e.f||p[0];p[3]+=e.q;if(!p[1])p[1]=e.d;p[7]=p[6]-p[3]}
+  else if(e.t==='prcv'){const p=P(e.k);p[6]+=e.q;p[4]=e.d;p[7]=p[6]-p[3]}
+  else if(e.t==='offer'){r.off=(r.off||0)+e.q}
+  else if(e.t==='dlv'){r.ed=(r.ed||0)+e.q;if(!r.as)r.as=e.d;r.ae=e.d;r.off=Math.max(0,(r.off||0)-e.q)}
+}
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const kg=v=>v?Math.round(v).toLocaleString('en-US'):'';
+const kgs=v=>Math.round(v||0).toLocaleString('en-US');
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const fd=d=>d?(+d.slice(8,10))+'-'+MON[+d.slice(5,7)-1]:'';
+const fdr=(d,raw)=>raw?`<span class="multi" title="${esc(raw)}">${fd(d)||esc(raw)}+</span>`:fd(d);
+const mlabel=m=>MON[+m.slice(5,7)-1]+"'"+m.slice(2,4);
+const addDays=(d,n)=>{const x=new Date(d+'T00:00:00Z');x.setUTCDate(x.getUTCDate()+n);return x.toISOString().slice(0,10)};
+const dayDiff=(a,b)=>Math.round((new Date(b)-new Date(a))/864e5);
+const jobCode=r=>r.b+' '+r.j;
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('on'),2200)}
+const role=()=>$('#role').value;
+
+function shadeOf(r){
+  if(S.shadeOv[r.key])return S.shadeOv[r.key];
+  const c=(r.c||'').toLowerCase();
+  if(/black|jet|c-n10/.test(c))return'Black';
+  if(/\b(white|optic|cloud dancer|snow|natural|ecru|ivory|off white)\b/.test(c)&&!/\+/.test(c))return'White';
+  if(/navy|dark|sapphire|olive|chocolate|plum|burgundy|brown|deep|night|forest|pine|charcoal|maroon|bottle|espresso|coffee|ink|blazer|wine|black/.test(c))return'Dark';
+  if(/light|pale|ice|pastel|lilac|baby|sky|mist|cream|peach|lemon|mint|sand|beige|blush|dawn|soft|fairy|pink|orchid|tulle|winter pear/.test(c))return'Light';
+  return'Medium';
+}
+
+/* ---------- derived values per row ---------- */
+function delivered(r){return (r.vt||0)+(r.ed||0)}
+function offeredOpen(r){return r.off||0}
+function woOf(r){const w=S.rowWo[r.i];return w?S.wos.find(x=>x.no===w):null}
+function planOf(r){return S.plan[r.i]||null}
+function facOf(r){const w=woOf(r);if(w)return w.fac;const p=planOf(r);if(p)return p.fac;return r.df||''}
+function batchedProto(r){return S.batches.some(b=>b.conf&&b.parts.some(p=>p.i===r.i))}
+function notStarted(r){return !r.it&&!r.bn&&!r.dd&&!r.sd&&!r.dt&&!r.vt&&!batchedProto(r)}
+function inhouse(r){return facOf(r)==='NFL'}
+function labdip(r){return S.labdip[r.key]?.st||BOOT.sms[r.key]||'Not recorded'}
+function testRes(r){return S.tests[r.key]?.res||'Not recorded'}
+function fqcRes(r){return S.fqc[r.key]?.res||'Not recorded'}
+function canDeliver(r){return (testRes(r)==='Pass'&&fqcRes(r)==='Pass')||!!S.cond[r.key]}
+function status(r){
+  if(r.it)return'Item';
+  if(!r.rt&&!r.dt&&!r.vt)return'No qty';
+  const d=delivered(r),o=offeredOpen(r);
+  if(r.rt&&d>=r.rt*0.98)return'Delivered';
+  if(o>0)return'QC pending';
+  if(d>0)return'Partly delivered';
+  if(r.dt||r.dd||r.rd)return'In process';
+  if(r.sd)return'At subcontract';
+  if(r.bn||batchedProto(r))return'Batched';
+  const p=planOf(r),w=woOf(r);
+  if(!p&&!w)return'Plan pending';
+  if(p&&p.route==='In-house')return'Loading pending';
+  if(!w)return'WO pending';
+  if(w.st!=='Approved')return'WO approval';
+  return'Not sent';
+}
+function delayed(r){if(r.it)return false;const s=status(r);if(s==='Delivered')return false;return !!(r.tpe&&r.tpe<AS_OF)}
+function delayDays(r){if(!r.tpe)return'';const end=r.ae||(status(r)==='Delivered'?'':AS_OF);if(!end)return'';const n=dayDiff(r.tpe,end);return n>0?n:''}
+function stuck(r){
+  if(r.it)return'';
+  const s=status(r);
+  if(['Plan pending','Loading pending','Not sent','WO pending','WO approval'].includes(s)&&!r.gt&&r.ke&&r.ke<AS_OF)return'Greige not received';
+  if(s==='At subcontract'&&r.sd&&dayDiff(r.sd,AS_OF)>10)return'At subcontract >10 days';
+  if(s==='Loading pending'&&labdip(r)!=='Approved')return'Lab dip not approved';
+  return'';
+}
+function procLoss(r){const d=delivered(r);return (r.dt&&d&&status(r)==='Delivered')?(1-d/r.dt)*100:null}
+const STCLS={'Delivered':'good','QC pending':'warn','Partly delivered':'info','In process':'info','At subcontract':'info','Batched':'info','Plan pending':'','WO pending':'warn','WO approval':'warn','Loading pending':'warn','Not sent':'warn','Item':'','No qty':''};
+const pill=(t,c)=>`<span class="pill ${c||''}">${esc(t)}</span>`;
+const ldCls=s=>s==='Approved'?'good':s==='Rejected'?'bad':s==='Submitted'?'warn':'';
+const tCls=s=>s==='Pass'?'good':s==='Fail'?'bad':s==='Retest'?'warn':'';
+const uniq=(a)=>[...new Set(a.filter(Boolean))].sort();
+function jobsKg(list,f){const s=new Set();let k=0;for(const r of list){s.add(r.j);k+=f?(+f(r)||0):0}return{j:s.size,k}}
+function card(label,j,k,cls,act){return `<div class="card ${cls||''} ${act?'click':''}" ${act?`data-act="${act}"`:''}><div class="l">${label}</div><div class="n">${j.toLocaleString('en-US')}<span class="k"> jobs</span></div><div class="k">${k==null?'&nbsp;':kgs(k)+' kg'}</div></div>`}
+function card2(label,val,sub,cls){return `<div class="card ${cls||''}"><div class="l">${label}</div><div class="n">${val}</div><div class="k">${sub||'&nbsp;'}</div></div>`}
+function hbars(items,max,colors){max=max||Math.max(1,...items.map(i=>i.v.reduce((a,b)=>a+b,0)));return items.map(i=>{let x=0;return `<div class="hb ${i.f?'f':''}" ${i.f?`data-f="${esc(i.f)}" title="Show these lines in the table"`:''}><span class="t" title="${esc(i.t)}">${esc(i.t)}</span><span class="bar">${i.v.map((v,k)=>{const w=v/max*100;const s=`<span style="left:${x}%;width:${w}%;background:${colors[k]}"></span>`;x+=w;return s}).join('')}</span><span class="v">${i.lab}</span></div>`}).join('')||'<div class="empty">No data</div>'}
+function colbars(groups,colors){const max=Math.max(1,...groups.flatMap(g=>g.v));return `<div class="cols">${groups.map(g=>`<div class="g ${g.f?'f':''}" ${g.f?`data-f="${esc(g.f)}"`:''} title="${esc(g.tip||'')}"><div class="bars">${g.v.map((v,k)=>`<span style="height:${v/max*100}%;background:${colors[k]}"></span>`).join('')}</div><div class="x">${esc(g.x)}</div>${g.x2?`<div class="x">${esc(g.x2)}</div>`:''}</div>`).join('')}</div>`}
+const kk=v=>v>=1000?(v/1000).toFixed(v>=10000?0:1)+'k':String(Math.round(v));
+const legend=(arr)=>`<div class="legend">${arr.map(([t,c])=>`<span><i style="background:${c}"></i>${t}</span>`).join('')}</div>`;
+const C1='var(--indigo-2)',C2='var(--thread)',C3='var(--bad)',C4='var(--good)';
+
+const EDITF=['st','gsm','dia','c','f','ap','rb','rl','rs','tps','tpe'];
+Object.entries(S.edit).forEach(([i,o])=>{const r=ROWS[+i];Object.assign(r,o);r.rt=(r.rb||0)+(r.rl||0)+(r.rs||0)||r.rt});
+Object.entries(S.ent).forEach(([i,list])=>list.forEach(e=>applyEntry(ROWS[+i],e)));
+const famOf=b=>/^BS-/.test(b)?'Bestseller':b;
+function greyIssued(r){return r.sq+(r.gi||0)+((facOf(r)==='NFL'&&!r.gi)?r.dt:0)}
+function greyStock(r){return r.it?0:Math.max(0,r.gt-greyIssued(r))}
+function classify(t){t=(t||'').toLowerCase();if(!t)return'';
+  if(/gsm\s*low/.test(t))return'GSM low';if(/gsm\s*high/.test(t)||/gsm high/.test(t))return'GSM high';if(/shade/.test(t))return'Shade not ok';
+  if(/rib|s\/j not ok/.test(t))return'Rib / S.J not ok';if(/uneven|patch/.test(t))return'Uneven dyeing';if(/spot|stain|oil/.test(t))return'Spot / stain';
+  if(/crease/.test(t))return'Crease mark';if(/shrink/.test(t))return'Shrinkage';if(/hand ?feel/.test(t))return'Handfeel';if(/wrong fabric/.test(t))return'Wrong fabric';
+  if(/brush|peach/.test(t))return'Brush / peach not ok';if(/hold/.test(t))return'Hold';return''}
+const HOLDS=['Shade not ok','Crease mark','Shrinkage','GSM low','GSM high','Rib / S.J not ok','Uneven dyeing','Spot / stain','Handfeel','Brush / peach not ok','Wrong fabric','Hold','Other'];
+function reasonOf(r){return S.hold[r.i]?.rs||classify(r.rm)}
+
+/* ================= FINISH FABRIC PLAN & EXECUTION ================= */
+const FF={mode:'colour',held:false,reason:'',wip:'',b:'',m:'',sl:'',df:'',ap:'',st:'',qc:'',mr:'',mat:'Fabric',del:false,q:'',page:0,cf:{},groups:new Set(['Job','Required','Greige status','Dyeing','Delivery'])};
+const pv=(r,k,ix)=>r[k]?r[k][ix]:'';
+const procCols=(k,lab)=>[
+ {g:lab,h:'Factory',v:r=>esc(pv(r,k,0))},
+ {g:lab,h:'Send',v:r=>fdr(pv(r,k,1),pv(r,k,2)),f:r=>pv(r,k,1)},
+ {g:lab,h:'Send kg',n:1,v:r=>kg(pv(r,k,3))},
+ {g:lab,h:'Rcv',v:r=>fdr(pv(r,k,4),pv(r,k,5)),f:r=>pv(r,k,4)},
+ {g:lab,h:'Rcv kg',n:1,v:r=>kg(pv(r,k,6))},
+ {g:lab,h:'Bal',n:1,v:r=>{const b=pv(r,k,7);return b?`<span class="${b<0?'neg':''}">${kg(b)}</span>`:''}}];
+const COLS=[
+ {g:'Job',h:'Style',v:r=>esc(r.st)},{g:'Job',h:'Process',v:r=>esc(r.ap)},{g:'Job',h:'GSM',v:r=>esc(r.gsm)},{g:'Job',h:'Dia',v:r=>esc(r.dia)},
+ {g:'Job',h:'Colour / item',v:r=>r.it?`${esc(r.it)} <span class="pill">${esc(r.iu)}</span>`:`<span class="sw s-${shadeOf(r)}" title="${shadeOf(r)}"></span>${esc(r.c)}`,f:r=>r.c||r.it},
+ {g:'Job',h:'Fabric',v:r=>esc(r.f)},
+ {g:'Required',h:'Body',n:1,v:r=>kg(r.rb)},{g:'Required',h:'L Rib',n:1,v:r=>kg(r.rl)},{g:'Required',h:'S.Jersey',n:1,v:r=>kg(r.rs)},{g:'Required',h:'Total',n:1,v:r=>r.it?kg(r.iq)+' '+r.iu.toLowerCase():`<b>${kg(r.rt)}</b>`},
+ {g:'T&A',h:'Knit start',v:r=>fd(r.ks),f:r=>r.ks},{g:'T&A',h:'Knit end',v:r=>fd(r.ke),f:r=>r.ke},{g:'T&A',h:'Dye dlv start',v:r=>fd(r.tps),f:r=>r.tps},{g:'T&A',h:'Dye dlv end',v:r=>fd(r.tpe),f:r=>r.tpe},{g:'T&A',h:'AOP start',v:r=>fd(r.tas)},{g:'T&A',h:'AOP end',v:r=>fd(r.tae)},
+ {g:'Greige status',h:'Knitting delivery',n:1,v:r=>kg(r.gt)},{g:'Greige status',h:'Greige delivery',n:1,v:r=>kg(greyIssued(r))},{g:'Greige status',h:'Delivered to',v:r=>greyIssued(r)?esc(facOf(r)):''},
+ ...procCols('heat','Heat set'),
+ {g:'Dyeing',h:'Plan / WO',v:r=>{const w=woOf(r),p=planOf(r);if(w)return `${esc(w.no)} ${pill(w.st==='Approved'?'OK':'Approval',w.st==='Approved'?'good':'warn')}`;return p?pill(p.route,'info'):''},f:r=>woOf(r)?.no||planOf(r)?.route},
+ {g:'Dyeing',h:'Factory',v:r=>esc(facOf(r))},{g:'Dyeing',h:'Machine',v:r=>{const b=S.batches.find(b=>b.conf&&b.parts.some(p=>p.i===r.i));return b?esc(b.m):''}},
+ {g:'Dyeing',h:'Batch no',v:r=>esc(r.bn)},{g:'Dyeing',h:'Batch card',v:r=>esc(S.batches.filter(b=>b.conf&&b.parts.some(p=>p.i===r.i)).map(b=>b.card).join(', '))},
+ {g:'Dyeing',h:'Dyeing date',v:r=>fdr(r.dd,r.ddr),f:r=>r.dd},{g:'Dyeing',h:'Send',v:r=>fdr(r.sd,r.sdr),f:r=>r.sd},{g:'Dyeing',h:'Send kg',n:1,v:r=>kg(r.sq)},{g:'Dyeing',h:'Rcv',v:r=>fdr(r.rd,r.rdr),f:r=>r.rd},
+ {g:'Dyeing',h:'Body',n:1,v:r=>kg(r.db)},{g:'Dyeing',h:'L Rib',n:1,v:r=>kg(r.dl)},{g:'Dyeing',h:'S.Jersey',n:1,v:r=>kg(r.ds)},{g:'Dyeing',h:'Total dyed',n:1,v:r=>`<b>${kg(r.dt)}</b>`},
+ ...procCols('aop','AOP'),...procCols('peach','Peach'),...procCols('brush','Brush'),...procCols('shear','Shearing'),...procCols('singe','Singeing'),...procCols('fin','Finishing'),
+ {g:'Delivery',h:'Start',v:r=>fd(r.as),f:r=>r.as},{g:'Delivery',h:'End',v:r=>fdr(r.ae,r.aer),f:r=>r.ae},{g:'Delivery',h:'Challan',v:r=>esc(r.ch)},
+ {g:'Delivery',h:'Delivered',n:1,v:r=>`<b>${kg(delivered(r))}</b>${offeredOpen(r)?` <span class="pill warn">${kg(offeredOpen(r))} at QC</span>`:''}`},
+ {g:'Delivery',h:'Balance',n:1,v:r=>{if(r.it||!r.rt)return'';const b=delivered(r)-r.rt;return `<span class="${b<0?'neg':''}">${kgs(b)}</span>`}},
+ {g:'Delivery',h:'Loss %',n:1,v:r=>{const l=procLoss(r);return l==null?'':l.toFixed(1)}},
+ {g:'Delivery',h:'Delay days',n:1,v:r=>{const d=delayDays(r);return d?`<span class="neg">${d}</span>`:''}},
+ {g:'Delivery',h:'Status',v:r=>{const s=status(r);return pill(s,STCLS[s])+(delayed(r)?' '+pill('Delayed','bad'):'')},f:r=>status(r)+(delayed(r)?' delayed':'')},
+ {g:'Delivery',h:'Hold reason',v:r=>{const x=reasonOf(r);return x?pill(x,'warn'):''},f:r=>reasonOf(r)},
+ {g:'Delivery',h:'Stuck',v:r=>{const s=stuck(r);return s?pill(s,'bad'):''},f:r=>stuck(r)},
+ {g:'QC',h:'Lab dip',v:r=>r.it?'':pill(labdip(r),ldCls(labdip(r))),f:r=>labdip(r)},{g:'QC',h:'Final insp.',v:r=>r.it?'':pill(fqcRes(r),tCls(fqcRes(r))),f:r=>fqcRes(r)},{g:'QC',h:'Lab test',v:r=>r.it?'':pill(testRes(r),tCls(testRes(r))),f:r=>testRes(r)},
+ {g:'Tracking',h:'Brand',v:r=>esc(r.br)},{g:'Tracking',h:'Merchandiser',v:r=>esc(r.mr)},{g:'Tracking',h:'Slot',v:r=>esc(r.sl)},{g:'Tracking',h:'Month',v:r=>mlabel(r.m),f:r=>mlabel(r.m)},{g:'Tracking',h:'Remarks',v:r=>esc(r.rm)}
+];
+COLS.forEach((c,i)=>c.id=i);
+const GROUPS=[...new Set(COLS.map(c=>c.g))];
+const isHeld=r=>r.dt&&!r.it&&!['Delivered','QC pending'].includes(status(r));
+
+function ffBase(){
+  const q=FF.q.toLowerCase();
+  return ROWS.filter(r=>(!FF.b||r.b===FF.b)&&(!FF.m||r.m===FF.m)&&(!FF.sl||r.sl===FF.sl)&&(!FF.df||facOf(r)===FF.df)
+   &&(!FF.ap||(r.ap||'').includes(FF.ap))&&(!FF.mr||r.mr===FF.mr)
+   &&(FF.mat==='All'||(FF.mat==='Fabric'?!r.it:!!r.it))
+   &&(!FF.st||status(r)===FF.st)&&(!FF.qc||labdip(r)===FF.qc||testRes(r)===FF.qc||fqcRes(r)===FF.qc)
+   &&(!FF.del||delayed(r))&&(!FF.held||isHeld(r))
+   &&(!FF.reason||(isHeld(r)&&(reasonOf(r)||'No reason recorded')===FF.reason))
+   &&(!FF.wip||(FF.wip==='dsub'?(r.sq&&!r.dt&&!r.rd):(r[FF.wip]&&r[FF.wip][3]&&!r[FF.wip][6])))
+   &&(!q||(r.j+' '+(r.st||'')+' '+(r.c||'')+' '+(r.it||'')+' '+(r.bn||'')).toLowerCase().includes(q)));
+}
+function ffFiltered(){
+  let L=ffBase();
+  const cf=Object.entries(FF.cf).filter(([,v])=>v);
+  if(cf.length&&FF.mode==='colour'){
+    const tmp=document.createElement('div');
+    L=L.filter(r=>cf.every(([id,v])=>{let t;if(id==='fz')t=jobCode(r);else{const c=COLS[id];t=c.f?String(c.f(r)??''):(tmp.innerHTML=c.v(r),tmp.textContent)}return t.toLowerCase().includes(v.toLowerCase())}));
+  }
+  return L;
+}
+function ffFilters(){
+  const opt=(a,v,all,lab)=>`<option value="">${all}</option>`+a.map(x=>`<option value="${esc(x)}" ${x===v?'selected':''}>${esc(lab?lab(x):x)}</option>`).join('');
+  const sts=['Delivered','QC pending','Partly delivered','In process','At subcontract','Batched','Plan pending','Loading pending','WO pending','WO approval','Not sent'];
+  const chips=[FF.reason&&['reason','Reason: '+FF.reason],FF.wip&&['wip','At process: '+(FF.wip==='dsub'?'Dyeing (sub)':PROC.find(p=>p[0]===FF.wip)[1])]].filter(Boolean);
+  $('#ff-filters').innerHTML=`
+   <select data-k="b">${opt(uniq(ROWS.map(r=>r.b)),FF.b,'All buyers')}</select>
+   <select data-k="m">${opt(uniq(ROWS.map(r=>r.m)),FF.m,'All months',mlabel)}</select>
+   <select disabled title="Comes from PO shipment dates once orders are linked"><option>Shipment week</option></select>
+   <select data-k="sl">${opt(['1','2','3'],FF.sl,'All slots',x=>'Slot '+x)}</select>
+   <select data-k="df">${opt(uniq(ROWS.map(r=>facOf(r))),FF.df,'All factories')}</select>
+   <select data-k="ap">${opt(['AOP','Brush','Peach','Y/D','GMT Dyeing','Shearing','Singeing'],FF.ap,'All processes')}</select>
+   <select data-k="st">${opt(sts,FF.st,'All status')}</select>
+   <select data-k="qc">${opt(['Not recorded','Submitted','Approved','Rejected','Pass','Fail'],FF.qc,'All QC')}</select>
+   <select data-k="mr">${opt(uniq(ROWS.map(r=>r.mr)),FF.mr,'All merchandisers')}</select>
+   <select data-k="mat"><option ${FF.mat==='Fabric'?'selected':''}>Fabric</option><option ${FF.mat==='Item'?'selected':''} value="Item">Other items (yds/pcs)</option><option ${FF.mat==='All'?'selected':''}>All</option></select>
+   <label><input type="checkbox" data-k="del" ${FF.del?'checked':''}>Delayed only</label>
+   <label><input type="checkbox" data-k="held" ${FF.held?'checked':''}>Dyed, not delivered</label>
+   <input data-k="q" placeholder="Job, style, colour, batch" value="${esc(FF.q)}">
+   ${chips.map(([k,t])=>`<button class="chipb on" data-x="${k}" title="Remove">${esc(t)} ✕</button>`).join('')}
+   <button class="btn sm" id="ff-reset">Reset</button>
+   <span style="flex:1"></span>
+   <span class="grp" style="margin:0"><button class="chipb ${FF.mode==='colour'?'on':''}" data-mode="colour">Colour-wise</button><button class="chipb ${FF.mode==='job'?'on':''}" data-mode="job">Job-wise total</button></span>
+   <button class="btn sm pri" id="ff-entry">Daily entry</button>`;
+  $('#ff-filters').querySelectorAll('[data-k]').forEach(el=>el.addEventListener(el.tagName==='INPUT'&&el.type!=='checkbox'?'input':'change',()=>{FF[el.dataset.k]=el.type==='checkbox'?el.checked:el.value;FF.page=0;renderFF(false)}));
+  $('#ff-filters').querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{FF[b.dataset.x]='';renderFF()});
+  $('#ff-filters').querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{FF.mode=b.dataset.mode;FF.page=0;renderFF()});
+  $('#ff-entry').onclick=openEntryFinder;
+  $('#ff-reset').onclick=()=>{Object.assign(FF,{held:false,reason:'',wip:'',b:'',m:'',sl:'',df:'',ap:'',st:'',qc:'',mr:'',mat:'Fabric',del:false,q:'',page:0,cf:{}});renderFF()};
+}
+function runRate(L){
+  const m=FF.m||AS_OF.slice(0,7);const dim=new Date(Date.UTC(+m.slice(0,4),+m.slice(5,7),0)).getUTCDate();
+  let e;if(AS_OF.slice(0,7)>m)e=dim;else if(AS_OF.slice(0,7)<m)e=0;else e=+AS_OF.slice(8,10);
+  const M=L.filter(r=>!r.it&&r.m===m);
+  const one=rs=>{const req=rs.reduce((a,r)=>a+r.rt,0),del=rs.reduce((a,r)=>a+Math.min(delivered(r),r.rt),0);return{req,del,cur:e?del/e:0,need:e<dim?Math.max(0,req-del)/(dim-e):null}};
+  return{m,dim,e,nfl:one(M.filter(r=>facOf(r)==='NFL')),out:one(M.filter(r=>facOf(r)!=='NFL')),tot:one(M)};
+}
+function ffCards(L){
+  const F=L.filter(r=>!r.it);
+  const jobs=new Set(F.map(r=>r.j)).size;
+  const req=F.reduce((a,r)=>a+r.rt,0),dy=F.reduce((a,r)=>a+r.dt,0),dyb=F.reduce((a,r)=>a+Math.max(0,r.rt-r.dt),0);
+  const dv=F.reduce((a,r)=>a+Math.min(delivered(r),r.rt),0),dvb=F.reduce((a,r)=>a+Math.max(0,r.rt-delivered(r)),0);
+  const by=s=>jobsKg(F.filter(r=>status(r)===s),r=>r.rt);
+  const qcp=jobsKg(F.filter(r=>offeredOpen(r)>0&&!canDeliver(r)),r=>offeredOpen(r));
+  const grey=jobsKg(F.filter(r=>stuck(r)==='Greige not received'),r=>r.rt);
+  const sub=jobsKg(F.filter(r=>stuck(r)==='At subcontract >10 days'),r=>r.sq);
+  const dl=jobsKg(F.filter(delayed),r=>Math.max(0,r.rt-delivered(r)));
+  let a=0,b=0;F.forEach(r=>{if(procLoss(r)!=null){a+=r.dt;b+=delivered(r)}});
+  let on=0,tot=0;F.forEach(r=>{if(r.ae&&r.tpe){tot++;if(r.ae<=r.tpe)on++}});
+  const R=runRate(L);const ml=mlabel(R.m);
+  const rrRow=(t,o)=>`<tr><td>${t}</td><td>${o.need==null?'—':kgs(o.need)}</td><td class="${o.need!=null&&o.cur<o.need?'neg':''}">${kgs(o.cur)}</td><td>${kgs(Math.max(0,o.req-o.del))}</td></tr>`;
+  const keys={};ROWS.forEach(r=>{if(!r.it&&r.m===R.m&&(!FF.b||r.b===FF.b))keys[r.key]=keys[r.key]||r});
+  const kv=Object.values(keys);const ap=kv.filter(r=>labdip(r)==='Approved').length;
+  const due=kv.filter(r=>labdip(r)!=='Approved'&&notStarted(r)&&r.tps&&r.tps<=addDays(AS_OF,7)).length;
+  const lp=by('Loading pending'),pp=by('Plan pending');
+  $('#ff-cards').innerHTML=
+   `<div class="card info w3"><div class="l">${jobs.toLocaleString()} jobs · ${F.length.toLocaleString()} colour lines</div><div class="mini">
+     <div><div class="t">Required</div><div class="v">${kgs(req)}</div><div class="s">kg</div></div>
+     <div><div class="t">Dyed</div><div class="v">${kgs(dy)}</div><div class="s">balance ${kgs(dyb)} kg</div></div>
+     <div><div class="t">Delivered</div><div class="v">${kgs(dv)}</div><div class="s">balance ${kgs(dvb)} kg</div></div></div></div>`+
+   `<div class="card w3 ${R.tot.need!=null&&R.tot.cur<R.tot.need?'bad':'good'}"><div class="l">Run rate · ${ml} · day ${R.e} of ${R.dim} (kg/day)</div><table class="rr"><tr><th></th><th>Required</th><th>Current</th><th>Balance kg</th></tr>${rrRow('NFL',R.nfl)}${rrRow('Outside',R.out)}${rrRow('<b>Total</b>',R.tot)}</table></div>`+
+   card2('Process loss',a?((1-b/a)*100).toFixed(1)+'%':'—',a?`${kk(a)} dyed → ${kk(b)} kg delivered`:'')+
+   card2('On-time delivery',tot?Math.round(on/tot*100)+'%':'—',tot?`${on} of ${tot} colour lines`:'','good')+
+   card('Plan pending',pp.j,pp.k,'','go-dp')+card('Loading pending',lp.j,lp.k,'warn','go-ml')+
+   `<div class="card w2 ${due?'bad':'info'} click" data-act="go-qa"><div class="l">Lab dip approval · ${ml}</div><div class="mini"><div><div class="t">Colours</div><div class="v">${kv.length}</div></div><div><div class="t">Approved</div><div class="v">${ap}</div></div><div><div class="t">Not approved</div><div class="v">${kv.length-ap}</div></div><div><div class="t">Due in 7 days</div><div class="v ${due?'neg':''}">${due}</div></div></div></div>`+
+   card('QC &amp; lab test pending',qcp.j,qcp.k,'bad','go-qa')+card('Greige not received',grey.j,grey.k,'bad','grey')+card('At subcontract >10 days',sub.j,sub.k,'bad','sub')+card('Delayed vs T&A',dl.j,dl.k,'bad','delayed');
+  $('#ff-cards').querySelectorAll('[data-act]').forEach(el=>el.onclick=()=>{const a=el.dataset.act;
+    if(a==='go-dp')show('dp');else if(a==='go-ml')show('ml');else if(a==='go-qa')show('qa');
+    else if(a==='delayed'){FF.del=true;renderFF()}
+    else{FF.mode='colour';FF.cf={};FF.cf[COLS.findIndex(c=>c.h==='Stuck')]=a==='grey'?'Greige':'subcontract';FF.groups.add('Delivery');renderFF()}});
+}
+function leadTimes(F){
+  const st=[['Knit end → dyeing',r=>[r.ke,r.dd||r.sd]],['Subcontract dyeing',r=>[r.sd,r.rd]],['Dyeing → 1st delivery',r=>[r.dd||r.rd,r.as]],['AOP',r=>[pv(r,'aop',1),pv(r,'aop',4)]],['Peach / brush',r=>[pv(r,'peach',1)||pv(r,'brush',1),pv(r,'peach',4)||pv(r,'brush',4)]],['Dyeing → delivery done',r=>[r.dd||r.rd,r.ae]],['Knit end → delivery done',r=>[r.ke,r.ae]]];
+  return st.map(([t,f])=>{let s=0,n=0;F.forEach(r=>{const[a,b]=f(r);if(a&&b){const d=dayDiff(a,b);if(d>=0&&d<=150){s+=d;n++}}});return{t,v:[n?s/n:0],lab:n?(s/n).toFixed(1)+' d · '+n+' lines':'—'}});
+}
+function ffCharts(L){
+  const F=L.filter(r=>!r.it);
+  const tot=(j,k)=>`<span class="tot">${j.toLocaleString()} jobs · ${kgs(k)} kg</span>`;
+  const fac={};F.forEach(r=>{const f=facOf(r)||'—';fac[f]=fac[f]||{r:0,d:0,j:new Set()};fac[f].r+=r.rt;fac[f].d+=Math.min(delivered(r),r.rt);fac[f].j.add(r.j)});
+  const fi=Object.entries(fac).sort((a,b)=>b[1].r-a[1].r).map(([t,o])=>({t,f:'df:'+t,v:[o.d,Math.max(0,o.r-o.d)],lab:kgs(o.r-o.d)+' · '+o.j.size+' jobs'}));
+  const fJ=new Set(F.map(r=>r.j)).size,fK=F.reduce((a,r)=>a+Math.max(0,r.rt-delivered(r)),0);
+  const rs={};F.forEach(r=>{if(isHeld(r)){const k=reasonOf(r)||'No reason recorded';const q=Math.max(0,r.rt-delivered(r));if(q>0){rs[k]=rs[k]||{q:0,j:new Set()};rs[k].q+=q;rs[k].j.add(r.j)}}});
+  const ri=Object.entries(rs).sort((a,b)=>(a[0]==='No reason recorded')-(b[0]==='No reason recorded')||b[1].q-a[1].q).map(([t,o])=>({t,f:'reason:'+t,v:[o.q],lab:kgs(o.q)+' · '+o.j.size+' jobs'}));
+  const rJ=new Set(F.filter(isHeld).map(r=>r.j)).size,rK=Object.values(rs).reduce((a,o)=>a+o.q,0);
+  const sc={};F.forEach(r=>{const f=facOf(r);if(f&&f!=='NFL'&&r.sq){sc[f]=sc[f]||{s:0,r:0,j:new Set()};sc[f].s+=r.sq;sc[f].r+=Math.min(r.dt,r.sq);sc[f].j.add(r.j)}});
+  const si=Object.entries(sc).sort((a,b)=>b[1].s-a[1].s).map(([t,o])=>({t,f:'df:'+t,v:[o.r,Math.max(0,o.s-o.r)],lab:kk(o.s)+' sent · '+kk(o.r)+' rcvd'}));
+  const sS=Object.values(sc).reduce((a,o)=>a+o.s,0),sR=Object.values(sc).reduce((a,o)=>a+o.r,0);
+  const sl={};F.forEach(r=>{const k=r.m+'|'+r.sl;sl[k]=sl[k]||[0,0];sl[k][0]+=r.rt;sl[k][1]+=Math.min(delivered(r),r.rt)});
+  const sg=Object.keys(sl).sort().slice(-9).map(k=>{const[m,s]=k.split('|');return{x:mlabel(m).slice(0,3)+' S'+s,x2:kk(sl[k][0]),f:'slot:'+k,v:sl[k],tip:`${mlabel(m)} slot ${s}: required ${kgs(sl[k][0])} kg · delivered ${kgs(sl[k][1])} kg`}});
+  const ih={};ROWS.forEach(r=>{if(facOf(r)==='NFL'&&r.dd&&r.dt&&(!FF.b||r.b===FF.b))ih[r.dd.slice(0,7)]=(ih[r.dd.slice(0,7)]||0)+r.dt});
+  S.batches.filter(b=>b.conf).forEach(b=>{const m=b.d.slice(0,7);ih[m]=(ih[m]||0)+b.kg});
+  const ig=Object.keys(ih).sort().filter(m=>m>='2026-04').map(m=>({x:mlabel(m),x2:kk(ih[m]),v:[ih[m]],tip:`${mlabel(m)}: ${kgs(ih[m])} kg dyed in-house`}));
+  const wip=[['dsub','Dyeing (sub)'],...PROC].map(([k,lab])=>{let s=0,j=new Set();F.forEach(r=>{if(k==='dsub'){if(r.sq&&!r.dt&&!r.rd){s+=r.sq;j.add(r.j)}}else{const p=r[k];if(p&&p[3]&&!p[6]){s+=p[3];j.add(r.j)}}});return{t:lab,f:'wip:'+k,v:[s],lab:kgs(s)+' · '+j.size+' jobs',n:j.size}}).filter(x=>x.v[0]);
+  const wK=wip.reduce((a,x)=>a+x.v[0],0);
+  const R=runRate(L);const keys={};ROWS.forEach(r=>{if(!r.it&&r.m===R.m&&(!FF.b||r.b===FF.b))keys[r.key]=r});
+  const ls={};Object.values(keys).forEach(r=>{const s=labdip(r);ls[s]=(ls[s]||0)+1});
+  const due=Object.values(keys).filter(r=>labdip(r)!=='Approved'&&notStarted(r)&&r.tps&&r.tps<=addDays(AS_OF,7)).length;
+  const li=[['Approved','Approved'],['Submitted','Submitted, decision pending'],['Rejected','Rejected, resubmit'],['Not recorded','Not checked yet']].map(([s,t])=>({t,f:'qc:'+s,v:[ls[s]||0],lab:String(ls[s]||0)}));
+  li.push({t:'Due in 7 days',v:[due],lab:String(due)});
+  const lt=leadTimes(F);
+  $('#ff-charts').innerHTML=
+   `<div class="chart"><h4>Dyed, not delivered — by reason ${tot(rJ,rK)}</h4>${hbars(ri.slice(0,9),null,[C3])}</div>`+
+   `<div class="chart"><h4>Subcontract: greige sent vs dyed received <span class="tot">${kgs(sS)} sent · ${kgs(sR)} rcvd</span></h4>${legend([['Received',C4],['Still at factory',C2]])}${hbars(si,null,[C4,C2])}</div>`+
+   `<div class="chart"><h4>Factory-wise delivery balance ${tot(fJ,fK)}</h4>${legend([['Delivered',C4],['Balance',C3]])}${hbars(fi.slice(0,9),null,[C4,C3])}</div>`+
+   `<div class="chart"><h4>Slot-wise required vs delivered <span class="tot">kg</span></h4>${legend([['Required',C1],['Delivered',C2]])}${colbars(sg,[C1,C2])}</div>`+
+   `<div class="chart"><h4>Sent to process, not received <span class="tot">${kgs(wK)} kg</span></h4>${hbars(wip,null,[C2])}</div>`+
+   `<div class="chart"><h4>Average lead time by section <span class="tot">colour-wise</span></h4>${hbars(lt,null,[C1])}</div>`+
+   `<div class="chart"><h4>In-house dyeing load by month <span class="tot">kg</span></h4>${colbars(ig,[C1])}</div>`+
+   `<div class="chart"><h4>Lab dip approval status · ${mlabel(R.m)} <span class="tot">${Object.keys(keys).length} colours</span></h4>${hbars(li,null,[C1])}</div>`;
+  $('#ff-charts').querySelectorAll('[data-f]').forEach(el=>el.onclick=()=>{const[k,...v]=el.dataset.f.split(':');const val=v.join(':');
+    FF.mode='colour';FF.page=0;
+    if(k==='df')FF.df=val;else if(k==='reason'){FF.reason=val;FF.groups.add('Delivery')}else if(k==='wip'){FF.wip=val;if(val!=='dsub')FF.groups.add(PROC.find(p=>p[0]===val)[1]);else FF.groups.add('Dyeing')}
+    else if(k==='slot'){const[m,s]=val.split('|');FF.m=m;FF.sl=s}else if(k==='qc'){FF.qc=val;FF.groups.add('QC')}
+    renderFF();setTimeout(()=>$('#ff-tw').scrollIntoView({behavior:'smooth',block:'start'}),30)});
+}
+/* ---------- table ---------- */
+function jobAgg(L){
+  const M=new Map();L.forEach(r=>{const k=r.b+'|'+r.j;if(!M.has(k))M.set(k,[]);M.get(k).push(r)});
+  return [...M.values()];
+}
+function stickyHead(){
+  const t=$('#ff-tw table');if(!t)return;let top=0;
+  t.querySelectorAll('thead tr').forEach(tr=>{tr.querySelectorAll('th').forEach(th=>th.style.top=top+'px');top+=tr.getBoundingClientRect().height});
+  const st=document.querySelector('#v-ff .stick');if(st)document.documentElement.style.setProperty('--stickH',(st.getBoundingClientRect().height+85)+'px');
+}
+function ffTable(L){
+  const per=100;
+  if(FF.mode==='job'){
+    const J=jobAgg(L);const pages=Math.max(1,Math.ceil(J.length/per));FF.page=Math.min(FF.page,pages-1);const P=J.slice(FF.page*per,FF.page*per+per);
+    const sum=(rs,f)=>rs.reduce((a,r)=>a+f(r),0);
+    const H=['Colours','Style','Process','Required kg','Knitting delivery','Greige delivery','Dyed','Delivered','Balance','At QC','Dye dlv end','Max delay','Lab dip OK','Status','Factory'];
+    const body=P.map(rs=>{const r=rs[0];const F=rs.filter(x=>!x.it);const req=sum(F,x=>x.rt),dv=sum(F,x=>Math.min(delivered(x),x.rt));const sts={};F.forEach(x=>{const s=status(x);sts[s]=(sts[s]||0)+1});
+      const md=Math.max(0,...F.map(x=>+delayDays(x)||0));const ld=F.filter(x=>labdip(x)==='Approved').length;
+      return `<tr data-j="${esc(r.b+'|'+r.j)}"><td class="fz">${esc(jobCode(r))}</td><td class="n">${F.length}${rs.length>F.length?' +'+(rs.length-F.length)+' items':''}</td><td>${esc(uniq(rs.map(x=>x.st)).join(', '))}</td><td>${esc(uniq(rs.map(x=>x.ap)).join(', '))}</td><td class="n"><b>${kgs(req)}</b></td><td class="n">${kg(sum(F,x=>x.gt))}</td><td class="n">${kg(sum(F,greyIssued))}</td><td class="n">${kg(sum(F,x=>x.dt))}</td><td class="n">${kg(dv)}</td><td class="n"><span class="${dv<req?'neg':''}">${kgs(dv-req)}</span></td><td class="n">${kg(sum(F,offeredOpen))}</td><td>${fd(F.map(x=>x.tpe).filter(Boolean).sort().pop()||'')}</td><td class="n">${md?`<span class="neg">${md}</span>`:''}</td><td>${ld}/${F.length}</td><td>${Object.entries(sts).map(([s,n])=>pill(n+' '+s,STCLS[s])).join(' ')}</td><td>${esc(uniq(F.map(facOf)).join(', '))}</td></tr>`}).join('');
+    $('#ff-tw').innerHTML=`<table><thead><tr class="ch"><th class="fz">Buyer-Job</th>${H.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${body||`<tr><td class="empty" colspan="16">No jobs match these filters</td></tr>`}</tbody></table>`;
+    $('#ff-tw').querySelectorAll('tbody tr[data-j]').forEach(tr=>tr.onclick=()=>openJob(tr.dataset.j));
+    pager(J.length,pages,'jobs',()=>ffTable(L));stickyHead();return;
+  }
+  const vis=COLS.filter(c=>FF.groups.has(c.g));
+  const pages=Math.max(1,Math.ceil(L.length/per));FF.page=Math.min(FF.page,pages-1);
+  const P=L.slice(FF.page*per,FF.page*per+per);
+  let gh='<tr class="gh"><th class="fz"></th>',last=null,span=0;const gs=[];
+  vis.forEach(c=>{if(c.g!==last){if(last)gs.push([last,span]);last=c.g;span=0}span++});if(last)gs.push([last,span]);
+  gh+=gs.map(([g,s])=>`<th colspan="${s}">${esc(g)}</th>`).join('')+'</tr>';
+  const ch='<tr class="ch"><th class="fz">Buyer-Job</th>'+vis.map(c=>`<th class="${c.n?'n':''}">${esc(c.h)}</th>`).join('')+'</tr>';
+  const fr='<tr class="fr"><th class="fz"><input size="1" data-cf="fz" value="'+esc(FF.cf.fz||'')+'"></th>'+vis.map(c=>`<th><input size="1" data-cf="${c.id}" value="${esc(FF.cf[c.id]||'')}"></th>`).join('')+'</tr>';
+  let pj=null,band=0;
+  const body=P.map(r=>{const jk=r.b+'|'+r.j;let cls='';if(jk!==pj){if(pj!==null){band^=1;cls='jb'}pj=jk}if(band)cls+=' jz';
+    return `<tr data-i="${r.i}" class="${cls}"><td class="fz">${esc(jobCode(r))}</td>${vis.map(c=>`<td class="${c.n?'n':''}">${c.v(r)}</td>`).join('')}</tr>`}).join('');
+  $('#ff-tw').innerHTML=`<table><thead>${gh}${ch}${fr}</thead><tbody>${body||`<tr><td class="empty" colspan="${vis.length+1}">No rows match these filters</td></tr>`}</tbody></table>`;
+  $('#ff-tw').querySelectorAll('[data-cf]').forEach(inp=>inp.addEventListener('change',()=>{FF.cf[inp.dataset.cf]=inp.value;FF.page=0;renderFF(false)}));
+  $('#ff-tw').querySelectorAll('tbody tr[data-i]').forEach(tr=>tr.onclick=()=>openRow(+tr.dataset.i));
+  pager(L.length,pages,'colour lines',()=>ffTable(L));stickyHead();
+}
+function pager(n,pages,lab,re){
+  $('#ff-pager').innerHTML=`${n.toLocaleString()} ${lab} · page ${FF.page+1} of ${pages} <button class="btn sm" ${FF.page?'':'disabled'} id="pg-p">Prev</button><button class="btn sm" ${FF.page<pages-1?'':'disabled'} id="pg-n">Next</button>`;
+  $('#pg-p').onclick=()=>{FF.page--;re();$('#ff-tw').scrollTop=0};$('#pg-n').onclick=()=>{FF.page++;re();$('#ff-tw').scrollTop=0};
+}
+function ffGroups(){
+  const PRE=[['Dyeing work',['Job','Required','Greige status','Dyeing','Delivery']],['Greige status',['Job','Required','Greige status']],['AOP work',['Job','Required','AOP','Delivery']],['Peach / brush',['Job','Required','Peach','Brush','Delivery']],['T&A follow-up',['Job','T&A','Delivery']],['Quality',['Job','QC','Delivery']]];
+  if(FF.mode==='job'){$('#ff-groups').innerHTML='<span class="lbl">Job-wise totals: tap a job to see all its colours and enter data.</span>';return}
+  $('#ff-groups').innerHTML='<span class="lbl">Show columns:</span>'+GROUPS.map(g=>`<button class="chipb ${FF.groups.has(g)?'on':''}" data-g="${esc(g)}">${esc(g)}</button>`).join('')+` <button class="chipb" data-g="*">All</button><span class="lbl" style="margin-left:10px">Quick view:</span>`+PRE.map(([n],k)=>`<button class="chipb" data-p="${k}">${esc(n)}</button>`).join('');
+  $('#ff-groups').querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{FF.groups=new Set(PRE[+b.dataset.p][1]);ffGroups();ffTable(ffFiltered())});
+  $('#ff-groups').querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{const g=b.dataset.g;if(g==='*')GROUPS.forEach(x=>FF.groups.add(x));else FF.groups.has(g)?FF.groups.delete(g):FF.groups.add(g);ffGroups();ffTable(ffFiltered())});
+}
+function renderFF(full=true){ffFilters();ffGroups();const L=ffFiltered();ffCards(L);ffCharts(L);ffTable(L)}
+addEventListener('resize',()=>{if(VIEW==='ff')stickyHead()});
+
+/* ---------- entry sheet (one colour or all colours of a job) ---------- */
+function entrySheet(rows,host,after){
+  const own=ETYPES.find(t=>t[2]===role());
+  host.innerHTML=`<div class="form" style="padding:6px 0">
+   <div class="row"><span>Entry</span><select id="es-t">${ETYPES.map(t=>`<option value="${t[0]}" ${own&&own[0]===t[0]?'selected':''}>${esc(t[1])}</option>`).join('')}</select></div>
+   <div class="row"><span>Date</span><input type="date" id="es-d" value="${TODAY}"></div>
+   <div class="row" id="es-fr"><span>Factory</span><input id="es-f" list="es-facs"><datalist id="es-facs">${uniq(ROWS.flatMap(x=>[x.df,...PROC.map(([k])=>x[k]?x[k][0]:'')])).map(x=>`<option value="${esc(x)}">`).join('')}</datalist></div>
+   <div class="row" id="es-pr"><span>Process</span><select id="es-k">${PROC.filter(p=>p[0]!=='heat').map(([k,l])=>`<option value="${k}">${l}</option>`).join('')}</select></div>
+  </div><div class="tw" style="max-height:none"><table class="etable"><thead><tr><th>Colour</th><th class="n">Required</th><th class="n" id="es-h1">Done so far</th><th>Qty kg</th><th id="es-bh">Batch</th></tr></thead><tbody id="es-rows"></tbody></table></div>
+  <div style="margin-top:8px;display:flex;gap:8px;align-items:center"><button class="btn pri" id="es-save">Submit</button><span class="muted" id="es-msg" style="font-size:12px"></span></div>`;
+  const doneOf=(t,r)=>{const k=$('#es-k').value;return{grcv:r.gt,giss:greyIssued(r),gsub:r.sq,gheat:pv(r,'heat',3),rheat:pv(r,'heat',6),dye:r.dt,drcv:r.dt,psend:pv(r,k,3),prcv:pv(r,k,6),offer:offeredOpen(r),dlv:delivered(r)}[t]||0};
+  const draw=()=>{const t=$('#es-t').value,need=ENEED[t]||'';
+    $('#es-fr').style.display=need.includes('f')?'':'none';$('#es-pr').style.display=need.includes('k')?'':'none';
+    $('#es-bh').style.display=t==='dye'?'':'none';
+    $('#es-h1').textContent={offer:'At QC now',dlv:'Delivered'}[t]||'Done so far';
+    $('#es-rows').innerHTML=rows.filter(r=>!r.it).map(r=>{const lock=t==='dlv'&&!canDeliver(r);
+      return `<tr><td><span class="sw s-${shadeOf(r)}"></span>${esc(r.c)}<div class="muted" style="font-size:11px">${esc(r.f||'')} ${esc(r.gsm||'')}</div></td><td class="n">${kgs(r.rt)}</td><td class="n">${kgs(doneOf(t,r))}</td>
+        <td>${lock?`<span class="pill bad" title="Final inspection and lab test must pass">QC not passed</span>`:`<input type="number" min="0" data-q="${r.i}">`}</td><td style="${t==='dye'?'':'display:none'}"><input data-b="${r.i}" value="${esc(r.bn||'')}"></td></tr>`}).join('');
+    $('#es-msg').textContent=t==='dlv'?'Delivery opens only after final inspection and lab test pass (or a conditional release).':'';};
+  $('#es-t').onchange=draw;$('#es-k').onchange=draw;draw();
+  $('#es-save').onclick=()=>{
+    const t=$('#es-t').value,ty=ETYPES.find(x=>x[0]===t),need=ENEED[t]||'';
+    if(role()!==ty[2]&&role()!=='Dyeing Planner')return toast(ty[2]+' makes this entry');
+    const f=$('#es-f').value.trim();if(need.includes('f')&&!f)return toast('Enter the factory');
+    let n=0;host.querySelectorAll('[data-q]').forEach(inp=>{const q=+inp.value;if(!q)return;const i=+inp.dataset.q;const r=ROWS[i];
+      const e={t,d:$('#es-d').value,q,f,k:need.includes('k')?$('#es-k').value:'',b:t==='dye'?(host.querySelector(`[data-b="${i}"]`)?.value||'').trim():'',by:role()};
+      (S.ent[i]=S.ent[i]||[]).push(e);applyEntry(r,e);n++});
+    if(!n)return toast('Enter at least one qty');
+    save();toast(n+' entr'+(n>1?'ies':'y')+' saved');after&&after();refreshAll();
+  };
+}
+function entryLog(rows){
+  const L=rows.flatMap(r=>(S.ent[r.i]||[]).map((e,k)=>({r,e,k}))).sort((a,b)=>(b.e.d||'').localeCompare(a.e.d||''));
+  return L.length?`<table><thead><tr><th>Date</th><th>Colour</th><th>Entry</th><th class="n">kg</th><th>Factory / process</th><th>By</th></tr></thead><tbody>${L.slice(0,40).map(({r,e})=>`<tr><td>${fd(e.d)}</td><td>${esc(r.c)}</td><td>${esc((ETYPES.find(t=>t[0]===e.t)||[])[1])}</td><td class="n">${kgs(e.q)}</td><td>${esc([e.f,e.k?PROC.find(p=>p[0]===e.k)[1]:'',e.b].filter(Boolean).join(' · '))}</td><td>${esc(e.by)}</td></tr>`).join('')}</tbody></table>`:'<div class="muted" style="font-size:12px">No entries yet</div>';
+}
+function qcBlock(r){
+  const ok=canDeliver(r),cr=S.cond[r.key];
+  return `<div class="kv"><b>Lab dip (loading gate)</b><span>${pill(labdip(r),ldCls(labdip(r)))}</span><b>Final inspection</b><span>${pill(fqcRes(r),tCls(fqcRes(r)))} ${esc(S.fqc[r.key]?.find||'')}</span><b>Lab test</b><span>${pill(testRes(r),tCls(testRes(r)))} ${esc(S.tests[r.key]?.find||'')}</span><b>Delivery</b><span>${ok?pill(cr?'Conditional release':'Allowed','good'):pill('Blocked until QC pass','bad')}</span></div>
+  ${!ok&&['Merchandiser','Management'].includes(role())?`<div class="form" style="padding:0 0 6px"><div class="row"><span>Conditional release</span><input id="cr-n" placeholder="Reason / buyer approval ref"></div><div><button class="btn" id="cr-go">Release for delivery</button></div></div>`:''}`;
+}
+function bindQc(r,re){const b=$('#cr-go');if(b)b.onclick=()=>{const n=$('#cr-n').value.trim();if(!n)return toast('Write the reason');S.cond[r.key]={by:role(),n,d:TODAY};save();toast('Released for delivery');re();refreshAll()}}
+function openRow(i){
+  const r=ROWS[i];const s=status(r);const dr=$('#drawer');dr.classList.remove('wide');
+  const kv=(a)=>`<div class="kv">${a.map(([k,v])=>`<b>${k}</b><span>${v||'<span class="muted">—</span>'}</span>`).join('')}</div>`;
+  const procs=PROC.filter(([k])=>r[k]).map(([k,l])=>`<tr><td>${l}</td><td>${esc(r[k][0])}</td><td>${fdr(r[k][1],r[k][2])}</td><td class="n">${kg(r[k][3])}</td><td>${fdr(r[k][4],r[k][5])}</td><td class="n">${kg(r[k][6])}</td></tr>`).join('');
+  $('#dr-title').textContent=jobCode(r)+' · '+(r.c||r.it);
+  $('#dr-body').innerHTML=
+   `<div style="margin-bottom:8px">${pill(s,STCLS[s])} ${delayed(r)?pill('Delayed','bad'):''} ${stuck(r)?pill(stuck(r),'bad'):''} <button class="btn sm" id="dr-job">Open whole job</button></div>`+
+   kv([['Style',esc(r.st)],['Fabric',esc(r.f)],['GSM / Dia',esc([r.gsm,r.dia].filter(Boolean).join(' / '))],['Process',esc(r.ap)],['Shade group',r.it?'':`<span class="sw s-${shadeOf(r)}"></span>${shadeOf(r)}`],['Merchandiser',esc(r.mr)],['Month / slot',mlabel(r.m)+' / '+esc(r.sl)]])+
+   `<div class="dsec">Quantities</div>`+kv([['Required',r.it?kg(r.iq)+' '+r.iu:kgs(r.rt)+' kg'],['Knitting delivery',kg(r.gt)],['Greige delivery',kg(greyIssued(r))+(greyIssued(r)?' → '+esc(facOf(r)):'')],['Dyed',kg(r.dt)],['At QC',kg(offeredOpen(r))],['Delivered',kgs(delivered(r))+' kg'],['Process loss',procLoss(r)==null?'':procLoss(r).toFixed(1)+'%']])+
+   `<div class="dsec">Dyeing</div>`+kv([['Plan / WO',esc(woOf(r)?.no||planOf(r)?.route||'')],['Factory',esc(facOf(r))],['Batch no',esc(r.bn)],['Dyeing date',fdr(r.dd,r.ddr)],['T&A delivery',fd(r.tps)+(r.tpe?' – '+fd(r.tpe):'')],['Actual delivery',fd(r.as)+(r.ae?' – '+fdr(r.ae,r.aer):'')]])+
+   (procs?`<div class="dsec">Other processes</div><table><thead><tr><th>Process</th><th>Factory</th><th>Send</th><th class="n">kg</th><th>Rcv</th><th class="n">kg</th></tr></thead><tbody>${procs}</tbody></table>`:'')+
+   (r.it?'':`<div class="dsec">Quality gates</div>${qcBlock(r)}
+   <div class="dsec" id="dr-entry">Daily entry</div><div id="dr-es"></div><div class="dsec">Entry history</div>${entryLog([r])}
+   <div class="dsec">Delivery hold reason</div>
+   <div class="form" style="padding:6px 0"><div class="row"><span>Reason</span><select id="hd-r"><option value="">—</option>${HOLDS.map(h=>`<option ${reasonOf(r)===h?'selected':''}>${h}</option>`).join('')}</select></div><div class="row"><span>Note</span><input id="hd-n" value="${esc(S.hold[i]?.n||r.rm||'')}" placeholder="e.g. 2 roll shade not ok"></div><div><button class="btn" id="hd-save">Save reason</button></div></div>`);
+  $('#dr-job').onclick=()=>openJob(r.b+'|'+r.j);
+  if(!r.it){entrySheet([r],$('#dr-es'),()=>openRow(i));bindQc(r,()=>openRow(i));
+    $('#hd-save').onclick=()=>{const v=$('#hd-r').value;if(v)S.hold[i]={rs:v,n:$('#hd-n').value};else delete S.hold[i];save();toast('Reason saved');refreshAll()}}
+  dr.classList.add('on');dr.setAttribute('aria-hidden','false');
+}
+function openJob(k){
+  const[b,j]=k.split('|');const rows=ROWS.filter(r=>r.b===b&&r.j===j);const F=rows.filter(r=>!r.it);
+  const dr=$('#drawer');dr.classList.add('wide');
+  $('#dr-title').textContent=b+' '+j+' · '+F.length+' colours';
+  $('#dr-body').innerHTML=`<div class="tw" style="max-height:none"><table><thead><tr><th>Colour</th><th>Fabric</th><th class="n">Req</th><th class="n">Knit dlv</th><th class="n">Greige dlv</th><th class="n">Dyed</th><th class="n">At QC</th><th class="n">Dlv</th><th class="n">Bal</th><th>Status</th><th>QC</th></tr></thead><tbody>${F.map(r=>`<tr data-i="${r.i}"><td><span class="sw s-${shadeOf(r)}"></span>${esc(r.c)}</td><td>${esc(r.f||'')}</td><td class="n">${kgs(r.rt)}</td><td class="n">${kg(r.gt)}</td><td class="n">${kg(greyIssued(r))}</td><td class="n">${kg(r.dt)}</td><td class="n">${kg(offeredOpen(r))}</td><td class="n">${kg(delivered(r))}</td><td class="n"><span class="${delivered(r)<r.rt?'neg':''}">${kgs(delivered(r)-r.rt)}</span></td><td>${pill(status(r),STCLS[status(r)])}</td><td>${canDeliver(r)?pill('Pass','good'):pill(fqcRes(r)==='Pass'||testRes(r)==='Pass'?'Partly':'Pending','warn')}</td></tr>`).join('')}</tbody></table></div>
+   <div class="dsec">Daily entry · all colours of this job</div><div id="dr-es"></div><div class="dsec">Entry history</div>${entryLog(F)}`;
+  $('#dr-body').querySelectorAll('tbody tr[data-i]').forEach(tr=>tr.onclick=()=>openRow(+tr.dataset.i));
+  entrySheet(F,$('#dr-es'),()=>openJob(k));
+  dr.classList.add('on');dr.setAttribute('aria-hidden','false');
+}
+$('#dr-close').onclick=()=>{$('#drawer').classList.remove('on');$('#drawer').setAttribute('aria-hidden','true')};
+function openEntryFinder(){
+  $('#drawer').classList.remove('wide');
+  $('#dr-title').textContent='Daily entry · find the job';
+  $('#dr-body').innerHTML=`<input id="ef-q" placeholder="Job no, colour or batch no" style="width:100%;border:1px solid var(--line);border-radius:5px;padding:6px 8px;background:var(--paper)"><div id="ef-l" style="margin-top:8px"></div>`;
+  const run=()=>{const q=$('#ef-q').value.trim().toLowerCase();const M=new Map();if(q.length>=2)ROWS.forEach(r=>{if(!r.it&&(r.j+' '+(r.c||'')+' '+(r.bn||'')).toLowerCase().includes(q)){const k=r.b+'|'+r.j;if(!M.has(k))M.set(k,[]);M.get(k).push(r)}});
+    const L=[...M.entries()].slice(0,25);
+    $('#ef-l').innerHTML=L.map(([k,rs])=>`<div class="pi" data-k="${esc(k)}" style="grid-template-columns:1fr auto"><div><div class="a">${esc(jobCode(rs[0]))}</div><div class="b">${rs.length} colour${rs.length>1?'s':''}: ${esc(rs.slice(0,4).map(r=>r.c).join(', '))}${rs.length>4?'…':''}</div></div><div style="text-align:right"><b>${kgs(rs.reduce((a,r)=>a+r.rt,0))} kg</b></div></div>`).join('')||'<div class="empty">Type at least 2 characters</div>';
+    $('#ef-l').querySelectorAll('.pi').forEach(el=>el.onclick=()=>openJob(el.dataset.k))};
+  $('#ef-q').oninput=run;run();$('#drawer').classList.add('on');setTimeout(()=>$('#ef-q').focus(),50);
+}
+
+/* ================= DYEING PLANNING ================= */
+const DP={b:'',m:'',sl:'',q:'',mat:'Fabric',job:null};
+const FACTORIES=()=>uniq(['NFL',...ROWS.map(r=>r.df),...S.wos.map(w=>w.fac)]);
+function dpJobs(){
+  const q=DP.q.toLowerCase();const M=new Map();
+  ROWS.forEach(r=>{if(!(DP.mat==='Item'?(r.it&&!r.vt&&!S.plan[r.i]):status(r)==='Plan pending'))return;
+    if(DP.b&&r.b!==DP.b||DP.m&&r.m!==DP.m||DP.sl&&r.sl!==DP.sl)return;
+    if(q&&!(r.j+' '+(r.c||r.it||'')+' '+(r.st||'')).toLowerCase().includes(q))return;
+    const k=r.b+'|'+r.j;if(!M.has(k))M.set(k,[]);M.get(k).push(r)});
+  return [...M.entries()].map(([k,rs])=>({k,rs,tpe:rs.map(r=>r.tpe).filter(Boolean).sort()[0]||'',kg:rs.reduce((a,r)=>a+(r.rt||0),0)})).sort((a,b)=>(a.tpe||'9').localeCompare(b.tpe||'9'));
+}
+function defaultRoute(r){const a=(r.ap||'').toLowerCase();return PROC.filter(([k])=>k==='fin'||(k==='aop'&&a.includes('aop'))||(k==='peach'&&a.includes('peach'))||(k==='brush'&&a.includes('brush'))||(k==='shear'&&a.includes('shear'))||(k==='singe'&&a.includes('singe'))).map(([k])=>k)}
+function renderDP(){
+  const opt=(a,v,all,lab)=>`<option value="">${all}</option>`+a.map(x=>`<option value="${esc(x)}" ${x===v?'selected':''}>${esc(lab?lab(x):x)}</option>`).join('');
+  $('#dp-filters').innerHTML=`<select data-k="b">${opt(uniq(ROWS.map(r=>r.b)),DP.b,'All buyers')}</select><select data-k="m">${opt(uniq(ROWS.map(r=>r.m)),DP.m,'All months',mlabel)}</select><select disabled title="Comes from PO shipment dates once orders are linked"><option>Shipment week</option></select><select data-k="sl">${opt(['1','2','3'],DP.sl,'All slots',x=>'Slot '+x)}</select><select data-k="mat"><option ${DP.mat==='Fabric'?'selected':''}>Fabric</option><option value="Item" ${DP.mat==='Item'?'selected':''}>Other items (yds/pcs)</option></select><input data-k="q" placeholder="Job, colour, style" value="${esc(DP.q)}">`;
+  $('#dp-filters').querySelectorAll('[data-k]').forEach(el=>el.addEventListener(el.tagName==='INPUT'?'input':'change',()=>{DP[el.dataset.k]=el.value;dpBody()}));
+  dpBody();
+}
+function dpBody(){
+  const all=ROWS.filter(r=>status(r)==='Plan pending');
+  const pp=jobsKg(all,r=>r.rt),lp=jobsKg(ROWS.filter(r=>status(r)==='Loading pending'),r=>r.rt);
+  const wa=S.wos.filter(w=>w.st!=='Approved'),wp=S.wos.filter(w=>w.st==='Approved');const kgW=ws=>ws.reduce((a,w)=>a+w.kg,0);
+  $('#dp-cards').innerHTML=card('Plan pending',pp.j,pp.k,'warn')+card('Planned in-house → loading',lp.j,lp.k,'info','go-ml')
+   +card2('Subcontract WO awaiting approval',wa.length,kgs(kgW(wa))+' kg','bad')+card2('Subcontract WO approved',wp.length,kgs(kgW(wp))+' kg · send when greige is ready','good');
+  $('#dp-cards').querySelectorAll('[data-act]').forEach(el=>el.onclick=()=>show('ml'));
+  const J=dpJobs();$('#dp-lsum').textContent=J.length+' jobs';
+  $('#dp-list').innerHTML=J.length?J.slice(0,300).map(o=>{const r=o.rs[0];return `<div class="pi ${DP.job===o.k?'sel':''}" data-k="${esc(o.k)}" style="grid-template-columns:1fr auto"><div><div class="a">${esc(jobCode(r))}</div><div class="b">${o.rs.length} colour${o.rs.length>1?'s':''} · ${esc(uniq(o.rs.map(x=>x.ap)).join(', ')||'Solid')} · report plan: ${esc(uniq(o.rs.map(x=>x.df)).join(', ')||'—')}</div></div><div style="text-align:right"><b>${kgs(o.kg)} kg</b><div class="b">${o.tpe?'T&A '+fd(o.tpe):''}</div></div></div>`}).join(''):'<div class="empty">No jobs waiting for a dyeing plan</div>';
+  $('#dp-list').querySelectorAll('.pi').forEach(el=>el.onclick=()=>{DP.job=el.dataset.k;dpBody()});
+  dpForm(J.find(o=>o.k===DP.job));woTable();counts();
+}
+function dpForm(o){
+  if(!o){$('#dp-ftitle').textContent='Review and plan';$('#dp-form').innerHTML='<div class="empty">Pick a job on the left. Its colour lines come from the fabric order sheet; check them, fix anything that changed, then choose in-house or subcontract per colour.</div>';return}
+  const rs=o.rs;const r0=rs[0];
+  $('#dp-ftitle').textContent=`${jobCode(r0)} · ${rs.length} colour lines · ${kgs(o.kg)} kg`;
+  const facs=FACTORIES();
+  $('#dp-form').innerHTML=`<div style="padding:8px 10px"><div class="kv"><b>Style</b><span>${esc(uniq(rs.map(r=>r.st)).join(', '))}</span><b>Merchandiser</b><span>${esc(r0.mr||'')}</span><b>Month / slot</b><span>${mlabel(r0.m)} / ${esc(r0.sl||'')}</span></div>
+   <div class="toolbar" style="margin:4px 0"><span class="muted" style="font-size:12px">Set all:</span><select id="dp-all-r" class="btn sm"><option value="">Route…</option><option>In-house</option><option>Subcontract</option></select><select id="dp-all-f" class="btn sm"><option value="">Factory…</option>${facs.map(f=>`<option>${esc(f)}</option>`).join('')}</select></div>
+   <div class="tw" style="max-height:52vh"><table class="etable"><thead><tr><th>Colour</th><th>Fabric</th><th>GSM</th><th>Dia</th><th>Body</th><th>L Rib</th><th>S.J</th><th>Process</th><th>T&amp;A dlv end</th><th>Lab dip</th><th>Route</th><th>Factory</th><th>Processes after dyeing</th></tr></thead><tbody>${rs.map(r=>{const rt=r.df&&r.df!=='NFL'?'Subcontract':'In-house';const pr=defaultRoute(r);return `<tr data-i="${r.i}">
+     <td><input data-e="c" value="${esc(r.c||r.it||'')}" style="width:130px"></td><td><input data-e="f" value="${esc(r.f||'')}" style="width:100px"></td><td><input data-e="gsm" value="${esc(r.gsm||'')}" style="width:48px"></td><td><input data-e="dia" value="${esc(r.dia||'')}" style="width:48px"></td>
+     <td><input data-e="rb" type="number" value="${r.rb||''}" style="width:62px"></td><td><input data-e="rl" type="number" value="${r.rl||''}" style="width:56px"></td><td><input data-e="rs" type="number" value="${r.rs||''}" style="width:56px"></td>
+     <td><input data-e="ap" value="${esc(r.ap||'')}" style="width:90px"></td><td><input data-e="tpe" type="date" value="${r.tpe||''}" style="width:120px"></td><td>${pill(labdip(r),ldCls(labdip(r)))}</td>
+     <td><select data-rt><option ${rt==='In-house'?'selected':''}>In-house</option><option ${rt==='Subcontract'?'selected':''}>Subcontract</option></select></td>
+     <td><select data-fac>${facs.map(f=>`<option ${f===(rt==='In-house'?'NFL':r.df)?'selected':''}>${esc(f)}</option>`).join('')}</select></td>
+     <td><div class="checks" style="flex-wrap:nowrap">${PROC.filter(p=>p[0]!=='heat').map(([k,l])=>`<label title="${l}"><input type="checkbox" data-p="${k}" ${pr.includes(k)?'checked':''}>${l.slice(0,5)}</label>`).join('')}<label title="Heat set before dyeing"><input type="checkbox" data-p="heat">Heat</label></div></td></tr>`}).join('')}</tbody></table></div>
+   <div class="form" style="padding:8px 0 0"><div class="row"><span>Remarks</span><input id="dp-rm"></div>
+   <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="dp-save">Save changes only</button><button class="btn pri" id="dp-go">Confirm plan</button><span class="muted" style="font-size:12px;align-self:center">In-house colours go to machine loading. Subcontract colours get a work order for approval.</span></div></div></div>`;
+  const host=$('#dp-form');
+  host.querySelectorAll('[data-rt]').forEach(s=>s.onchange=()=>{const fs=s.closest('tr').querySelector('[data-fac]');if(s.value==='In-house')fs.value='NFL';else if(fs.value==='NFL'){const o=[...fs.options].find(x=>x.value!=='NFL');if(o)fs.value=o.value}});
+  $('#dp-all-r').onchange=e=>{host.querySelectorAll('[data-rt]').forEach(s=>{s.value=e.target.value||s.value;s.onchange()})};
+  $('#dp-all-f').onchange=e=>{if(!e.target.value)return;host.querySelectorAll('tbody tr').forEach(tr=>{tr.querySelector('[data-fac]').value=e.target.value;tr.querySelector('[data-rt]').value=e.target.value==='NFL'?'In-house':'Subcontract'})};
+  const collect=()=>{const out=[];host.querySelectorAll('tbody tr[data-i]').forEach(tr=>{const i=+tr.dataset.i,r=ROWS[i];const ed={};
+    tr.querySelectorAll('[data-e]').forEach(inp=>{const k=inp.dataset.e;let v=inp.type==='number'?(+inp.value||0):inp.value.trim();if(k==='c'&&r.it)return;if(String(r[k]??'')!==String(v))ed[k]=v});
+    out.push({r,ed,route:tr.querySelector('[data-rt]').value,fac:tr.querySelector('[data-fac]').value,proc:[...tr.querySelectorAll('[data-p]:checked')].map(x=>x.dataset.p)})});return out};
+  const applyEdits=list=>{list.forEach(({r,ed})=>{if(Object.keys(ed).length){S.edit[r.i]=Object.assign(S.edit[r.i]||{},ed);Object.assign(r,ed);r.rt=(r.rb||0)+(r.rl||0)+(r.rs||0)||r.rt;r.key=r.j+'|'+(r.c||r.it||'')}})};
+  $('#dp-save').onclick=()=>{applyEdits(collect());save();toast('Changes saved');dpBody()};
+  $('#dp-go').onclick=()=>{
+    const list=collect();
+    if(list.some(x=>x.route==='In-house'&&x.fac!=='NFL'))return toast('In-house colours need factory NFL');
+    if(list.some(x=>x.route==='Subcontract'&&x.fac==='NFL'))return toast('Choose the subcontract factory');
+    applyEdits(list);
+    const sub={};list.forEach(x=>{S.plan[x.r.i]={route:x.route,fac:x.fac,proc:x.proc,by:role(),at:TODAY};if(x.route==='Subcontract')(sub[x.fac]=sub[x.fac]||[]).push(x)});
+    const made=[];Object.entries(sub).forEach(([fac,xs])=>{S.woSeq++;const no='DWO-26-'+String(S.woSeq).padStart(4,'0');
+      S.wos.push({no,name:jobCode(xs[0].r)+' '+(xs[0].r.st||''),job:jobCode(xs[0].r),route:'Subcontract',fac,proc:uniq(xs.flatMap(x=>x.proc)),rows:xs.map(x=>x.r.i),kg:xs.reduce((a,x)=>a+(x.r.rt||0),0),st:'Awaiting approval',by:role(),at:TODAY,rm:$('#dp-rm').value});
+      xs.forEach(x=>S.rowWo[x.r.i]=no);made.push(no)});
+    const ih=list.filter(x=>x.route==='In-house').length;
+    save();DP.job=null;toast((ih?ih+' colour'+(ih>1?'s':'')+' sent to machine loading':'')+(ih&&made.length?' · ':'')+(made.length?made.length+' work order'+(made.length>1?'s':'')+' created':''));refreshAll();
+  };
+}
+function woTable(){
+  const st=$('#wo-st').value;const W=S.wos.filter(w=>!st||w.st===st).slice().reverse();
+  const canAp=['Planning & Control','Dyeing Planner'].includes(role());
+  $('#wo-table').innerHTML=W.length?`<table><thead><tr><th>WO no</th><th>Job</th><th>Factory</th><th>Processes</th><th class="n">Colours</th><th class="n">kg</th><th>Created</th><th>Status</th><th></th></tr></thead><tbody>${W.map(w=>`<tr><td><b>${esc(w.no)}</b></td><td>${esc(w.name)}</td><td>${esc(w.fac)}</td><td>${esc(w.proc.map(k=>PROC.find(p=>p[0]===k)[1]).join(', '))}</td><td class="n">${w.rows.length}</td><td class="n">${kgs(w.kg)}</td><td>${fd(w.at)}</td><td>${pill(w.st,w.st==='Approved'?'good':'warn')}</td><td>${w.st!=='Approved'?`<button class="btn sm pri" data-ap="${esc(w.no)}" ${canAp?'':'disabled title="Planning & Control approves"'}>Approve</button> <button class="btn sm" data-cx="${esc(w.no)}">Cancel</button>`:''} <button class="btn sm" data-pr="${esc(w.no)}">Print</button></td></tr>`).join('')}</tbody></table>`:'<div class="empty">No subcontract work orders yet</div>';
+  $('#wo-table').querySelectorAll('[data-ap]').forEach(b=>b.onclick=e=>{e.stopPropagation();const w=S.wos.find(x=>x.no===b.dataset.ap);w.st='Approved';w.apBy=role();w.apAt=TODAY;save();toast(w.no+' approved');refreshAll()});
+  $('#wo-table').querySelectorAll('[data-cx]').forEach(b=>b.onclick=e=>{e.stopPropagation();const i=S.wos.findIndex(x=>x.no===b.dataset.cx);S.wos[i].rows.forEach(r=>{delete S.rowWo[r];delete S.plan[r]});S.wos.splice(i,1);save();refreshAll()});
+  $('#wo-table').querySelectorAll('[data-pr]').forEach(b=>b.onclick=e=>{e.stopPropagation();printWO(S.wos.find(x=>x.no===b.dataset.pr))});
+}
+$('#wo-st').onchange=woTable;
+function printWO(w){
+  const rs=w.rows.map(i=>ROWS[i]);
+  printDoc(`Dyeing work order ${w.no}`,`<h2>Dyeing work order ${esc(w.no)}</h2><p>${esc(w.name)}<br>Factory: ${esc(w.fac)} · Processes: ${esc(w.proc.map(k=>PROC.find(p=>p[0]===k)[1]).join(', '))}<br>Status: ${esc(w.st)} · Date: ${fd(w.at)}${w.rm?'<br>Remarks: '+esc(w.rm):''}</p>
+   <table><thead><tr><th>Job</th><th>Style</th><th>Colour</th><th>Fabric</th><th>GSM</th><th>Dia</th><th>Body</th><th>L Rib</th><th>S.Jersey</th><th>Total kg</th><th>T&amp;A delivery</th></tr></thead><tbody>${rs.map(r=>`<tr><td>${esc(jobCode(r))}</td><td>${esc(r.st)}</td><td>${esc(r.c||r.it)}</td><td>${esc(r.f)}</td><td>${esc(r.gsm)}</td><td>${esc(r.dia)}</td><td>${kg(r.rb)}</td><td>${kg(r.rl)}</td><td>${kg(r.rs)}</td><td>${r.it?kg(r.iq)+' '+r.iu:kg(r.rt)}</td><td>${fd(r.tps)} – ${fd(r.tpe)}</td></tr>`).join('')}</tbody></table>
+   <p style="margin-top:40px">Prepared by ____________ &nbsp;&nbsp; Approved by ____________ &nbsp;&nbsp; Received by (factory) ____________</p>`);
+}
+function printDoc(title,html){
+  const p=$('#printarea');p.innerHTML=html;document.body.classList.add('printing');
+  setTimeout(()=>{try{window.print()}catch(e){toast('Printing is not available here')}setTimeout(()=>document.body.classList.remove('printing'),500)},50);
+}
+
+/* ================= MACHINE LOADING PLAN ================= */
+const SHI=s=>SHADES.indexOf(s);
+const greyKg=r=>(r.rt||0)*(1+(+S.set.allow||0)/100);
+function allocated(i){return S.batches.reduce((a,b)=>a+b.parts.filter(p=>p.i===i).reduce((x,p)=>x+p.kg,0),0)}
+function mlRows(){return ROWS.filter(r=>status(r)==='Loading pending')}
+const normC=c=>(c||'').trim().toLowerCase().replace(/\s+/g,' ');
+// same buyer family + same colour (Bestseller brands share shades; other buyers stay separate)
+const gkey=r=>famOf(r.b)+'|'+normC(r.c)+(S.set.grp==='cf'?'|'+(r.f||'').trim().toLowerCase()+'|'+(r.gsm||''):'');
+const effCap=m=>m.cap*(+S.set.maxl||85)/100;
+const MC=id=>MACHINES.find(m=>m.id===id);
+function mlGroups(){
+  const G={};
+  mlRows().forEach(r=>{const k=gkey(r);(G[k]=G[k]||{k,c:r.c,fam:famOf(r.b),rows:[]}).rows.push(r)});
+  return Object.values(G).map(g=>{g.shade=shadeOf(g.rows[0]);g.kg=g.rows.reduce((a,r)=>a+greyKg(r),0);g.plan=g.rows.reduce((a,r)=>a+allocated(r.i),0);g.left=Math.max(0,g.kg-g.plan);
+    g.fabs=uniq(g.rows.map(r=>(r.f||'')+(r.gsm?' '+r.gsm:'')));
+    g.locked=g.rows.filter(r=>labdip(r)!=='Approved');g.tpe=g.rows.map(r=>r.tpe).filter(Boolean).sort()[0]||'';g.jobs=new Set(g.rows.map(r=>r.j));g.nogrey=g.rows.some(r=>!r.gt);return g})
+   .sort((a,b)=>(a.tpe||'9').localeCompare(b.tpe||'9')||SHI(a.shade)-SHI(b.shade));
+}
+function used(m,d){return S.batches.filter(b=>b.m===m&&b.d===d).length}
+function prevShade(m,d){const bs=S.batches.filter(b=>b.m===m&&b.d<=d).sort((a,b)=>a.d.localeCompare(b.d)||SHI(a.shade)-SHI(b.shade));return bs.length?bs[bs.length-1].shade:null}
+function earliest(m,from,days){for(let n=0;n<days;n++){const d=addDays(from,n);if(used(m,d)<(+S.set.cyc||2))return d}return null}
+function slotOptions(kg,shade,days){
+  // candidate machine/day slots scored: earlier date, good fill, shade continuity, smaller machine
+  const minf=(+S.set.minf||60)/100;const out=[];
+  MACHINES.filter(m=>effCap(m)>=kg-0.5).forEach(m=>{const d=earliest(m.id,TODAY,days);if(!d)return;const fill=kg/m.cap;const ps=prevShade(m.id,d);const sd=ps==null?1:Math.abs(SHI(ps)-SHI(shade));
+    out.push({m,d,fill,ps,sd,score:dayDiff(TODAY,d)*10+(fill<minf?(minf-fill)*120:0)+sd*4+(1-fill)*8})});
+  return out.sort((a,b)=>a.score-b.score);
+}
+function lineQueue(rows){return rows.map(r=>({r,left:greyKg(r)-allocated(r.i)})).filter(x=>x.left>0.5).sort((a,b)=>(a.r.tpe||'9').localeCompare(b.r.tpe||'9'))}
+function takeParts(q,kg){const parts=[];let rest=kg;while(rest>0.5&&q.length){const x=q[0];const t=Math.min(x.left,rest);parts.push({i:x.r.i,kg:t});x.left-=t;rest-=t;if(x.left<=0.5)q.shift()}return parts}
+function newBatch(m,d,parts,shade,c,why){
+  const kg=parts.reduce((a,p)=>a+p.kg,0);const tpe=parts.map(p=>ROWS[p.i].tpe).filter(Boolean).sort()[0]||'';
+  const b={id:'b'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),m,d,kg,shade,c,f:uniq(parts.map(p=>ROWS[p.i].f)).join(' + '),gsm:uniq(parts.map(p=>ROWS[p.i].gsm)).join('/'),parts,tpe,ok:false,conf:false,note:why||''};
+  b.jobs=new Set(parts.map(p=>ROWS[p.i].j)).size;S.batches.push(b);return b;
+}
+function batchWhy(b){const m=MC(b.m);const fill=b.kg/m.cap;const ps=b.parts.map(p=>kgs(p.kg)).join(' + ');
+  return (b.jobs>1?`${b.jobs} jobs, same ${famOf(ROWS[b.parts[0].i].b)} shade: ${ps} = ${kgs(b.kg)} kg`:`${kgs(b.kg)} kg`)+` · ${Math.round(fill*100)}% of ${b.m} (safe load ${S.set.maxl}%)`+(fill<(+S.set.minf||60)/100?' · under-filled':'')}
+function suggest(){
+  S.batches=S.batches.filter(b=>b.ok||b.conf);
+  const days=+S.set.days||7,win=+S.set.win||0,look=+S.set.look||21;let made=0,unsched=0;
+  const cutoff=addDays(TODAY,look);
+  const groups={};
+  mlRows().filter(r=>labdip(r)==='Approved'&&(!S.set.gonly||r.gt>0)).forEach(r=>{const left=greyKg(r)-allocated(r.i);if(left>0.5)(groups[gkey(r)]=groups[gkey(r)]||[]).push({r,left})});
+  const W=[];
+  Object.values(groups).forEach(ls=>{ls.sort((a,b)=>(a.r.tpe||'9').localeCompare(b.r.tpe||'9'));let cur=null;
+    ls.forEach(x=>{if(!cur||(x.r.tpe&&cur.first&&dayDiff(cur.first,x.r.tpe)>win)){cur={first:x.r.tpe,lines:[],shade:shadeOf(x.r),c:x.r.c,key:gkey(x.r)};W.push(cur)}cur.lines.push(x)})});
+  W.forEach(w=>{w.kg=w.lines.reduce((a,x)=>a+x.left,0);w.later=!w.first||w.first>cutoff});
+  // earliest T&A first; later jobs only when allowed to fill idle machines
+  W.sort((a,b)=>(a.first||'9').localeCompare(b.first||'9')||SHI(a.shade)-SHI(b.shade));
+  const run=W.filter(w=>!w.later).concat(S.set.idle?W.filter(w=>w.later):[]);
+  const maxE=effCap(BULK[0]);
+  for(const w of run){
+    const n=Math.max(1,Math.ceil(w.kg/maxE));const size=w.kg/n;
+    const bins=[...Array(n)].map(()=>({kg:0,parts:[]}));
+    w.lines.slice().sort((a,b)=>b.left-a.left).forEach(x=>{let q=x.left;
+      while(q>0.5){bins.sort((a,b)=>a.kg-b.kg);const bn=bins[0];const room=Math.max(size-bn.kg,0);
+        const take=(q<=room+size*0.08||bins.every(b=>b.kg>=size-0.5))?q:Math.max(room,0.5);bn.parts.push({i:x.r.i,kg:take});bn.kg+=take;q-=take}});
+    for(const bn of bins){
+      const opt=slotOptions(Math.min(bn.kg,maxE),w.shade,days)[0];
+      if(!opt){unsched+=bn.kg;continue}
+      const b=newBatch(opt.m.id,opt.d,bn.parts,w.shade,w.c);b.note=batchWhy(b)+(w.later?' · idle-capacity fill (later T&A)':'');made++;
+    }
+  }
+  save();toast(made+' batches proposed'+(unsched>0?` · ${kgs(unsched)} kg did not fit in ${days} days`:''));renderML();
+}
+function mlCards(){
+  const rows=mlRows();const all=jobsKg(rows,greyKg),lk=jobsKg(rows.filter(r=>labdip(r)!=='Approved'),greyKg),rd=jobsKg(rows.filter(r=>labdip(r)==='Approved'),greyKg);
+  const tb=S.batches.filter(b=>b.d===TODAY);const capDay=BULK.reduce((a,m)=>a+m.cap,0)*(+S.set.cyc||2);
+  const tk=tb.reduce((a,b)=>a+b.kg,0);
+  const fills=S.batches.map(b=>b.kg/MC(b.m).cap);
+  const avg=fills.length?Math.round(fills.reduce((a,b)=>a+b,0)/fills.length*100):0;
+  const small=fills.filter(f=>f<(+S.set.minf||60)/100).length;const late=S.batches.filter(b=>b.tpe&&b.d>b.tpe).length;
+  $('#ml-cards').innerHTML=card('Loading pending',all.j,all.k,'warn')+card('Lab dip not approved',lk.j,lk.k,'bad','go-qa')+card('Ready to load',rd.j,rd.k,'good')
+   +card2('Proposed / approved',S.batches.filter(b=>!b.ok).length+' / '+S.batches.filter(b=>b.ok).length,'batches on board','info')
+   +card2("Today's load",kgs(tk)+' kg',`${tb.length} batches · ${capDay?Math.round(tk/capDay*100):0}% of ${kgs(capDay)} kg`,'info')
+   +card2('Average batch fill',fills.length?avg+'%':'—',small+` under ${S.set.minf}%`)+card2('Combined batches',S.batches.filter(b=>b.jobs>1).length,'2+ jobs in one batch','good')+card2('Late vs T&A',late,'batches','bad');
+  $('#ml-cards').querySelectorAll('[data-act]').forEach(el=>el.onclick=()=>{show('qa')});
+}
+function mlList(){
+  const G=mlGroups();mlList.G=G;
+  $('#ml-lsum').textContent=G.length+' colour groups · drag onto a machine';
+  $('#ml-list').innerHTML=G.length?G.map((g,ix)=>{const lockAll=g.locked.length===g.rows.length;return `<div class="pi" data-g="${ix}" draggable="${lockAll||!g.left?'false':'true'}" style="grid-template-columns:14px 1fr auto">
+   <span class="sw s-${g.shade}" style="margin-top:4px"></span>
+   <div><div class="a">${esc(g.c)} <span class="muted" style="font-weight:400">· ${esc(g.fam)}</span> ${lockAll?pill('Lab dip pending','bad'):g.locked.length?pill(g.locked.length+' locked','warn'):''} ${g.nogrey?pill('Greige not in store','warn'):''}</div>
+   <div class="b">${g.jobs.size} job${g.jobs.size>1?'s':''}: ${g.rows.slice(0,4).map(r=>esc(r.j)+' '+kgs(greyKg(r))).join(' + ')}${g.rows.length>4?' + …':''}</div>
+   <div class="b">T&amp;A ${fd(g.tpe)||'—'} · ${esc(g.fabs.slice(0,2).join(', '))}${g.fabs.length>2?' …':''}</div></div>
+   <div style="text-align:right"><b>${kgs(g.left)}</b><div class="b">${g.plan?kgs(g.plan)+' on board':'kg to load'}</div></div></div>`}).join(''):'<div class="empty">No in-house colours waiting for a machine</div>';
+  $('#ml-list').querySelectorAll('.pi').forEach(el=>{el.onclick=()=>openLoad(G[+el.dataset.g]);el.ondragstart=e=>e.dataTransfer.setData('text/plain','g:'+el.dataset.g)});
+}
+function tipOn(el,html){const t=$('#tip');el.onmouseenter=e=>{t.innerHTML=html;t.style.display='block'};el.onmousemove=e=>{t.style.left=Math.min(e.clientX+12,innerWidth-290)+'px';t.style.top=(e.clientY+14)+'px'};el.onmouseleave=()=>{t.style.display='none'}}
+function mlGantt(){
+  const days=+S.set.days||7;const D=[...Array(days)].map((_,n)=>addDays(TODAY,n));
+  const blk=b=>{const m=MC(b.m);const fill=Math.round(b.kg/m.cap*100);const late=b.tpe&&b.d>b.tpe;
+    return `<div class="blk s-${b.shade} ${b.ok?'ok':'prop'}" draggable="${b.conf?'false':'true'}" data-b="${b.id}">${b.conf?'✓ ':''}${esc((b.c||'').slice(0,20))}<br>${kgs(b.kg)} kg · ${fill}%${b.jobs>1?' · '+b.jobs+' jobs':''}${late?'<span class="late">late</span>':''}</div>`};
+  const rows=MACHINES.map(m=>`<tr><td class="m">${m.id} <span class="muted" style="font-weight:400">${m.cap}</span></td>${D.map(d=>{const bs=S.batches.filter(b=>b.m===m.id&&b.d===d).sort((a,b)=>SHI(a.shade)-SHI(b.shade));return `<td data-m="${m.id}" data-d="${d}" class="${d===TODAY?'today':''}">${bs.map(blk).join('')}</td>`}).join('')}</tr>`).join('');
+  $('#ml-gantt').innerHTML=`<table><thead><tr><th class="fz">Machine kg</th>${D.map(d=>`<th>${d===TODAY?'Today ':''}${fd(d)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>`;
+  const g=$('#ml-gantt');
+  g.querySelectorAll('.blk').forEach(el=>{const b=S.batches.find(x=>x.id===el.dataset.b);
+    tipOn(el,`<b>${esc(b.c)}</b> · ${b.shade}<br>${b.parts.map(p=>esc(jobCode(ROWS[p.i]))+' — '+kgs(p.kg)+' kg').join('<br>')}<br>${esc(b.f||'')} ${esc(b.gsm||'')}<br>T&amp;A ${fd(b.tpe)||'—'} · ${b.ok?'approved':'proposed'}`);
+    el.ondragstart=e=>{$('#tip').style.display='none';e.dataTransfer.setData('text/plain','b:'+el.dataset.b)};el.onclick=()=>{$('#tip').style.display='none';openBatch(el.dataset.b)}});
+  g.querySelectorAll('td[data-m]').forEach(td=>{
+    td.ondragover=e=>{e.preventDefault();td.classList.add('over')};td.ondragleave=()=>td.classList.remove('over');
+    td.ondrop=e=>{e.preventDefault();td.classList.remove('over');const v=e.dataTransfer.getData('text/plain');const m=MC(td.dataset.m),d=td.dataset.d;
+      if(used(m.id,d)>=(+S.set.cyc||2)&&!(v.startsWith('b:')&&S.batches.some(x=>x.id===v.slice(2)&&x.m===m.id&&x.d===d)))return toast(`${m.id} is full on ${fd(d)}`);
+      if(v.startsWith('b:')){const b=S.batches.find(x=>x.id===v.slice(2));if(!b)return;if(b.kg>effCap(m)+0.5)return toast(`${kgs(b.kg)} kg is over the safe load of ${m.id} (${kgs(effCap(m))} kg)`);b.m=m.id;b.d=d;b.note=batchWhy(b);save();renderML();return}
+      if(v.startsWith('g:')){const G=mlList.G[+v.slice(2)];const ready=G.rows.filter(r=>labdip(r)==='Approved');if(!ready.length)return toast('Lab dip not approved for this colour');
+        const q=lineQueue(ready);const parts=takeParts(q,Math.min(effCap(m),q.reduce((a,x)=>a+x.left,0)));if(!parts.length)return toast('Nothing left to load for this colour');
+        const b=newBatch(m.id,d,parts,G.shade,G.c);b.note=batchWhy(b)+' · placed by hand';save();renderML();toast(`${kgs(b.kg)} kg placed on ${m.id} ${fd(d)} — click it to approve`)}}});
+}
+/* ---------- popups ---------- */
+function modal(title,body,foot){$('#m-title').textContent=title;$('#m-body').innerHTML=body;$('#m-foot').innerHTML=foot||'';$('#mbg').classList.add('on')}
+function closeModal(){$('#mbg').classList.remove('on')}
+$('#m-close').onclick=closeModal;$('#mbg').onclick=e=>{if(e.target.id==='mbg')closeModal()};
+function openLoad(g){
+  const ready=g.rows.filter(r=>labdip(r)==='Approved');const q0=lineQueue(ready);const leftKg=q0.reduce((a,x)=>a+x.left,0);
+  const days=+S.set.days||7;
+  // 1. join an existing proposed/approved batch of the same buyer-family colour that still has room
+  const join=S.batches.filter(b=>!b.conf&&b.parts.length&&gkey(ROWS[b.parts[0].i])===g.k).map(b=>({b,room:effCap(MC(b.m))-b.kg})).filter(x=>x.room>10);
+  const take=Math.min(leftKg,effCap(BULK[0]));
+  const opts=leftKg?slotOptions(take,g.shade,days).slice(0,4):[];
+  const sug=[...join.map(x=>({t:'join',x,html:`Add ${kgs(Math.min(x.room,leftKg))} kg to the ${esc(x.b.c)} batch on <b>${x.b.m}</b> ${fd(x.b.d)}`,why:`same ${esc(g.fam)} shade already loaded · ${kgs(x.room)} kg room left`})),
+    ...opts.map(o=>({t:'new',o,html:`New batch on <b>${o.m.id}</b> (${o.m.cap} kg) · ${fd(o.d)}`,why:`${Math.round(o.fill*100)}% fill`+(o.ps?` · after a ${o.ps} batch`+(o.sd===0?' (same shade family)':o.sd===1?' (next shade)':' (shade jump — wash needed)'):' · machine free')+(g.tpe&&o.d>g.tpe?' · after T&A date':'')}))];
+  modal(`${g.c} · ${g.fam}`,`
+    <div class="kv"><b>Shade group</b><span><span class="sw s-${g.shade}"></span>${g.shade}</span><b>To load</b><span>${kgs(leftKg)} kg ready${g.locked.length?` · ${g.locked.length} line(s) waiting for lab dip`:''}</span><b>Earliest T&amp;A</b><span>${fd(g.tpe)||'—'}</span><b>Fabric</b><span>${esc(g.fabs.join(', '))}</span></div>
+    <table><thead><tr><th>Job</th><th>Style</th><th class="n">Grey kg</th><th class="n">On board</th><th>T&amp;A</th><th>Lab dip</th><th>Greige</th></tr></thead><tbody>${g.rows.map(r=>`<tr><td>${esc(jobCode(r))}</td><td>${esc(r.st||'')}</td><td class="n">${kgs(greyKg(r))}</td><td class="n">${kg(allocated(r.i))}</td><td>${fd(r.tpe)}</td><td>${pill(labdip(r),ldCls(labdip(r)))}</td><td>${r.gt?kgs(greyStock(r))+' in store':pill('not received','warn')}</td></tr>`).join('')}</tbody></table>
+    <div class="dsec">Best matches</div>${leftKg?sug.map((s,k)=>`<div class="sug"><div>${s.html}<div class="why">${s.why}</div></div><button class="btn sm pri" data-s="${k}">Use</button></div>`).join('')||'<div class="muted">No free slot in the next '+days+' days</div>':'<div class="muted">Nothing ready to load (lab dip approval needed or already on board).</div>'}
+    <div class="dsec">Or choose yourself</div>
+    <div class="form" style="padding:0"><div class="row"><span>Machine</span><select id="ld-m">${MACHINES.map(m=>`<option value="${m.id}">${m.id} · ${m.cap} kg (safe ${kgs(effCap(m))})</option>`).join('')}</select></div><div class="row"><span>Date</span><input type="date" id="ld-d" value="${TODAY}"></div><div class="row"><span>kg</span><input type="number" id="ld-k" value="${Math.round(take)}"></div></div>`,
+    leftKg?'<button class="btn pri" id="ld-go">Load</button>':'');
+  $('#m-body').querySelectorAll('[data-s]').forEach(btn=>btn.onclick=()=>{const s=sug[+btn.dataset.s];const q=lineQueue(ready);
+    if(s.t==='join'){const parts=takeParts(q,Math.min(s.x.room,leftKg));s.x.b.parts.push(...parts);s.x.b.kg+=parts.reduce((a,p)=>a+p.kg,0);s.x.b.jobs=new Set(s.x.b.parts.map(p=>ROWS[p.i].j)).size;s.x.b.note=batchWhy(s.x.b)}
+    else{const b=newBatch(s.o.m.id,s.o.d,takeParts(q,take),g.shade,g.c);b.note=batchWhy(b);b.ok=true}
+    save();closeModal();renderML();toast('Loaded')});
+  const go=$('#ld-go');if(go)go.onclick=()=>{const m=MC($('#ld-m').value),d=$('#ld-d').value,k=+$('#ld-k').value;
+    if(!k)return toast('Enter kg');if(k>effCap(m)+0.5)return toast(`Over the safe load of ${m.id} (${kgs(effCap(m))} kg)`);if(used(m.id,d)>=(+S.set.cyc||2))return toast(`${m.id} is full on ${fd(d)}`);
+    const b=newBatch(m.id,d,takeParts(lineQueue(ready),Math.min(k,leftKg)),g.shade,g.c);b.note=batchWhy(b)+' · chosen by planner'+(g.nogrey?' · check greige stock before loading':'');b.ok=true;save();closeModal();renderML();toast('Loaded')};
+}
+function openBatch(id){
+  const b=S.batches.find(x=>x.id===id);const m=MC(b.m);
+  modal((b.card||'Batch')+' · '+b.m+' · '+fd(b.d),`
+   <div class="kv"><b>Colour</b><span><span class="sw s-${b.shade}"></span>${esc(b.c)} · ${b.shade}</span><b>Fabric</b><span>${esc(b.f||'')} ${esc(b.gsm||'')}</span><b>Load</b><span>${kgs(b.kg)} kg · ${Math.round(b.kg/m.cap*100)}% of ${m.cap} kg</span><b>Earliest T&amp;A</b><span>${fd(b.tpe)||'—'}</span><b>Status</b><span>${b.conf?pill('Batch card '+b.card,'good'):b.ok?pill('Approved','good'):pill('Proposed','warn')}</span><b>Why</b><span>${esc(b.note||'')}</span></div>
+   ${b.conf?'':`<div class="form" style="padding:0"><div class="row"><span>Machine</span><select id="bt-m">${MACHINES.map(x=>`<option value="${x.id}" ${x.id===b.m?'selected':''}>${x.id} · ${x.cap} kg</option>`).join('')}</select></div><div class="row"><span>Date</span><input type="date" id="bt-d" value="${b.d}"></div></div>`}
+   <table class="etable" style="margin-top:8px"><thead><tr><th>Job</th><th>Colour</th><th>Style</th><th class="n">Grey kg</th><th>T&amp;A</th>${b.conf?'':'<th></th>'}</tr></thead><tbody>${b.parts.map((p,k)=>{const r=ROWS[p.i];return `<tr><td>${esc(jobCode(r))}</td><td>${esc(r.c)}</td><td>${esc(r.st||'')}</td><td class="n">${b.conf?kgs(p.kg):`<input type="number" data-pk="${k}" value="${Math.round(p.kg)}">`}</td><td>${fd(r.tpe)}</td>${b.conf?'':`<td><button class="btn sm" data-rm="${k}">Remove</button></td>`}</tr>`}).join('')}</tbody></table>`,
+   b.conf?'':`<button class="btn" id="bt-del">Remove batch</button><button class="btn" id="bt-save">Save changes</button><button class="btn pri" id="bt-ok">${b.ok?'Save':'Approve batch'}</button>`);
+  if(b.conf)return;
+  const commit=()=>{const nm=MC($('#bt-m').value),nd=$('#bt-d').value;
+    $('#m-body').querySelectorAll('[data-pk]').forEach(inp=>{b.parts[+inp.dataset.pk].kg=+inp.value||0});b.parts=b.parts.filter(p=>p.kg>0.5);
+    const kg=b.parts.reduce((a,p)=>a+p.kg,0);if(kg>effCap(nm)+0.5){toast(`${kgs(kg)} kg is over the safe load of ${nm.id}`);return false}
+    if((nm.id!==b.m||nd!==b.d)&&used(nm.id,nd)>=(+S.set.cyc||2)){toast(`${nm.id} is full on ${fd(nd)}`);return false}
+    b.kg=kg;b.m=nm.id;b.d=nd;b.jobs=new Set(b.parts.map(p=>ROWS[p.i].j)).size;b.tpe=b.parts.map(p=>ROWS[p.i].tpe).filter(Boolean).sort()[0]||'';b.note=batchWhy(b);return true};
+  $('#m-body').querySelectorAll('[data-rm]').forEach(x=>x.onclick=()=>{b.parts.splice(+x.dataset.rm,1);if(!b.parts.length){S.batches=S.batches.filter(z=>z.id!==id);save();closeModal();renderML();return}b.kg=b.parts.reduce((a,p)=>a+p.kg,0);b.jobs=new Set(b.parts.map(p=>ROWS[p.i].j)).size;save();openBatch(id);renderML()});
+  $('#bt-del').onclick=()=>{S.batches=S.batches.filter(x=>x.id!==id);save();closeModal();renderML()};
+  $('#bt-save').onclick=()=>{if(commit()){save();closeModal();renderML()}};
+  $('#bt-ok').onclick=()=>{if(commit()){b.ok=true;save();closeModal();renderML();toast('Batch approved')}};
+}
+function todayPlan(){
+  const tb=S.batches.filter(b=>b.d===TODAY&&(b.ok||b.conf)).sort((a,b)=>a.m.localeCompare(b.m)||SHI(a.shade)-SHI(b.shade));
+  if(!tb.length)return toast('No approved batches for today — approve them on the board first');
+  const ymd=TODAY.slice(2).replace(/-/g,'');
+  tb.forEach(b=>{if(!b.conf){S.bcSeq++;b.card='BC-'+ymd+'-'+String(S.bcSeq).padStart(3,'0');b.conf=true}});save();
+  const tot=tb.reduce((a,b)=>a+b.kg,0);
+  const plan=`<h2>Northern Fashion Ltd. · Today's dyeing plan · ${fd(TODAY)} ${TODAY.slice(0,4)}</h2><p>${tb.length} batches · ${kgs(tot)} kg</p><table><thead><tr><th>Seq</th><th>Machine</th><th>Batch card</th><th>Shade</th><th>Colour</th><th>Fabric / GSM</th><th>Jobs</th><th>Grey kg</th><th>Fill %</th><th>T&amp;A</th></tr></thead><tbody>${tb.map((b,n)=>{const m=MC(b.m);return `<tr><td>${n+1}</td><td>${b.m} (${m.cap})</td><td>${b.card}</td><td>${b.shade}</td><td>${esc(b.c)}</td><td>${esc(b.f||'')} ${esc(b.gsm||'')}</td><td>${[...new Set(b.parts.map(p=>jobCode(ROWS[p.i])))].map(esc).join(', ')}</td><td>${kgs(b.kg)}</td><td>${Math.round(b.kg/m.cap*100)}</td><td>${fd(b.tpe)}</td></tr>`}).join('')}</tbody></table>`;
+  const cards=tb.map((b,n)=>{const m=MC(b.m);return `<div class="bc ${n%2===0?'pb':''}"><h2>Batch card ${b.card}</h2><table><tr><th>Machine</th><td>${b.m} (${m.cap} kg)</td><th>Date</th><td>${fd(b.d)} ${b.d.slice(0,4)}</td></tr><tr><th>Colour</th><td>${esc(b.c)}</td><th>Shade group</th><td>${b.shade}</td></tr><tr><th>Fabric</th><td>${esc(b.f||'')}</td><th>GSM</th><td>${esc(b.gsm||'')}</td></tr><tr><th>Batch grey kg</th><td>${kgs(b.kg)}</td><th>Lab dip</th><td>Approved</td></tr></table>
+   <table><thead><tr><th>Job</th><th>Style</th><th>Dia</th><th>Greige kg to issue</th><th>Rolls</th><th>Issued kg</th></tr></thead><tbody>${b.parts.map(p=>{const r=ROWS[p.i];return `<tr><td>${esc(jobCode(r))}</td><td>${esc(r.st||'')}</td><td>${esc(r.dia||'')}</td><td>${kgs(p.kg)}</td><td></td><td></td></tr>`}).join('')}</tbody></table>
+   <p>Greige store issued by ________ &nbsp; Dyeing received by ________ &nbsp; Load time ____ &nbsp; Unload time ____</p></div>`}).join('');
+  renderML();printDoc("Today's dyeing plan",plan+cards);
+}
+function copyToday(){
+  const tb=S.batches.filter(b=>b.d===TODAY);if(!tb.length)return toast('No batches on the board for today');
+  const lines=[['Machine','Batch card','Status','Shade','Colour','Fabric','GSM','Job','Grey kg','T&A'].join(',')];
+  tb.forEach(b=>b.parts.forEach(p=>{const r=ROWS[p.i];lines.push([b.m,b.card||'',b.conf?'Card issued':b.ok?'Approved':'Proposed',b.shade,r.c,r.f||'',r.gsm||'',jobCode(r),Math.round(p.kg),r.tpe||''].map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(','))}));
+  const t=lines.join('\n');
+  (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast("Today's plan copied — paste into Excel"),()=>modal("Today's plan (CSV)",`<textarea style="width:100%;height:50vh">${esc(t)}</textarea>`));
+}
+function renderML(){
+  ['allow','cyc','days','maxl','minf','win','grp','look'].forEach(k=>{const el=$('#set-'+k);el.value=S.set[k];el.onchange=()=>{S.set[k]=k==='grp'?el.value:+el.value;save();renderML()}});
+  const id=$('#set-idle');id.checked=!!S.set.idle;id.onchange=()=>{S.set.idle=id.checked;save()};
+  const go=$('#set-gonly');go.checked=!!S.set.gonly;go.onchange=()=>{S.set.gonly=go.checked;save()};
+  mlCards();mlList();mlGantt();counts();
+}
+$('#ml-suggest').onclick=suggest;
+$('#ml-apall').onclick=()=>{let n=0;S.batches.forEach(b=>{if(!b.ok){b.ok=true;n++}});save();renderML();toast(n+' batches approved')};
+$('#ml-clear').onclick=()=>{S.batches=S.batches.filter(b=>b.ok||b.conf);save();renderML()};
+$('#ml-clear').textContent='Clear proposed';
+$('#ml-today').onclick=todayPlan;
+$('#ml-csv').textContent="Copy today's plan";$('#ml-csv').onclick=copyToday;
+
+/* ================= QUALITY ================= */
+const QA={t:'shade',b:'',st:'',q:'',scope:'open',sel:new Set(),tk:null};
+const KEYS={};ROWS.forEach(r=>{if(!r.it)(KEYS[r.key]=KEYS[r.key]||[]).push(r)});
+const keyInfo=k=>{const rs=KEYS[k]||[];const r=rs[0];return{k,r,rs,kg:rs.reduce((a,x)=>a+(x.rt||0),0),open:rs.some(x=>status(x)!=='Delivered'),dyed:rs.some(x=>x.dt||x.dd),qcp:rs.reduce((a,x)=>a+offeredOpen(x),0),tpe:rs.map(x=>x.tpe).filter(Boolean).sort()[0]||''}};
+function qaKeys(){const q=QA.q.toLowerCase();return Object.keys(KEYS).map(keyInfo).filter(o=>(!QA.b||o.r.b===QA.b)&&(QA.scope==='all'||o.open)&&(!q||(o.r.j+' '+o.r.c+' '+(o.r.st||'')).toLowerCase().includes(q)))}
+function qaCards(){
+  const all=Object.keys(KEYS).map(keyInfo).filter(o=>o.open);
+  const ld=s=>all.filter(o=>labdip(o.r)===s);
+  const pend=all.filter(o=>labdip(o.r)!=='Approved'&&o.rs.some(r=>['Plan pending','WO pending','WO approval','Loading pending'].includes(status(r))));
+  const rounds=Object.values(S.labdip).filter(x=>x.rd);const avgR=rounds.length?(rounds.reduce((a,x)=>a+x.rd,0)/rounds.length).toFixed(1):'—';
+  const tq=Object.keys(KEYS).map(keyInfo).filter(o=>o.qcp>0&&!canDeliver(o.r));
+  const tr=s=>Object.values(S.tests).filter(t=>t.res===s).length;const fr=s=>Object.values(S.fqc).filter(t=>t.res===s).length;
+  const rftN=S.rft.length,rftOk=S.rft.filter(x=>x.res==='RFT').length;
+  $('#qa-cards').innerHTML=card2('Shade pending before loading',pend.length,'colour lines','bad')+card2('Lab dip approved',ld('Approved').length,'open colour lines','good')+card2('Lab dip rejected',ld('Rejected').length,'avg rounds '+avgR,'warn')
+   +card2('Offered for QC, not passed',tq.length,kgs(tq.reduce((a,o)=>a+o.qcp,0))+' kg held from delivery','bad')+card2('Final inspection',fr('Pass')+' pass · '+fr('Fail')+' fail','colour lines','info')+card2('Lab test',tr('Pass')+' pass · '+tr('Fail')+' fail','colour lines','info')
+   +card2('Bulk RFT',rftN?Math.round(rftOk/rftN*100)+'%':'—',rftN?`${rftOk} of ${rftN} batches`:'no batch checks yet','info');
+  const ff={};Object.values(S.tests).forEach(t=>Object.entries(t.t||{}).forEach(([k,v])=>{if(v==='Fail')ff[k]=(ff[k]||0)+1}));
+  const rr={};S.rft.filter(x=>x.res==='NRFT').forEach(x=>rr[x.rs]=(rr[x.rs]||0)+1);
+  $('#qa-charts').innerHTML=`<div class="chart"><h4>Testing failures by test</h4>${hbars(TESTS.map(t=>({t,v:[ff[t]||0],lab:String(ff[t]||0)})).filter(x=>x.v[0]),null,[C3])}</div><div class="chart"><h4>Bulk NRFT reasons</h4>${hbars(Object.entries(rr).map(([t,n])=>({t,v:[n],lab:String(n)})),null,[C2])}</div>`;
+}
+function qaFilters(){
+  const opt=(a,v,all)=>`<option value="">${all}</option>`+a.map(x=>`<option ${x===v?'selected':''}>${esc(x)}</option>`).join('');
+  $('#qa-filters').innerHTML=`<select data-k="b">${opt(uniq(ROWS.map(r=>r.b)),QA.b,'All buyers')}</select>
+   ${QA.t==='shade'?`<select data-k="st">${opt(['Not recorded','Submitted','Approved','Rejected'],QA.st,'All lab dip status')}</select><select data-k="scope"><option value="open" ${QA.scope==='open'?'selected':''}>Dyeing lab to-do (not started, not approved)</option><option value="load" ${QA.scope==='load'?'selected':''}>Waiting for machine loading</option><option value="any" ${QA.scope==='any'?'selected':''}>All open jobs</option><option value="all" ${QA.scope==='all'?'selected':''}>All</option></select>`:''}
+   ${QA.t==='test'||QA.t==='fqc'?`<select data-k="st">${opt(['Not recorded','Pass','Fail','Retest'],QA.st,'All results')}</select><select data-k="scope"><option value="qc" ${QA.scope==='qc'?'selected':''}>Offered for QC</option><option value="open" ${QA.scope==='open'?'selected':''}>Dyed, not tested</option><option value="all" ${QA.scope==='all'?'selected':''}>All open</option></select>`:''}
+   <input data-k="q" placeholder="Job, colour, style" value="${esc(QA.q)}">`;
+  $('#qa-filters').querySelectorAll('[data-k]').forEach(el=>el.addEventListener(el.tagName==='INPUT'?'input':'change',()=>{QA[el.dataset.k]=el.value;QA.sel.clear();qaBody()}));
+}
+function setLabdip(keys,st,note){
+  const ok=['Dyeing Lab','Merchandiser'].includes(role());if(!ok)return toast('Dyeing Lab or Merchandiser updates lab dip');
+  keys.forEach(k=>{const o=S.labdip[k]||{st:'Not recorded',rd:0};if(st==='Submitted'||st==='Rejected')o.rd=(o.rd||0)+(st==='Submitted'&&o.st==='Rejected'?0:st==='Submitted'?1:0);if(st==='Rejected'&&!o.rd)o.rd=1;o.st=st;o.d=TODAY;o.by=role();if(note)o.n=note;S.labdip[k]=o});
+  save();toast(keys.length+' colour line'+(keys.length>1?'s':'')+' → '+st);refreshAll();
+}
+function qaShade(){
+  let L=qaKeys().filter(o=>(!QA.st||labdip(o.r)===QA.st)&&(QA.scope!=='open'||(labdip(o.r)!=='Approved'&&o.rs.some(notStarted)))&&(QA.scope!=='load'||o.rs.some(r=>['Plan pending','WO pending','WO approval','Loading pending'].includes(status(r))&&inhouse(r))));
+  L.sort((a,b)=>(a.tpe||'9').localeCompare(b.tpe||'9'));
+  const P=L.slice(0,300);
+  $('#qa-body').innerHTML=`<div class="toolbar"><span class="muted">${QA.sel.size} selected</span><input id="ld-note" placeholder="Comment / finding" style="border:1px solid var(--line);border-radius:5px;padding:3px 6px;background:var(--paper);min-width:220px"><button class="btn" data-ld="Submitted">Mark submitted</button><button class="btn" data-ld="Rejected">Rejected</button><button class="btn pri" data-ld="Approved">Approve shade</button><span class="sp"></span><button class="btn sm" id="ld-all">Select all shown</button></div>
+   <div class="tw"><table><thead><tr><th></th><th class="fz">Buyer-Job</th><th>Colour</th><th>Fabric</th><th>Shade group</th><th class="n">Req kg</th><th>Status in report</th><th>T&amp;A end</th><th>Lab dip</th><th class="n">Rounds</th><th>Updated</th><th>Comment</th></tr></thead><tbody>${P.map(o=>{const l=S.labdip[o.k]||{};return `<tr data-k="${esc(o.k)}"><td><input type="checkbox" ${QA.sel.has(o.k)?'checked':''}></td><td class="fz">${esc(jobCode(o.r))}</td><td>${esc(o.r.c)}</td><td>${esc(o.r.f||'')}</td><td><span class="sw s-${shadeOf(o.r)}"></span>${shadeOf(o.r)}</td><td class="n">${kgs(o.kg)}</td><td>${pill(status(o.r),STCLS[status(o.r)])}</td><td>${fd(o.tpe)}</td><td>${pill(labdip(o.r),ldCls(labdip(o.r)))}</td><td class="n">${l.rd||''}</td><td>${l.d?fd(l.d)+' · '+esc(l.by):''}</td><td>${esc(l.n||'')}</td></tr>`}).join('')||'<tr><td colspan="12" class="empty">No colour lines</td></tr>'}</tbody></table></div>${L.length>300?`<div class="pager">Showing 300 of ${L.length}</div>`:''}`;
+  $('#qa-body').querySelectorAll('tbody tr[data-k]').forEach(tr=>tr.onclick=()=>{const k=tr.dataset.k;QA.sel.has(k)?QA.sel.delete(k):QA.sel.add(k);qaShade()});
+  $('#ld-all').onclick=()=>{P.forEach(o=>QA.sel.add(o.k));qaShade()};
+  $('#qa-body').querySelectorAll('[data-ld]').forEach(b=>b.onclick=()=>{if(!QA.sel.size)return toast('Select colour lines first');setLabdip([...QA.sel],b.dataset.ld,$('#ld-note').value);QA.sel.clear()});
+}
+function qaRft(){
+  const bc=S.batches.filter(b=>b.conf);
+  $('#qa-body').innerHTML=`<div class="split"><div class="panel"><h3>Record bulk shade check</h3><div class="form">
+   <div class="row"><span>Batch</span><select id="rf-b"><option value="">Batch card…</option>${bc.map(b=>`<option value="${b.card}">${b.card} · ${esc(b.c)}</option>`).join('')}</select></div>
+   <div class="row"><span>Or report batch no</span><input id="rf-bn" placeholder="e.g. 109459"></div>
+   <div class="row"><span>Result</span><select id="rf-r"><option>RFT</option><option>NRFT</option></select></div>
+   <div class="row"><span>Reason (NRFT)</span><select id="rf-rs"><option value="">—</option><option>Shade off</option><option>Uneven / patchy</option><option>Shade variation roll to roll</option><option>Crease mark</option><option>Spot / stain</option><option>Other</option></select></div>
+   <div class="row"><span>Action</span><select id="rf-a"><option value="">—</option><option>Topping</option><option>Re-dye</option><option>Stripping</option><option>Accept with buyer OK</option></select></div>
+   <div class="row"><span>Finding</span><textarea id="rf-n" rows="2"></textarea></div>
+   <div><button class="btn pri" id="rf-save">Save check</button></div></div></div>
+   <div class="panel"><h3>Bulk shade checks</h3><div class="tw" style="border:0">${S.rft.length?`<table><thead><tr><th>Date</th><th>Batch</th><th>Job / colour</th><th>Result</th><th>Reason</th><th>Action</th><th>Finding</th><th>By</th></tr></thead><tbody>${S.rft.slice().reverse().map(x=>`<tr><td>${fd(x.d)}</td><td>${esc(x.b)}</td><td>${esc(x.jc)}</td><td>${pill(x.res,x.res==='RFT'?'good':'bad')}</td><td>${esc(x.rs)}</td><td>${esc(x.a)}</td><td>${esc(x.n)}</td><td>${esc(x.by)}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">No batch checks recorded</div>'}</div></div></div>`;
+  $('#rf-save').onclick=()=>{
+    if(!['Dyeing Lab','Testing Lab'].includes(role()))return toast('Dyeing Lab records bulk shade checks');
+    const card=$('#rf-b').value,bn=$('#rf-bn').value.trim();if(!card&&!bn)return toast('Choose a batch');
+    let jc='';if(card){const b=bc.find(x=>x.card===card);jc=[...new Set(b.parts.map(p=>jobCode(ROWS[p.i])))].join(', ')+' · '+b.c}else{const r=ROWS.find(x=>x.bn===bn);jc=r?jobCode(r)+' · '+r.c:''}
+    const res=$('#rf-r').value;if(res==='NRFT'&&!$('#rf-rs').value)return toast('Pick the NRFT reason');
+    S.rft.push({d:TODAY,b:card||bn,jc,res,rs:$('#rf-rs').value,a:$('#rf-a').value,n:$('#rf-n').value,by:role()});save();toast('Check saved');refreshAll()};
+}
+function qaTest(){
+  let L=qaKeys().filter(o=>{const t=testRes(o.r);if(QA.st&&t!==QA.st)return false;if(QA.scope==='qc')return o.qcp>0;if(QA.scope==='open')return (o.dyed||o.qcp>0)&&t!=='Pass';return true});
+  L.sort((a,b)=>b.qcp-a.qcp||(a.tpe||'9').localeCompare(b.tpe||'9'));
+  const sel=QA.tk&&KEYS[QA.tk]?keyInfo(QA.tk):null;const cur=sel?(S.tests[sel.k]||{t:{}}):null;
+  $('#qa-body').innerHTML=`<div class="split"><div class="panel"><h3><span>Colour lines</span><span class="muted" style="font-weight:400;font-size:12px">${L.length}</span></h3><div class="plist">${L.slice(0,300).map(o=>`<div class="pi ${QA.tk===o.k?'sel':''}" data-k="${esc(o.k)}" style="grid-template-columns:1fr auto"><div><div class="a">${esc(jobCode(o.r))} · ${esc(o.r.c)}</div><div class="b">${esc(o.r.f||'')} · ${pill(testRes(o.r),tCls(testRes(o.r)))}</div></div><div style="text-align:right">${o.qcp?`<b class="neg">${kgs(o.qcp)} kg held</b>`:''}<div class="b">${kgs(o.kg)} kg</div></div></div>`).join('')||'<div class="empty">Nothing waiting for testing</div>'}</div></div>
+   <div class="panel"><h3>${sel?esc(jobCode(sel.r)+' · '+sel.r.c):'Test report'}</h3>${sel?`<div class="form">
+    ${TESTS.map(t=>`<div class="row"><span>${t}</span><div class="checks">${['Pass','Fail','N/A'].map(v=>`<label><input type="radio" name="t-${t}" value="${v}" ${(cur.t[t]||'N/A')===v?'checked':''}>${v}</label>`).join('')}</div></div>`).join('')}
+    <div class="row"><span>Findings</span><textarea id="ts-f" rows="3">${esc(cur.find||'')}</textarea></div>
+    <div class="row"><span>Retest needed</span><label><input type="checkbox" id="ts-rt" ${cur.res==='Retest'?'checked':''}> Hold as retest</label></div>
+    <div><button class="btn pri" id="ts-save">Save test report</button> ${sel.qcp?`<span class="muted" style="font-size:12px">${kgs(sel.qcp)} kg waiting · delivery opens when final inspection and lab test both pass</span>`:''}</div>
+    ${cur.d?`<div class="muted" style="font-size:12px">Last: ${pill(cur.res,tCls(cur.res))} ${fd(cur.d)} · ${esc(cur.by)}</div>`:''}</div>`:'<div class="empty">Pick a colour line on the left</div>'}</div></div>`;
+  $('#qa-body').querySelectorAll('.pi[data-k]').forEach(el=>el.onclick=()=>{QA.tk=el.dataset.k;qaTest()});
+  const sv=$('#ts-save');if(sv)sv.onclick=()=>{
+    if(role()!=='Testing Lab')return toast('Testing Lab saves test reports');
+    const t={};TESTS.forEach(x=>t[x]=$('#qa-body').querySelector(`[name="t-${x}"]:checked`).value);
+    const vals=Object.values(t).filter(v=>v!=='N/A');if(!vals.length)return toast('Enter at least one test result');
+    let res=vals.includes('Fail')?'Fail':'Pass';if($('#ts-rt').checked)res='Retest';
+    const find=$('#ts-f').value.trim();if(res!=='Pass'&&!find)return toast('Write the findings for a fail or retest');
+    S.tests[sel.k]={t,res,find,d:TODAY,by:role()};
+    save();toast(res==='Pass'?(fqcRes(sel.r)==='Pass'?'Passed · delivery now open':'Lab test passed · final inspection still needed'):res+' saved');refreshAll()};
+}
+function qaFqc(){
+  let L=qaKeys().filter(o=>{const t=fqcRes(o.r);if(QA.st&&t!==QA.st)return false;if(QA.scope==='qc')return o.qcp>0;if(QA.scope==='open')return (o.dyed||o.qcp>0)&&t!=='Pass';return true});
+  L.sort((a,b)=>b.qcp-a.qcp||(a.tpe||'9').localeCompare(b.tpe||'9'));
+  const sel=QA.tk&&KEYS[QA.tk]?keyInfo(QA.tk):null;const cur=sel?(S.fqc[sel.k]||{}):null;
+  $('#qa-body').innerHTML=`<div class="split"><div class="panel"><h3><span>Colour lines</span><span class="muted" style="font-weight:400;font-size:12px">${L.length}</span></h3><div class="plist">${L.slice(0,300).map(o=>`<div class="pi ${QA.tk===o.k?'sel':''}" data-k="${esc(o.k)}" style="grid-template-columns:1fr auto"><div><div class="a">${esc(jobCode(o.r))} · ${esc(o.r.c)}</div><div class="b">${esc(o.r.f||'')} · ${pill(fqcRes(o.r),tCls(fqcRes(o.r)))} ${pill('Lab '+testRes(o.r),tCls(testRes(o.r)))}</div></div><div style="text-align:right">${o.qcp?`<b class="neg">${kgs(o.qcp)} kg at QC</b>`:''}<div class="b">${kgs(o.kg)} kg</div></div></div>`).join('')||'<div class="empty">Nothing offered for inspection</div>'}</div></div>
+   <div class="panel"><h3>${sel?esc(jobCode(sel.r)+' · '+sel.r.c):'Final inspection'}</h3>${sel?`<div class="form">
+    <div class="row"><span>Rolls checked</span><input type="number" id="fq-rl" value="${cur.rl||''}"></div>
+    <div class="row"><span>Points / 100 yd²</span><input type="number" id="fq-pt" value="${cur.pt||''}" placeholder="4-point system"></div>
+    ${[['sh','Shade vs approved'],['gs','GSM'],['wd','Width / dia'],['hf','Handfeel / appearance']].map(([k,l])=>`<div class="row"><span>${l}</span><div class="checks">${['OK','Not OK'].map(v=>`<label><input type="radio" name="fq-${k}" value="${v}" ${(cur[k]||'OK')===v?'checked':''}>${v}</label>`).join('')}</div></div>`).join('')}
+    <div class="row"><span>Findings</span><textarea id="fq-f" rows="3">${esc(cur.find||'')}</textarea></div>
+    <div class="row"><span>Result</span><div class="checks">${['Pass','Fail','Hold'].map(v=>`<label><input type="radio" name="fq-r" value="${v}" ${(cur.res||'')===v?'checked':''}>${v}</label>`).join('')}</div></div>
+    <div><button class="btn pri" id="fq-save">Save inspection</button> <span class="muted" style="font-size:12px">Lab test: ${pill(testRes(sel.r),tCls(testRes(sel.r)))}</span></div></div>`:'<div class="empty">Pick a colour line on the left</div>'}</div></div>`;
+  $('#qa-body').querySelectorAll('.pi[data-k]').forEach(el=>el.onclick=()=>{QA.tk=el.dataset.k;qaFqc()});
+  const sv=$('#fq-save');if(sv)sv.onclick=()=>{
+    if(role()!=='Finishing QC')return toast('Finishing QC saves the final inspection');
+    const g=n=>$('#qa-body').querySelector(`[name="${n}"]:checked`)?.value;const res=g('fq-r');if(!res)return toast('Choose Pass, Fail or Hold');
+    const find=$('#fq-f').value.trim();if(res!=='Pass'&&!find)return toast('Write the findings');
+    S.fqc[sel.k]={res,rl:+$('#fq-rl').value||0,pt:+$('#fq-pt').value||0,sh:g('fq-sh'),gs:g('fq-gs'),wd:g('fq-wd'),hf:g('fq-hf'),find,d:TODAY,by:role()};
+    save();toast(res==='Pass'?(testRes(sel.r)==='Pass'?'Passed · delivery now open':'Inspection passed · lab test still needed'):res+' saved');refreshAll()};
+}
+function qaFind(){
+  const F=[];
+  Object.entries(S.labdip).forEach(([k,o])=>{if(KEYS[k]&&(o.n||o.st==='Rejected'))F.push({d:o.d,src:'Lab dip',r:KEYS[k][0],res:o.st,n:o.n||'',by:o.by})});
+  Object.entries(S.tests).forEach(([k,o])=>{if(KEYS[k])F.push({d:o.d,src:'Testing',r:KEYS[k][0],res:o.res,n:o.find+(Object.entries(o.t).filter(([,v])=>v==='Fail').length?' (failed: '+Object.entries(o.t).filter(([,v])=>v==='Fail').map(([x])=>x).join(', ')+')':''),by:o.by})});
+  Object.entries(S.fqc).forEach(([k,o])=>{if(KEYS[k])F.push({d:o.d,src:'Final inspection',r:KEYS[k][0],res:o.res,n:[o.find,o.pt?o.pt+' pts/100yd²':''].filter(Boolean).join(' · '),by:o.by})});
+  S.rft.forEach(x=>F.push({d:x.d,src:'Bulk shade',jc:x.jc,res:x.res,n:[x.rs,x.a,x.n].filter(Boolean).join(' · '),by:x.by}));
+  const q=QA.q.toLowerCase();
+  const L=F.filter(f=>(!QA.b||!f.r||f.r.b===QA.b)&&(!q||((f.r?jobCode(f.r)+' '+f.r.c:f.jc)+' '+f.n).toLowerCase().includes(q))).sort((a,b)=>(b.d||'').localeCompare(a.d||''));
+  $('#qa-body').innerHTML=`<div class="tw">${L.length?`<table><thead><tr><th>Date</th><th>Check</th><th class="fz">Job / colour</th><th>Result</th><th>Findings</th><th>By</th></tr></thead><tbody>${L.map(f=>`<tr><td>${fd(f.d)}</td><td>${f.src}</td><td class="fz">${esc(f.r?jobCode(f.r)+' · '+f.r.c:f.jc)}</td><td>${pill(f.res,f.res==='Approved'||f.res==='Pass'||f.res==='RFT'?'good':f.res==='Submitted'||f.res==='Retest'?'warn':'bad')}</td><td style="white-space:normal;min-width:260px">${esc(f.n)}</td><td>${esc(f.by)}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">No findings recorded yet</div>'}</div>`;
+}
+function qaBody(){({shade:qaShade,rft:qaRft,fqc:qaFqc,test:qaTest,find:qaFind})[QA.t]()}
+function renderQA(){qaCards();qaFilters();qaBody();counts()}
+$('#qa-tabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{$('#qa-tabs').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));QA.t=b.dataset.t;QA.st='';QA.scope=(b.dataset.t==='test'||b.dataset.t==='fqc')?'qc':'open';QA.tk=null;QA.sel.clear();renderQA()});
+
+/* ================= APP ================= */
+let VIEW='ff';
+function counts(){
+  $('#c-dp').textContent=new Set(ROWS.filter(r=>status(r)==='Plan pending').map(r=>r.j)).size;
+  $('#c-ml').textContent=mlRows().length;
+  $('#c-qa').textContent=Object.keys(KEYS).filter(k=>KEYS[k].some(r=>offeredOpen(r)>0&&!canDeliver(r))).length+Object.keys(KEYS).filter(k=>labdip(KEYS[k][0])!=='Approved'&&KEYS[k].some(r=>status(r)==='Loading pending')).length;
+}
+function show(v){VIEW=v;document.querySelectorAll('#sect button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));try{location.hash=v}catch(e){}refreshAll();window.scrollTo(0,0)}
+function refreshAll(){({ff:()=>renderFF(),dp:renderDP,ml:renderML,qa:renderQA})[VIEW]();counts()}
+document.querySelectorAll('#sect button').forEach(b=>b.onclick=()=>show(b.dataset.v));
+$('#role').onchange=()=>{try{localStorage.setItem(SKEY+'-role',role())}catch(e){};refreshAll()};
+$('#role').innerHTML=BOOT.user.uiRoles.map(x=>`<option>${esc(x)}</option>`).join('');try{const r=localStorage.getItem(SKEY+'-role');if(r&&BOOT.user.uiRoles.includes(r))$('#role').value=r}catch(e){}
+$('#theme').onclick=()=>{const cur=document.documentElement.dataset.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');const n=cur==='dark'?'light':'dark';document.documentElement.dataset.theme=n;try{localStorage.setItem(SKEY+'-theme',n)}catch(e){}};
+try{const t=localStorage.getItem(SKEY+'-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}
+$('#asof').textContent=(BOOT.user.name?BOOT.user.name+' · ':'')+'Report data as of '+fd(AS_OF)+' '+AS_OF.slice(0,4);
+function setDesk(on){$('#vp').setAttribute('content',on?'width=1366, viewport-fit=cover':'width=device-width, initial-scale=1, viewport-fit=cover');$('#dview').textContent=on?'Mobile view':'Desktop view';try{localStorage.setItem(SKEY+'-desk',on?'1':'')}catch(e){}}
+$('#dview').onclick=()=>setDesk($('#dview').textContent==='Desktop view');
+try{if(localStorage.getItem(SKEY+'-desk'))setDesk(true)}catch(e){}
+const h=(location.hash||'').slice(1);show(['ff','dp','ml','qa'].includes(h)?h:'ff');
+
+}
+</script>
+<script>
+/* NOS session + API helper. Uses the same login token as the rest of NOS (localStorage nfl_access_token). */
+const NOS={
+  token:()=>{try{return localStorage.getItem('nfl_access_token')||''}catch(e){return''}},
+  async api(path,init={}){
+    const headers={'Content-Type':'application/json'};const t=NOS.token();if(t)headers.Authorization='Bearer '+t;
+    const res=await fetch('/api'+path,{...init,headers,cache:'no-store'});
+    if(res.status===401){try{localStorage.removeItem('nfl_access_token')}catch(e){};location.href='/login';throw new Error('Please log in again')}
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok){const m=data.message;throw new Error(typeof m==='string'?m:(m&&m.message)||('Request failed: '+res.status))}
+    return data;
+  },
+  mark(t){const el=document.getElementById('savestate');if(!el)return;el.textContent=t;clearTimeout(NOS._m);NOS._m=setTimeout(()=>{el.textContent=''},2500)}
+};
+(async()=>{
+  const box=document.getElementById('boot');
+  if(!NOS.token()){location.href='/login';return}
+  try{
+    const boot=await NOS.api('/dyeing/bootstrap');
+    box.remove();document.querySelector('main').style.display='';
+    APP(boot);
+  }catch(e){box.textContent=e.message||'Could not load the dyeing desk'}
+})();
+</script>
+</body>
+</html>
