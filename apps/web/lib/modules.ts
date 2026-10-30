@@ -20,7 +20,6 @@ export const MODULE_GROUPS: ModuleGroup[] = [
       { slug: 'job-360', name: 'Job 360', short: 'J3', status: 'Foundation', description: 'One job view across order, material, production, quality, T&A and shipment.' },
       { slug: 'kpi-board', name: 'KPI Board', short: 'KP', status: 'Working', description: 'Auto + manual KPI values, monthly board readiness and print-oriented KPI charts.' },
       { slug: 'kaizen', name: 'Kaizen', short: 'KZ', status: 'Working', description: 'Kaizen submit, review, implement, sustain/spread and KPI saving history.' },
-      { slug: 'sample-room', name: 'Sample Room', short: 'SR', status: 'Working', description: 'Sample follow-up dashboard, main sample table and new sample entry.' },
     ],
   },
   {
@@ -28,7 +27,14 @@ export const MODULE_GROUPS: ModuleGroup[] = [
     overviewSlug: 'merchandising-overview',
     items: [
       { slug: 'merchandising', name: 'Bulk Merchandising Dashboard', short: 'BM', status: 'Live', description: 'Enterprise operational dashboard, real-time job monitoring, priority actions, and live production pipeline.' },
+    ],
+  },
+  {
+    label: 'Sample',
+    overviewSlug: 'sample-overview',
+    items: [
       { slug: 'sample-merchandising', name: 'Sample Merchandising', short: 'SM', status: 'Working', description: 'Sample order sheets, sample development follow-up, sample approvals and sample delivery status.' },
+      { slug: 'sample-room', name: 'Sample Room', short: 'SR', status: 'Working', description: 'Sample follow-up dashboard, main sample table and new sample entry.' },
     ],
   },
   {
