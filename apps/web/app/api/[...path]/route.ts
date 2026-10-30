@@ -1205,7 +1205,8 @@ function buildPlanAndRowsForMasterJob(j: any, overridePlan?: Record<string, any>
   const plan: Record<string, any> = {
     styleId,
     styleNo: j.styleNo,
-    taStatus: saved.taStatus || 'APPROVED',
+    // every 5th job waits for Planning review (so the review → approve flow can be tried)
+    taStatus: saved.taStatus || (Number(String(j.jobNo).replace(/\D/g, '').slice(0, 5)) % 5 === 0 ? 'DRAFT' : 'APPROVED'),
     taVersion: Number(saved.taVersion || 1),
     orderConfirmDate,
     taPlanDate: pToIso(saved.taPlanDate || j.dates?.tnaPlan) || orderConfirmDate,

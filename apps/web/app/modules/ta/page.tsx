@@ -57,6 +57,33 @@ const PROCESS_ROWS = [
   { key: 'ccd', label: 'Cargo Closing Date (Earliest CCD)', section: 'SHIPMENT', startField: 'cargoClosingDate', endField: 'cargoClosingDate', toggleKey: null, canOutside: false },
 ] as const;
 
+// ---- Slot load next to each T&A process (from the Capacity heatmap) ----
+const SEC_HEAT: Record<string, string> = { KNITTING: 'knitting', DYEING: 'dyeing', PRINTING: 'printing', EMBROIDERY: 'embroidery', CUTTING: 'cutting', SEWING: 'sewing', FINISHING: 'finishing' };
+const SLOT_START = ['01', '11', '21'];
+const slotOfDate = (d: string) => { const day = Number(d.slice(8, 10)); return day <= 10 ? 1 : day <= 20 ? 2 : 3; };
+const prevMonth = (m: string) => { const [y, mo] = m.split('-').map(Number); const d = new Date(Date.UTC(y, mo - 2, 1)); return d.toISOString().slice(0, 7); };
+const monthLabel = (m: string) => new Date(m + '-01T00:00:00Z').toLocaleString('en-GB', { month: 'short', timeZone: 'UTC' });
+function slotLoad(heat: Record<string, any>, section: string, date: string) {
+  const key = SEC_HEAT[section]; if (!key || !date) return null;
+  const m = date.slice(0, 7), slotNo = slotOfDate(date);
+  const row = heat[m]?.rows?.find((x: any) => x.section === key);
+  const sl = row?.slots?.find((x: any) => x.slotNo === slotNo);
+  return sl ? { m, slotNo, unit: row.unit === 'KG' ? 'kg' : 'pcs', demand: sl.demand, capacity: sl.capacity, loadPct: sl.loadPct } : null;
+}
+/** Earlier (advance) slot with free capacity — looks back up to 3 slots. */
+function advanceSuggestion(heat: Record<string, any>, section: string, date: string, limit: number) {
+  const key = SEC_HEAT[section]; if (!key || !date) return null;
+  let m = date.slice(0, 7), slotNo = slotOfDate(date);
+  for (let k = 0; k < 3; k++) {
+    slotNo -= 1; if (slotNo < 1) { slotNo = 3; m = prevMonth(m); }
+    const sl = heat[m]?.rows?.find((x: any) => x.section === key)?.slots?.find((x: any) => x.slotNo === slotNo);
+    if (sl && sl.loadPct <= limit) return { m, slotNo, loadPct: sl.loadPct, start: `${m}-${SLOT_START[slotNo - 1]}` };
+  }
+  return null;
+}
+
+const fmtNum = (n: number) => Math.round(Number(n) || 0).toLocaleString('en-US');
+
 export default function TaPage() {
   const [activeTab, setActiveTab] = useState<'TNA' | 'RISK_LIST' | 'FABRIC_TRIMS' | 'SAMPLE_PLAN' | 'SHIPMENT_MTG'>('TNA');
   const [queue, setQueue] = useState<any[]>([]);
@@ -76,6 +103,14 @@ export default function TaPage() {
   const [editingFabTrims, setEditingFabTrims] = useState<any>(null);
   const [editingSample, setEditingSample] = useState<any>(null);
   const [editingMeeting, setEditingMeeting] = useState<any>(null);
+  const [heat, setHeat] = useState<Record<string, any>>({});
+  const heatLimit = 85;
+  useEffect(() => {
+    const months = new Set<string>();
+    Object.values(plans || {}).forEach((pl: any) => Object.values(pl || {}).forEach((v: any) => { if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) { months.add(v.slice(0, 7)); months.add(prevMonth(v.slice(0, 7))); } }));
+    months.forEach((m) => { if (!heat[m]) api(`/planning/capacity/heatmap?month=${m}`).then((r: any) => setHeat((h) => ({ ...h, [m]: r }))).catch(() => {}); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plans]);
 
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -751,6 +786,7 @@ export default function TaPage() {
                             <tr>
                               <th className="py-2 pr-2">Process / Milestone</th>
                               <th className="py-2 px-1">Section</th>
+                              <th className="py-2 px-1">Slot load · suggestion</th>
                               <th className="py-2 px-1">Planned Start</th>
                               <th className="py-2 px-1">Planned Finish</th>
                               {showBaselineCompare && <th className="py-2 px-1 text-indigo-300">Baseline v1</th>}
@@ -769,7 +805,7 @@ export default function TaPage() {
                                   <tr key={r.key} className="opacity-40">
                                     <td className="py-2 pr-2 font-medium text-slate-400">{r.label}</td>
                                     <td className="py-2 px-1 text-slate-500">{r.section}</td>
-                                    <td colSpan={showBaselineCompare ? 8 : 7} className="py-2 px-2 italic text-slate-500">
+                                    <td colSpan={showBaselineCompare ? 9 : 8} className="py-2 px-2 italic text-slate-500">
                                       Not applicable for this style
                                     </td>
                                   </tr>
@@ -795,6 +831,38 @@ export default function TaPage() {
                                   </td>
                                   <td className="py-2 px-1">
                                     <span className="rounded bg-slate-800 px-2 py-0.5 text-[10px] text-slate-300">{r.section}</span>
+                                  </td>
+                                  <td className="py-2 px-1">
+                                    {(() => {
+                                      const ld = slotLoad(heat, r.section, startVal);
+                                      if (!ld) return <span className="text-slate-500">—</span>;
+                                      const col = ld.loadPct > 100 ? '#dc2626' : ld.loadPct > heatLimit ? '#d97706' : '#16a34a';
+                                      const sug = ld.loadPct > heatLimit ? advanceSuggestion(heat, r.section, startVal, heatLimit) : null;
+                                      return (
+                                        <div style={{ minWidth: 150 }}>
+                                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 6 }}>
+                                            <span>Slot {ld.slotNo} · {monthLabel(ld.m)}</span>
+                                            <b style={{ color: col }}>{ld.loadPct}%</b>
+                                          </div>
+                                          <div style={{ height: 5, borderRadius: 3, background: '#e2e8f0', overflow: 'hidden', margin: '2px 0' }}>
+                                            <div style={{ width: `${Math.min(100, ld.loadPct)}%`, height: '100%', background: col }} />
+                                          </div>
+                                          <div className="text-slate-500">{fmtNum(ld.demand)} / {fmtNum(ld.capacity)} {ld.unit}</div>
+                                          {sug && (
+                                            <div style={{ marginTop: 2 }}>
+                                              <span className="text-emerald-300">→ Slot {sug.slotNo} · {monthLabel(sug.m)} ({sug.loadPct}%)</span>{' '}
+                                              <button
+                                                type="button"
+                                                onClick={() => { setStyleField(style.id, r.startField, sug.start); if (isSingleDate) setStyleField(style.id, r.endField, sug.start); }}
+                                                style={{ fontSize: 10, padding: '0 6px', border: '1px solid #16a34a', borderRadius: 4, background: 'transparent', color: '#16a34a', cursor: 'pointer' }}
+                                              >
+                                                Apply
+                                              </button>
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })()}
                                   </td>
                                   <td className="py-2 px-1">
                                     <input
