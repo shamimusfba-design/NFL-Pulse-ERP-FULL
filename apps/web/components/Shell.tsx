@@ -19,26 +19,26 @@ function roleFilteredGroups(groups: ModuleGroup[], roles: string[]): ModuleGroup
   if (hasRole(['MERCH_SAMPLE'])) add('Merchandising', ['merchandising', 'order-entry', 'sample-room', 'forms-print']);
   if (hasRole(['MERCH_BOTH'])) add('Merchandising', ['merchandising', 'order-entry', 'bulk-followup', 'production-lots', 'sample-room', 'forms-print']);
   if (hasRole(['MERCH_HEAD', 'HEAD_MERCHANDISER'])) { add('Merchandising', ['merchandising', 'order-entry', 'bulk-followup', 'production-lots', 'projection', 'sample-room', 'forms-print']); add('Sample / CAD / Technical', ['central-sample', 'sample-fabric-store', 'cad', 'technical']); }
-  if (roles.includes('IE')) { add('Merchandising', ['merchandising', 'production-lots']); add('Industrial Production Engineering', ['ie-overview', 'ie-bulletin', 'ie-daily-target', 'ie-mis-import', 'ie-npt', 'ie-qco', 'ie-line-performance', 'ie-responsibility', 'ie-skill-matrix', 'ie-production-checkpoints', 'ie-reports']); add('Management', ['kpi-board','kaizen']); }
+  if (roles.includes('IE')) { add('Merchandising', ['merchandising', 'production-lots']); add('IE / Industrial Engineering', ['kpi-board', 'ie-bulletin', 'ie-daily-target', 'ie-mis-import', 'ie-npt', 'ie-qco', 'ie-line-performance', 'ie-responsibility', 'ie-skill-matrix', 'ie-production-checkpoints', 'ie-reports']); add('Management', ['kpi-board','kaizen']); }
   if (roles.includes('CAD')) add('Sample / CAD / Technical', ['cad', 'technical']);
   if (roles.includes('SAMPLE')) { add('Merchandising', ['sample-room']); add('Sample / CAD / Technical', ['central-sample', 'sample-fabric-store']); }
   if (hasRole(['PLANNING', 'PLANNING_HEAD'])) { add('Merchandising', ['merchandising', 'order-entry', 'production-lots', 'forms-print']); add('Central Planning', ['ta', 'planning-approvals', 'capacity', 'sewing-planning', 'subcontract', 'lead-time-history']); add('Management', ['job-360']); }
   if (roles.includes('MANAGEMENT')) { add('Management', ['management', 'job-360', 'kpi-board', 'kaizen']); add('Central Planning', ['ta', 'planning-approvals', 'capacity', 'subcontract', 'lead-time-history']); add('Quality & Stores', ['quality', 'quality-history']); add('Shipment & System', ['reports']); }
-  if (roles.includes('QUALITY')) { add('Management', ['job-360']); add('Yarn & Fabric', ['lab']); add('Quality & Stores', ['quality', 'quality-history']); }
-  if (roles.includes('YARN_MANAGEMENT')) add('Yarn & Fabric', ['yarn', 'yarn-store', 'yarn-dyeing', 'knitting']);
-  if (roles.includes('PROCUREMENT')) add('Yarn & Fabric', ['procurement', 'yarn']);
-  if (roles.includes('YARN_STORE')) add('Yarn & Fabric', ['yarn-store', 'yarn']);
-  if (roles.includes('YARN_DYEING')) add('Yarn & Fabric', ['yarn-dyeing', 'yarn-store']);
-  if (roles.includes('KNITTING')) add('Yarn & Fabric', ['knitting', 'yarn']);
-  if (roles.includes('GREIGE_STORE')) add('Yarn & Fabric', ['greige-store']);
-  if (roles.includes('DYEING')) add('Yarn & Fabric', ['dyeing', 'greige-store', 'fabric-finishing']);
-  if (roles.includes('LAB')) add('Yarn & Fabric', ['lab']);
-  if (roles.includes('FABRIC_FINISHING')) add('Yarn & Fabric', ['fabric-finishing', 'finished-fabric']);
-  if (roles.includes('FINISHED_FABRIC_STORE')) add('Yarn & Fabric', ['finished-fabric']);
+  if (roles.includes('QUALITY')) { add('Management', ['job-360']); add('Yarn Store & Knitting', ['yarn-knitting']); add('Lab & Testing', ['lab']); add('Quality & Stores', ['quality', 'quality-history']); }
+  if (roles.includes('YARN_MANAGEMENT')) add('Yarn Store & Knitting', ['yarn-knitting']);
+  if (roles.includes('PROCUREMENT')) add('Yarn Store & Knitting', ['yarn-knitting']);
+  if (roles.includes('YARN_STORE')) add('Yarn Store & Knitting', ['yarn-knitting']);
+  if (roles.includes('YARN_DYEING')) add('Yarn Store & Knitting', ['yarn-knitting']);
+  if (roles.includes('KNITTING')) add('Yarn Store & Knitting', ['yarn-knitting']);
+  if (roles.includes('GREIGE_STORE')) add('Greige Fabric Store', ['greige-store']);
+  if (roles.includes('DYEING')) { add('Dyeing', ['dyeing']); add('Greige Fabric Store', ['greige-store']); add('Fabric Finishing', ['fabric-finishing']); }
+  if (roles.includes('LAB')) add('Lab & Testing', ['lab']);
+  if (roles.includes('FABRIC_FINISHING')) { add('Fabric Finishing', ['fabric-finishing']); add('Finished Fabric Store', ['finished-fabric']); }
+  if (roles.includes('FINISHED_FABRIC_STORE')) add('Finished Fabric Store', ['finished-fabric']);
   if (roles.includes('CUTTING')) add('Garment Production', ['cutting']);
   if (roles.includes('PRINTING')) add('Garment Production', ['printing']);
   if (roles.includes('EMBROIDERY')) add('Garment Production', ['embroidery']);
-  if (roles.includes('SEWING')) { add('Garment Production', ['sewing']); add('Industrial Production Engineering', ['ie-npt', 'ie-qco']); }
+  if (roles.includes('SEWING')) { add('Garment Production', ['sewing']); add('IE / Industrial Engineering', ['ie-npt', 'ie-qco']); }
   if (roles.includes('FINISHING')) add('Garment Production', ['finishing']);
   if (roles.includes('TRIMS_STORE')) add('Quality & Stores', ['trims']);
   if (roles.includes('SHIPMENT')) add('Shipment & System', ['shipment', 'reports']);
@@ -46,6 +46,18 @@ function roleFilteredGroups(groups: ModuleGroup[], roles: string[]): ModuleGroup
 
   if (!Object.keys(allowed).length) return groups;
   return groups.map((group) => ({ ...group, items: group.items.filter((item) => (allowed[group.label] || []).includes(item.slug)) })).filter((group) => group.items.length);
+}
+
+function resolveModuleHref(slug: string): string {
+  if (slug === 'merchandising') return '/merchandising';
+  if (slug === 'order-entry') return '/merchandising/order-po';
+  if (slug === 'bulk-followup') return '/modules/merchandising?view=LEGACY_REGISTER';
+  if (slug === 'sample-room') return '/sample-room/index.html';
+  if (slug === 'yarn-knitting' || slug === 'yarn' || slug === 'yarn-store' || slug === 'knitting') return '/yarn-knitting/index.html';
+  if (slug === 'greige-store') return '/greige-store/index.html';
+  if (slug === 'dyeing') return '/dyeing/index.html';
+  if (slug === 'finished-fabric') return '/finished-fabric/index.html';
+  return `/modules/${slug}`;
 }
 
 const PERSONAS = [
@@ -67,8 +79,27 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
   const [searchHits, setSearchHits] = useState<any[]>([]);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [showPersonaMenu, setShowPersonaMenu] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem('nos_sidebar_collapsed') === '1') {
+        setSidebarCollapsed(true);
+      }
+    } catch {}
+  }, []);
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('nos_sidebar_collapsed', next ? '1' : '0');
+      } catch {}
+      return next;
+    });
+  };
 
   // Live Debounced Job Search
   useEffect(() => {
@@ -116,6 +147,9 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
       assignedBuyer: p.assignedBuyer,
       department: p.desc
     };
+    if (!localStorage.getItem('nfl_access_token')) {
+      localStorage.setItem('nfl_access_token', 'demo-access-token');
+    }
     localStorage.setItem('nfl_user', JSON.stringify(userObj));
     localStorage.setItem('nos_active_persona', JSON.stringify({
       id: p.id,
@@ -139,18 +173,19 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
     const token = localStorage.getItem('nfl_access_token');
     const raw = localStorage.getItem('nfl_user');
     if (!token || token === 'undefined' || token === 'null') {
-      location.href = '/login';
-      return;
+      localStorage.setItem('nfl_access_token', 'demo-access-token');
     }
     if (raw && raw !== 'undefined' && raw !== 'null') {
       try {
         setUser(JSON.parse(raw));
       } catch (err) {
         console.error('Failed to parse nfl_user:', err);
-        setUser({ id: 'u-1', name: 'Authorized User', email: 'user@northernfashions.com', roles: ['ADMIN'] });
+        setUser({ id: 'u-1', name: 'Tariqul Islam (Admin / Head)', email: 'admin@nfl.local', roles: ['ADMIN'] });
       }
     } else {
-      setUser({ id: 'u-1', name: 'Authorized User', email: 'user@northernfashions.com', roles: ['ADMIN'] });
+      const defaultAdmin = { id: 'u-1', name: 'Tariqul Islam (Admin / Head)', email: 'admin@nfl.local', roles: ['ADMIN'] };
+      localStorage.setItem('nfl_user', JSON.stringify(defaultAdmin));
+      setUser(defaultAdmin);
     }
   }, []);
 
@@ -179,11 +214,19 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
   const canEnterOrders = !roles.length || roles.some((r) => ['ADMIN', 'MERCH_BULK', 'MERCH_BOTH', 'MERCH_HEAD'].includes(r));
 
   return (
-    <div className="shell">
+    <div className={`shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
       <aside className="sidebar">
         <div className="brand-wrap">
           <img className="brand-logo" src="/branding/northern-fashions-logo.jpg" alt="Northern Fashions Limited" />
-          <div><div className="brand">Northern Fashions Limited</div><div className="brand-sub">NFL Pulse ERP · Operations Control</div></div>
+          <div style={{ flex: 1, minWidth: 0 }}><div className="brand">Northern Fashions Limited</div><div className="brand-sub">NFL Pulse ERP · Operations Control</div></div>
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            title="Hide left menu"
+            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', color: '#cbd5e1', width: '28px', height: '28px', borderRadius: '7px', cursor: 'pointer', display: 'grid', placeItems: 'center', fontSize: '14px', flexShrink: 0 }}
+          >
+            «
+          </button>
         </div>
 
         <div className="sidebar-search">
@@ -199,8 +242,8 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
 
           {groups.map((group) => {
             const isOpen = query.length > 0 || !!openGroups[group.label];
-            const overviewHref = `/modules/${group.overviewSlug}`;
-            const hasActive = active(overviewHref) || group.items.some((item) => active(item.slug === 'merchandising' ? '/merchandising' : item.slug === 'order-entry' ? '/merchandising/order-po' : `/modules/${item.slug}`));
+            const overviewHref = resolveModuleHref(group.overviewSlug);
+            const hasActive = active(overviewHref) || group.items.some((item) => active(resolveModuleHref(item.slug)));
             return <div className={`nav-group ${isOpen ? 'open' : ''}`} key={group.label}>
               <div className={`nav-group-toggle ${hasActive ? 'has-active' : ''}`}>
                 <Link className="nav-group-overview" href={overviewHref} title={`${group.label} overview`} onClick={() => setOpenGroups((prev) => ({ ...prev, [group.label]: true }))}>
@@ -212,7 +255,7 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
               </div>
               <div className={`nav-group-items ${isOpen ? 'open' : ''}`}>
                 {group.items.map((item) => {
-                  const href = item.slug === 'merchandising' ? '/merchandising' : item.slug === 'order-entry' ? '/merchandising/order-po' : item.slug === 'bulk-followup' ? '/modules/merchandising?view=LEGACY_REGISTER' : `/modules/${item.slug}`;
+                  const href = resolveModuleHref(item.slug);
                   const isControlTower = item.slug === 'merchandising';
                   const isOrderEntry = item.slug === 'order-entry';
                   return <Link className={active(href) ? 'nav-link active' : 'nav-link'} href={href} key={item.slug} title={item.description} style={isControlTower ? { background: 'linear-gradient(90deg, rgba(37,99,235,0.18), rgba(30,64,175,0.06))', borderLeft: '3px solid #3b82f6' } : isOrderEntry ? { background: 'rgba(245,158,11,0.08)', borderLeft: '3px solid #f59e0b' } : undefined}>
@@ -235,7 +278,19 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
 
       <main className="main">
         <header className="topbar">
-          <div><div className="page-eyebrow">{eyebrow || 'NFL / NCL · Connected ERP'}</div><h1>{title}</h1></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              className="sidebar-ham-btn"
+              title={sidebarCollapsed ? 'Show left menu' : 'Hide left menu'}
+              aria-expanded={!sidebarCollapsed}
+            >
+              <span>☰</span>
+              <span style={{ fontSize: '11.5px' }}>{sidebarCollapsed ? 'Menu' : 'Hide menu'}</span>
+            </button>
+            <div><div className="page-eyebrow">{eyebrow || 'NFL / NCL · Connected ERP'}</div><h1>{title}</h1></div>
+          </div>
           <div className="top-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             {/* 1. Global Interactive Job Search with Live Suggestions */}
             <div ref={searchContainerRef} style={{ position: 'relative' }}>

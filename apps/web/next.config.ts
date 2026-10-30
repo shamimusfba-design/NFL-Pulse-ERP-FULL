@@ -17,6 +17,7 @@ const nextConfig: NextConfig = {
       { source: '/merchandising/:path((?!index\\.html$).*)', destination: MERCH, permanent: false },
       { source: '/modules/merchandising', destination: MERCH, permanent: false },
       { source: '/modules/sample-merchandising', destination: MERCH, permanent: false },
+      { source: '/modules/yarn-knitting', destination: YK, permanent: false },
       { source: '/modules/yarn', destination: YK, permanent: false },
       { source: '/modules/yarn-store', destination: YK, permanent: false },
       { source: '/modules/knitting', destination: YK, permanent: false },

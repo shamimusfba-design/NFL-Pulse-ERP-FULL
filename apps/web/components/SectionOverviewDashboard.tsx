@@ -499,7 +499,17 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
     })();
   }, [overview.slug, overview.representativeSlug]);
 
-  const group = MODULE_GROUPS.find(g => g.overviewSlug === overview.slug);
+  const group = useMemo(() => {
+    if (overview.slug === 'yarn-fabric') {
+      const slugs = ['yarn-knitting', 'greige-store', 'dyeing', 'lab', 'fabric-finishing', 'finished-fabric'];
+      return {
+        label: 'Knitting & Dyeing',
+        overviewSlug: 'yarn-fabric',
+        items: MODULE_GROUPS.filter((g) => slugs.includes(g.overviewSlug)).flatMap((g) => g.items),
+      };
+    }
+    return MODULE_GROUPS.find(g => g.overviewSlug === overview.slug);
+  }, [overview.slug]);
 
   // 1. BASE FILTERED ROWS (Based on Week, Month, Merchandiser, Floor/Line, Status, Buyer, Search)
   const baseFilteredRows = useMemo(() => {
@@ -847,9 +857,20 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
             Quick Navigation · {overview.label} Work Areas
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: '8px' }}>
-            {group.items.map(item => (
+            {group.items.map(item => {
+              const itemHref =
+                item.slug === 'yarn-knitting' || item.slug === 'yarn' || item.slug === 'yarn-store' || item.slug === 'knitting'
+                  ? '/yarn-knitting/index.html'
+                  : item.slug === 'greige-store'
+                  ? '/greige-store/index.html'
+                  : item.slug === 'dyeing'
+                  ? '/dyeing/index.html'
+                  : item.slug === 'finished-fabric'
+                  ? '/finished-fabric/index.html'
+                  : `/modules/${item.slug}`;
+              return (
               <Link
-                href={`/modules/${item.slug}`}
+                href={itemHref}
                 key={item.slug}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px',
@@ -871,7 +892,8 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
                   </span>
                 </div>
               </Link>
-            ))}
+              );
+            })}
           </div>
         </section>
       )}

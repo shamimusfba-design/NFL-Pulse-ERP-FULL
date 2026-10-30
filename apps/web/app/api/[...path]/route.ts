@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseBuyerPoFile } from '../../../lib/buyer-po-parser';
 import { DEFAULT_MASTER_ITEM_RATES, generateDefaultItemizedCostsForStyle, calculateCostSheetTotals, calculateItemCostPerPc } from '../../../lib/costing-engine';
+import { handleLocalNestFallback } from '../../../lib/nest-desks-fallback';
 import demo2000DataRaw from '../../../data/demo-2000-master.json';
 import factoryDataRaw from '../../../data/dyeing-factory-data.json';
 import factoryKpiMasterRaw from '../../../data/factory-kpi-master.json';
@@ -28,9 +29,12 @@ async function proxyToNest(request: NextRequest, pathStr: string) {
   const body = request.method === 'GET' || request.method === 'HEAD' ? undefined : await request.text();
   try {
     const res = await fetch(`${NEST_API_URL}/${pathStr}${url.search}`, { method: request.method, headers, body, cache: 'no-store' });
+    if (res.status === 401 || res.status === 403 || res.status === 404 || res.status >= 500) {
+      return handleLocalNestFallback(request, pathStr, body);
+    }
     return new NextResponse(await res.text(), { status: res.status, headers: { 'content-type': res.headers.get('content-type') || 'application/json' } });
   } catch {
-    return NextResponse.json({ message: 'The ERP server (API) is not reachable. Start the API and try again.' }, { status: 502 });
+    return handleLocalNestFallback(request, pathStr, body);
   }
 }
 

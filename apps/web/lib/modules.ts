@@ -58,6 +58,60 @@ export const MODULE_GROUPS: ModuleGroup[] = [
     ],
   },
   {
+    label: 'Yarn Store & Knitting',
+    overviewSlug: 'yarn-knitting',
+    items: [
+      { slug: 'yarn-knitting', name: 'Yarn Store & Knitting', short: 'YK', status: 'Live', description: 'Unified Yarn Store inventory, MOQ & requisition, purchase pipeline, receive/issue, Knitting execution, planning & Knitting Quality.' },
+    ],
+  },
+  {
+    label: 'Greige Fabric Store',
+    overviewSlug: 'greige-store',
+    items: [
+      { slug: 'greige-store', name: 'Greige Fabric Store', short: 'GS', status: 'Live', description: 'Greige roll receipt, 4-point inspection, fabric aging, daily machine plan matching and issue to Dyeing.' },
+    ],
+  },
+  {
+    label: 'Dyeing',
+    overviewSlug: 'dyeing',
+    items: [
+      { slug: 'dyeing', name: 'Dyeing', short: 'DY', status: 'Live', description: '23 Winch & HTHP machines, batching, multi-process (Peach, Brush, AOP), RFT quality, stenter & compactor finishing.' },
+    ],
+  },
+  {
+    label: 'Lab & Testing',
+    overviewSlug: 'lab',
+    items: [
+      { slug: 'lab', name: 'Lab & Testing', short: 'LB', status: 'Live', description: '3-Stage validation: Stage 1 Before Dyeing (Yarn/Dip), Stage 2 Before Bulk (Pilot trial), Stage 3 Testing Before Delivery (COA).' },
+    ],
+  },
+  {
+    label: 'Fabric Finishing',
+    overviewSlug: 'fabric-finishing',
+    items: [
+      { slug: 'fabric-finishing', name: 'Fabric Finishing', short: 'FF', status: 'Planned', description: 'Post-dyeing finishing processes, stenter and compactor output.' },
+    ],
+  },
+  {
+    label: 'Finished Fabric Store',
+    overviewSlug: 'finished-fabric',
+    items: [
+      { slug: 'finished-fabric', name: 'Finished Fabric Store', short: 'FS', status: 'Live', description: 'Finished fabric inventory, 4-point inspection, roll barcodes and delivery challan to cutting.' },
+    ],
+  },
+  {
+    label: 'Garment Production',
+    overviewSlug: 'garment-production',
+    items: [
+      { slug: 'cutting', name: 'Cutting & Input Management', short: 'CT', status: 'Planned', description: 'Cuttable, daily cut plan, cutting execution and input follow-up.' },
+      { slug: 'printing', name: 'Printing Operations', short: 'PT', status: 'Live', description: 'In-house screen & rotary print tables, multi-vendor outsource challan dispatch, return and strike-off quality.' },
+      { slug: 'embroidery', name: 'Embroidery Operations', short: 'EM', status: 'Live', description: 'In-house multi-head embroidery machines, outsource vendor challan dispatch, return and stitch counters.' },
+      { slug: 'special-process', name: 'Special Processes', short: 'SP', status: 'Planned', description: 'Sequins, wash and other configurable garment processes.' },
+      { slug: 'sewing', name: 'Sewing', short: 'SW', status: 'Planned', description: 'Input, line production, execution and production status.' },
+      { slug: 'finishing', name: 'Finishing & Packing', short: 'FP', status: 'Planned', description: 'Finishing, packing, poly/carton status and shipment readiness.' },
+    ],
+  },
+  {
     label: 'IE / Industrial Engineering',
     overviewSlug: 'ie-overview',
     items: [
@@ -72,32 +126,6 @@ export const MODULE_GROUPS: ModuleGroup[] = [
       { slug: 'ie-skill-matrix', name: 'Skill Matrix', short: 'SK', status: 'Working', description: 'Operator skill matrix by operation, machine type, proficiency and line/floor.' },
       { slug: 'ie-production-checkpoints', name: 'Production Checkpoints', short: 'PC', status: 'Working', description: '1st Hour, 4th Hour, 8th Hour and OT production checkpoints with target vs actual.' },
       { slug: 'ie-reports', name: 'IE Reports', short: 'IR', status: 'Planned', description: 'IE Bulletin, target, NPT, skill matrix and checkpoint reports.' },
-    ],
-  },
-  {
-    label: 'Yarn & Fabric',
-    overviewSlug: 'yarn-fabric',
-    items: [
-      { slug: 'yarn', name: 'Yarn Management & Purchasing', short: 'YM', status: 'Live', description: 'Merchandising requisition receipt, spinning mill PO purchasing, safety stock buffer monitoring, GRN receive and issue to knitting.' },
-      { slug: 'yarn-store', name: 'Yarn Store & Inventory', short: 'YS', status: 'Live', description: 'Warehouse Godown A/B stock ledger, lot/location tracking, GRN vehicle intake and Knitting delivery challan.' },
-      { slug: 'knitting', name: 'Knitting Operations', short: 'KN', status: 'Live', description: 'Circular and flat knitting programs, machine programs, greige roll production and yarn leftover returns.' },
-      { slug: 'greige-store', name: 'Greige Fabric Store', short: 'GS', status: 'Live', description: 'Greige roll receipt, 4-point inspection, fabric aging, daily machine plan matching and issue to Dyeing Winches.' },
-      { slug: 'dyeing', name: 'Dyeing Floor & Winches', short: 'DY', status: 'Live', description: '23 Winch & HTHP machines, batching, multi-process (Peach, Brush, AOP), RFT quality, stenter & compactor finishing.' },
-      { slug: 'lab', name: 'Lab & Testing', short: 'LB', status: 'Live', description: '3-Stage validation: Stage 1 Before Dyeing (Yarn/Dip), Stage 2 Before Bulk (Pilot trial), Stage 3 Testing Before Delivery (COA).' },
-      { slug: 'fabric-finishing', name: 'Fabric Finishing', short: 'FF', status: 'Planned', description: 'Post-dyeing finishing processes, stenter and compactor output.' },
-      { slug: 'finished-fabric', name: 'Finished Fabric Store', short: 'FS', status: 'Live', description: 'Finished fabric inventory, 4-point inspection, roll barcodes and delivery challan to cutting.' },
-    ],
-  },
-  {
-    label: 'Garment Production',
-    overviewSlug: 'garment-production',
-    items: [
-      { slug: 'cutting', name: 'Cutting & Input Management', short: 'CT', status: 'Planned', description: 'Cuttable, daily cut plan, cutting execution and input follow-up.' },
-      { slug: 'printing', name: 'Printing Operations', short: 'PT', status: 'Live', description: 'In-house screen & rotary print tables, multi-vendor outsource challan dispatch, return and strike-off quality.' },
-      { slug: 'embroidery', name: 'Embroidery Operations', short: 'EM', status: 'Live', description: 'In-house multi-head embroidery machines, outsource vendor challan dispatch, return and stitch counters.' },
-      { slug: 'special-process', name: 'Special Processes', short: 'SP', status: 'Planned', description: 'Sequins, wash and other configurable garment processes.' },
-      { slug: 'sewing', name: 'Sewing', short: 'SW', status: 'Planned', description: 'Input, line production, execution and production status.' },
-      { slug: 'finishing', name: 'Finishing & Packing', short: 'FP', status: 'Planned', description: 'Finishing, packing, poly/carton status and shipment readiness.' },
     ],
   },
   {
@@ -134,6 +162,9 @@ export const MODULE_GROUPS: ModuleGroup[] = [
 export const MODULES = MODULE_GROUPS.flatMap((group) => group.items);
 
 export function getModule(slug: string) {
+  if (slug === 'yarn' || slug === 'yarn-store' || slug === 'knitting') {
+    return MODULES.find((item) => item.slug === 'yarn-knitting') || null;
+  }
   return MODULES.find((item) => item.slug === slug) || null;
 }
 
@@ -152,7 +183,7 @@ export const SECTION_OVERVIEWS: SectionOverview[] = [
   {slug:'sample-cad-technical',label:'Sample & CAD',short:'SC',description:'Sample, CAD consumption and technical files.',representativeSlug:'central-sample'},
   {slug:'central-planning',label:'Planning',short:'CP',description:'T&A, capacity and sewing line planning.',representativeSlug:'sewing-planning'},
   {slug:'ie-overview',label:'IE',short:'IE',description:'IE bulletin, line targets, NPT and factory KPIs.',representativeSlug:'ie-bulletin'},
-  {slug:'yarn-fabric',label:'Knitting & Dyeing',short:'YF',description:'Yarn, knitting, dyeing and fabric finishing.',representativeSlug:'yarn'},
+  {slug:'yarn-fabric',label:'Knitting & Dyeing',short:'YF',description:'Yarn Store & Knitting, Greige Fabric Store, Dyeing, Lab & Testing, Fabric Finishing and Finished Fabric Store.',representativeSlug:'yarn-knitting'},
   {slug:'garment-production',label:'Sewing & Finishing',short:'GP',description:'Cutting, sewing, print, embroidery and packing.',representativeSlug:'sewing'},
   {slug:'quality-stores',label:'Quality & Stores',short:'QS',description:'Quality inspections, trims and store stocks.',representativeSlug:'quality'},
   {slug:'shipment-system',label:'Shipment',short:'SS',description:'Shipment schedule and commercial dispatch.',representativeSlug:'shipment'},

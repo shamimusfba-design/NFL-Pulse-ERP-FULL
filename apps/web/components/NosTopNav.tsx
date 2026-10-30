@@ -152,7 +152,13 @@ export function useActivePersona() {
   return { persona, switchPersona };
 }
 
-export default function NosTopNav() {
+export default function NosTopNav({
+  sidebarCollapsed,
+  onToggleSidebar
+}: {
+  sidebarCollapsed?: boolean;
+  onToggleSidebar?: () => void;
+} = {}) {
   const pathname = usePathname();
   const router = useRouter();
   const { persona, switchPersona } = useActivePersona();
@@ -197,6 +203,29 @@ export default function NosTopNav() {
       {/* Top Identity Row */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 24px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          {onToggleSidebar && (
+            <button
+              type="button"
+              onClick={onToggleSidebar}
+              title={sidebarCollapsed ? 'Show left menu' : 'Hide left menu'}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                background: 'rgba(255,255,255,0.12)',
+                border: '1px solid rgba(255,255,255,0.24)',
+                color: '#ffffff',
+                borderRadius: '7px',
+                padding: '5px 10px',
+                fontSize: '12.5px',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              <span>☰</span>
+              <span style={{ fontSize: '11.5px' }}>{sidebarCollapsed ? 'Menu' : 'Hide menu'}</span>
+            </button>
+          )}
           <Link href="/merchandising" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
             <span className="nos-brand-badge">NOS</span>
             <div>
