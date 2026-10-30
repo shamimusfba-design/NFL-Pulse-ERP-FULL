@@ -23,18 +23,18 @@ export const MODULE_GROUPS: ModuleGroup[] = [
     ],
   },
   {
+    label: 'Sample Room',
+    overviewSlug: 'sample-room-overview',
+    items: [
+      { slug: 'sample-room', name: 'Sample Room', short: 'SR', status: 'Working', description: 'Sample follow-up dashboard, main sample table and new sample entry.' },
+    ],
+  },
+  {
     label: 'Merchandising',
     overviewSlug: 'merchandising-overview',
     items: [
       { slug: 'merchandising', name: 'Bulk Merchandising Dashboard', short: 'BM', status: 'Live', description: 'Enterprise operational dashboard, real-time job monitoring, priority actions, and live production pipeline.' },
-    ],
-  },
-  {
-    label: 'Sample',
-    overviewSlug: 'sample-overview',
-    items: [
       { slug: 'sample-merchandising', name: 'Sample Merchandising', short: 'SM', status: 'Working', description: 'Sample order sheets, sample development follow-up, sample approvals and sample delivery status.' },
-      { slug: 'sample-room', name: 'Sample Room', short: 'SR', status: 'Working', description: 'Sample follow-up dashboard, main sample table and new sample entry.' },
     ],
   },
   {
