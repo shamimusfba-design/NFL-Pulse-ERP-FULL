@@ -23,13 +23,6 @@ export const MODULE_GROUPS: ModuleGroup[] = [
     ],
   },
   {
-    label: 'Sample Room',
-    overviewSlug: 'sample-room-overview',
-    items: [
-      { slug: 'sample-room', name: 'Sample Room', short: 'SR', status: 'Working', description: 'Sample follow-up dashboard, main sample table and new sample entry.' },
-    ],
-  },
-  {
     label: 'Merchandising',
     overviewSlug: 'merchandising-overview',
     items: [
