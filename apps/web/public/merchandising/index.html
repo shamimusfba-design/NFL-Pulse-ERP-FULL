@@ -2675,7 +2675,7 @@ let th='light';try{th=localStorage.getItem('nos-theme')||'light'}catch(e){}setTh
 document.querySelectorAll('[data-th]').forEach(b=>{b.onclick=()=>setTheme(b.dataset.th);b.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setTheme(b.dataset.th)}}});
 const sels={sample:$('app-sample').querySelector('#whoSel'),bulk:$('app-bulk').querySelector('#whoSel')};
 const apps={sample:mountSample($('app-sample'),SAMPLE_RAW,SAMPLE_PO),bulk:mountBulk($('app-bulk'),BULK_TRACK)};
-let cur='sample';try{cur=localStorage.getItem('nos-app')||'sample'}catch(e){}if(!apps[cur])cur='sample';
+let cur='sample';try{cur=localStorage.getItem('nos-app')||'sample'}catch(e){}try{const q=new URLSearchParams(location.search).get('app');if(q==='bulk'||q==='sample')cur=q}catch(e){}if(!apps[cur])cur='sample';
 function showApp(a){cur=a;const slot=$('userSlot');slot.innerHTML='';if(sels[a])slot.appendChild(sels[a]);try{localStorage.setItem('nos-app',a)}catch(e){}['sample','bulk'].forEach(k=>$('app-'+k).classList.toggle('on',k===a));apps[a].rerender();renderNav()}
 const MAIN={sample:'Sample Merchandising',bulk:'Bulk Merchandising'};
 function renderNav(){$('mainnav').innerHTML=Object.keys(MAIN).map(k=>`<button class="${cur===k?'on':''}" data-a="${k}">${MAIN[k]}</button>`).join('');

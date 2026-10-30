@@ -220,7 +220,7 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
                     <span className="nav-text" style={isControlTower ? { fontWeight: 700, color: '#93c5fd' } : isOrderEntry ? { fontWeight: 700, color: '#fde68a' } : undefined}>
                       {item.name}
                     </span>
-                    {isControlTower && <span style={{ marginLeft: 'auto', fontSize: '8px', background: '#2563eb', color: '#fff', padding: '1px 5px', borderRadius: '3px', fontWeight: 900 }}>DASHBOARD</span>}
+                    
                   </Link>;
                 })}
               </div>
