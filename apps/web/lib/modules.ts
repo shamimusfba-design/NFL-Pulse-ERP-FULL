@@ -49,7 +49,6 @@ export const MODULE_GROUPS: ModuleGroup[] = [
       { slug: 'capacity', name: 'Capacity & Holiday Calendar', short: 'CB', status: 'Live', description: '10-day slot-wise and section-wise capacity heatmaps with Sunday weekly holiday and Eid/closure holiday calendar.' },
       { slug: 'sewing-planning', name: 'Sewing Line Gantt', short: 'LP', status: 'Live', description: 'Drag-and-drop Gantt, line allocation, machine capacity validation, baseline versioning and plan vs actual.' },
       { slug: 'subcontract', name: 'Subcontract / Print-Emb Follow-up', short: 'SC', status: 'Live', description: 'Outside Print, Embroidery & Wash work order dispatch, challan receive, reject and balance follow-up.' },
-      { slug: 'lead-time-history', name: 'Lead Time & Delivery History', short: 'LT', status: 'Live', description: 'Job-wise planned vs actual section lead time, production delivery, variance days and delay reason.' },
     ],
   },
   {

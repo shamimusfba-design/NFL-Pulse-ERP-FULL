@@ -41,6 +41,7 @@ export default function PlanningApprovalsPage() {
     remarks: 'Physical signed Fabric Order Sheet & T&A copy received at Central Planning desk',
   });
 
+  const [reviewJob, setReviewJob] = useState<any>(null);
   const [returnModalJob, setReturnModalJob] = useState<any>(null);
   const [returnForm, setReturnForm] = useState({
     target: 'BOTH',
@@ -201,7 +202,7 @@ export default function PlanningApprovalsPage() {
       {
         id: `row-${Date.now()}`,
         colour: 'New Colour',
-        part: 'Body / Rib',
+        part: 'Body',
         fabricType: '100% Cotton Single Jersey',
         composition: '100% Combed Cotton',
         yarnCount: '30/1 Combed',
@@ -377,7 +378,7 @@ export default function PlanningApprovalsPage() {
               <div>
                 <h2 className="text-sm font-semibold text-white">Fabric Order Sheet & T&A Approval Queue</h2>
                 <p className="text-xs text-slate-400">
-                  Gate Rule: Record physical signed copy first → Approve or Return to Merchandiser → Edit & Release Colour × Part Finish/Grey Kg to Knitting.
+                  Review & Release: record the signed copy, approve or return to the merchandiser, then release colour × part finish fabric to knitting.
                 </p>
               </div>
               <input
@@ -424,7 +425,7 @@ export default function PlanningApprovalsPage() {
                           {item.fabricSheetNo} (Rev {item.fabricSheetRevision})
                         </div>
                         <div className="text-[11px] text-emerald-300">
-                          Finish: {fmt(item.totalFinishKg)} Kg · Greige: {fmt(item.totalGreyKg)} Kg
+                          Finish: {fmt(item.totalFinishKg)} Kg
                         </div>
                       </td>
                       <td className="py-3 px-2">
@@ -449,35 +450,12 @@ export default function PlanningApprovalsPage() {
                         )}
                       </td>
                       <td className="py-3 pl-3 text-right">
-                        <div className="flex flex-wrap justify-end gap-1.5">
-                          <button
-                            onClick={() => openSignedCopyModal(item)}
-                            className="rounded-lg border border-indigo-500/40 bg-indigo-500/10 px-2.5 py-1 text-[11px] font-medium text-indigo-200 hover:bg-indigo-500/20"
-                          >
-                            1. Signed Copy
-                          </button>
-                          <button
-                            onClick={() => {
-                              setReturnModalJob(item);
-                              setReturnForm({ target: 'BOTH', reason: item.returnReason || '' });
-                            }}
-                            className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-2.5 py-1 text-[11px] font-medium text-rose-200 hover:bg-rose-500/20"
-                          >
-                            Return
-                          </button>
-                          <button
-                            onClick={() => openReleaseModal(item)}
-                            className="rounded-lg bg-emerald-500 px-2.5 py-1 text-[11px] font-semibold text-slate-950 hover:bg-emerald-400"
-                          >
-                            Edit & Release to Knitting
-                          </button>
-                          <button
-                            onClick={() => openHistoryDrawer(item)}
-                            className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-1 text-[11px] text-slate-300 hover:border-slate-500"
-                          >
-                            History
-                          </button>
-                        </div>
+                        <button
+                          onClick={() => setReviewJob(item)}
+                          className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-emerald-500"
+                        >
+                          Review &amp; Release
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -600,6 +578,31 @@ export default function PlanningApprovalsPage() {
       )}
 
       {/* Modal 1: Record Physical Signed Copy */}
+      {reviewJob && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/70 p-4" onClick={() => setReviewJob(null)}>
+          <div className="w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 p-5 text-xs" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-bold text-white">Job #{reviewJob.jobNo} · {reviewJob.styleNo}</div>
+                <div className="text-slate-400">{reviewJob.buyer} · Merch: {reviewJob.merchandiser} · {fmt(reviewJob.orderQty)} pcs · CCD {reviewJob.ccd}</div>
+              </div>
+              <button onClick={() => setReviewJob(null)} className="rounded border border-slate-700 px-2 py-1 text-slate-300">Close</button>
+            </div>
+            <div className="mb-3 rounded-lg border border-slate-700 p-3">
+              <div>Finish fabric: <b>{fmt(reviewJob.totalFinishKg)} Kg</b></div>
+              <div>Signed copy: {reviewJob.signedCopy?.fabricSheet && reviewJob.signedCopy?.tna ? '✓ Fabric sheet and T&A signed' : '○ Not recorded yet'}</div>
+              <div>Status: <b>{String(reviewJob.status || '').replace(/_/g, ' ')}</b></div>
+            </div>
+            <div className="grid gap-2">
+              <button onClick={() => { const j = reviewJob; setReviewJob(null); openSignedCopyModal(j); }} className="rounded-lg border border-slate-600 px-3 py-2 text-left font-semibold text-white hover:bg-slate-800">1 · Record signed copy</button>
+              <button onClick={() => { const j = reviewJob; setReviewJob(null); openReleaseModal(j); }} className="rounded-lg bg-emerald-600 px-3 py-2 text-left font-semibold text-white hover:bg-emerald-500">2 · Review fabric and release to knitting</button>
+              <button onClick={() => { const j = reviewJob; setReviewJob(null); setReturnModalJob(j); setReturnForm({ target: 'BOTH', reason: j.returnReason || '' }); }} className="rounded-lg border border-rose-500/50 px-3 py-2 text-left font-semibold text-rose-300 hover:bg-rose-500/10">Return to merchandiser</button>
+              <button onClick={() => { const j = reviewJob; setReviewJob(null); openHistoryDrawer(j); }} className="rounded-lg border border-slate-700 px-3 py-2 text-left text-slate-300 hover:bg-slate-800">History</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {signedModalJob && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4">
           <div className="w-full max-w-md rounded-2xl border border-indigo-500/40 bg-slate-900 p-5 text-xs">
@@ -736,7 +739,7 @@ export default function PlanningApprovalsPage() {
                   Approve & Release to Knitting — Job #{releaseModalJob.jobNo} · Style {releaseModalJob.styleNo} ({releaseModalJob.buyer})
                 </h3>
                 <p className="text-slate-400">
-                  Review or edit Colour × Part Finish Kg, Process Loss %, and Greige Kg before creating Knitting & Dyeing execution rows.
+                  Review Colour × Part finish fabric (Kg) and CAD consumption. Tick parts such as lace that must be dyed to match. Greige for knitting is worked out from the finish Kg.
                 </p>
               </div>
               <button
@@ -759,8 +762,8 @@ export default function PlanningApprovalsPage() {
                 </div>
               </div>
               <div>
-                <div className="text-slate-400">Total Greige Knitting Requirement</div>
-                <div className="text-sm font-bold text-cyan-300">{fmt(draftSumGreyKg)} Kg</div>
+                <div className="text-slate-400">Parts to dye to match</div>
+                <div className="text-sm font-bold text-cyan-300">{releaseRows.filter((r) => r.dyeToMatch).length}</div>
               </div>
               <div className="flex items-center">
                 {Math.abs(finishDiffKg) > 1 ? (
@@ -785,11 +788,10 @@ export default function PlanningApprovalsPage() {
                     <th className="py-2 pr-2">Colour</th>
                     <th className="py-2 px-1">Garment Part</th>
                     <th className="py-2 px-1">Fabric Type & Composition</th>
-                    <th className="py-2 px-1">Yarn Count / SL</th>
                     <th className="py-2 px-1">GSM / Dia</th>
-                    <th className="py-2 px-1">Loss %</th>
+                    <th className="py-2 px-1">CAD cons. (kg/dz)</th>
                     <th className="py-2 px-1">Finish Kg</th>
-                    <th className="py-2 px-1">Greige Kg</th>
+                    <th className="py-2 px-1">Dye to match</th>
                     <th className="py-2 pl-1"></th>
                   </tr>
                 </thead>
@@ -821,14 +823,6 @@ export default function PlanningApprovalsPage() {
                         />
                       </td>
                       <td className="py-2 px-1">
-                        <input
-                          type="text"
-                          value={r.yarnCount || ''}
-                          onChange={(e) => updateReleaseRow(idx, 'yarnCount', e.target.value)}
-                          className="w-28 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-white"
-                        />
-                      </td>
-                      <td className="py-2 px-1">
                         <div className="flex gap-1">
                           <input
                             type="number"
@@ -848,10 +842,12 @@ export default function PlanningApprovalsPage() {
                       <td className="py-2 px-1">
                         <input
                           type="number"
-                          value={r.processLossPct ?? 8}
+                          step="0.01"
+                          value={r.cadConsKgDz ?? ''}
+                          placeholder="from CAD"
                           onWheel={(e) => e.currentTarget.blur()}
-                          onChange={(e) => updateReleaseRow(idx, 'processLossPct', Number(e.target.value))}
-                          className="w-14 rounded border border-slate-700 bg-slate-950 px-1.5 py-1 text-white"
+                          onChange={(e) => updateReleaseRow(idx, 'cadConsKgDz', e.target.value === '' ? null : Number(e.target.value))}
+                          className="w-20 rounded border border-slate-700 bg-slate-950 px-1.5 py-1 text-white"
                         />
                       </td>
                       <td className="py-2 px-1">
@@ -863,13 +859,12 @@ export default function PlanningApprovalsPage() {
                           className="w-20 rounded border border-emerald-500/50 bg-slate-950 px-2 py-1 font-mono text-emerald-200"
                         />
                       </td>
-                      <td className="py-2 px-1">
+                      <td className="py-2 px-1 text-center">
                         <input
-                          type="number"
-                          value={r.greyKg ?? 0}
-                          onWheel={(e) => e.currentTarget.blur()}
-                          onChange={(e) => updateReleaseRow(idx, 'greyKg', Number(e.target.value))}
-                          className="w-20 rounded border border-cyan-500/50 bg-slate-950 px-2 py-1 font-mono text-cyan-200"
+                          type="checkbox"
+                          checked={!!r.dyeToMatch}
+                          onChange={(e) => updateReleaseRow(idx, 'dyeToMatch', e.target.checked)}
+                          title="Part bought in (e.g. lace) that must be dyed to match the body colour"
                         />
                       </td>
                       <td className="py-2 pl-1">

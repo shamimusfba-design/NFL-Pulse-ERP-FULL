@@ -19,8 +19,8 @@ function roleFilteredGroups(groups: ModuleGroup[], roles: string[]): ModuleGroup
   if (roles.includes('IE')) { add('Merchandising', ['merchandising']); add('Industrial Production Engineering', ['ie-overview', 'ie-bulletin', 'ie-daily-target', 'ie-mis-import', 'ie-npt', 'ie-qco', 'ie-line-performance', 'ie-responsibility', 'ie-skill-matrix', 'ie-production-checkpoints', 'ie-reports']); add('Management', ['kpi-board','kaizen','sample-room']); }
   if (roles.includes('CAD')) add('Sample / CAD / Technical', ['cad', 'technical']);
   if (roles.includes('SAMPLE')) { add('Merchandising', ['sample-merchandising']); add('Sample / CAD / Technical', ['central-sample', 'sample-fabric-store']); }
-  if (hasRole(['PLANNING', 'PLANNING_HEAD'])) { add('Merchandising', ['merchandising']); add('Central Planning', ['ta', 'planning-approvals', 'capacity', 'sewing-planning', 'subcontract', 'lead-time-history']); add('Management', ['job-360']); }
-  if (roles.includes('MANAGEMENT')) { add('Management', ['management', 'job-360', 'kpi-board', 'kaizen']); add('Central Planning', ['ta', 'planning-approvals', 'capacity', 'subcontract', 'lead-time-history']); add('Quality & Stores', ['quality', 'quality-history']); add('Shipment & System', ['reports']); }
+  if (hasRole(['PLANNING', 'PLANNING_HEAD'])) { add('Merchandising', ['merchandising']); add('Central Planning', ['ta', 'planning-approvals', 'capacity', 'sewing-planning', 'subcontract']); add('Management', ['job-360']); }
+  if (roles.includes('MANAGEMENT')) { add('Management', ['management', 'job-360', 'kpi-board', 'kaizen']); add('Central Planning', ['ta', 'planning-approvals', 'capacity', 'subcontract']); add('Quality & Stores', ['quality', 'quality-history']); add('Shipment & System', ['reports']); }
   if (roles.includes('QUALITY')) { add('Management', ['job-360']); add('Yarn & Fabric', ['lab']); add('Quality & Stores', ['quality', 'quality-history']); }
   if (roles.includes('YARN_MANAGEMENT')) add('Yarn & Fabric', ['yarn', 'yarn-store', 'yarn-dyeing', 'knitting']);
   if (roles.includes('PROCUREMENT')) add('Yarn & Fabric', ['procurement', 'yarn']);
@@ -59,6 +59,18 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
   const pathname = usePathname();
   const [user, setUser] = useState<any>(null);
   const [query, setQuery] = useState('');
+  // Day / Night mode for every page (stored in the browser)
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  useEffect(() => {
+    let t: 'light' | 'dark' = 'light';
+    try { t = localStorage.getItem('nos-theme') === 'dark' ? 'dark' : 'light'; } catch {}
+    setTheme(t); document.documentElement.dataset.theme = t;
+  }, []);
+  const toggleTheme = () => {
+    const t = theme === 'dark' ? 'light' : 'dark';
+    setTheme(t); document.documentElement.dataset.theme = t;
+    try { localStorage.setItem('nos-theme', t); } catch {}
+  };
   const [jobJumpNo, setJobJumpNo] = useState('');
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [searchHits, setSearchHits] = useState<any[]>([]);
@@ -235,6 +247,10 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
         <header className="topbar">
           <div><div className="page-eyebrow">{eyebrow || 'NFL / NCL · Connected ERP'}</div><h1>{title}</h1></div>
           <div className="top-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div className="theme-switch" role="group" aria-label="Day or night mode">
+              <button type="button" className={theme === 'light' ? 'on' : ''} onClick={() => theme !== 'light' && toggleTheme()}>☀ Day</button>
+              <button type="button" className={theme === 'dark' ? 'on' : ''} onClick={() => theme !== 'dark' && toggleTheme()}>☾ Night</button>
+            </div>
             {/* 1. Global Interactive Job Search with Live Suggestions */}
             <div ref={searchContainerRef} style={{ position: 'relative' }}>
               <form
