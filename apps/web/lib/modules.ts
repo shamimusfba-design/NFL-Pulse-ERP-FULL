@@ -26,7 +26,7 @@ export const MODULE_GROUPS: ModuleGroup[] = [
     label: 'Merchandising',
     overviewSlug: 'merchandising-overview',
     items: [
-      { slug: 'merchandising', name: 'Bulk Merchandising Dashboard', short: 'BM', status: 'Live', description: 'Enterprise operational dashboard, real-time job monitoring, priority actions, and live production pipeline.' },
+      { slug: 'merchandising', name: 'Bulk Merchandising', short: 'BM', status: 'Live', description: 'Enterprise operational dashboard, real-time job monitoring, priority actions, and live production pipeline.' },
       { slug: 'sample-merchandising', name: 'Sample Merchandising', short: 'SM', status: 'Working', description: 'Sample order sheets, sample development follow-up, sample approvals and sample delivery status.' },
     ],
   },

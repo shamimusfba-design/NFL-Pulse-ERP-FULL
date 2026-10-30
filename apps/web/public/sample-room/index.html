@@ -258,7 +258,7 @@ const F={q:'',buyer:'',sub:'',merch:'',coll:'',month:'',dstat:'',stage:'',finish
 let sort={k:'due',dir:1},pageN=0;const PER=50;
 let selId=null,newIds=new Set(),entryOpen=false;
 let PAGE=['entry','planning'].includes((location.hash||'').slice(1))?(location.hash||'').slice(1):'follow';let planSel=null;let FORMTYPE='Development';const E={q:'',type:'',buyer:''};let pageE=0;
-const PAGES=[['follow','Sample follow-up'],['entry','New sample entry'],['planning','Planning approval']];
+const PAGES=[['planning','Planning approval'],['follow','Sample follow-up']];
 function renderTabs(){const pend=pendingSheets().length;document.getElementById('tabs').innerHTML=PAGES.map(([k,l])=>`<button class="${PAGE===k?'active':''}" data-page="${k}">${l}${k==='planning'&&pend?`<span class="ct" style="background:var(--warn-bg);color:var(--warn)">${pend} waiting</span>`:''}</button>`).join('');document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>goPage(b.dataset.page))}
 function goPage(p){PAGE=p;selId=null;planSel=null;try{history.replaceState(null,'','#'+p)}catch(e){}render();window.scrollTo(0,0)}
 const QUICK={delivered:{l:'Delivered',f:r=>dstat(r)==='Delivered'},pending:{l:'Pending',f:r=>['Pending','Partly delivered'].includes(dstat(r))},overdue:{l:'Delivery date passed',f:r=>dstat(r)==='Overdue'},due7:{l:'Due in next 7 days',f:r=>!['Delivered','Cancelled'].includes(dstat(r))&&r.due&&r.due>=TODAY&&r.due<=addDays(TODAY,7)},fab:{l:'Fabric due',f:r=>r.stage==='Fabric due'},sewn:{l:'Sewn, not delivered',f:r=>r.sewDone>=r.qty&&dstat(r)!=='Delivered'&&r.stage!=='Cancelled'}};
