@@ -269,7 +269,7 @@ function sel(id,label,opts,val,labf){return `<select id="${id}" aria-label="${la
 function donut(entries,total,center,key){let acc=0;const seg=entries.map(([l,v,c])=>{const a=acc/total*360;acc+=v;return `${c} ${a}deg ${acc/total*360}deg`}).join(',');
  return `<div class="donutwrap"><div class="donut" style="background:${total?`conic-gradient(${seg})`:'var(--chip)'}" role="img" aria-label="${esc(center[1])}"><div class="mid"><b>${center[0]}</b>${center[1]}</div></div><div class="dleg">${entries.map(([l,v,c])=>`<button data-${key}="${esc(l)}" class="${F[key]===l?'on':''}"><i style="background:${c}"></i>${esc(l)} <b>${n(v)}</b><span class="muted">${total?Math.round(v/total*100):0}%</span></button>`).join('')}</div></div>`}
 // ---------- page ----------
-const COLS=[['stage','Present status'],['dstat','Delivery status'],['buyerName','Buyer'],['buyer','Sub-brand'],['merch','Merchandiser'],['style','Style No.'],['types','Sample type'],['color','Color / Pantone'],['qty','Qty (pcs)',1],['rcvd','Order sheet receive'],['due','Delivery due'],['reqDate','Required (buyer)'],['coll','Coll #'],['fabReq','Fabric req. (kg)',1],['knitQty','Knitting qty (kg)',1],['dyeQty','Dyeing qty (kg)',1],['dyeClose','Dyeing close'],['sewStart','Sewing start'],['sewClose','Sewing close (plan)'],['sewDone','Sewing complete qty',1],['sewBal','Sewing balance',1],['sewActual','Actual sewing complete'],['delQty','Delivery qty',1],['delBal','Delivery balance',1],['delActual','Actual delivery'],['loc','Sewing place'],['finish','Print / Solid / Emb'],['reason','Remarks (delay)']];
+const COLS=[['buyerName','Buyer'],['style','Style No.'],['types','Sample type'],['color','Color / Pantone'],['qty','Qty (pcs)',1],['stage','Present status'],['dstat','Delivery status'],['buyer','Sub-brand'],['merch','Merchandiser'],['rcvd','Order sheet receive'],['due','Delivery due'],['reqDate','Required (buyer)'],['coll','Coll #'],['fabReq','Fabric req. (kg)',1],['knitQty','Knitting qty (kg)',1],['dyeQty','Dyeing qty (kg)',1],['dyeClose','Dyeing close'],['sewStart','Sewing start'],['sewClose','Sewing close (plan)'],['sewDone','Sewing complete qty',1],['sewBal','Sewing balance',1],['sewActual','Actual sewing complete'],['delQty','Delivery qty',1],['delBal','Delivery balance',1],['delActual','Actual delivery'],['loc','Sewing place'],['finish','Print / Solid / Emb'],['reason','Remarks (delay)']];
 const DATEK=['rcvd','dyeClose','sewStart','sewClose','sewActual','due','delActual','reqDate'];
 const val=(r,k)=>k==='sewBal'?sewBal(r):k==='delBal'?delBal(r):k==='dstat'?dstat(r):k==='types'?(r.types||[]).join(' + '):r[k];
 function cell(r,k){const v=val(r,k);if(r.approval==='Pending'&&(k==='stage'||k==='dstat'))return k==='stage'?chip('Waiting for planning','warn'):'';if(r.approval==='Returned'&&(k==='stage'||k==='dstat'))return k==='stage'?chip('Returned to merchandiser','bad'):'';if(k==='reqDate')return v?(r.due&&r.due>v?`<span style="color:var(--bad)">${fmt(v)}</span>`:fmt(v)):'—';if(DATEK.includes(k))return fmt(v);if(k==='stage')return chip(r.stage,TONE[r.stage]);if(k==='dstat')return chip(v,DTONE[v])+(v==='Overdue'?` <span class="muted">${days(r.due,TODAY)} d</span>`:'');if(k==='types')return (r.types||[]).map(t=>chip(t)).join(' ');
@@ -421,15 +421,15 @@ let DRAFT=null;
 function newForm(s){
  s.innerHTML=`<header style="padding:12px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:8px;align-items:center"><div><div class="muted" style="font-size:12.5px">Sample Fabric & Sample Garment Order Sheet</div><h3 style="margin:0;font-size:17px">New sample entry</h3></div><div style="display:flex;gap:8px"><button class="btn" id="nReset">Clear form</button><button class="btn primary" id="nSave">Submit order sheet</button></div></header>
  <div class="body" style="padding:12px 14px"><div class="form wideform">
-  <div class="secttl full" style="margin-top:0">1 · Sample and buyer</div>
+  <div class="secttl full" style="margin-top:0">1 · Buyer, style, type, colour, quantity</div>
+  <label>Buyer<select id="nBuyerName">${buyersList().map(g=>`<option>${esc(g)}</option>`).join('')}</select></label>
+  <label>Style No.<input type="text" id="nStyle" placeholder="e.g. 15400558"></label>
   <label>Sample type<select id="nG">${TYPE_ORDER.map(t=>`<option ${t===FORMTYPE?'selected':''}>${t}</option>`).join('')}</select></label>
   <label>Order sheet received<input type="date" id="nRcvd" value="${TODAY}"></label>
-  <label>Buyer<select id="nBuyerName">${buyersList().map(g=>`<option>${esc(g)}</option>`).join('')}</select></label>
   <label>Sub-brand<select id="nSub"></select></label>
   <div class="full"><div class="muted" style="font-size:12.5px;margin-bottom:4px">Same garment also used for (counted as its own type)</div><div class="ms" id="nAlso"></div></div>
   <div class="secttl full">2 · Style</div>
   <label>Merchandiser<input type="text" id="nMerch" list="mList"><datalist id="mList">${uniq(DATA,r=>r.merch).map(x=>`<option value="${esc(x)}">`).join('')}</datalist></label>
-  <label>Style No.<input type="text" id="nStyle" placeholder="e.g. 15400558"></label>
   <label>Style name<input type="text" id="nName" placeholder="e.g. ONLMAY LS TOP"></label>
   <label>Coll #<input type="text" id="nColl" placeholder="e.g. 5"></label>
   <label>Buyer sample order no<input type="text" id="nBso"></label>
