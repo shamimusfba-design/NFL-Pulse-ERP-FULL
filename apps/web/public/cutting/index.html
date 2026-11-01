@@ -923,7 +923,7 @@ function renderTPSuggestionTable(kind) {
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <span class="pill info">${kgs(totalCount)} Candidate Colours</span>
-          <span class="pill warn">${kgs(totalBalPcs)} Bal Pcs</span>
+          <span class="pill warn">-${kgs(totalBalPcs)} Bal Pcs</span>
           ${peBothCount ? `<span class="pill bad">🔥 ${peBothCount} P+E (Critical)</span>` : ''}
           <span class="pill good">✅ ${readyCount} 100% Ready</span>
         </div>
@@ -957,21 +957,21 @@ function renderTPSuggestionTable(kind) {
         ${sug.q || sug.fl!=='ALL' || sug.pe!=='ALL' || sug.fab!=='ALL' ? `<button class="btn sm" id="${kind}-sug-clr">Reset Filters</button>` : ''}
       </div>
 
-      <!-- MASTER TABLE -->
-      <div class="ct-tbl-wrap">
+      <!-- MASTER TABLE WITH FREEZE COLUMNS & LEFT ALIGNMENT -->
+      <div class="ct-tbl-wrap" style="position:relative">
         <table class="ct-table">
           <thead>
             <tr>
-              <th style="min-width:110px">Plan to Table</th>
-              <th>Buyer · Job #</th>
+              <th class="fz-0">Plan to Table</th>
+              <th class="fz-1">Buyer · Job #</th>
+              <th class="fz-2">Colour</th>
               <th>Style</th>
-              <th>Colour</th>
               <th>Floor</th>
-              <th style="text-align:right">Order Pcs</th>
-              <th style="text-align:right">Cut Done</th>
-              <th style="text-align:right">Cut Balance</th>
-              <th style="min-width:140px">Body Fabric (Req / Recv / Bal)</th>
-              <th style="min-width:140px">Rib Fabric (Req / Recv / Bal)</th>
+              <th>Order Pcs</th>
+              <th>Cut Done</th>
+              <th>Cut Balance</th>
+              <th style="min-width:150px">Body Fabric (Req / Recv / Bal)</th>
+              <th style="min-width:150px">Rib Fabric (Req / Recv / Bal)</th>
               <th>PCD (T&amp;A)</th>
               <th>CCD</th>
               <th>Ship Date</th>
@@ -1001,7 +1001,7 @@ function renderTPSuggestionTable(kind) {
 
               return `
                 <tr>
-                  <td>
+                  <td class="fz-0">
                     <div style="display:flex;align-items:center;gap:4px">
                       <button class="ct-plan-btn" data-plan="${r.i}|${defTable}" title="Plan balance directly to ${defTable}">+ ${defTable}</button>
                       <select class="ct-filter-sel" style="padding:2px 4px;font-size:11px" data-optsel="${r.i}">
@@ -1010,25 +1010,25 @@ function renderTPSuggestionTable(kind) {
                       </select>
                     </div>
                   </td>
-                  <td><b>${esc(r.j)}</b> <span style="font-size:11px;color:var(--ink-2)">(${esc(r.b)})</span></td>
+                  <td class="fz-1"><b>${esc(r.j)}</b> <span style="font-size:11px;color:var(--ink-2)">(${esc(r.b)})</span></td>
+                  <td class="fz-2"><b>${esc(r.c)}</b></td>
                   <td style="font-family:monospace;font-size:11.5px">${esc(r.st)}</td>
-                  <td><b>${esc(r.c)}</b></td>
                   <td><span class="pill info" style="font-size:10.5px">${esc(fl)}</span></td>
-                  <td style="text-align:right">${kgs(det.oq)}</td>
-                  <td style="text-align:right;color:var(--ink-2)">${kgs(det.cut)}</td>
-                  <td style="text-align:right"><b style="color:var(--warn)">+${kgs(det.cutBal)}</b></td>
+                  <td class="num-cell">${kgs(det.oq)}</td>
+                  <td class="num-cell" style="color:var(--ink-2)">${kgs(det.cut)}</td>
+                  <td class="num-cell"><b style="color:var(--warn)">-${kgs(det.cutBal)}</b></td>
                   <td>
                     <div class="ct-fab-box">
                       <span class="kg-val">${kgs(det.bodyRecv)}</span> / ${kgs(det.bodyReq)} kg 
                       <span class="ct-badge ${det.bodyPct>=95?'ready':det.bodyPct>=60?'warn':'bad'}" style="margin-left:2px">${det.bodyPct}%</span>
-                      <div class="kg-sub">Bal: ${kgs(det.bodyBal)} kg</div>
+                      <div class="kg-sub">Bal: <b style="color:${det.bodyBal>0?'var(--bad)':'var(--good)'}">-${kgs(det.bodyBal)} kg</b></div>
                     </div>
                   </td>
                   <td>
                     <div class="ct-fab-box">
                       <span class="kg-val">${kgs(det.ribRecv)}</span> / ${kgs(det.ribReq)} kg 
                       <span class="ct-badge ${det.ribPct>=90?'ready':'warn'}" style="margin-left:2px">${det.ribPct}%</span>
-                      <div class="kg-sub">Bal: ${kgs(det.ribBal)} kg</div>
+                      <div class="kg-sub">Bal: <b style="color:${det.ribBal>0?'var(--bad)':'var(--good)'}">-${kgs(det.ribBal)} kg</b></div>
                     </div>
                   </td>
                   <td><span style="white-space:nowrap;font-size:11.5px">${fd(det.pcd)}</span></td>
@@ -1043,12 +1043,12 @@ function renderTPSuggestionTable(kind) {
         </table>
       </div>
 
-      <!-- PAGER -->
-      <div class="ct-pager">
+      <!-- STICKY PAGER FOOTER -->
+      <div class="ct-pager" style="position:sticky;bottom:0;background:var(--paper);padding:8px 12px;border-top:1px solid var(--line);z-index:6;box-shadow:0 -2px 6px rgba(0,0,0,0.04)">
         <div>Showing ${totalCount ? (sug.page * sug.pageSize + 1) : 0} - ${Math.min((sug.page + 1) * sug.pageSize, totalCount)} of ${totalCount} candidate colours</div>
         <div style="display:flex;gap:6px;align-items:center">
           <button id="${kind}-sug-prev" ${sug.page<=0?'disabled':''}>◀ Prev</button>
-          <span>Page ${sug.page + 1} of ${totalPages}</span>
+          <span style="font-weight:600">Page ${sug.page + 1} of ${totalPages}</span>
           <button id="${kind}-sug-next" ${sug.page>=totalPages-1?'disabled':''}>Next ▶</button>
         </div>
       </div>
@@ -1104,173 +1104,6 @@ function renderTPSuggestionTable(kind) {
   });
 }
 
-function renderTP(kind){
-  const st=TP[kind],box=kind==='relax'?S.relax:S.daily,day=box[st.d]=box[st.d]||{};
-  const days=[...Array(8)].map((_,n)=>addDays(TODAY,n-1));
-  const all=Object.values(day).flat(),tot=all.reduce((a,e)=>a+e.q,0);
-  const ach=kind==='daily'?all.reduce((a,e)=>a+Math.min(cutOn(L[e.i],st.d),e.q),0):0;
-  $(`#${kind}-cards`).style.display='block';
-  $(`#${kind}-cards`).innerHTML=`<div class="kpis">`+[
-    ['Planned pcs',K0(tot),all.length+' colours','info'],
-    kind==='relax'?['In-house · relaxing',K0(all.filter(e=>e.st==='In-house').reduce((a,e)=>a+e.q,0)),'pcs','good']:['Cut today (achieved)',K0(ach),tot?Math.round(ach/tot*100)+'% of target':'—',ach>=tot&&tot?'good':'warn'],
-    kind==='relax'?['Requested from store',K0(all.filter(e=>e.st==='Requested').reduce((a,e)=>a+e.q,0)),'pcs','warn']:['From relaxed fabric',K0(all.filter(e=>e.src==='relaxed').reduce((a,e)=>a+e.q,0)),'pcs · rest outside relaxation','info'],
-    ['Tables used',TBL.filter(([t])=>(day[t]||[]).length).length+' / '+TBL.length,'','']].map(([l,v,s,c])=>`<div class="kpi ${c}"><div class="kv2">${v}</div><div class="kl">${l}</div><div class="ks">${s}</div></div>`).join('')+`</div>`;
-  $(`#${kind}-days`).innerHTML=days.map(d=>`<button class="${d===st.d?'on':''}" data-d="${d}">${d===TODAY?'Today · ':''}${fd(d)}</button>`).join('');
-  $(`#${kind}-days`).querySelectorAll('button').forEach(b=>b.onclick=()=>{st.d=b.dataset.d;st.add='';renderTP(kind)});
-  $(`#${kind}-grid`).innerHTML=TBL.map(([t,fl])=>{const list=day[t]||[],sum=list.reduce((a,e)=>a+e.q,0);
-    return `<div class="panel tpan"><h3><span>${t} <span class="muted" style="font-weight:400">${fl==='Y/D'?'Yarn-dyed':'for '+fl}</span></span><span>${kgs(sum)} pcs</span></h3>
-     <table><tbody>${list.map((e,k)=>{const r=L[e.i],fsx=fabricState(r);return `<tr><td><b>${esc(r.j)}</b> ${esc(r.c)}<div class="muted" style="font-size:11px">${esc(r.b)} · sew ${fd(r.ss)||'—'}</div></td>
-       <td>${kind==='relax'?`<button class="btn sm" data-tg="${t}|${k}">${e.st}</button>`:pill(e.src==='relaxed'?'Relaxed':'Outside',e.src==='relaxed'?'good':'')}</td>
-       <td class="n"><input type="number" value="${e.q}" data-q="${t}|${k}" style="width:70px">${kind==='daily'?`<div class="muted" style="font-size:11px">cut ${kgs(cutOn(r,st.d))}</div>`:''}</td><td><button class="btn sm" data-x="${t}|${k}">✕</button></td></tr>`}).join('')||'<tr><td class="muted">Nothing planned</td></tr>'}</tbody>
-     <tfoot><tr><th>Total</th><th></th><th class="n">${kgs(sum)}</th><th></th></tr></tfoot></table>
-     ${st.add===t?addForm(kind,t,fl):`<div style="padding:6px"><button class="btn sm pri" data-add="${t}">+ Add New</button></div>`}</div>`}).join('');
-  const g=$(`#${kind}-grid`),own=()=>['Cutting','Cutting Reporter'].includes(role())||(toast('Cutting planner edits this plan'),false);
-  g.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{st.add=b.dataset.add;st.job='';renderTP(kind)});
-  g.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{if(!own())return;const[t,k]=b.dataset.x.split('|');day[t].splice(+k,1);save();renderTP(kind)});
-  g.querySelectorAll('[data-q]').forEach(x=>x.onchange=()=>{if(!own())return;const[t,k]=x.dataset.q.split('|');day[t][+k].q=Math.max(0,+x.value||0);save();renderTP(kind)});
-  g.querySelectorAll('[data-tg]').forEach(b=>b.onclick=()=>{if(!own())return;const[t,k]=b.dataset.tg.split('|');const e=day[t][+k];e.st=e.st==='Requested'?'In-house':'Requested';save();renderTP(kind)});
-  bindAdd(kind,day);
-  renderTPSuggestionTable(kind);
-}
-const K0=v=>{v=Math.round(v||0);return v>=1e6?(v/1e6).toFixed(2)+'M':v>=1e4?(v/1e3).toFixed(1)+'K':v.toLocaleString('en-US')};
-function suggestions(kind,fl){
-  const ok=r=>inMod(r)&&cutBal(r)>0&&(fl==='Y/D'?r.yd:(!r.yd&&floor(r)===fl));
-  let rows=L.filter(ok);
-  if(kind==='daily'){const rel=new Set(Object.values(S.relax).flatMap(t=>Object.values(t).flat()).filter(e=>e.st==='In-house').map(e=>e.i));rows.sort((a,b)=>(rel.has(b.i)-rel.has(a.i))||(a.ss||'9').localeCompare(b.ss||'9'))}
-  else rows.sort((a,b)=>(a.ss||'9').localeCompare(b.ss||'9')||(a.ccd||'9').localeCompare(b.ccd||'9'));
-  return[...new Set(rows.map(r=>r.j))].slice(0,40)}
-function addForm(kind,t,fl){
-  const st=TP[kind], sug=suggestions(kind,fl); const rs=st.job?L.filter(r=>r.j===st.job):[];
-  return `<div class="form" style="padding:8px;border-top:1px solid var(--line);background:var(--sel);border-radius:4px;margin-top:6px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-      <b>Add to ${t} (${fl==='Y/D'?'Yarn-dyed':'for '+fl})</b>
-      <a href="#${kind}-sug-panel" style="font-size:11.5px;color:var(--indigo);text-decoration:none" onclick="TP_SUG['${kind}'].fl='${fl}';renderTPSuggestionTable('${kind}');">↓ View all ${fl} orders below</a>
-    </div>
-    <div class="row">
-      <span>Job no</span>
-      <input id="ad-j" list="ad-jl" value="${esc(st.job||'')}" placeholder="Type Job # or pick candidate...">
-      <datalist id="ad-jl">${sug.map(j=>`<option value="${esc(j)}">`).join('')}</datalist>
-    </div>
-    ${sug.length && !st.job ? `<div class="ks muted" style="margin:4px 0">Suggested for ${fl}: ${sug.slice(0,6).map(j=>`<a href="#" data-sj="${esc(j)}" style="font-weight:600">${esc(j)}</a>`).join(' · ')}</div>` : ''}
-    ${rs.length ? `
-      <div style="overflow-x:auto;margin:6px 0">
-        <table style="width:100%;font-size:11.5px">
-          <thead>
-            <tr>
-              <th></th>
-              <th>Colour</th>
-              <th style="text-align:right">Order</th>
-              <th style="text-align:right">Cut Bal</th>
-              <th>Body Fab</th>
-              <th>Rib Fab</th>
-              <th>P+E</th>
-              <th>PCD</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rs.map(r => {
-              const det = calcFabDetail(r);
-              return `
-                <tr>
-                  <td><input type="radio" name="ad-c" value="${r.i}" ${det.cutBal>0?'':'disabled'}></td>
-                  <td><b>${esc(r.c)}</b></td>
-                  <td style="text-align:right">${kgs(det.oq)}</td>
-                  <td style="text-align:right"><b style="color:var(--warn)">+${kgs(det.cutBal)}</b></td>
-                  <td>${det.bodyRecv}/${det.bodyReq}kg (${det.bodyPct}%)</td>
-                  <td>${det.ribRecv}/${det.ribReq}kg (${det.ribPct}%)</td>
-                  <td>${det.isPEBoth?'🔥 P+E':det.hasP?'🖨️ P':det.hasE?'🧵 E':'⚪ Solid'}</td>
-                  <td>${fd(det.pcd)}</td>
-                </tr>
-              `;
-            }).join('')}
-          </tbody>
-        </table>
-      </div>
-      <div class="row"><span>Planned Pcs</span><input type="number" id="ad-q"></div>
-    ` : ''}
-    <div style="display:flex;gap:6px;margin-top:6px">
-      <button class="btn sm pri" id="ad-ok">Add to ${t}</button>
-      <button class="btn sm" id="ad-cx">Cancel</button>
-    </div>
-  </div>`;
-}
-function bindAdd(kind,day){const st=TP[kind];const j=$('#ad-j');if(!j)return;
-  const pickJob=v=>{st.job=v.trim();renderTP(kind)};
-  j.onchange=()=>{if(L.some(r=>r.j===j.value.trim())){j.blur();setTimeout(()=>pickJob(j.value),0)}};
-  document.querySelectorAll('[data-sj]').forEach(a=>a.onclick=e=>{e.preventDefault();pickJob(a.dataset.sj)});
-  document.querySelectorAll('input[name=ad-c]').forEach(x=>x.onchange=()=>{const r=L[+x.value];const f=fabricState(r);$('#ad-q').value=Math.round(kind==='daily'&&f.inh?Math.min(f.inh,cutBal(r)):cutBal(r))});
-  $('#ad-cx').onclick=()=>{st.add='';renderTP(kind)};
-  $('#ad-ok').onclick=()=>{if(!['Cutting','Cutting Reporter'].includes(role()))return toast('Cutting planner edits this plan');
-    const c=document.querySelector('input[name=ad-c]:checked');if(!c)return toast('Pick a colour');const q=+$('#ad-q').value;if(!(q>0))return toast('Enter pcs');
-    const r=L[+c.value];const e={i:r.i,q};if(kind==='relax')e.st='Requested';else e.src=fabricState(r).inh?'relaxed':'other';
-    (day[st.add]=day[st.add]||[]).push(e);save();toast('Added to '+st.add);st.add='';st.job='';renderTP(kind)};
-}
-
-/* ================= SMART CUT PLANNER (single page) =================
-   Quantity rule everywhere: cutting quantity = size ratio × ply. Targets are minimums; anything above is "additional overcut".
-   The solver is a search over ply heights / ratios with exact integer checks. It reports "Feasible (heuristic)" —
-   it never claims a proven optimum. Factory allowance matrix and fabric–ply matrix are not uploaded yet, so those
-   options say so instead of inventing numbers. */
-S.smart=S.smart||{};
-const SM={jk:''};
-const AMODES=[['matrix','Factory Matrix'],['pct','Fixed Percentage'],['pcs','Fixed Extra Pieces'],['custom','Size-wise Custom'],['none','Order Quantity Only']];
-const OMODES=[['runs','Minimum Cutting Runs'],['over','Minimum Extra Overcut'],['bal','Balanced Plan'],['manual','Manual Adjustment'],['ratio','Ratio-Based Cutting Plan']];
-function smDefault(jk){const rs=L.filter(r=>r.jk===jk);return{sizes:['S','M','L','XL'],q:{},am:'pct',apct:2,apcs:10,acust:{},fab:{cat:'Single Jersey',gsm:'',w:''},maxP:0,maxG:6,tol:3,om:'bal',ratio:'1:2:2:1',ratioEach:false,ratios:{},rows:[],status:'Draft',rev:1,audit:[],cmp:{},colours:rs.map(r=>r.i)}}
-/* Demo size split (until the PO import gives the real size breakdown): colour order qty split by a ratio, clearly labelled. */
-function splitByRatio(p,ratioStr){const rr=ratioStr.split(':').map(x=>Math.max(0,+x||0));if(rr.length!==p.sizes.length||!rr.some(x=>x))return false;const sum=rr.reduce((a,b)=>a+b,0);
-  p.colours.forEach(i=>{const t=Math.round(oq(L[i]));const q=rr.map(v=>Math.floor(t*v/sum));let left=t-q.reduce((a,b)=>a+b,0);const ord=rr.map((v,k)=>k).sort((a,b)=>rr[b]-rr[a]);for(let k=0;left>0;k++,left--)q[ord[k%ord.length]]++;p.q[i]={};p.sizes.forEach((z,k)=>p.q[i][z]=q[k])});return true}
-function smCur(){let p=S.smart[SM.jk];if(!p)p=S.smart[SM.jk]=smDefault(SM.jk);
-  const empty=p.colours.every(i=>!Object.values(p.q[i]||{}).some(v=>+v>0));
-  if(empty&&!p.demoDone){p.demoDone=true;p.demo=true;if(!(+p.maxP>0))p.maxP=80;splitByRatio(p,p.sizes.length===4?'17:33:31:19':p.ratio);const g=generate(p,p.om==='manual'?'bal':p.om);if(!g.err){p.rows=g.rows;p.status='Generated';p.cmp=compare(p)}save()}
-  return p}
-function targets(p){const out={};p.colours.forEach(i=>{out[i]=p.sizes.map(z=>{const q=+(p.q[i]?.[z]||0);let ex=0;
-  if(p.am==='pct')ex=Math.ceil(q*(+p.apct||0)/100);else if(p.am==='pcs')ex=q?(+p.apcs||0):0;else if(p.am==='custom'){const c=p.acust[i]?.[z]||'';ex=/%$/.test(c)?Math.ceil(q*parseFloat(c)/100):(+c||0)}
-  return{q,ex,t:q+ex}})});return out}
-/* ---- solver ---- */
-function greedy(tg,o,tol){const n=tg.length,cut=Array(n).fill(0),rows=[];const minP=Math.max(1,Math.min(+o.minP||1,o.maxP));
-  for(let it=0;it<80;it++){const rem=tg.map((t,k)=>t-cut[k]);if(rem.every(x=>x<=0))break;let best=null;
-    for(const floorP of [minP,1]){if(best)break;for(let p=o.maxP;p>=floorP;p--){let r=rem.map((x,k)=>x>0?Math.floor((x+tol[k])/p):0);if(r.every(x=>x===0)&&p===minP&&floorP===minP&&rem.every(x=>x<=minP))r=rem.map(x=>x>0?1:0);
-      while(r.reduce((a,b)=>a+b,0)>o.maxG){let k=-1,m=1e9;r.forEach((v,j)=>{if(v>0&&rem[j]/v<m){m=rem[j]/v;k=j}});r[k]--}
-      if(r.every(x=>x===0))continue;const cov=r.reduce((a,v,k)=>a+Math.min(v*p,Math.max(0,rem[k])),0);
-      if(!best||cov>best.cov||(cov===best.cov&&p>best.p))best={p,r,cov}}}
-    if(!best)break;best.r.forEach((v,k)=>cut[k]+=v*best.p);rows.push({r:best.r,p:best.p})}
-  return rows}
-function evenPly(rows,maxP){const g=[];rows.forEach(x=>{const k=g.find(y=>y.r.join()===x.r.join());k?(k.tp+=x.p,k.n++):g.push({r:x.r,tp:x.p,n:1})});
-  const out=[];g.forEach(x=>{const n=Math.ceil(x.tp/maxP),b=Math.floor(x.tp/n),e=x.tp-b*n;for(let k=0;k<n;k++)out.push({r:x.r.slice(),p:b+(k<e?1:0)})});return out}
-function stats(rows,tg){const plan=tg.map((_,k)=>rows.reduce((a,x)=>a+x.r[k]*x.p,0));const short=plan.reduce((a,v,k)=>a+Math.max(0,tg[k]-v),0),over=plan.reduce((a,v,k)=>a+Math.max(0,v-tg[k]),0);return{runs:rows.length,plan,pcs:plan.reduce((a,b)=>a+b,0),short,over,markers:new Set(rows.map(x=>x.r.join())).size}}
-function solveColour(tg,o,mode,ratio){const tolA=tg.map(t=>Math.ceil(t*(o.tol||0)/100)),z=tg.map(()=>0);
-  const cands=[];const ps=[...new Set([o.maxP,Math.round(o.maxP*0.9),Math.round(o.maxP*0.8),Math.round(o.maxP*0.7)])].filter(x=>x>0);
-  if(mode==='ratio'){const rr=ratio.map(x=>+x||0);if(!rr.some(x=>x))return null;const cut=tg.map(()=>0),rows=[];
-    for(let it=0;it<40;it++){let p=Math.min(o.maxP,...rr.map((v,k)=>v?Math.floor((tg[k]-cut[k])/v):1e9));if(p<1||rr.reduce((a,b)=>a+b,0)>o.maxG)break;rows.push({r:rr.slice(),p,locked:true});rr.forEach((v,k)=>cut[k]+=v*p)}
-    const left=tg.map((t,k)=>Math.max(0,t-cut[k]));const ra=greedy(left,o,z),rb=greedy(left,o,tolA);const rest=rb.length<ra.length?rb:ra;return evenPly(rows,o.maxP).concat(evenPly(rest,o.maxP))}
-  const tolH=tg.map(t=>Math.ceil(t*(o.tol||0)/200));for(const p of ps)for(const tol of [z,tolH,tolA]){const rows=evenPly(greedy(tg,{...o,maxP:p},tol),o.maxP);cands.push({rows,s:stats(rows,tg)})}
-  const ok=cands.filter(c=>!c.s.short);const pool=ok.length?ok:cands;
-  const W=Math.max(5,Math.round(tg.reduce((a,b)=>a+b,0)*0.01)); // balanced: one cutting ≈ 1% of the colour target in extra pieces
-  const key={runs:c=>[c.s.runs,c.s.over],over:c=>[c.s.over,c.s.runs],bal:c=>[c.s.runs*W+c.s.over+c.s.markers*Math.ceil(W/4),c.s.runs]}[mode];
-  pool.sort((a,b)=>{const x=key(a),y=key(b);return x[0]-y[0]||x[1]-y[1]});return pool[0].rows}
-function generate(p,mode){const T=targets(p),o={maxP:+p.maxP,maxG:+p.maxG,tol:+p.tol,minP:+p.minP||10,w:100};const rows=[];
-  for(const i of p.colours){const tg=T[i].map(x=>x.t);if(!tg.some(x=>x))continue;const locked=p.rows.filter(x=>x.i===i&&x.lock);
-    const done=tg.map((t,k)=>locked.reduce((a,x)=>a+x.r[k]*x.p,0));const left=tg.map((t,k)=>Math.max(0,t-done[k]));
-    const ratio=(p.ratioEach?(p.ratios[i]||p.ratio):p.ratio).split(':').map(x=>+x||0);
-    const res=left.some(x=>x)?solveColour(left,o,mode,ratio):[];if(res==null)return{err:'Enter a ratio with one number per size (e.g. 1:2:2:1)'};
-    locked.forEach(x=>rows.push(x));res.forEach(x=>rows.push({i,r:x.r,p:x.p,src:mode==='ratio'&&x.locked?'ratio':'auto',lock:false}))}
-  return{rows}}
-function compare(p){const T=targets(p),out={};
-  for(const[m]of OMODES){if(m==='manual'){if(p.rows.some(x=>x.src==='manual'))out[m]=summ(p,p.rows,T);continue}
-    if(m==='ratio'&&!/\d/.test(p.ratio))continue;const g=generate({...p,rows:p.rows.filter(x=>x.lock)},m);if(!g.err)out[m]=summ(p,g.rows,T)}return out}
-function summ(p,rows,T){let runs=rows.length,pcs=0,over=0,short=0;p.colours.forEach(i=>{const s=stats(rows.filter(x=>x.i===i),T[i].map(x=>x.t));pcs+=s.pcs;over+=s.over;short+=s.short});return{runs,pcs,over,short}}
-/* ---- validation ---- */
-function validate(p){const T=targets(p),iss=[];const tolA=i=>T[i].map(x=>Math.ceil(x.t*(+p.tol||0)/100));
-  if(!(+p.maxP>0))iss.push(['bad','Enter the maximum ply (no factory fabric–ply rule uploaded)']);
-  if(p.am==='matrix')iss.push(['bad','Factory allowance matrix not uploaded — choose another allowance method']);
-  p.rows.forEach((x,k)=>{if(x.bad)iss.push(['bad',`${L[x.i].c} Cutting ${String(k+1).padStart(2,'0')}: quantity is not ratio × ply`]);if(+x.p>+p.maxP)iss.push(['bad',`${L[x.i].c}: ply ${x.p} above max ${p.maxP}`]);if(x.r.reduce((a,b)=>a+b,0)>+p.maxG)iss.push(['warn',`${L[x.i].c}: ${x.r.reduce((a,b)=>a+b,0)} garments in one marker (max ${p.maxG})`])});
-  p.colours.forEach(i=>{const s=stats(p.rows.filter(x=>x.i===i),T[i].map(x=>x.t));const tl=tolA(i);
-    s.plan.forEach((v,k)=>{const b=T[i][k].t-v;if(T[i][k].t&&b>0)iss.push(['bad',`${L[i].c} ${p.sizes[k]}: short ${b}`]);if(b<-tl[k])iss.push(['bad',`${L[i].c} ${p.sizes[k]}: overcut ${-b} above the permitted ${p.tol}%`])})});
-  return iss}
-function audit(p,what,prev,next,reason){p.audit.push({at:new Date().toISOString().slice(0,16).replace('T',' '),by:role(),what,prev,next,reason:reason||'',rev:p.rev,status:p.status})}
-function touched(p){if(p.status==='Approved'||p.status==='Released'){p.rev++;audit(p,'New revision','Rev '+(p.rev-1),'Rev '+p.rev)}p.status='Modified'}
-
-/* ---- page ---- */
 function renderSM(){
   const jobs=[...new Set(L.filter(inMod).map(r=>r.j))];
   if(!SM.jk){$('#sm-body').innerHTML=`<div class="filters"><input id="sm-j" list="sm-jl" placeholder="Pick a job (accepted jobs)" style="width:220px"><datalist id="sm-jl">${jobs.map(j=>`<option value="${esc(j)}">`).join('')}</datalist></div><div class="empty">Pick a job to plan</div>`;bindJob();return}
