@@ -198,8 +198,8 @@ export default function ManagementDashboardPage() {
   const [customEnd, setCustomEnd] = useState<string>('');
   const [isCustomDate, setIsCustomDate] = useState<boolean>(false);
 
-  // Subcontract process filter tab
-  const [subcontractSectionTab, setSubcontractSectionTab] = useState<'ALL' | 'Knitting' | 'Dyeing' | 'Printing' | 'Embroidery'>('ALL');
+  // Subcontract process filter tab (default to Knitting Mills)
+  const [subcontractSectionTab, setSubcontractSectionTab] = useState<'Knitting' | 'Dyeing' | 'Printing' | 'Embroidery'>('Knitting');
   const [showOnlyFilteredQuotas, setShowOnlyFilteredQuotas] = useState<boolean>(false);
   const [drillModal, setDrillModal] = useState<{ title: string; rows: any[] } | null>(null);
 
@@ -634,39 +634,38 @@ export default function ManagementDashboardPage() {
     };
   }, [overviewStats.totalOrderQty, isAllFiltered]);
 
-  // Comprehensive Factory-level Subcontract Register (Multi-factory per section)
+  // Comprehensive Factory-level Subcontract Register (Categorized by Process Section)
   const masterSubcontractFactories = useMemo(() => {
     const scale = isAllFiltered ? 1.0 : Math.max(0.04, overviewStats.totalOrderQty / 1800000);
 
     return [
-      // 1. Knitting Subcontracts (Multiple Partner Mills)
-      { id: 'K01', section: 'Knitting', factory: 'Unifill Composite Dyeing Mills Ltd.', planned: Math.round(74500 * scale), received: Math.round(68200 * scale), balance: Math.round(6300 * scale), unit: 'kg', status: 'On Track' },
-      { id: 'K02', section: 'Knitting', factory: 'Micro Fibre Knit Ltd.', planned: Math.round(52000 * scale), received: Math.round(48500 * scale), balance: Math.round(3500 * scale), unit: 'kg', status: 'On Track' },
-      { id: 'K03', section: 'Knitting', factory: 'Knit Plus Ltd.', planned: Math.round(38000 * scale), received: Math.round(34200 * scale), balance: Math.round(3800 * scale), unit: 'kg', status: 'Active' },
-      { id: 'K04', section: 'Knitting', factory: 'Giant Textile Ltd.', planned: Math.round(45000 * scale), received: Math.round(41800 * scale), balance: Math.round(3200 * scale), unit: 'kg', status: 'On Track' },
+      // 1. Knitting Mills
+      { id: 'K01', section: 'Knitting', factory: 'Unifill Composite Dyeing Mills Ltd.', workType: 'Single Jersey & 1x1 Rib', planned: Math.round(74500 * scale), received: Math.round(68200 * scale), balance: Math.round(6300 * scale), unit: 'kg', status: 'On Track' },
+      { id: 'K02', section: 'Knitting', factory: 'Micro Fibre Knit Ltd.', workType: 'French Terry & Fleece', planned: Math.round(52000 * scale), received: Math.round(48500 * scale), balance: Math.round(3500 * scale), unit: 'kg', status: 'On Track' },
+      { id: 'K03', section: 'Knitting', factory: 'Knit Plus Ltd.', workType: 'Lycra Rib & Interlock', planned: Math.round(38000 * scale), received: Math.round(34200 * scale), balance: Math.round(3800 * scale), unit: 'kg', status: 'Active' },
+      { id: 'K04', section: 'Knitting', factory: 'Giant Textile Ltd.', workType: 'Cotton Spandex Single Jersey', planned: Math.round(45000 * scale), received: Math.round(41800 * scale), balance: Math.round(3200 * scale), unit: 'kg', status: 'On Track' },
 
-      // 2. Dyeing Subcontracts (Multiple Partner Mills)
-      { id: 'D01', section: 'Dyeing', factory: 'Newage Textile Ltd.', planned: Math.round(62000 * scale), received: Math.round(54200 * scale), balance: Math.round(7800 * scale), unit: 'kg', status: 'In Stenter' },
-      { id: 'D02', section: 'Dyeing', factory: 'Shadhin Dyeing (Pvt.) Ltd.', planned: Math.round(48500 * scale), received: Math.round(42100 * scale), balance: Math.round(6400 * scale), unit: 'kg', status: 'Batching' },
-      { id: 'D03', section: 'Dyeing', factory: 'Sparkle Knit Composite Ltd.', planned: Math.round(39000 * scale), received: Math.round(35800 * scale), balance: Math.round(3200 * scale), unit: 'kg', status: 'On Track' },
-      { id: 'D04', section: 'Dyeing', factory: 'Pakiza Knit Composite Ltd.', planned: Math.round(54000 * scale), received: Math.round(49200 * scale), balance: Math.round(4800 * scale), unit: 'kg', status: 'Finishing' },
-      { id: 'D05', section: 'Dyeing', factory: 'APS Apparels Ltd.', planned: Math.round(31000 * scale), received: Math.round(28400 * scale), balance: Math.round(2600 * scale), unit: 'kg', status: 'On Track' },
+      // 2. Dyeing Mills
+      { id: 'D01', section: 'Dyeing', factory: 'Newage Textile Ltd.', workType: '100% Cotton Reactive Dyeing', planned: Math.round(62000 * scale), received: Math.round(54200 * scale), balance: Math.round(7800 * scale), unit: 'kg', status: 'In Stenter' },
+      { id: 'D02', section: 'Dyeing', factory: 'Shadhin Dyeing (Pvt.) Ltd.', workType: 'CVC & TC Disperse Dyeing', planned: Math.round(48500 * scale), received: Math.round(42100 * scale), balance: Math.round(6400 * scale), unit: 'kg', status: 'Batching' },
+      { id: 'D03', section: 'Dyeing', factory: 'Sparkle Knit Composite Ltd.', workType: 'Viscose & Modal Dyeing', planned: Math.round(39000 * scale), received: Math.round(35800 * scale), balance: Math.round(3200 * scale), unit: 'kg', status: 'On Track' },
+      { id: 'D04', section: 'Dyeing', factory: 'Pakiza Knit Composite Ltd.', workType: 'Heavy Fleece & Terry Dyeing', planned: Math.round(54000 * scale), received: Math.round(49200 * scale), balance: Math.round(4800 * scale), unit: 'kg', status: 'Finishing' },
+      { id: 'D05', section: 'Dyeing', factory: 'APS Apparels Ltd.', workType: 'Special Wash & Peach Dyeing', planned: Math.round(31000 * scale), received: Math.round(28400 * scale), balance: Math.round(2600 * scale), unit: 'kg', status: 'On Track' },
 
-      // 3. Printing Subcontracts (Multiple Partner Mills)
-      { id: 'P01', section: 'Printing', factory: 'Graphic Print Lab Ltd.', planned: Math.round(142000 * scale), received: Math.round(128500 * scale), balance: Math.round(13500 * scale), unit: 'pcs', status: 'Strike-off OK' },
-      { id: 'P02', section: 'Printing', factory: 'Unifill Allover Print Unit', planned: Math.round(86000 * scale), received: Math.round(79200 * scale), balance: Math.round(6800 * scale), unit: 'pcs', status: 'Running' },
-      { id: 'P03', section: 'Printing', factory: 'DB Tex Allover Print Ltd.', planned: Math.round(65000 * scale), received: Math.round(61000 * scale), balance: Math.round(4000 * scale), unit: 'pcs', status: 'On Track' },
+      // 3. Printing Units
+      { id: 'P01', section: 'Printing', factory: 'Graphic Print Lab Ltd.', workType: 'Rubber, Pigment & High-Density', planned: Math.round(142000 * scale), received: Math.round(128500 * scale), balance: Math.round(13500 * scale), unit: 'pcs', status: 'Strike-off OK' },
+      { id: 'P02', section: 'Printing', factory: 'Unifill Allover Print Unit', workType: 'Rotary Screen & Discharge AOP', planned: Math.round(86000 * scale), received: Math.round(79200 * scale), balance: Math.round(6800 * scale), unit: 'pcs', status: 'Running' },
+      { id: 'P03', section: 'Printing', factory: 'DB Tex Allover Print Ltd.', workType: 'Reactive Digital & Foil Print', planned: Math.round(65000 * scale), received: Math.round(61000 * scale), balance: Math.round(4000 * scale), unit: 'pcs', status: 'On Track' },
 
-      // 4. Embroidery Subcontracts (Multiple Partner Mills)
-      { id: 'E01', section: 'Embroidery', factory: 'Renaissance Embroidery Ltd.', planned: Math.round(48000 * scale), received: Math.round(42000 * scale), balance: Math.round(6000 * scale), unit: 'pcs', status: '98% Complete' },
-      { id: 'E02', section: 'Embroidery', factory: 'Smart Embroidery Works', planned: Math.round(34000 * scale), received: Math.round(31200 * scale), balance: Math.round(2800 * scale), unit: 'pcs', status: 'Active' },
-      { id: 'E03', section: 'Embroidery', factory: 'Apex Stitch & Embroidery', planned: Math.round(27000 * scale), received: Math.round(25400 * scale), balance: Math.round(1600 * scale), unit: 'pcs', status: 'On Track' }
+      // 4. Embroidery Units
+      { id: 'E01', section: 'Embroidery', factory: 'Renaissance Embroidery Ltd.', workType: 'Multi-head Flat & 3D Tatami', planned: Math.round(48000 * scale), received: Math.round(42000 * scale), balance: Math.round(6000 * scale), unit: 'pcs', status: '98% Complete' },
+      { id: 'E02', section: 'Embroidery', factory: 'Smart Embroidery Works', workType: 'Applique, Sequin & Chenille', planned: Math.round(34000 * scale), received: Math.round(31200 * scale), balance: Math.round(2800 * scale), unit: 'pcs', status: 'Active' },
+      { id: 'E03', section: 'Embroidery', factory: 'Apex Stitch & Embroidery', workType: 'Badge & Sequence Embroidery', planned: Math.round(27000 * scale), received: Math.round(25400 * scale), balance: Math.round(1600 * scale), unit: 'pcs', status: 'On Track' }
     ];
   }, [isAllFiltered, overviewStats.totalOrderQty]);
 
-  // Filtered Subcontract Rows
+  // Filtered Subcontract Rows (by selected Section Tab)
   const displayedSubcontractRows = useMemo(() => {
-    if (subcontractSectionTab === 'ALL') return masterSubcontractFactories;
     return masterSubcontractFactories.filter(f => f.section === subcontractSectionTab);
   }, [masterSubcontractFactories, subcontractSectionTab]);
 
@@ -1387,15 +1386,13 @@ export default function ManagementDashboardPage() {
             {/* 1. Production Efficiency by Department */}
             <div style={{ background: '#F8FAFC', padding: '6px 7px', borderRadius: '4px', border: `1px solid ${COLORS.borderLight}` }}>
               <div style={{ fontSize: '9px', fontWeight: 700, color: COLORS.navy, marginBottom: '4px' }}>
-                Section Production Efficiency (%) vs Target
+                Garment Line Production Efficiency (%) vs Target
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {[
-                  { name: 'Cutting Efficiency', actual: 82.2, target: 80.0, color: COLORS.cyan },
                   { name: 'Sewing Line Efficiency', actual: 74.7, target: 70.0, color: COLORS.blue },
                   { name: 'Finishing Efficiency', actual: 78.5, target: 75.0, color: COLORS.green },
-                  { name: 'Printing Efficiency', actual: 94.0, target: 90.0, color: COLORS.purple },
-                  { name: 'Knitting Efficiency', actual: 41.0, target: 38.0, color: COLORS.teal }
+                  { name: 'Cutting Efficiency', actual: 82.2, target: 80.0, color: COLORS.cyan }
                 ].map((item, idx) => (
                   <div key={idx} style={{ fontSize: '8.5px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1px' }}>
@@ -1449,7 +1446,7 @@ export default function ManagementDashboardPage() {
             <div style={{ background: '#F8FAFC', padding: '5px 7px', borderRadius: '4px', border: `1px solid ${COLORS.borderLight}`, display: 'flex', justifyContent: 'space-between', fontSize: '8.5px', color: COLORS.navy }}>
               <span>Cutting Reject: <strong>0.90%</strong></span>
               <span>Fabric Wastage: <strong>2.49%</strong></span>
-              <span>Print Defect: <strong>0.65%</strong></span>
+              <span>Cut to Ship Loss: <strong>2.63%</strong></span>
             </div>
 
           </div>
@@ -1510,23 +1507,28 @@ export default function ManagementDashboardPage() {
 
               {/* Section Tabs */}
               <div style={{ display: 'flex', gap: '3px' }}>
-                {(['ALL', 'Knitting', 'Dyeing', 'Printing', 'Embroidery'] as const).map(tab => (
+                {[
+                  { key: 'Knitting', label: 'Knitting Mills' },
+                  { key: 'Dyeing', label: 'Dyeing Mills' },
+                  { key: 'Printing', label: 'Printing Units' },
+                  { key: 'Embroidery', label: 'Embroidery Units' }
+                ].map(tab => (
                   <button
-                    key={tab}
+                    key={tab.key}
                     type="button"
-                    onClick={() => setSubcontractSectionTab(tab)}
+                    onClick={() => setSubcontractSectionTab(tab.key as any)}
                     style={{
                       fontSize: '8.5px',
-                      padding: '2px 5px',
+                      padding: '2px 6px',
                       borderRadius: '3px',
                       border: '1px solid #CBD5E1',
-                      background: subcontractSectionTab === tab ? COLORS.navy : '#FFFFFF',
-                      color: subcontractSectionTab === tab ? '#FFFFFF' : COLORS.navy,
+                      background: subcontractSectionTab === tab.key ? COLORS.navy : '#FFFFFF',
+                      color: subcontractSectionTab === tab.key ? '#FFFFFF' : COLORS.navy,
                       cursor: 'pointer',
                       fontWeight: 700
                     }}
                   >
-                    {tab}
+                    {tab.label}
                   </button>
                 ))}
               </div>
@@ -1536,8 +1538,9 @@ export default function ManagementDashboardPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9.5px', textAlign: 'left' }}>
                 <thead style={{ position: 'sticky', top: 0, background: '#F8FAFC', zIndex: 10 }}>
                   <tr style={{ borderBottom: `1px solid ${COLORS.border}`, color: COLORS.grey }}>
-                    <th style={{ padding: '4px 6px' }}>Section</th>
+                    <th style={{ padding: '4px 6px', width: '24px' }}>#</th>
                     <th style={{ padding: '4px 6px' }}>Partner Factory Mill</th>
+                    <th style={{ padding: '4px 6px' }}>Order Type / Capability</th>
                     <th style={{ padding: '4px 6px', textAlign: 'right' }}>Plan</th>
                     <th style={{ padding: '4px 6px', textAlign: 'right' }}>Received</th>
                     <th style={{ padding: '4px 6px', textAlign: 'right' }}>Balance</th>
@@ -1547,13 +1550,14 @@ export default function ManagementDashboardPage() {
                 <tbody>
                   {displayedSubcontractRows.map((sc, idx) => (
                     <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                      <td style={{ padding: '3px 6px', fontWeight: 800, color: COLORS.navy }}>{sc.section}</td>
-                      <td style={{ padding: '3px 6px', fontWeight: 600, color: '#334155' }}>{sc.factory}</td>
+                      <td style={{ padding: '3px 6px', color: COLORS.grey }}>{idx + 1}</td>
+                      <td style={{ padding: '3px 6px', fontWeight: 700, color: COLORS.navy }}>{sc.factory}</td>
+                      <td style={{ padding: '3px 6px', color: '#475569' }}>{sc.workType}</td>
                       <td style={{ padding: '3px 6px', textAlign: 'right' }}>{fmt(sc.planned)} {sc.unit}</td>
-                      <td style={{ padding: '3px 6px', textAlign: 'right', color: COLORS.green, fontWeight: 700 }}>{fmt(sc.received)}</td>
-                      <td style={{ padding: '3px 6px', textAlign: 'right', color: COLORS.amber, fontWeight: 700 }}>{fmt(sc.balance)}</td>
+                      <td style={{ padding: '3px 6px', textAlign: 'right', color: COLORS.green, fontWeight: 700 }}>{fmt(sc.received)} {sc.unit}</td>
+                      <td style={{ padding: '3px 6px', textAlign: 'right', color: COLORS.amber, fontWeight: 700 }}>{fmt(sc.balance)} {sc.unit}</td>
                       <td style={{ padding: '3px 6px', textAlign: 'center' }}>
-                        <span style={{ padding: '1px 4px', borderRadius: '3px', fontSize: '8px', fontWeight: 700, background: COLORS.greenLight, color: COLORS.green }}>
+                        <span style={{ padding: '1px 5px', borderRadius: '3px', fontSize: '8px', fontWeight: 700, background: COLORS.greenLight, color: COLORS.green }}>
                           {sc.status}
                         </span>
                       </td>

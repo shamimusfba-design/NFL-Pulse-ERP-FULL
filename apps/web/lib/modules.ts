@@ -39,7 +39,7 @@ export const MODULE_GROUPS: ModuleGroup[] = [
     items: [
       { slug: 'sample-room', name: 'Sample Room', short: 'SR', icon: 'sample-room', status: 'Live', description: 'Sample cutting, sewing, finishing, sample pattern and physical sample review.' },
       { slug: 'cad', name: 'CAD / Consumption / Pattern', short: 'CD', icon: 'measuring-tape', status: 'Foundation', description: 'Order-linked CAD consumption, color-wise fabric requirement, pattern and size-set work.' },
-      { slug: 'technical', name: 'Technical / File Handover', short: 'TC', icon: 'tech-pack', status: 'Planned', description: 'Technical specifications, tech pack, critical quality specs and handover status.' },
+      { slug: 'technical', name: 'Technical / Size Set', short: 'TS', icon: 'tech-pack', status: 'Live', description: 'Technical specifications, size set cutting/sewing/wash, fit review, and bulk file handover status.' },
     ],
   },
   {

@@ -3,100 +3,174 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState, useRef } from 'react';
-import { MODULE_GROUPS, ModuleGroup, ModuleItem } from '../lib/modules';
 import { api } from '../lib/api';
 import { displayJobNo } from '../lib/display';
 import GlobalStickyScrollbar from './GlobalStickyScrollbar';
-import ApparelIcon from './ApparelIcon';
 
-function getItemHref(item: { slug: string }): string {
-  if (item.slug === 'management') return '/management';
-  if (item.slug === 'merchandising') return '/merchandising-bulk';
-  if (item.slug === 'sample-merchandising') return '/merchandising-sample';
-  if (item.slug === 'sample-room') return '/modules/sample-room';
-  if (item.slug === 'floor-display') return '/floor-display';
-  if (item.slug === 'quality') return '/quality';
-  return `/modules/${item.slug}`;
+interface SidebarItem {
+  id: string;
+  name: string;
+  href: string;
+  badge?: string | number;
+  badgeType?: 'primary' | 'danger';
+  requiresManagement?: boolean;
+  matchPrefixes?: string[];
 }
 
-function roleFilteredGroups(groups: ModuleGroup[], roles: string[]): ModuleGroup[] {
-  if (!roles.length || roles.includes('ADMIN')) return groups;
-  const allowed: Record<string, string[]> = {};
-  const add = (group: string, slugs: string[]) => { allowed[group] = [...(allowed[group] || []), ...slugs]; };
-
-  const hasRole = (targets: string[]) => roles.some(r => targets.includes(String(r).toUpperCase()));
-
-  if (hasRole(['MERCH_BULK', 'MERCHANDISER', 'MERCH', 'MERCH_USER', 'MERCH_SAMPLE', 'MERCH_BOTH', 'MERCH_HEAD', 'HEAD_MERCHANDISER'])) {
-    add('Sales & Merchandising', ['merchandising', 'sample-merchandising']);
-    add('Trims & Accessories Store', ['trims']);
-  }
-  if (hasRole(['MERCH_HEAD', 'HEAD_MERCHANDISER'])) {
-    add('Sample / CAD / Technical', ['sample-room', 'cad', 'technical']);
-  }
-  if (roles.includes('IE')) {
-    add('Sales & Merchandising', ['merchandising']);
-    add('Industrial & Production Engineering', ['kpi-board', 'ie-bulletin', 'ie-daily-target', 'ie-mis-import', 'ie-npt', 'ie-qco', 'ie-line-performance', 'ie-responsibility', 'ie-skill-matrix', 'ie-production-checkpoints', 'ie-reports']);
-    add('Management', ['management']);
-  }
-  if (roles.includes('CAD')) add('Sample / CAD / Technical', ['cad', 'technical']);
-  if (roles.includes('SAMPLE')) {
-    add('Sales & Merchandising', ['sample-merchandising']);
-    add('Sample / CAD / Technical', ['sample-room']);
-  }
-  if (hasRole(['PLANNING', 'PLANNING_HEAD'])) {
-    add('Sales & Merchandising', ['merchandising']);
-    add('Central Planning', ['ta', 'planning-approvals', 'capacity', 'sewing-planning', 'subcontract']);
-    add('Management', ['management']);
-  }
-  if (roles.includes('MANAGEMENT')) {
-    add('Management', ['management']);
-    add('Central Planning', ['ta', 'planning-approvals', 'capacity', 'subcontract']);
-    add('Garment Quality', ['quality', 'quality-history']);
-    add('MIS & IT', ['reports', 'floor-display']);
-  }
-  if (roles.includes('QUALITY')) {
-    add('Management', ['management']);
-    add('Dyeing', ['dyeing']);
-    add('Garment Quality', ['quality', 'quality-history']);
-  }
-  if (roles.includes('YARN_MANAGEMENT') || roles.includes('PROCUREMENT')) {
-    add('Yarn Store & Knitting', ['yarn', 'yarn-store', 'knitting']);
-  }
-  if (roles.includes('YARN_STORE')) {
-    add('Yarn Store & Knitting', ['yarn-store', 'yarn']);
-  }
-  if (roles.includes('KNITTING')) {
-    add('Yarn Store & Knitting', ['knitting']);
-  }
-  if (roles.includes('GREIGE_STORE')) {
-    add('Greige Fabric Store', ['greige-store']);
-  }
-  if (roles.includes('DYEING') || roles.includes('YARN_DYEING')) {
-    add('Greige Fabric Store', ['greige-store']);
-    add('Dyeing', ['dyeing', 'dyeing-machine-loading', 'fabric-finishing']);
-  }
-  if (roles.includes('FABRIC_FINISHING')) {
-    add('Dyeing', ['fabric-finishing']);
-    add('Finish Fabric Store', ['finished-fabric']);
-  }
-  if (roles.includes('FINISHED_FABRIC_STORE')) {
-    add('Finish Fabric Store', ['finished-fabric']);
-  }
-  if (roles.includes('CUTTING')) add('Cutting & Input Management', ['cutting']);
-  if (roles.includes('PRINTING')) add('Printing Operations', ['printing']);
-  if (roles.includes('EMBROIDERY')) add('Embroidery Operations', ['embroidery']);
-  if (roles.includes('SEWING')) {
-    add('Sewing & Finishing', ['sewing', 'finishing']);
-    add('Industrial & Production Engineering', ['ie-npt', 'ie-qco']);
-  }
-  if (roles.includes('FINISHING')) add('Sewing & Finishing', ['finishing']);
-  if (roles.includes('TRIMS_STORE')) add('Trims & Accessories Store', ['trims']);
-  if (roles.includes('SHIPMENT')) add('HR, Admin & Compliance', ['shipment']);
-  if (roles.includes('MAINTENANCE')) add('MIS & IT', ['maintenance']);
-
-  if (!Object.keys(allowed).length) return groups;
-  return groups.map((group) => ({ ...group, items: group.items.filter((item) => (allowed[group.label] || []).includes(item.slug)) })).filter((group) => group.items.length);
+interface NavSubItem {
+  name: string;
+  href: string;
 }
+
+interface DepartmentNavConfig {
+  deptId: string;
+  deptName: string;
+  matchPrefixes: string[];
+  subItems: NavSubItem[];
+}
+
+// Exactly the 4 Main Navigation items
+const MAIN_NAVIGATION_ITEMS: SidebarItem[] = [
+  { id: 'management', name: 'Management Dashboard', href: '/management', requiresManagement: true },
+  { id: 'executive', name: 'Executive Dashboard', href: '/' },
+  { id: 'job360', name: 'Job 360', href: '/jobs', badge: '2,000', badgeType: 'primary' },
+  { id: 'tasks', name: 'My Pending Work', href: '/tasks' },
+];
+
+// Exactly the 18 Department Navigation items in exact requested order
+const DEPARTMENT_NAVIGATION_ITEMS: SidebarItem[] = [
+  { id: 'merchandising', name: 'Sales & Merchandising', href: '/merchandising-bulk', matchPrefixes: ['/merchandising-bulk', '/merchandising-sample', '/modules/merchandising-overview', '/modules/merchandising', '/merchandising'] },
+  { id: 'sample-room', name: 'Sample Room', href: '/modules/sample-room', matchPrefixes: ['/modules/sample-room'] },
+  { id: 'trims', name: 'Trims & Accessories Store', href: '/modules/trims', matchPrefixes: ['/modules/trims'] },
+  { id: 'central-planning', name: 'Central Planning', href: '/modules/central-planning', matchPrefixes: ['/modules/central-planning', '/modules/ta', '/modules/planning-approvals', '/modules/capacity', '/modules/sewing-planning', '/modules/subcontract'] },
+  { id: 'yarn-knitting', name: 'Yarn Store & Knitting', href: '/modules/yarn-knitting', matchPrefixes: ['/modules/yarn-knitting', '/modules/yarn', '/modules/yarn-store', '/modules/knitting'] },
+  { id: 'greige-store', name: 'Greige Fabric Store', href: '/modules/greige-store', matchPrefixes: ['/modules/greige-store'] },
+  { id: 'dyeing', name: 'Dyeing', href: '/modules/dyeing', matchPrefixes: ['/modules/dyeing', '/modules/dyeing-machine-loading', '/modules/fabric-finishing'] },
+  { id: 'finished-fabric', name: 'Finished Fabric Store', href: '/modules/finished-fabric', matchPrefixes: ['/modules/finished-fabric'] },
+  { id: 'cad', name: 'CAD', href: '/modules/cad', matchPrefixes: ['/modules/cad'] },
+  { id: 'technical', name: 'Technical', href: '/modules/technical', matchPrefixes: ['/modules/technical'] },
+  { id: 'cutting', name: 'Cutting & Input Management', href: '/modules/cutting', matchPrefixes: ['/modules/cutting'] },
+  { id: 'printing', name: 'Printing', href: '/modules/printing', matchPrefixes: ['/modules/printing'] },
+  { id: 'embroidery', name: 'Embroidery', href: '/modules/embroidery', matchPrefixes: ['/modules/embroidery'] },
+  { id: 'sewing', name: 'Sewing & Finishing', href: '/modules/sewing', matchPrefixes: ['/modules/sewing', '/modules/finishing'] },
+  { id: 'quality', name: 'Garments Quality', href: '/quality', matchPrefixes: ['/quality', '/modules/garment-quality', '/modules/quality-history'] },
+  { id: 'ie', name: 'Industrial & Production Engineering', href: '/modules/ie-overview', matchPrefixes: ['/modules/ie-overview', '/modules/kpi-board', '/modules/ie-bulletin', '/modules/ie-daily-target', '/modules/ie-mis-import', '/modules/ie-npt', '/modules/ie-qco', '/modules/ie-line-performance', '/modules/ie-responsibility', '/modules/ie-skill-matrix', '/modules/ie-production-checkpoints', '/modules/ie-reports'] },
+  { id: 'mis-it', name: 'MIS & IT', href: '/modules/mis-it', matchPrefixes: ['/modules/mis-it', '/floor-display', '/modules/reports', '/modules/data-import', '/modules/maintenance'] },
+  { id: 'hr-compliance', name: 'HR Admin & Compliance', href: '/modules/hr-admin-compliance', matchPrefixes: ['/modules/hr-admin-compliance', '/modules/administration', '/modules/masters', '/modules/shipment'] },
+];
+
+// Global Department Top Sub-Navigation configuration
+const DEPARTMENT_TOP_NAVS: DepartmentNavConfig[] = [
+  {
+    deptId: 'merchandising',
+    deptName: 'Sales & Merchandising',
+    matchPrefixes: ['/merchandising-bulk', '/merchandising-sample', '/modules/merchandising-overview', '/modules/merchandising', '/merchandising'],
+    subItems: [
+      { name: 'Dashboard', href: '/modules/merchandising-overview' },
+      { name: 'Bulk Merchandising', href: '/merchandising-bulk' },
+      { name: 'Sample Merchandising', href: '/merchandising-sample' },
+    ]
+  },
+  {
+    deptId: 'central-planning',
+    deptName: 'Central Planning',
+    matchPrefixes: ['/modules/central-planning', '/modules/ta', '/modules/planning-approvals', '/modules/capacity', '/modules/sewing-planning', '/modules/subcontract'],
+    subItems: [
+      { name: 'Overview', href: '/modules/central-planning' },
+      { name: 'Time & Action', href: '/modules/ta' },
+      { name: 'Approvals & Release', href: '/modules/planning-approvals' },
+      { name: 'Capacity & Calendar', href: '/modules/capacity' },
+      { name: 'Sewing Line Gantt', href: '/modules/sewing-planning' },
+      { name: 'Subcontract Follow-up', href: '/modules/subcontract' },
+    ]
+  },
+  {
+    deptId: 'yarn-knitting',
+    deptName: 'Yarn Store & Knitting',
+    matchPrefixes: ['/modules/yarn-knitting', '/modules/yarn', '/modules/yarn-store', '/modules/knitting'],
+    subItems: [
+      { name: 'Overview', href: '/modules/yarn-knitting' },
+      { name: 'Yarn Purchasing', href: '/modules/yarn' },
+      { name: 'Yarn Store & Inventory', href: '/modules/yarn-store' },
+      { name: 'Knitting Operations', href: '/modules/knitting' },
+    ]
+  },
+  {
+    deptId: 'dyeing',
+    deptName: 'Dyeing',
+    matchPrefixes: ['/modules/dyeing', '/modules/dyeing-machine-loading', '/modules/fabric-finishing'],
+    subItems: [
+      { name: 'Dyeing Planning', href: '/modules/dyeing' },
+      { name: 'Machine Loading Plan', href: '/modules/dyeing-machine-loading' },
+      { name: 'Finish Fabric Plan', href: '/modules/fabric-finishing' },
+    ]
+  },
+  {
+    deptId: 'sewing',
+    deptName: 'Sewing & Finishing',
+    matchPrefixes: ['/modules/sewing', '/modules/finishing'],
+    subItems: [
+      { name: 'Sewing Operations', href: '/modules/sewing' },
+      { name: 'Finishing & Packing', href: '/modules/finishing' },
+    ]
+  },
+  {
+    deptId: 'quality',
+    deptName: 'Garments Quality',
+    matchPrefixes: ['/quality', '/modules/garment-quality', '/modules/quality-history'],
+    subItems: [
+      { name: 'Quality Management & DHU', href: '/quality' },
+      { name: 'Job Quality History', href: '/modules/quality-history' },
+    ]
+  },
+  {
+    deptId: 'ie',
+    deptName: 'Industrial & Production Engineering',
+    matchPrefixes: [
+      '/modules/ie-overview', '/modules/kpi-board', '/modules/ie-bulletin',
+      '/modules/ie-daily-target', '/modules/ie-mis-import', '/modules/ie-npt',
+      '/modules/ie-qco', '/modules/ie-line-performance', '/modules/ie-responsibility',
+      '/modules/ie-skill-matrix', '/modules/ie-production-checkpoints', '/modules/ie-reports'
+    ],
+    subItems: [
+      { name: 'Overview', href: '/modules/ie-overview' },
+      { name: 'KPI Board', href: '/modules/kpi-board' },
+      { name: 'IE Bulletin', href: '/modules/ie-bulletin' },
+      { name: 'Daily Targets', href: '/modules/ie-daily-target' },
+      { name: 'Daily MIS Import', href: '/modules/ie-mis-import' },
+      { name: 'NPT Loss', href: '/modules/ie-npt' },
+      { name: 'QCO', href: '/modules/ie-qco' },
+      { name: 'Line Performance', href: '/modules/ie-line-performance' },
+      { name: 'Responsibility', href: '/modules/ie-responsibility' },
+      { name: 'Skill Matrix', href: '/modules/ie-skill-matrix' },
+      { name: 'Checkpoints', href: '/modules/ie-production-checkpoints' },
+      { name: 'IE Reports', href: '/modules/ie-reports' },
+    ]
+  },
+  {
+    deptId: 'mis-it',
+    deptName: 'MIS & IT',
+    matchPrefixes: ['/modules/mis-it', '/floor-display', '/modules/reports', '/modules/data-import', '/modules/maintenance'],
+    subItems: [
+      { name: 'Overview', href: '/modules/mis-it' },
+      { name: 'Floor TV Live Display', href: '/floor-display' },
+      { name: 'Reports & Analytics', href: '/modules/reports' },
+      { name: 'Excel Import', href: '/modules/data-import' },
+      { name: 'Machine Engineering', href: '/modules/maintenance' },
+    ]
+  },
+  {
+    deptId: 'hr-compliance',
+    deptName: 'HR Admin & Compliance',
+    matchPrefixes: ['/modules/hr-admin-compliance', '/modules/administration', '/modules/masters', '/modules/shipment'],
+    subItems: [
+      { name: 'Overview', href: '/modules/hr-admin-compliance' },
+      { name: 'Users & Permissions', href: '/modules/administration' },
+      { name: 'Masters & Config', href: '/modules/masters' },
+      { name: 'Shipment & Commercial', href: '/modules/shipment' },
+    ]
+  }
+];
 
 const PERSONAS = [
   { id: 'user-director', name: 'Managing Director / Factory Owner', role: 'DIRECTOR', assignedBuyer: 'ALL', tag: '👑 Managing Director / Owner', desc: 'Full Management Dashboard, plant governance & audit' },
@@ -113,10 +187,11 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
   const pathname = usePathname();
   const [user, setUser] = useState<any>(null);
   const [query, setQuery] = useState('');
-  // Day / Night mode for every page (stored in the browser)
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [pendingTasksCount, setPendingTasksCount] = useState<number>(0);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
+  // Day / Night mode
   useEffect(() => {
     let t: 'light' | 'dark' = 'light';
     try {
@@ -145,8 +220,25 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
     } catch {}
   };
 
+  // Sidebar Collapse Persistence
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('nos-sidebar-collapsed');
+      if (saved === '1') setSidebarCollapsed(true);
+    } catch {}
+  }, []);
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('nos-sidebar-collapsed', next ? '1' : '0');
+      } catch {}
+      return next;
+    });
+  };
+
   const [jobJumpNo, setJobJumpNo] = useState('');
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [personaOpen, setPersonaOpen] = useState(false);
   const [activePersonaId, setActivePersonaId] = useState('user-head');
   const personaRef = useRef<HTMLDivElement>(null);
@@ -243,240 +335,221 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
     const rList = [...(roles || []).map((r: any) => String(r).toUpperCase()), String(user?.role || '').toUpperCase(), String(activePersona?.role || '').toUpperCase()];
     return rList.some(r => ['DIRECTOR', 'OWNER', 'MANAGEMENT_HEAD', 'MANAGEMENT', 'ADMIN'].includes(r));
   }, [roles, user, activePersona]);
-  const groups = useMemo(() => {
-    const filtered = roleFilteredGroups(MODULE_GROUPS, roles);
-    if (!query.trim()) return filtered;
-    const q = query.toLowerCase().trim();
-    return filtered.map((group) => ({
-      ...group,
-      items: group.items.filter((item) =>
-        item.name.toLowerCase().includes(q) ||
-        item.short.toLowerCase().includes(q) ||
-        item.description.toLowerCase().includes(q)
-      )
-    })).filter((group) => group.items.length > 0);
-  }, [roles, query]);
 
-  const active = (href: string) => {
-    if (href === '/') return pathname === '/';
-    return pathname === href || pathname.startsWith(`${href}/`);
+  // Active link detection
+  const isItemActive = (item: SidebarItem) => {
+    if (item.href === '/') return pathname === '/';
+    if (pathname === item.href) return true;
+    if (item.matchPrefixes) {
+      return item.matchPrefixes.some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`));
+    }
+    return pathname.startsWith(`${item.href}/`);
   };
 
-  const toggleGroup = (label: string) => {
-    setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }));
-  };
-
-  useEffect(() => {
-    MODULE_GROUPS.forEach((group) => {
-      const match = group.items.some((item) => active(getItemHref(item)));
-      if (match || active(`/modules/${group.overviewSlug}`)) {
-        setOpenGroups((prev) => ({ ...prev, [group.label]: true }));
-      }
-    });
+  // Find active department top nav configuration
+  const activeTopNavConfig = useMemo(() => {
+    return DEPARTMENT_TOP_NAVS.find(cfg => {
+      return cfg.matchPrefixes.some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`));
+    }) || null;
   }, [pathname]);
 
+  // Filter department items based on query
+  const filteredDepartments = useMemo(() => {
+    if (!query.trim()) return DEPARTMENT_NAVIGATION_ITEMS;
+    const q = query.toLowerCase().trim();
+    return DEPARTMENT_NAVIGATION_ITEMS.filter(item =>
+      item.name.toLowerCase().includes(q) || item.id.toLowerCase().includes(q)
+    );
+  }, [query]);
+
   return (
-    <div className="shell">
+    <div className={`shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
       <GlobalStickyScrollbar />
+
+      {/* Persistent Enterprise Sidebar */}
       <aside className="sidebar">
+        {/* Sidebar Header with Company Name & Hamburger */}
         <div className="brand-wrap">
-          <img className="brand-logo" src="/branding/northern-fashions-logo.jpg" alt="Northern Fashions Limited" />
-          <div>
-            <div className="brand">Northern Fashions Limited</div>
+          <img
+            className="brand-logo"
+            src="/branding/northern-fashions-logo.jpg"
+            alt="Northern Fashions Limited"
+          />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="brand" title="Northern Fashion Limited">Northern Fashion Limited</div>
             <div className="brand-sub">NFL Pulse ERP · Operations Control</div>
           </div>
+          <button
+            type="button"
+            className="sidebar-hamburger-btn"
+            onClick={toggleSidebar}
+            title="Collapse Sidebar"
+            aria-label="Collapse Sidebar"
+          >
+            ☰
+          </button>
         </div>
 
+        {/* Module Quick Find */}
         <div className="sidebar-search">
           <span>🔍</span>
           <input
-            placeholder="Find module..."
+            placeholder="Find department..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            aria-label="Find module"
+            aria-label="Find department"
           />
         </div>
 
-        <nav className="nav">
+        {/* Text-Only Enterprise Menu */}
+        <nav className="nav text-only-nav">
           {!query && (
-            <>
-              {/* 1. Management Dashboard (Restricted to Director, Owner, Management) */}
-              {isManagementUser && (
-                <Link className={active('/management') ? 'nav-link active' : 'nav-link'} href="/management" title="Director / Owner-level factory intelligence dashboard">
-                  <span className="nav-icon"><ApparelIcon name="factory" size={16} /></span>
-                  <span>Management Dashboard</span>
-                </Link>
-              )}
-
-              {/* 2. Executive Dashboard (Operational daily factory execution) */}
-              <Link className={active('/') ? 'nav-link active' : 'nav-link'} href="/" title="Daily factory operational dashboard">
-                <span className="nav-icon"><ApparelIcon name="dashboard" size={16} /></span>
-                <span>Executive Dashboard</span>
-              </Link>
-
-              {/* 3. Job 360 (Complete order-level view with 21 tabs) */}
-              <Link className={active('/jobs') ? 'nav-link active' : 'nav-link'} href="/jobs" title="Job 360 · Complete Order-level Process View">
-                <span className="nav-icon"><ApparelIcon name="jobs" size={16} /></span>
-                <span style={{ flex: 1 }}>Job 360</span>
-                <span style={{ fontSize: '10px', background: '#2563eb', color: '#fff', padding: '1px 6px', borderRadius: '10px', fontWeight: 800 }}>2,000</span>
-              </Link>
-
-              {/* Tasks */}
-              <Link className={active('/tasks') ? 'nav-link active' : 'nav-link'} href="/tasks">
-                <span className="nav-icon"><ApparelIcon name="tasks" size={16} /></span>
-                <span style={{ flex: 1 }}>My Pending Tasks</span>
-                {pendingTasksCount > 0 && (
-                  <span style={{ background: '#dc2626', color: '#fff', fontSize: '10.5px', fontWeight: 800, padding: '1px 7px', borderRadius: '10px' }}>
-                    {pendingTasksCount}
-                  </span>
-                )}
-              </Link>
-            </>
+            <div className="nav-section-block">
+              <div className="nav-section-title">Main Navigation</div>
+              {MAIN_NAVIGATION_ITEMS.map((item) => {
+                if (item.requiresManagement && !isManagementUser) return null;
+                const activeClass = isItemActive(item) ? 'nav-link text-nav-link active' : 'nav-link text-nav-link';
+                return (
+                  <Link
+                    key={item.id}
+                    className={activeClass}
+                    href={item.href}
+                    title={item.name}
+                  >
+                    <span className="nav-label">{item.name}</span>
+                    {item.id === 'job360' && item.badge && (
+                      <span className="nav-badge-pill primary">{item.badge}</span>
+                    )}
+                    {item.id === 'tasks' && pendingTasksCount > 0 && (
+                      <span className="nav-badge-pill danger">{pendingTasksCount}</span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
           )}
 
-          {groups.map((group) => {
-            // Standalone single-item process departments render directly as 1-click main menu links
-            if (group.items.length === 1 && !query) {
-              const item = group.items[0];
-              const href = getItemHref(item);
-              const isItemActive = active(href) || active(`/modules/${group.overviewSlug}`);
+          <div className="nav-section-block" style={{ marginTop: query ? 0 : '10px' }}>
+            {!query && <div className="nav-section-title">Department Navigation</div>}
+            {filteredDepartments.map((item) => {
+              const activeClass = isItemActive(item) ? 'nav-link text-nav-link active' : 'nav-link text-nav-link';
               return (
-                <div key={group.label} className="nav-single-item" style={{ margin: '1px 0' }}>
-                  <Link
-                    className={isItemActive ? 'nav-link active' : 'nav-link'}
-                    href={href}
-                    title={item.description}
-                  >
-                    <span className="nav-icon"><ApparelIcon name={item.icon || item.slug} size={16} /></span>
-                    <span className="nav-text" style={{ fontWeight: 600 }}>{item.name}</span>
-                  </Link>
-                </div>
+                <Link
+                  key={item.id}
+                  className={activeClass}
+                  href={item.href}
+                  title={item.name}
+                >
+                  <span className="nav-label">{item.name}</span>
+                </Link>
               );
-            }
-
-            const isOpen = query.length > 0 || !!openGroups[group.label];
-            const overviewHref = `/modules/${group.overviewSlug}`;
-            const hasActive = active(overviewHref) || group.items.some((item) => active(getItemHref(item)));
-
-            return (
-              <div className={`nav-group ${isOpen ? 'open' : ''}`} key={group.label}>
-                <div className={`nav-group-toggle ${hasActive ? 'has-active' : ''}`}>
-                  <Link
-                    className="nav-group-overview"
-                    href={overviewHref}
-                    title={`${group.label} overview`}
-                    onClick={() => setOpenGroups((prev) => ({ ...prev, [group.label]: true }))}
-                  >
-                    <span className="nav-group-title" style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}>
-                      <ApparelIcon name={group.icon || group.overviewSlug} size={15} />
-                      <span>{group.label}</span>
-                    </span>
-                  </Link>
-                  <button
-                    type="button"
-                    className="nav-group-chevron-btn"
-                    onClick={() => toggleGroup(group.label)}
-                    aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${group.label}`}
-                    aria-expanded={isOpen}
-                  >
-                    <span className={`nav-chevron ${isOpen ? 'open' : ''}`} aria-hidden="true">⌄</span>
-                  </button>
-                </div>
-                <div className={`nav-group-items ${isOpen ? 'open' : ''}`}>
-                  {group.items.map((item) => {
-                    const href = getItemHref(item);
-                    return (
-                      <Link
-                        className={active(href) ? 'nav-link active' : 'nav-link'}
-                        href={href}
-                        key={item.slug}
-                        title={item.description}
-                      >
-                        <span className="nav-icon">
-                          <ApparelIcon name={item.icon || item.slug} size={15} />
-                        </span>
-                        <span className="nav-text">
-                          {item.name}
-                        </span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
+            })}
+          </div>
         </nav>
 
+        {/* Sidebar Footer */}
         <div className="sidebar-foot">
-          <div className="system-dot" />
+          <span className="system-dot" />
           <div>
-            <strong>Local development</strong>
-            <span>PostgreSQL + Redis</span>
+            <strong>Northern Fashions Live</strong>
+            <span>Active Plant System</span>
           </div>
         </div>
       </aside>
 
+      {/* Main Content Area */}
       <main className="main">
+        {/* Standardized Global Top Header */}
         <header className="topbar">
-          <div>
-            <div className="page-eyebrow">{eyebrow || 'NFL / NCL · Connected ERP'}</div>
-            <h1>{title}</h1>
-          </div>
-          <div className="top-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {/* Global Day / Night Mode Switch */}
-            <div className="theme-switch" role="group" aria-label="Day or night mode">
-              <button
-                type="button"
-                className={theme === 'light' ? 'on' : ''}
-                onClick={() => theme !== 'light' && toggleTheme()}
-                title="Switch to Day mode"
-              >
-                ☀ Day
-              </button>
-              <button
-                type="button"
-                className={theme === 'dark' ? 'on' : ''}
-                onClick={() => theme !== 'dark' && toggleTheme()}
-                title="Switch to Night mode"
-              >
-                ☾ Night
-              </button>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+            {/* Hamburger toggle button (visible when sidebar is collapsed or on smaller screens) */}
+            <button
+              type="button"
+              className="topbar-hamburger-btn"
+              onClick={toggleSidebar}
+              title={sidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+              aria-label="Toggle Sidebar"
+            >
+              ☰
+            </button>
 
-            {/* Global Interactive Job Search with Live Suggestions */}
+            <div>
+              {eyebrow && <div className="page-eyebrow">{eyebrow}</div>}
+              <h1>{title}</h1>
+            </div>
+          </div>
+
+          <div className="top-actions">
+            {/* Theme Day / Night Toggle */}
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={toggleTheme}
+              title="Toggle Day / Night mode"
+              style={{ padding: '6px 10px', fontSize: '13px' }}
+            >
+              {theme === 'dark' ? '☀️ Day' : '🌙 Night'}
+            </button>
+
+            {/* Global Jump To Job Search Box */}
             <div ref={searchContainerRef} style={{ position: 'relative' }}>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const clean = jobJumpNo.trim();
-                  if (!clean) return;
-                  if (searchHits.length > 0) {
-                    window.location.href = `/jobs/${encodeURIComponent(searchHits[0].jobNo)}`;
-                  } else {
-                    window.location.href = `/jobs?q=${encodeURIComponent(clean)}`;
-                  }
-                  setShowSearchDropdown(false);
-                }}
-                style={{ display: 'flex', alignItems: 'center', background: 'var(--card, #f1f5f9)', borderRadius: '6px', padding: '3px 8px', border: '1px solid var(--border, #cbd5e1)' }}
-              >
-                <span style={{ fontSize: '13px', color: '#64748b', marginRight: '5px' }}>🔍</span>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                background: 'var(--card-bg, #ffffff)',
+                border: '1px solid var(--border, #cbd5e1)',
+                borderRadius: '8px',
+                padding: '2px 8px',
+                height: '36px'
+              }}>
+                <span style={{ fontSize: '12px', color: '#64748b', marginRight: '6px' }}>🔍</span>
                 <input
+                  type="text"
+                  placeholder="Jump to Job # (e.g. 22041, 48093)"
                   value={jobJumpNo}
                   onChange={(e) => setJobJumpNo(e.target.value)}
-                  onFocus={() => { if (searchHits.length > 0) setShowSearchDropdown(true); }}
-                  placeholder="Jump to Job # (e.g. 22041, 48093)..."
-                  style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', width: '200px', fontWeight: 600, color: 'inherit' }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && jobJumpNo.trim()) {
+                      window.location.href = `/jobs?q=${encodeURIComponent(jobJumpNo.trim())}`;
+                    }
+                  }}
+                  style={{
+                    border: 'none',
+                    outline: 'none',
+                    background: 'transparent',
+                    fontSize: '12px',
+                    width: '185px',
+                    color: 'inherit'
+                  }}
                 />
-                <button type="submit" style={{ border: 'none', background: '#2563eb', color: '#fff', fontSize: '10px', fontWeight: 800, padding: '3px 8px', borderRadius: '4px', cursor: 'pointer' }}>GO</button>
-              </form>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (jobJumpNo.trim()) {
+                      window.location.href = `/jobs?q=${encodeURIComponent(jobJumpNo.trim())}`;
+                    }
+                  }}
+                  style={{
+                    background: '#2563eb',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '4px',
+                    padding: '2px 8px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  GO
+                </button>
+              </div>
 
-              {/* Live Search Results Dropdown */}
+              {/* Autocomplete suggestions dropdown */}
               {showSearchDropdown && (
                 <div style={{
                   position: 'absolute',
-                  top: '100%',
+                  top: '105%',
                   left: 0,
-                  marginTop: '5px',
                   width: '320px',
                   background: '#0f172a',
                   border: '1px solid #334155',
@@ -634,6 +707,24 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
             </button>
           </div>
         </header>
+
+        {/* Standardized Global Department Top Sub-Navigation Bar */}
+        {activeTopNavConfig && (
+          <nav className="global-dept-subnav" aria-label={`${activeTopNavConfig.deptName} sub-navigation`}>
+            {activeTopNavConfig.subItems.map((sub) => {
+              const isActiveSub = pathname === sub.href;
+              return (
+                <Link
+                  key={sub.href}
+                  href={sub.href}
+                  className={`dept-subnav-btn ${isActiveSub ? 'active' : ''}`}
+                >
+                  {sub.name}
+                </Link>
+              );
+            })}
+          </nav>
+        )}
 
         {children}
       </main>

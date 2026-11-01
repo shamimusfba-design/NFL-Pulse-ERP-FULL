@@ -1,0 +1,1555 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" id="vp" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>NOS · Technical / Size Set</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+
+:root {
+  --indigo: #1f3a5f;
+  --indigo-2: #2c5282;
+  --chalk: #f4f6f9;
+  --paper: #fff;
+  --ink: #18202b;
+  --ink-2: #5a667c;
+  --line: #e1e5ec;
+  --thread: #c9a227;
+  --good: #2e7d4f;
+  --warn: #a86a12;
+  --bad: #c0392b;
+  --info: #2c5282;
+  --good-bg: #e6f4ec;
+  --warn-bg: #fcf1d9;
+  --bad-bg: #fbe8e5;
+  --info-bg: #e7eef8;
+  --chip: #edf0f5;
+  --sel: #eef3fb;
+  --freeze: #fbfcfe;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --indigo: #8fb3e6;
+    --indigo-2: #9dbbe8;
+    --chalk: #0f141b;
+    --paper: #171f2a;
+    --ink: #e8edf4;
+    --ink-2: #9ba8bc;
+    --line: #283241;
+    --thread: #d9b64a;
+    --good: #5cc08a;
+    --warn: #e2b04f;
+    --bad: #ef7a6c;
+    --info: #8fb3e6;
+    --good-bg: #15332a;
+    --warn-bg: #382d13;
+    --bad-bg: #3b1c19;
+    --info-bg: #1a2a40;
+    --chip: #212b38;
+    --sel: #1c2a3d;
+    --freeze: #1a2330;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --indigo: #8fb3e6;
+  --indigo-2: #9dbbe8;
+  --chalk: #0f141b;
+  --paper: #171f2a;
+  --ink: #e8edf4;
+  --ink-2: #9ba8bc;
+  --line: #283241;
+  --thread: #d9b64a;
+  --good: #5cc08a;
+  --warn: #e2b04f;
+  --bad: #ef7a6c;
+  --info: #8fb3e6;
+  --good-bg: #15332a;
+  --warn-bg: #382d13;
+  --bad-bg: #3b1c19;
+  --info-bg: #1a2a40;
+  --chip: #212b38;
+  --sel: #1c2a3d;
+  --freeze: #1a2330;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--chalk);
+  color: var(--ink);
+  font: 13px/1.4 "Inter", system-ui, -apple-system, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--thread); outline-offset: 1px; }
+
+/* Top Branding Bar */
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--indigo);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 14px;
+}
+.brand { font-weight: 700; letter-spacing: 0.3px; white-space: nowrap; font-size: 14px; }
+.brand small { font-weight: 500; opacity: 0.85; margin-left: 6px; font-size: 12px; }
+.top .sp { flex: 1; }
+.top select, .top button {
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 5px;
+  padding: 3px 8px;
+  font-size: 12px;
+  color: inherit;
+}
+.top select option { color: #18202b; }
+.asof { font-size: 11.5px; opacity: 0.85; white-space: nowrap; }
+
+/* Module Sub-Navigation */
+.sect {
+  display: flex;
+  gap: 4px;
+  padding: 6px 14px 0;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 40px;
+  z-index: 35;
+  overflow-x: auto;
+}
+.sect button {
+  border: 0;
+  background: none;
+  padding: 6px 12px;
+  border-bottom: 3px solid transparent;
+  font-weight: 600;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.sect button.on { color: var(--ink); border-bottom-color: var(--thread); }
+.sect .cnt {
+  display: inline-block;
+  min-width: 18px;
+  margin-left: 5px;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: var(--chip);
+  font-size: 11px;
+  color: var(--ink-2);
+}
+
+main { padding: 10px 14px 30px; }
+.view { display: none; }
+.view.on { display: block; }
+
+/* Ultra-Compact KPI Metrics Strip */
+.compact-kpi-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(115px, 1fr));
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.kpi-chip {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line);
+  border-radius: 5px;
+  padding: 5px 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+.kpi-chip:hover {
+  background: var(--sel);
+  border-color: var(--indigo-2);
+}
+.kpi-chip.active {
+  background: var(--sel);
+  border-color: var(--indigo);
+  border-left-width: 4px;
+  box-shadow: 0 0 0 1px var(--indigo);
+}
+.kpi-chip .l {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
+}
+.kpi-chip .n-row {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.kpi-chip .n {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--ink);
+}
+.kpi-chip .u {
+  font-size: 10px;
+  color: var(--ink-2);
+}
+.kpi-chip .sub {
+  font-size: 10px;
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.kpi-chip.c-good { border-left-color: var(--good); }
+.kpi-chip.c-warn { border-left-color: var(--warn); }
+.kpi-chip.c-bad { border-left-color: var(--bad); }
+.kpi-chip.c-info { border-left-color: var(--info); }
+.kpi-chip.c-thread { border-left-color: var(--thread); }
+
+/* Buyer Turnaround Leaderboard */
+.buyer-turnaround-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  overflow-x: auto;
+}
+.btt-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  background: var(--chip);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btt-pill:hover, .btt-pill.active { background: var(--sel); border-color: var(--indigo); font-weight: 600; }
+.btt-val { font-weight: 700; color: var(--indigo); }
+.btt-val.fast { color: var(--good); }
+.btt-val.slow { color: var(--bad); }
+
+/* Filter & Column Controls */
+.filters-bar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+}
+.filters-bar select, .filters-bar input {
+  border: 1px solid var(--line);
+  background: var(--paper);
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 12px;
+  max-width: 140px;
+}
+.filters-bar .sp { flex: 1; }
+.active-quick-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--info-bg);
+  color: var(--info);
+  border: 1px solid var(--info);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.active-quick-tag button {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+  color: inherit;
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* Two-Column Split Grid with Left Inspector */
+.workspace-grid {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  position: relative;
+}
+
+/* Left Inspector Sidebar */
+.left-inspector {
+  width: 330px;
+  flex-shrink: 0;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  position: sticky;
+  top: 80px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  display: flex;
+  flex-direction: column;
+}
+.left-inspector.hidden { display: none; }
+.left-inspector-header {
+  padding: 8px 12px;
+  background: var(--chip);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.left-inspector-header b { font-size: 13px; font-weight: 700; }
+.left-inspector-body {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  font-size: 12px;
+}
+.insp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.insp-field label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
+}
+.insp-field input, .insp-field select, .insp-field textarea {
+  border: 1px solid var(--line);
+  background: var(--paper);
+  border-radius: 4px;
+  padding: 4px 7px;
+  font-size: 12px;
+  width: 100%;
+}
+.insp-kv {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 3px 6px;
+  font-size: 11.5px;
+  background: var(--chalk);
+  padding: 7px 9px;
+  border-radius: 5px;
+  border: 1px solid var(--line);
+}
+.insp-kv span:first-child { color: var(--ink-2); }
+.insp-kv span:last-child { font-weight: 600; }
+.insp-actions {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--chip);
+  border-top: 1px solid var(--line);
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+}
+.insp-log {
+  max-height: 120px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 10.5px;
+  background: var(--chalk);
+}
+
+/* Data Table Container */
+.table-area {
+  flex: 1;
+  min-width: 0;
+}
+.tw {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: auto;
+  max-height: calc(100vh - 220px);
+}
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12px;
+  width: 100%;
+}
+th, td {
+  padding: 4px 7px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+thead th {
+  position: sticky;
+  top: 0;
+  background: var(--chip);
+  z-index: 10;
+  font-weight: 600;
+  line-height: 1.2;
+  border-bottom: 2px solid var(--line);
+}
+thead tr.gh th {
+  font-size: 10.5px;
+  color: var(--ink-2);
+  border-right: 1px solid var(--line);
+  text-align: center;
+  background: var(--chalk);
+  padding: 3px 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+thead tr.ch th {
+  font-size: 11.5px;
+}
+td.n, th.n { text-align: right; }
+td.c, th.c { text-align: center; }
+
+/* Sticky Freeze Column */
+.fz {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  background: var(--freeze);
+  border-right: 1px solid var(--line);
+  font-weight: 600;
+}
+thead .fz { z-index: 12; background: var(--chip); }
+
+tbody tr { cursor: pointer; transition: background 0.1s; }
+tbody tr:hover td { background: var(--sel); }
+tbody tr.selected td { background: var(--info-bg) !important; font-weight: 600; }
+tbody tr.selected td.fz { border-left: 3px solid var(--indigo); }
+
+/* Status Badges */
+.pill {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--chip);
+  color: var(--ink-2);
+}
+.pill.good { background: var(--good-bg); color: var(--good); }
+.pill.warn { background: var(--warn-bg); color: var(--warn); }
+.pill.bad { background: var(--bad-bg); color: var(--bad); }
+.pill.info { background: var(--info-bg); color: var(--info); }
+.pill.thread { background: #fdf3d8; color: #8a6409; }
+
+/* Floating Bubble Tooltip */
+#bubble-popover {
+  position: fixed;
+  z-index: 9999;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--indigo);
+  border-radius: 7px;
+  padding: 7px 11px;
+  box-shadow: 0 6px 22px rgba(0,0,0,0.18);
+  font-size: 11.5px;
+  line-height: 1.35;
+  max-width: 290px;
+  pointer-events: none;
+  display: none;
+  transform: translate(-50%, -100%);
+  margin-top: -8px;
+}
+#bubble-popover::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: var(--indigo) transparent transparent transparent;
+}
+#bubble-popover .bp-title {
+  font-weight: 700;
+  color: var(--indigo);
+  margin-bottom: 2px;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+/* Common UI Elements */
+.btn {
+  border: 1px solid var(--line);
+  background: var(--paper);
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+  font-weight: 500;
+}
+.btn:hover { background: var(--sel); }
+.btn.pri { background: var(--indigo); border-color: var(--indigo); color: #fff; font-weight: 600; }
+:root[data-theme="dark"] .btn.pri { color: #0f141b; }
+.btn.sm { padding: 2px 7px; font-size: 11px; }
+
+.pager {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 6px 0;
+  font-size: 11.5px;
+  color: var(--ink-2);
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--paper);
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  z-index: 100;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+.toast.on { opacity: 1; }
+
+.hf {
+  border: 0;
+  background: none;
+  color: var(--ink-2);
+  cursor: pointer;
+  font-size: 10px;
+  padding: 0 2px;
+  margin-left: 2px;
+}
+.hf:hover, .hf.on { background: var(--indigo); color: #fff; border-radius: 2px; }
+
+.hfpop {
+  position: fixed;
+  z-index: 80;
+  width: 250px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.18);
+  padding: 8px;
+  font-size: 12px;
+}
+.hfpop .hfq { width: 100%; border: 1px solid var(--line); border-radius: 4px; padding: 3px 5px; background: var(--paper); font-size: 11.5px; }
+.hfpop .hfl { max-height: 220px; overflow: auto; margin: 6px 0; display: flex; flex-direction: column; gap: 2px; }
+.hfpop .hfb { display: flex; gap: 4px; justify-content: flex-end; }
+
+/* Work Queue Split Layout */
+.split { display: grid; grid-template-columns: 310px 1fr; gap: 10px; margin-top: 8px; align-items: start; }
+.panel { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; }
+.panel > h3 { margin: 0; padding: 7px 10px; font-size: 13px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
+.plist { max-height: 60vh; overflow: auto; }
+.pi { display: grid; grid-template-columns: 1fr auto; gap: 6px; padding: 6px 10px; border-bottom: 1px solid var(--line); font-size: 12px; cursor: pointer; }
+.pi:hover, .pi.sel { background: var(--sel); }
+.pi .a { font-weight: 600; }
+.pi .b { color: var(--ink-2); font-size: 11px; }
+
+.subtabs { display: flex; gap: 4px; margin: 8px 0 0; flex-wrap: wrap; }
+.subtabs button { border: 1px solid var(--line); background: var(--paper); padding: 4px 10px; border-radius: 4px 4px 0 0; cursor: pointer; font-size: 12px; }
+.subtabs button.on { background: var(--indigo); color: #fff; border-color: var(--indigo); font-weight: 600; }
+:root[data-theme="dark"] .subtabs button.on { color: #0f141b; }
+
+  </style>
+</head>
+<body>
+  <!-- Top Branding Bar -->
+  <div class="top">
+    <div class="brand">NOS<small>Technical / Size Set</small></div>
+    <div class="sp"></div>
+    <span class="asof">Sewing Line Plan & Execution · Active Factory Schedule</span>
+    <label style="font-size:12px;display:flex;gap:6px;align-items:center">
+      Logged in as
+      <select id="role">
+        <option>Merchandiser</option>
+        <option>CAD</option>
+        <option>Technical</option>
+        <option>Size Set</option>
+        <option>Size Set QC</option>
+        <option>Central Planning</option>
+        <option>Management</option>
+      </select>
+    </label>
+    <button id="theme" type="button" title="Day / Night">◐</button>
+  </div>
+
+  <!-- Sub Navigation -->
+  <nav class="sect" id="sect">
+    <button data-v="sp" class="on">Size Set Plan &amp; Status</button>
+    <button data-v="wq">Work Queue<span class="cnt" id="c-wq"></span></button>
+    <button data-v="pp">PP Meetings<span class="cnt" id="c-pp"></span></button>
+  </nav>
+
+  <main>
+    <!-- View 1: Size Set Plan & Status (#sp) -->
+    <section class="view on" id="v-sp">
+      <!-- Ultra-Compact KPI Cards Strip -->
+      <div class="compact-kpi-bar" id="kpi-strip"></div>
+
+      <!-- Filters Bar with Integrated Buyer Turnaround Strip -->
+      <div class="filters-bar">
+        <select id="filter-buyer"></select>
+        <select id="filter-stage"></select>
+        <select id="filter-merch"></select>
+        <select id="filter-line"></select>
+        <input id="filter-query" placeholder="Search Job, Style, Item…">
+        <button class="btn sm" id="filter-reset">Reset</button>
+        <div id="active-filter-indicator"></div>
+        <div class="sp"></div>
+        <div class="buyer-turnaround-strip" id="buyer-turnaround-strip"></div>
+      </div>
+        <select id="filter-stage"></select>
+        <select id="filter-merch"></select>
+        <select id="filter-line"></select>
+        <input id="filter-query" placeholder="Search Job, Style, Item…">
+        <button class="btn sm" id="filter-reset">Reset</button>
+        <div id="active-filter-indicator"></div>
+        <div class="sp"></div>
+        <span style="font-size:11.5px;color:var(--ink-2)">Tip: Click any job to inspect &amp; edit status in Left Panel</span>
+      </div>
+
+      <!-- Split Layout: Left Inspector + Data Table -->
+      <div class="workspace-grid" id="sp-main-grid">
+        <!-- Left Sidebar Inspector (Docked) -->
+        <aside class="left-inspector hidden" id="left-inspector"></aside>
+
+        <!-- Right Side: Data Table -->
+        <div class="table-area">
+          <div class="tw">
+            <table>
+              <thead>
+                <tr class="gh">
+                  <th class="fz"></th>
+                  <th colspan="5">Job &amp; Style Specifications</th>
+                  <th colspan="4">Planning &amp; Mill Timeline</th>
+                  <th colspan="6">Technical &amp; Size Set Workflow</th>
+                </tr>
+                <tr class="ch">
+                  <th class="fz">Buyer-Job #</th>
+                  <th>Style #</th>
+                  <th>Item Description</th>
+                  <th class="n">Order Qty</th>
+                  <th>Print / Emb</th>
+                  <th>Merchandiser</th>
+                  <th class="c">Line</th>
+                  <th>Sewing Start</th>
+                  <th>CCD</th>
+                  <th class="n">Fabric %</th>
+                  <th>Present Status</th>
+                  <th class="c">Size Set Req</th>
+                  <th class="c">Wash Garment</th>
+                  <th class="n">Cycle Days</th>
+                  <th>PPM Schedule</th>
+                  <th class="c">Inspect</th>
+                </tr>
+              </thead>
+              <tbody id="table-body"></tbody>
+            </table>
+          </div>
+          <div class="pager" id="sp-pager"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- View 2: Work Queue (#wq) -->
+    <section class="view" id="v-wq">
+      <div class="subtabs" id="wq-tabs"></div>
+      <div class="split">
+        <div class="panel">
+          <h3>Jobs at this stage</h3>
+          <div class="plist" id="wq-list"></div>
+        </div>
+        <div class="panel">
+          <h3>Action Form</h3>
+          <div id="wq-form"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- View 3: PP Meetings (#pp) -->
+    <section class="view" id="v-pp">
+      <div class="compact-kpi-bar" id="pp-cards" style="margin-bottom:10px"></div>
+      <div id="pp-body"></div>
+    </section>
+  </main>
+
+  <!-- Floating Bubble Tooltip -->
+  <div id="bubble-popover"></div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Data and Application Script -->
+  <script>
+const DATA={"P":[{"ln":"A","b":"ONL","j":"46748 13th","st":"15244714","it":"SS o nk TS","ped":"pink-5616 pcs,,anise-5616 pcs  all combo  1 clr gltr print","ss":"2026-09-24","ccd":"2026-10-14","oq":11232.0,"mc":23.0,"smv":8.2,"tgt":247.0,"fq":1734.0,"fr":1734.0,"ps":"Sewing Completed","tr":"ok","cut":11426.0,"psd":11426.0,"prc":11419.0,"rfi":8.0,"inp":11411.0,"ppos":"Chest","mr":"Imran"},{"ln":"A","b":"ONL","j":"48202","st":"15388786","it":"SS o nk TS w blind stitch","ped":"C.dancer-6460 pcs frt 1 clr gltr and back 5 clr pig 1 clr gltr ,,ether-5812 pcs frt  2 clr pig 2 clr gltr back 6 clr pig 3 clr gltr ,,Navy-4360 pcs frt 2 clr pig 1 clr gltr and back 4 clr pig 2 clr gltr","ss":"2026-08-25","ccd":"2026-09-21","oq":21716.0,"mc":19.0,"smv":7.9,"tgt":142.0,"fq":2714.0,"fr":2714.0,"ps":"Sewing Running","tr":"ok","cut":22200.0,"psd":22020.0,"prc":16128.0,"rfi":5592.0,"inp":10536.0,"ppos":"Fr,Bk","mr":"Abid"},{"ln":"A","b":"OVS","j":"47863","st":"271TSH111-6156","it":"LS o nk TS w shlder insert mesh and front jaquard label","ped":"coconut milk-3031 pcs 2 clr HD print and nk 1 clr foil print","ss":"2026-09-08","ccd":"2026-09-07","oq":3031.0,"mc":31.0,"smv":10.6,"tgt":243.0,"fq":550.0,"fr":550.0,"ps":"Cut Ok","tr":"Jacquard label-650pcs due.","cut":3122.0,"psd":3115.0,"prc":3115.0,"rfi":1703.0,"inp":1412.0,"ppos":"BK,NK","mr":"Khairul"},{"ln":"A","b":"OVS","j":"47731","st":"271NDG003DRSL-6111","it":"AOP LS o nk Long dress","ss":"2026-09-12","ccd":"2026-09-26","oq":5226.0,"mc":31.0,"smv":11.8,"tgt":179.0,"fq":2020.0,"fr":2020.0,"ps":"Cut Run","tr":"ok","cut":3087.0,"inp":3087.0,"mr":"Basir"},{"ln":"B","b":"ONS","j":"47811","st":"22039022","it":"LS Swt hoody w rib and zipper at kangaroo pkt","ped":"forest fog-1213 pcs,,black-914 pcs both combo frt back 1 clr rub","ss":"2026-08-24","ccd":"2026-10-20","oq":2127.0,"mc":42.0,"smv":16.8,"tgt":166.0,"fq":1714.0,"fr":1714.0,"ps":"Sewing Running","tr":"ok","cut":1969.0,"psd":1957.0,"prc":1841.0,"rfi":4.0,"inp":1837.0,"ppos":"Fr,Bk","mr":"Shovon","rm":"C to B=Planning"},{"ln":"B","b":"OVS","j":"47778","st":"271LEG002-6153","it":"Waist fold legging w contrast side piping","ped":"black-5382 pcs 1 clr foil waist size label print","ss":"2026-09-01","ccd":"2026-09-07","oq":5382.0,"mc":34.0,"smv":14.9,"tgt":165.0,"fq":2269.0,"fr":2269.0,"ps":"Sewing Completed","tr":"ok","cut":5436.0,"psd":5428.0,"prc":5422.0,"rfi":1.0,"inp":5421.0,"ppos":"Waist","mr":"Sirajul","rm":"H to B = Planning"},{"ln":"B","b":"ONS","j":"46616 4th","st":"22039183","it":"LS Swt Hoody","ped":"black-2008 pcs frt back 1 clr rub 1 clr puff print,,beluga-2008 pccs frt back 1 clr rub 1 clr puff print,,silver-1508 pcs frt back 1 clr rub 1 clr puff print","ss":"2026-09-04","ccd":"2026-09-16","oq":5500.0,"mc":39.0,"smv":15.0,"tgt":183.0,"fq":4971.0,"fr":4922.0,"ps":"Sewing Running","tr":"ok","cut":5638.0,"psd":5638.0,"prc":5606.0,"inp":5606.0,"ppos":"Fr,Bk","mr":"Shakel"},{"ln":"B","b":"NMT","j":"48058","st":"13264030","it":"LS puff Slve Cut&sew TS","ped":"Ice-810 pcs 2 clr rub 3 clr gltr gel print","ss":"2026-09-15","ccd":"2026-09-21","oq":810.0,"mc":23.0,"smv":8.9,"tgt":243.0,"fq":125.0,"fr":125.0,"ps":"Sewing Completed","tr":"ok","cut":825.0,"psd":825.0,"prc":825.0,"inp":825.0,"ppos":"Chest,Nk","mr":"Haider","rm":"Sew-03 to Sew-01= Planning"},{"ln":"B","b":"ONS","j":"41626 27th","st":"22031973","it":"MENS LONG SWT PANT W SIDE & BK PKT","ss":"2026-09-12","ccd":"2026-09-23","oq":1020.0,"mc":44.0,"smv":18.0,"tgt":179.0,"fq":697.0,"fr":498.0,"ps":"Cut Run","tr":"tube Drawstring due.","cut":745.0,"rfi":745.0,"mr":"Shakel"},{"ln":"B","b":"OVS","j":"47791","st":"271SWT110-282","it":"LS Full placket snap btn jacket w cuff btm flat knit and side bon pkt","ped":"b.cream -5420 pcs two part 2 clr flat emb","ss":"2026-09-15","ccd":"2026-09-28","oq":5420.0,"mc":60.0,"smv":22.8,"tgt":158.0,"fq":1195.0,"fr":741.0,"ps":"Size Set Run Emb","tr":"Sewing thread-1clr, Hang tag, poly due.","epos":"Chest","mr":"Khairul"},{"ln":"B","b":"OVS","j":"47792","st":"271SWT122-282","it":"LS Full zipper jacket w collar ,slve contrast cut & sew and side bon pkt","ped":"b.cream -2567 pcs 6 clr rub 3 clr flat emb","ss":"2026-09-15","ccd":"2026-10-12","oq":2567.0,"mc":60.0,"smv":22.3,"tgt":162.0,"fq":720.0,"fr":720.0,"ps":"File Due","tr":"Hang tag, poly due.","ppos":"Chest","epos":"Chest","mr":"Khairul"},{"ln":"B","b":"OVS","j":"48143","st":"271SWTFTT513-6172","it":"Ls High nk Full zipper Swt Shirt w side slit","ss":"2026-09-24","ccd":"2026-10-06","oq":6939.0,"fq":3920.0,"fr":3636.0,"ps":"Need Cut","tr":"Rfid label, Zipper, hang tag, Poly due.","mr":"Shaker"},{"ln":"C","b":"ONS","j":"45964 12th","st":"22039968","it":"LS High nk Haalf Zipp Swt shirt","ss":"2026-08-19","ccd":"2026-09-02","oq":4000.0,"mc":45.0,"smv":18.9,"tgt":160.0,"fq":2782.0,"fr":2782.0,"ps":"Sewing Completed","tr":"ok","mr":"Shakel"},{"ln":"C","b":"ONS","j":"47812","st":"22040834","it":"Swt Pant w waist belt and drawstring","ped":"forest fog-493 pcs 1 clr rub print","ss":"2026-08-22","ccd":"2026-10-21","oq":493.0,"mc":37.0,"smv":15.1,"tgt":172.0,"fq":282.0,"fr":282.0,"ps":"Sewing Completed","tr":"ok","cut":513.0,"psd":513.0,"prc":513.0,"rfi":4.0,"inp":509.0,"ppos":"Thigh","mr":"Shovon"},{"ln":"C","b":"ONS","j":"41626 26th","st":"22031973","it":"MENS LONG SWT PANT W SIDE & BK PKT","ss":"2026-08-27","ccd":"2026-09-09","oq":3030.0,"mc":44.0,"smv":11.8,"tgt":171.0,"fq":2027.0,"fr":2027.0,"ps":"Sewing Completed","tr":"Tube drawstring grey due.","cut":3127.0,"rfi":34.0,"inp":3093.0,"mr":"Shakel"},{"ln":"C","b":"NMT","j":"48056","st":"13263670","it":"LS Swt dress w cut & sew","ped":"blue-935 pcs,,violet-905 pcs both combo 4 clr rub 1 clr gltr print","ss":"2026-09-15","ccd":"2026-09-23","oq":1840.0,"mc":24.0,"smv":9.4,"tgt":230.0,"fq":620.0,"fr":620.0,"ps":"Sewing Completed","tr":"ok","cut":1895.0,"psd":1895.0,"prc":1895.0,"rfi":8.0,"inp":1887.0,"ppos":"Chest","mr":"Haider","rm":"T2 to C= Planning"},{"ln":"C","b":"OVS","j":"47727","st":"262POL025-6140","it":"AOP LS Swt shirt collar placket cuff btm rib","ped":"Sugar swizzle-4428 pcs 1 clr terry emb","ss":"2026-09-05","ccd":"2026-09-14","oq":4428.0,"mc":34.0,"smv":13.2,"tgt":171.0,"fq":844.0,"fr":844.0,"ps":"Sewing Completed","tr":"ok","cut":4518.0,"psd":4518.0,"prc":4518.0,"inp":4518.0,"epos":"Chest","mr":"Salam"},{"ln":"C","b":"OVS","j":"47728","st":"262TSH026-6140","it":"LS TS w bk nk key hole w snap btn and cuff gathering","ped":"pink-2275 pcs 6 clr flat 1 clr chain stitch emb","ss":"2026-09-05","ccd":"2026-09-14","oq":2275.0,"mc":26.0,"smv":7.9,"tgt":267.0,"fq":233.0,"fr":233.0,"ps":"Cut Ok","tr":"ok","cut":2348.0,"psd":2348.0,"prc":2348.0,"rfi":20.0,"inp":2328.0,"epos":"Chest","mr":"Salam"},{"ln":"C","b":"OVS","j":"47736","st":"271PJA021PD4-6111","it":"AOP LS TS w frt placket btn and elasted long pant","ss":"2026-09-11","ccd":"2026-09-26","oq":16278.0,"mc":33.0,"smv":11.8,"tgt":233.0,"fq":4218.0,"fr":4076.0,"ps":"Cut Run","tr":"ok","cut":10396.0,"rfi":1896.0,"inp":8500.0,"mr":"Basir","rm":"TOP"},{"ln":"C","b":"OVS","j":"47866","st":"271SWT072-227","it":"LS Swt shirt w cuff nk rib and btm woven insert lace and bacl nk placket btn","ped":"Navy-8099 pcs 1 clr flat emb and chochet flower attach at sewing","ss":"2026-09-24","ccd":"2026-09-28","oq":8099.0,"mc":45.0,"smv":15.7,"tgt":183.0,"fq":1390.0,"fr":1390.0,"ps":"Cut Ok","tr":"Cap snap button, Ring snap button, 3D  flower due.","cut":8228.0,"psd":8228.0,"prc":8228.0,"rfi":8228.0,"epos":"Chest","mr":"Salam"},{"ln":"D","b":"OVS","j":"47746","st":"271TSHFTT519S-6172","it":"YD TS w contrast nk slve btm edge","ss":"2026-08-26","ccd":"2026-09-07","oq":5268.0,"mc":37.0,"smv":12.6,"tgt":191.0,"fq":1225.0,"fr":1203.0,"ps":"Sewing Completed","tr":"ok","cut":5443.0,"rfi":58.0,"inp":5385.0,"mr":"Shaker"},{"ln":"D","b":"UTG","j":"45093 3rd","st":"BAD2961B","it":"LS R NK TS","ss":"2026-09-01","ccd":"2026-09-21","oq":1000.0,"mc":20.0,"smv":6.7,"tgt":259.0,"fq":252.0,"fr":252.0,"ps":"Sewing Completed","tr":"ok","cut":1052.0,"inp":1052.0,"mr":"Rony"},{"ln":"D","b":"OVS","j":"48241","st":"271TSHT184W-6084","it":"SS O nk TS","ss":"2026-09-03","ccd":"2026-09-15","oq":10965.0,"mc":19.0,"smv":7.6,"tgt":236.0,"fq":1663.0,"fr":1663.0,"ps":"Sewing Completed","tr":"ok","cut":11142.0,"rfi":6.0,"inp":11136.0,"mr":"Basir"},{"ln":"D","b":"OVS","j":"48150","st":"271TSH009-6153","it":"SS drop shlder TS w shlder yoke","ss":"2026-09-07","ccd":"2026-09-26","oq":5094.0,"mc":22.0,"smv":8.0,"tgt":249.0,"fq":1209.0,"fr":1209.0,"ps":"Sewing Completed","tr":"ok","cut":5148.0,"inp":5148.0,"mr":"Sirajul"},{"ln":"D","b":"OVS","j":"47735","st":"271PJA019AG2-6111","it":"AOP LS Swt shirt w cuff btm rib and pant w twill tape hem rib","ss":"2026-09-08","ccd":"2026-09-26","oq":16690.0,"mc":23.0,"smv":8.9,"tgt":235.0,"fq":4681.0,"fr":4460.0,"ps":"Sewing Running","tr":"Rfid Label-2 size due.","cut":16708.0,"rfi":4568.0,"inp":12140.0,"mr":"Basir","rm":"BTM, E to C= Planning"},{"ln":"D","b":"ONL","j":"48188 3rd","st":"15299502","it":"SS O nk TS","ped":"black-1040 pcs,,C.dan-1040 pcs all combo  chest 1 clr gltr print","ss":"2026-09-06","ccd":"2026-09-16","oq":2080.0,"mc":19.0,"smv":7.5,"tgt":247.0,"fq":410.0,"fr":410.0,"ps":"Sewing Completed","tr":"ok","cut":2142.0,"psd":2126.0,"prc":2126.0,"rfi":3.0,"inp":2123.0,"ppos":"Chest","mr":"Zahirul"},{"ln":"D","b":"OVS","j":"47821","st":"271HTS002SET-244","it":"AOP Hats and skirf set","ss":"2026-09-10","ccd":"2026-09-21","oq":10520.0,"mc":31.0,"smv":11.1,"tgt":256.0,"fq":580.0,"fr":580.0,"ps":"Cut Ok","tr":"poly due.","cut":10634.0,"rfi":10634.0,"mr":"Khairul"},{"ln":"D","b":"OVS","j":"47938","st":"271HTS004JB-244","it":"AOP Hat","ss":"2026-09-15","ccd":"2026-09-21","oq":7200.0,"mc":21.0,"smv":7.5,"tgt":249.0,"fq":450.0,"fr":450.0,"ps":"Cut Ok","tr":"header card, poly due.","cut":7284.0,"rfi":7284.0,"mr":"Khairul"},{"ln":"D","b":"OVS","j":"47943","st":"271HTS507JB/508JB/613JB-5162","it":"AOP Hat","ss":"2026-09-15","ccd":"2026-09-21","oq":12659.0,"ps":"Need Test Cut","tr":"header card, poly due.","mr":"Khairul"},{"ln":"D","b":"OVS","j":"47813","st":"271VST0210SB-901","it":"Tank Top lace in nk","ped":"3 combo nk HP","ss":"2026-09-22","ccd":"2026-10-12","oq":12280.0,"mc":20.0,"smv":7.1,"tgt":262.0,"fq":1514.0,"fr":1314.0,"ps":"Need Cut","tr":"Rfid label due.","ppos":"Heat Press/Heat Seal","mr":"Salam"},{"ln":"D","b":"ONS","j":"45691 2nd","st":"22028147","it":"SS o nk TS w nk rib","ped":"flint-1314 pcs,,gray-1314 pcs,,desert-1314 ps,,black-1896 pcs,,white-1896 pcs  all combo logo print heat press","ss":"2026-09-28","ccd":"2026-11-11","oq":7734.0,"mc":18.0,"smv":7.7,"tgt":219.0,"fq":1722.0,"fr":1692.0,"ps":"Cut Run","tr":"ok","cut":5817.0,"rfi":5817.0,"ppos":"Heat Press/Heat Seal","mr":"Shovon"},{"ln":"E","b":"OVS","j":"47780","st":"271TSH006-6153","it":"SS TS w back and slve yoke w front jaquared label","ped":"white-5382 pcs front both slve 2 clr rub print and nk 1 clr foil print","ss":"2026-09-01","ccd":"2026-09-07","oq":5382.0,"mc":23.0,"smv":8.4,"tgt":234.0,"fq":941.0,"fr":941.0,"ps":"Sewing Completed","tr":"ok","cut":5520.0,"psd":5516.0,"prc":5443.0,"rfi":11.0,"inp":5432.0,"ppos":"Chest, Nk & Slv","mr":"Sirajul","rm":"A to E= Planning"},{"ln":"E","b":"OVS","j":"47735","st":"271PJA019AG2-6111","it":"AOP LS Swt shirt w cuff btm rib and pant w twill tape hem rib","ss":"2026-09-11","ccd":"2026-09-26","oq":16690.0,"mc":23.0,"smv":8.9,"tgt":235.0,"fq":4681.0,"fr":4460.0,"ps":"Cut Ok","tr":"Rfid Label-2 size due.","cut":16708.0,"rfi":4568.0,"inp":12140.0,"mr":"Basir","rm":"TOP, C to E = palnning"},{"ln":"E","b":"ONL","j":"48201","st":"15365507","it":"LS Swt shirt w cuff btm rib","ped":"ether-4192 pcs front 4 clr rub back 8 clr rub,,tofu-6582 pcs front 1 clr puff back 5 clr rub 1 clr puff ,,pink-2632 ps front 10 clr rub back no print","ss":"2026-09-01","ccd":"2026-09-21","oq":13406.0,"mc":24.0,"smv":9.1,"tgt":225.0,"fq":4781.0,"fr":4722.0,"ps":"Sewing Running","tr":"ok","cut":13785.0,"psd":13725.0,"prc":13658.0,"rfi":4376.0,"inp":9282.0,"ppos":"Fr,Bk","mr":"Abid"},{"ln":"E","b":"ONS","j":"48191","st":"22040941","it":"LS Swt shirt w cuff btm rib","ped":"plaza-590 pcs frt 3 clr pig back 5 clr pig ,,egret-578 pcs frt 3 clr pig back 4 clr pig,,black-479 pcs frt back 2 clr rub print","ss":"2026-09-05","ccd":"2026-09-16","oq":1647.0,"mc":25.0,"smv":9.7,"tgt":222.0,"fq":611.0,"fr":607.0,"ps":"Sewing Running","tr":"ok","cut":1711.0,"psd":1711.0,"prc":1699.0,"inp":1699.0,"ppos":"Fr,Bk","mr":"Shovon","rm":"A to E= Planning"},{"ln":"R","b":"ONS","j":"26827 56th","st":"22029225","it":"LS Swt hoodie w kangaro pkt and drastring and cuff btm rib","ss":"2026-09-01","ccd":"2026-09-09","oq":1000.0,"mc":38.0,"smv":15.6,"tgt":175.0,"fq":912.0,"fr":912.0,"ps":"Sewing Completed","tr":"ok","cut":1037.0,"inp":1037.0,"mr":"Shakel","rm":"Sew-02 to Sew-01= Planning"},{"ln":"E","b":"OVS","j":"47736","st":"271PJA021PD4-6111","it":"AOP LS TS w frt placket btn and elasted long pant","ss":"2026-09-08","ccd":"2026-09-26","oq":16278.0,"mc":33.0,"smv":11.8,"tgt":233.0,"fq":4218.0,"fr":4076.0,"ps":"Cut Run","tr":"ok","cut":10396.0,"rfi":1896.0,"inp":8500.0,"mr":"Basir","rm":"BTM"},{"ln":"E","b":"OVS","j":"47833","st":"271TSH085-6140","it":"LS TS w sangallo collar and bk nk  wood btn","ped":"pink -2075 pcs 4 clr flat emb","ss":"2026-09-16","ccd":"2026-09-28","oq":2075.0,"fq":211.0,"fr":211.0,"ps":"Need Cut","tr":"ok","epos":"Chest","mr":"Salam"},{"ln":"E","b":"OVS","j":"47868","st":"271POL074-227","it":"LS TS w sangallo collar and front blacket w plastic  btn","ss":"2026-09-16","ccd":"2026-09-28","oq":7232.0,"mc":40.0,"smv":13.8,"tgt":187.0,"fq":820.0,"fr":820.0,"ps":"Cut Ok","tr":"ok","cut":7289.0,"rfi":7289.0,"mr":"Salam"},{"ln":"E","b":"OVS","j":"47867","st":"271TSH073-227","it":"LS TS w raw cut in collar slvee and bk nk placket snap btn","ped":"stalactite-6412 pcs 3 clr cording emb","ss":"2026-09-16","ccd":"2026-09-28","oq":6412.0,"mc":33.0,"smv":12.6,"tgt":184.0,"fq":737.0,"fr":737.0,"ps":"Need Cut","tr":"Cap snap button,Hang tag-73w due.","epos":"Chest","mr":"Salam"},{"ln":"E","b":"OVS","j":"47814","st":"271VST0211SB-901","it":"Strap V nk Tank Top w lac in Nk","ped":"3 combo nk HP","ss":"2026-09-22","ccd":"2026-10-12","oq":11676.0,"mc":25.0,"smv":10.2,"tgt":235.0,"fq":1148.0,"fr":1093.0,"ps":"Need Cut","tr":"Rfid label due.","ppos":"Heat Press/Heat Seal","mr":"Salam"},{"ln":"E","b":"OVS","j":"48144","st":"271SWTFTT524-6172","it":"LS boat nk Swt Shirt w side slit","ss":"2026-09-26","ccd":"2026-10-06","oq":3626.0,"mc":31.0,"smv":11.5,"tgt":203.0,"fq":1622.0,"fr":1622.0,"ps":"Need Cut","tr":"Rfid label, Hanger loop-Lt Grey,  hang tag, Poly due.","mr":"Shaker"},{"ln":"E","b":"ONS","j":"48147","st":"22039020","it":"LS Swt shirt w cuff btm rib","ped":"forest-617 pcs,,black-1061 pcs both combo frt back 1 clr puff print","ss":"2026-09-29","ccd":"2026-11-10","oq":1662.0,"mc":27.0,"smv":10.5,"tgt":212.0,"fq":1079.0,"ps":"Size Set Run PC","tr":"ok","ppos":"Fr,Bk","mr":"Shakel"},{"ln":"E","b":"ONS","j":"44945 5th","st":"22036392","it":"MENS BK & CUT SEW TS","ss":"2026-09-29","ccd":"2026-11-11","oq":1876.0,"mc":24.0,"smv":8.6,"tgt":237.0,"fq":700.0,"fr":700.0,"ps":"CAD","tr":"ok","mr":"Shakel"},{"ln":"F","b":"ONS","j":"44076 19th","st":"22013782","it":"SS T Shirt","ss":"2026-09-05","ccd":"2026-11-11","oq":9648.0,"mc":20.0,"smv":7.5,"tgt":240.0,"fq":2115.0,"fr":2071.0,"ps":"Need Cut","tr":"ok","mr":"Shakel"},{"ln":"F","b":"ONS","j":"44076 20th","st":"22013782","it":"SS T Shirt","ss":"2026-09-16","ccd":"2026-11-11","oq":4050.0,"mc":20.0,"smv":7.5,"tgt":240.0,"fq":894.0,"fr":881.0,"ps":"Need Cut","tr":"ok","mr":"Shakel"},{"ln":"F","b":"ONS","j":"47794","st":"22036580","it":"SS o nk TS w nk rib","ped":"black ISA-1389 pcs frt 1 clr rub back photo print ,,c.dan-2331 pcs frt 1 clr pig back photo print ,,black bubblegum-1011 pcs frt photo print back no print","ss":"2026-09-18","ccd":"2026-11-11","oq":4659.0,"mc":19.0,"smv":7.7,"tgt":219.0,"fq":1503.0,"fr":737.0,"ps":"Cut Run","tr":"ok","cut":2141.0,"psd":2141.0,"ppos":"Fr & Bk & Nk","mr":"Shakel"},{"ln":"F","b":"ONS","j":"48193","st":"22040861","it":"SS o nk TS w nk rib","ped":"silver lining-201 pcs,,white-156 pcs,,black-186 pcs all combo 1 clr pig print","ss":"2026-09-18","ccd":"2026-10-21","oq":543.0,"mc":19.0,"smv":7.4,"tgt":226.0,"fq":105.0,"fr":67.0,"ps":"Need Cut","tr":"ok","ppos":"Chest","mr":"Shovon"},{"ln":"F","b":"ONS","j":"48192","st":"22041780","it":"SS o nk TS w nk rib","ped":"silver lining-846 pcs  1 clr pig print","ss":"2026-09-18","ccd":"2026-10-21","oq":846.0,"mc":19.0,"smv":7.4,"tgt":226.0,"fq":141.0,"fr":94.0,"ps":"Need Cut","tr":"ok","ppos":"Chest","mr":"Shovon"},{"ln":"F","b":"ONS","j":"48153","st":"22028692/22042219","it":"SS o nk TS w nk rib","ss":"2026-09-22","ccd":"2026-11-11","oq":33685.0,"mc":20.0,"smv":8.1,"tgt":216.0,"fq":10086.0,"fr":10086.0,"ps":"Need Cut","tr":"ok","mr":"Shakel"},{"ln":"F","b":"ONS","j":"48153 2nd","st":"22028692","it":"SS o nk TS w nk rib","ss":"2026-09-22","ccd":"2027-01-06","oq":450.0,"mc":20.0,"smv":8.1,"tgt":216.0,"fq":138.0,"fr":138.0,"ps":"Size Set Run","tr":"ok","mr":"Shakel"},{"ln":"G1","b":"ONS","j":"44077 8th","st":"22012786","it":"MENS R NK SS TS W SELF FABRIC NK BINDING","ss":"2026-09-01","ccd":"2026-11-11","oq":49920.0,"mc":20.0,"smv":8.0,"tgt":233.0,"fq":10477.0,"fr":10456.0,"ps":"Sewing Running","tr":"ok","cut":50770.0,"rfi":4326.0,"inp":46444.0,"mr":"Shovon","rm":"Advance sew from September'26"},{"ln":"G1","b":"ONS","j":"44076 18th","st":"22013782","it":"SS T Shirt","ss":"2026-09-05","ccd":"2026-11-11","oq":14070.0,"mc":20.0,"smv":7.5,"tgt":240.0,"fq":3096.0,"fr":3084.0,"ps":"Sewing Running","tr":"ok","cut":14581.0,"rfi":1478.0,"inp":13103.0,"mr":"Shakel","rm":"F to G1= Planning"},{"ln":"G1","b":"ONS","j":"42483 7th","st":"22035827","it":"MENS SS R NK TS","ped":"black hermony- 906 pcs frt back 1 clr rub ,,jet black hand eye- 1106 pcs frt back  1 clr rub  print ,,jet black valencia- 806 pcs frt back photo print ,,jet black mount fuji -1106  pcs frt back 2 clr rub ,,white -906 pcs Frt back 1 clr rub  print ,,dark navy-906 pcs frt 1 clr rub back 2 clr rub,,egret-906 pcs frt back 1 clr rub,,,black brocken-906 pcs  frt 1 clr rub back 1 clr photo black white print","ss":"2026-09-10","ccd":"2026-09-21","oq":7548.0,"mc":19.0,"smv":7.5,"tgt":231.0,"fq":1772.0,"fr":1667.0,"ps":"Cut Run","tr":"ok","cut":6634.0,"psd":6572.0,"prc":4011.0,"rfi":4011.0,"ppos":"FR,BK","mr":"Shovon"},{"ln":"G1","b":"ONL","j":"21004 36th","st":"15245901","it":"Tank Top","ss":"2026-09-14","ccd":"2026-09-23","oq":6250.0,"mc":16.0,"smv":5.3,"tgt":281.0,"fq":931.0,"fr":931.0,"ps":"Cut Ok","tr":"ok","cut":6287.0,"rfi":6287.0,"mr":"Dalim"},{"ln":"G1","b":"ONL","j":"27204 63th","st":"15323159","it":"LS o nk TS","ss":"2026-09-17","ccd":"2026-09-21","oq":2070.0,"mc":20.0,"smv":7.6,"tgt":245.0,"fq":543.0,"fr":60.0,"ps":"Need Cut FB","tr":"ok","mr":"Dalim"},{"ln":"G1","b":"ONL","j":"22034 55th","st":"15060061","it":"Tank Top","ss":"2026-09-24","ccd":"2026-09-30","oq":18358.0,"mc":16.0,"smv":5.3,"tgt":281.0,"ps":"Cut Run","tr":"ok","cut":4550.0,"rfi":4550.0,"mr":"Imran"},{"ln":"G2","b":"ONL","j":"27204 61th","st":"15323159","it":"LS o nk TS","ss":"2026-09-17","ccd":"2026-09-30","oq":10720.0,"mc":20.0,"smv":7.6,"tgt":245.0,"fq":2573.0,"fr":2573.0,"ps":"Sewing Completed","tr":"ok","cut":10815.0,"inp":10815.0,"mr":"Dalim","rm":"G1 to G2= Planning"},{"ln":"G2","b":"ONL","j":"27204 62th","st":"15323159","it":"LS o nk TS","ss":"2026-09-17","ccd":"2026-09-30","oq":7840.0,"mc":20.0,"smv":7.6,"tgt":245.0,"fq":1893.0,"fr":1865.0,"ps":"Sewing Completed","tr":"ok","cut":7905.0,"inp":7905.0,"mr":"Dalim","rm":"G1 to G2= Planning"},{"ln":"G2","b":"ONS","j":"30588 20th","st":"22031724","it":"SS o nk TS","ss":"2026-09-01","ccd":"2026-09-16","oq":14000.0,"mc":19.0,"smv":7.3,"tgt":231.0,"fq":5754.0,"fr":5734.0,"ps":"Sewing Completed","tr":"ok","cut":14301.0,"rfi":136.0,"inp":14165.0,"mr":"Dalim","rm":"F to G2= Planning"},{"ln":"G2","b":"OVS","j":"48284","st":"271HTS104JB-244","it":"Hat","ped":"Black-2022 pcs 5 clr rub print","ss":"2026-09-01","ccd":"2026-09-15","oq":2022.0,"mc":11.0,"smv":4.3,"tgt":267.0,"fq":100.0,"fr":100.0,"ps":"Cut Ok","tr":"Hang tag, poly due.","cut":2077.0,"psd":2077.0,"ppos":"Hat","mr":"Khairul"},{"ln":"G2","b":"OVS","j":"47941","st":"271HTS504JB-5192/271HTS505-5192","it":"Hat w jaquared label","ss":"2026-09-01","ccd":"2026-09-21","oq":13572.0,"mc":21.0,"smv":8.1,"tgt":245.0,"fq":745.0,"fr":745.0,"ps":"Cut Run","tr":"Rfid label,Hang tag style-505JB, poly due.","cut":13437.0,"rfi":13437.0,"mr":"Khairul"},{"ln":"G2","b":"OVS","j":"47879","st":"271HTS003JB-244","it":"AOP Hat","ss":"2026-09-01","ccd":"2026-09-21","oq":7205.0,"fq":450.0,"ps":"Need Test Cut","tr":"Sewing thread-150/D, header card, poly due.","mr":"Khairul"},{"ln":"G2","b":"OVS","j":"47944","st":"271HTS611JB-5192","it":"Hat","ped":"blue-7135 pcs 6 clr rub print","ss":"2026-09-01","ccd":"2026-09-21","oq":7135.0,"fq":430.0,"fr":430.0,"ps":"Size Set Run Print","tr":"Rfid label, Header card,poly due.","ppos":"Hat","mr":"Khairul"},{"ln":"G2","b":"OVS","j":"47939","st":"271HTS005JB-244","it":"Hat","ped":"nosegay-6005 pcs 2 clr rub print","ss":"2026-09-08","ccd":"2026-09-21","oq":6005.0,"mc":11.0,"smv":4.3,"tgt":267.0,"fq":290.0,"fr":290.0,"ps":"Need Cut","tr":"header card, poly due.","ppos":"Hat","mr":"Khairul"},{"ln":"G2","b":"OVS","j":"47940","st":"271HTS007JB-244","it":"AOP Hat","ss":"2026-09-08","ccd":"2026-09-21","oq":5955.0,"mc":11.0,"smv":4.3,"tgt":267.0,"fq":570.0,"fr":570.0,"ps":"Cut Run","tr":"header card, poly due.","cut":2400.0,"rfi":2400.0,"mr":"Khairul"},{"ln":"G2","b":"OVS","j":"47942","st":"271HTS506JB-5192","it":"Hat","ped":"Black-3425 pcs 2 clr rub print","ss":"2026-09-08","ccd":"2026-09-21","oq":3425.0,"mc":11.0,"smv":4.3,"tgt":267.0,"fq":180.0,"fr":180.0,"ps":"Need Cut","tr":"poly due.","ppos":"Hat","mr":"Khairul"},{"ln":"G2","b":"OVS","j":"47824","st":"271TShH170-6154","it":"YS SS drop shlder TS","ped":"off white-2292 pcs 1 clr rub print","ss":"2026-09-14","ccd":"2026-09-28","oq":2292.0,"fq":640.0,"ps":"Need Test Cut","tr":"ok","ppos":"Chest","mr":"Khairul"},{"ln":"G2","b":"OVS","j":"48138","st":"271TSH184-6154","it":"SS o nk TS w nk rib","ped":"off white-4572 pcs 6 clr pig print","ss":"2026-09-14","ccd":"2026-09-28","oq":4572.0,"mc":19.0,"smv":6.9,"tgt":245.0,"fq":875.0,"fr":875.0,"ps":"Cut Run","tr":"ok","cut":4020.0,"psd":4050.0,"ppos":"Chest","mr":"Khairul"},{"ln":"G2","b":"OVS","j":"47729","st":"271MMP006CMS12-6111","it":"AOP LS reglan O nk TS","ss":"2026-09-16","ccd":"2026-09-26","oq":7539.0,"mc":29.0,"smv":12.2,"tgt":170.0,"fq":2112.0,"fr":2112.0,"ps":"Cut Run","tr":"Hang tag,Gost tag due.","cut":6573.0,"rfi":6573.0,"mr":"Basir"},{"ln":"G2","b":"UTG","j":"27711 15th","st":"BAD25221N","it":"LDS SKIRT w side slit","ss":"2026-09-20","ccd":"2026-10-05","oq":2000.0,"mc":25.0,"smv":10.0,"tgt":216.0,"fq":687.0,"fr":323.0,"ps":"Need Cut","tr":"ok","mr":"Rony"},{"ln":"G2","b":"UTG","j":"46615 8th","st":"BAD1318AB","it":"AOP SKIRT W SIDE SLIT","ss":"2026-09-20","ccd":"2026-10-05","oq":3300.0,"mc":21.0,"smv":8.8,"tgt":225.0,"fq":992.0,"fr":970.0,"ps":"PPM Due","mr":"Rony"},{"ln":"G2","b":"ONS","j":"26970 60th","st":"22002973","it":"SS o nk TS","ss":"2026-09-22","ccd":"2026-09-30","oq":2000.0,"mc":20.0,"smv":7.5,"tgt":240.0,"fq":431.0,"fr":418.0,"ps":"PPM Due","tr":"ok","mr":"Shakel"},{"ln":"G2","b":"ONS","j":"26970 61th","st":"22002973","it":"SS o nk TS","ss":"2026-09-22","ccd":"2026-10-07","oq":1040.0,"mc":19.0,"smv":7.5,"tgt":240.0,"fq":228.0,"fr":228.0,"ps":"PPM Due","tr":"ok","mr":"Shakel"},{"ln":"G2","b":"ONS","j":"44077 9th","st":"22012786","it":"MENS R NK SS TS W SELF FABRIC NK BINDING","ss":"2026-09-24","ccd":"2026-11-11","oq":101555.0,"mc":20.0,"smv":7.5,"tgt":240.0,"fq":2252.0,"fr":2203.0,"ps":"Cut Run","tr":"ok","cut":5181.0,"rfi":5181.0,"mr":"Shovon"},{"ln":"G2","b":"OVS","j":"47927","st":"271TSH006-222","it":"SS o nk TS w side shlder contrast cut & sew pannel","ped":"Olive-6549 pcs 4 clr rub 2 clr HD print","ss":"2026-09-27","ccd":"2026-10-12","oq":6549.0,"mc":24.0,"smv":8.8,"tgt":233.0,"fq":998.0,"fr":755.0,"ps":"Size Set Run S/J Fab Due","tr":"Sewing thread-1clr, Rfid label, hang tag, Poly, hanger due.","ppos":"Chest","mr":"Shaker"},{"ln":"G2","b":"ONL","j":"48202 2nd","st":"15388786","it":"SS o nk TS w blind stitch","ped":"C.dancer-3002 pcs frt 1 clr gltr and back 5 clr pig 1 clr gltr","ss":"2026-09-30","ccd":"2026-10-14","oq":3000.0,"mc":19.0,"smv":7.6,"tgt":235.0,"fq":375.0,"fr":375.0,"ps":"Cut Ok","tr":"ok","cut":3082.0,"psd":3082.0,"ppos":"Fr,Bk","mr":"Abid"},{"ln":"H","b":"ONL","j":"29402 43th","st":"15312874","it":"LS Swt hoodie w drawstring","ped":"air blue-2412 pcs,,anise-5460 pcs,,n.sky-840 pcs,,pink-5460 pcs,,granita-840 pcs all combo   chest and btm side  1 CLR FLAT EMB","ss":"2026-08-24","ccd":"2026-09-16","oq":15012.0,"mc":29.0,"smv":12.8,"tgt":165.0,"fq":8502.0,"fr":8411.0,"ps":"Sewing Completed","tr":"ok","cut":15342.0,"psd":15289.0,"prc":15279.0,"rfi":63.0,"inp":15216.0,"epos":"Chest,Pkt","mr":"Imran"},{"ln":"H","b":"OVS","j":"47730","st":"271MMP007CMS13-6111","it":"AOP long pant w drawstring","ss":"2026-09-05","ccd":"2026-09-26","oq":7539.0,"mc":28.0,"smv":11.6,"tgt":174.0,"fq":2187.0,"fr":2118.0,"ps":"Cut Run","tr":"Hang tag,Gost tag due.","cut":4242.0,"rfi":4242.0,"mr":"Basir"},{"ln":"H","b":"NMT","j":"46491 6th","st":"13225095","it":"YD LS o nk TS","ped":"indigo-1520 pcs 1 clr puff print","ss":"2026-09-22","ccd":"2026-09-16","oq":1520.0,"mc":21.0,"smv":7.1,"tgt":255.0,"fq":214.0,"fr":214.0,"ps":"Sewing Completed","tr":"ok","cut":1587.0,"psd":1572.0,"prc":1568.0,"rfi":14.0,"inp":1554.0,"ppos":"Chest,Nk","mr":"Jafar","rm":"Sew-02 to Sew-01= Planning"},{"ln":"H","b":"ONS","j":"48190","st":"22040942","it":"LS Swt hoody w rib and kangaroo pkt","ped":"plaza-381 pcs,,navy-878 pcs both combo frt back 1 clr rub print","ss":"2026-09-01","ccd":"2026-09-16","oq":1247.0,"mc":35.0,"smv":14.6,"tgt":165.0,"fq":636.0,"fr":630.0,"ps":"Sewing Completed","tr":"ok","cut":1301.0,"psd":1301.0,"prc":1301.0,"rfi":11.0,"inp":1290.0,"ppos":"Fr,Bk","mr":"Shovon","rm":"B to H = Planning"},{"ln":"H","b":"ONS","j":"26828 78th","st":"22029226","it":"LS Swt shirt w cuff btm rib","ss":"2026-09-10","ccd":"2026-09-16","oq":11000.0,"mc":25.0,"smv":9.4,"tgt":212.0,"fq":7049.0,"fr":7017.0,"ps":"Sewing Running","tr":"ok","cut":10914.0,"rfi":130.0,"inp":10784.0,"mr":"Shakel"},{"ln":"H","b":"ONS","j":"26828 76th","st":"22029226","it":"LS Swt shirt w cuff btm rib","ss":"2026-09-14","ccd":"2026-09-23","oq":11016.0,"mc":25.0,"smv":9.4,"tgt":223.0,"fq":7141.0,"fr":4465.0,"ps":"Cut Run","tr":"ok","cut":4638.0,"rfi":3030.0,"inp":1608.0,"mr":"Shakel"},{"ln":"H","b":"ONL","j":"29402 44th","st":"15312874","it":"LS Swt hoodie w drawstring","ped":"black heart-3024 pcs   chest and btm side  1 CLR FLAT EMB","ss":"2026-09-16","ccd":"2026-09-30","oq":3024.0,"mc":29.0,"smv":12.1,"tgt":171.0,"fq":1712.0,"ps":"Need Cut FB","tr":"ok","epos":"Chest,Pkt","mr":"Imran"},{"ln":"H","b":"ONS","j":"48283 2nd","st":"22042341","it":"LS Swt shirt w cuff btm rib","ped":"Mulch-3008 pcs,,milk-3008 pcs both combo frt back  2 clr pig 1 clr puff","ss":"2026-09-19","ccd":"2026-09-30","oq":6000.0,"mc":25.0,"smv":9.9,"tgt":212.0,"fq":4056.0,"ps":"Need Cut FB","tr":"ok","ppos":"Fr,Bk","mr":"Shakel"},{"ln":"H","b":"ONS","j":"26828 79th","st":"22029226","it":"LS Swt shirt w cuff btm rib","ss":"2026-09-19","ccd":"2026-09-30","oq":1500.0,"mc":25.0,"smv":9.4,"tgt":223.0,"fq":971.0,"ps":"Need Cut FB","tr":"ok","mr":"Shakel"},{"ln":"H","b":"ONL","j":"29402 45th","st":"15312874","it":"LS Swt hoodie w drawstring","ped":"Anise -3024 pcs,,pink-3024 pcs all combo   chest and btm side  1 CLR FLAT EMB","ss":"2026-09-23","ccd":"2026-10-14","oq":6048.0,"mc":29.0,"smv":12.1,"tgt":171.0,"fq":3424.0,"fr":2522.0,"ps":"Cut Run","tr":"ok","cut":1806.0,"psd":1806.0,"prc":1800.0,"rfi":1800.0,"epos":"Chest,Pkt","mr":"Imran"},{"ln":"H","b":"OVS","j":"48142","st":"271TROFTB90-6172","it":"Trouser w side pkt and drawstring w metal eyelet","ss":"2026-09-27","ccd":"2026-10-06","oq":5339.0,"mc":36.0,"smv":14.5,"tgt":172.0,"fq":2687.0,"fr":2486.0,"ps":"Need Cut","tr":"Rfid label, Drawstring, hang tag, Poly due.","mr":"Shaker"},{"ln":"Sew-01","b":"ONL","j":"27204 67th","st":"15323159","it":"LS o nk TS","ss":"2026-09-24","ccd":"2026-10-07","oq":11040.0,"mc":20.0,"smv":7.6,"tgt":245.0,"ps":"Sewing Running","tr":"Care label, main & Size label due.","mr":"Dalim","rm":"Ad"},{"ln":"Sew-02 to Sew-01","b":"ONL","j":"48183","st":"15373595","it":"SS o nk Rib  TS","ped":"1 combo nk 1 clr rub print  print","ss":"2026-09-03","ccd":"2026-09-14","oq":480.0,"mc":16.0,"smv":6.3,"tgt":236.0,"fq":145.0,"fr":145.0,"ps":"Cut Ok","tr":"ok","cut":499.0,"psd":499.0,"prc":499.0,"rfi":1.0,"inp":498.0,"ppos":"Nk","mr":"Zahirul"},{"ln":"Sew-02 to Sew-01","b":"ONL","j":"48205","st":"15395685","it":"SS o nk TS w blind stitch","ped":"c.dan -242 pcs frt 1 clr gltr back 1 clr gltr 5 clr pig ,,ether-242 pcs frt  2 clr pig 2 clr gltr back 6 clr pig 3 clr gltr","ss":"2026-09-03","ccd":"2026-09-23","oq":480.0,"mc":19.0,"smv":7.9,"tgt":242.0,"fq":70.0,"fr":70.0,"ps":"Cut Ok","tr":"ok","cut":514.0,"psd":514.0,"ppos":"Fr,Bk","mr":"Abid"},{"ln":"Sew-02 to Sew-01","b":"ONL","j":"48200","st":"15286501","it":"SS o nk TS","ped":"c.dan bouquet-578 pcs","ss":"2026-09-10","ccd":"2026-09-21","oq":576.0,"mc":19.0,"smv":7.9,"tgt":236.0,"fq":72.0,"fr":72.0,"ps":"Cut Ok","tr":"ok","cut":613.0,"psd":613.0,"prc":613.0,"rfi":613.0,"ppos":"Chest","epos":"Chest","mr":"Abid"},{"ln":"Sew-02 to Sew-01","b":"ONL","j":"48204","st":"15393547","it":"SS o nk TS","ped":"c.dan bouquet-710 pcs,,orchid-bouquet-710 pcs","ss":"2026-09-10","ccd":"2026-09-23","oq":1416.0,"mc":19.0,"smv":7.9,"tgt":242.0,"fq":150.0,"fr":150.0,"ps":"Cut Run","tr":"ok","cut":1286.0,"psd":1286.0,"prc":643.0,"rfi":643.0,"ppos":"Chest","epos":"Chest","mr":"Abid"},{"ln":"Sew-02 to Sew-01","b":"UTG","j":"41712 16th","st":"BAD2323mamaAB","it":"LDS LONG LEGGINGS","ss":"2026-09-12","ccd":"2026-09-28","oq":3600.0,"mc":23.0,"smv":10.0,"tgt":211.0,"fq":930.0,"fr":310.0,"ps":"Need Cut","tr":"ok","mr":"Rana"},{"ln":"Sew-02 to Sew-01","b":"ONL","j":"48209","st":"15364878","it":"SS o nk TS w blind stitch","ped":"Orchid-422 pcs 2 clr flat emb ,,soft-386 pcs 6 clr flat emb ,,c.dancer-518 pcs 4-5 clr flat emb,,rose-578 pcs 5-6 clr flat emb ,,purple-698 pcs 7 clr flat emb","ss":"2026-09-14","ccd":"2026-10-21","oq":2592.0,"mc":19.0,"smv":7.2,"tgt":249.0,"fq":237.0,"fr":237.0,"ps":"PPM Due","tr":"ok","epos":"Chest","mr":"Abid"},{"ln":"Sew-02 to Sew-01","b":"ONL","j":"48207","st":"15347335","it":"SS o nk TS w blind stitch","ped":"pink-1859 pcs frt 2 clr rub back 7 clr rub ,,c.dan-578 pcs frt 2 clr rub back 3 clr rub","ss":"2026-09-14","ccd":"2026-10-21","oq":2433.0,"mc":20.0,"smv":8.3,"tgt":231.0,"fq":441.0,"fr":427.0,"ps":"Cut Ok","tr":"ok","cut":2511.0,"psd":2506.0,"ppos":"Fr,Bk","mr":"Abid"},{"ln":"Sew-02 to Sew-01","b":"ONL","j":"48211","st":"15387513","it":"LS o nk TS","ss":"2026-09-17","ccd":"2026-10-21","oq":684.0,"mc":20.0,"smv":8.0,"tgt":248.0,"fq":109.0,"fr":109.0,"ps":"Cut Run","tr":"ok","cut":397.0,"rfi":397.0,"mr":"Abid"},{"ln":"Sew-02 to Sew-01","b":"ONL","j":"48166","st":"15395552","it":"SS o nk TS","ped":"black-1188 pcs 1 clr pig 1 clr foil print","ss":"2026-09-19","ccd":"2026-11-11","oq":1188.0,"mc":20.0,"smv":7.9,"tgt":243.0,"fq":254.0,"fr":241.0,"ps":"Size Set Run Print","tr":"ok","ppos":"Chest","mr":"Mainul"},{"ln":"Sew-02 to Sew-01","b":"ONL","j":"48164","st":"15394945","it":"SS o nk TS w slve fold tuck","ped":"black-1713 pcs,,c.dan pink-1413 pcs,,c.dan gold-1413 pcs all combo 2 clr gltr print","ss":"2026-09-19","ccd":"2026-11-11","oq":4539.0,"mc":18.0,"smv":7.4,"tgt":235.0,"fq":670.0,"fr":653.0,"ps":"Cut Run","tr":"ok","cut":4505.0,"psd":3936.0,"ppos":"Chest","mr":"Mainul"},{"ln":"Sew-02 to Sew-01","b":"ONL","j":"22040 28th","st":"152191323","it":"LDS 2 PACK LEGGING","ss":"2026-09-23","ccd":"2026-10-21","oq":10000.0,"mc":18.0,"smv":7.5,"tgt":214.0,"ps":"Need Cut FB","tr":"Care label, price sticker due.","mr":"Imran"},{"ln":"J","b":"ONS","j":"26827 55th","st":"22029225","it":"LS Swt hoodie w kangaro pkt and drastring and cuff btm rib","ss":"2026-08-26","ccd":"2026-09-09","oq":6100.0,"mc":40.0,"smv":16.6,"tgt":167.0,"fq":5830.0,"fr":5830.0,"ps":"Sewing Completed","cut":6242.0,"inp":6242.0,"mr":"Shakel"},{"ln":"J","b":"ONL","j":"48189","st":"15370026","it":"LS Swt hoody w cuff btm rib and drawstring","ped":"c.dan-387 pcs,,pink-1464 pcs,,ether-867 pcs,,black-387 pcs,,flower-1260 pcs all combo 1 clr lurex heart emb","ss":"2026-09-03","ccd":"2026-09-16","oq":4365.0,"mc":30.0,"smv":12.7,"tgt":174.0,"fq":3020.0,"fr":3020.0,"ps":"Sewing Completed","tr":"ok","cut":4469.0,"psd":4466.0,"prc":4460.0,"rfi":6.0,"inp":4454.0,"epos":"Chest","mr":"Zahirul","rm":"DK Request Job, R to J= Planning"},{"ln":"J","b":"ONL","j":"48335","st":"15398492","it":"LS Swt Polo Shirt w collar cuff btm rib and frt placket btn","ped":"beech-810 pcs chest 1 clr flat one patch attach emb one slve 3 clr flat emb and another slvee patch attach emb","ss":"2026-09-01","ccd":"2026-09-07","oq":810.0,"mc":37.0,"smv":15.3,"tgt":166.0,"fq":405.0,"fr":405.0,"ps":"Cut Ok","tr":"ok","cut":830.0,"psd":830.0,"prc":830.0,"inp":830.0,"epos":"Front,Slv","mr":"Mainul"},{"ln":"J","b":"ONL","j":"48180","st":"15388877","it":"LS Swt shirt w cuff btm rib and contrast stitch","ss":"2026-09-01","ccd":"2026-09-15","oq":1534.0,"mc":41.0,"smv":16.0,"tgt":156.0,"fq":768.0,"fr":768.0,"ps":"Sewing Completed","tr":"ok","cut":1585.0,"inp":1585.0,"mr":"Jannati"},{"ln":"J","b":"ONS","j":"46616 4th","st":"22039183","it":"LS Swt Hoody","ped":"black-2008 pcs frt back 1 clr rub 1 clr puff print,,beluga-2008 pccs frt back 1 clr rub 1 clr puff print,,silver-1508 pcs frt back 1 clr rub 1 clr puff print","ss":"2026-09-04","ccd":"2026-09-16","oq":5500.0,"mc":39.0,"smv":15.0,"tgt":183.0,"fq":4971.0,"fr":4922.0,"ps":"Sewing Running","tr":"ok","cut":5638.0,"psd":5638.0,"prc":5606.0,"inp":5606.0,"ppos":"Fr,Bk","mr":"Shakel","rm":"Sew-01 to Sew-02 = partial"},{"ln":"J","b":"OVS","j":"48151","st":"271TSH010-6153","it":"YD SS double Layer TS w insert solid","ped":"white-5118 pcs 1 clr flat emb","ss":"2026-09-15","ccd":"2026-09-26","oq":5118.0,"mc":35.0,"smv":11.4,"tgt":247.0,"fq":1113.0,"fr":1113.0,"ps":"Size Set Run","tr":"ok","epos":"Chest","mr":"Sirajul"},{"ln":"J","b":"ONL","j":"48220","st":"15387397","it":"SS o nk Dress w waist cut & sew and knot at one slve","ss":"2026-09-20","ccd":"2026-11-25","oq":477.0,"mc":38.0,"smv":12.8,"tgt":191.0,"fq":96.0,"fr":96.0,"ps":"File Due","tr":"ok","mr":"Abid"},{"ln":"J","b":"ONL","j":"48221","st":"15387479","it":"SS long dress w back nk cut out and woven and emb lace attach","ss":"2026-09-23","ccd":"2026-11-25","oq":1875.0,"mc":38.0,"smv":14.7,"tgt":167.0,"fq":342.0,"fr":192.0,"ps":"File Due","tr":"Woven label, drowcoad due.","mr":"Abid"},{"ln":"J","b":"ONS","j":"26827 57th","st":"22029225","it":"LS Swt hoodie w kangaro pkt and drawstring and cuff btm rib","ss":"2026-09-25","ccd":"2026-10-07","oq":1200.0,"mc":38.0,"smv":15.6,"tgt":175.0,"fq":1075.0,"ps":"Need Cut FB","tr":"ok","mr":"Shakel"},{"ln":"J","b":"ONL","j":"48169","st":"15399193","it":"SS dress w upper part mesh and bk nk zipper","ss":"2026-09-28","ccd":"2026-10-07","oq":816.0,"fq":166.0,"ps":"Need Test Cut","mr":"Mainul"},{"ln":"K","b":"ONL","j":"30011 21th","st":"15318144","it":"SS o nk TS","ped":"c.dan lady denim-936 pcs photo print w foil print no emb ,,c.dan lady jacket-936 pcs photo print w 2 clr gltr and no emb ,,c.dan lady pant-936 pcs photo print w 1 clr foil print and no emb,,C.dan lemon au-816 pcs 8 clr pig photo print w 1 clr foil and no emb ,,C.dan lemon delce-816 pcs 9 clr pig photo print w 1 clr gltr and stone HP and no emb ,,c.dan lemon portofino-816 pcs 9 clr pig photo print w 1 clr gltr and stone HP and no emb  ,,c.dan lemon positano-936 pcs 9 clr pig photo print w 1 clr gltr and stone HP and no emb,,c.dan scratced-1500 pcs 1 clr pig 1 clr foil print and no emb ,,black animal-1500 pcs 1 clr rub 1 clr foil and no emb ,,balsam dream-1605 pcs 2 clr pig 1 clr foil print and 1 clr seq emb ,,phanthom attitude-900 pcs 2 clr rub 1 clr foil print and no emb ,,walnut etenal-900 pcs 1 clr rub 1 clr foil and no emb","ss":"2026-09-01","ccd":"2026-10-14","oq":12597.0,"mc":21.0,"smv":8.2,"tgt":226.0,"fq":1912.0,"fr":1912.0,"ps":"Sewing Running","tr":"ok","cut":13022.0,"psd":12085.0,"prc":5848.0,"rfi":943.0,"inp":5835.0,"ppos":"Chest,Stone","epos":"Chest","mr":"Mainul","rm":"N2 to K= Planning"},{"ln":"K","b":"ONL","j":"44672 4th","st":"15367075","it":"SS o nk TS","ped":"Sunlight-792 pcs chest 10 clr pig photo print and no emb ,,purple-4442 pcs frt 3 clr rub w photo print w 4 clr puff and 1 clr flat emb  back back 5 clr rub one slve 2 clr rub ,,corsage-5006 pcs frt  3 clr rub 4 clr puff and 3 clr flat emb back 3 clr rub print ,,magenta-2353 pcs frt back 1 clr rub and no emb  ,,pink-2884 pcs chest 1 clr pig and no emb ,,c.dan simple-2976 pcs ,,c.dan lemon-5319 pcs chest  3 clr rub photo print w  3 clr puff and 1 clr flat emb","ss":"2026-09-06","ccd":"2026-09-16","oq":23772.0,"mc":20.0,"smv":7.6,"tgt":246.0,"fq":4707.0,"fr":4707.0,"ps":"Sewing Running","tr":"ok","cut":24345.0,"psd":24310.0,"prc":21361.0,"rfi":6830.0,"inp":14531.0,"ppos":"Fr,Bk","epos":"Chest","mr":"Jannati","rm":"L to K +planning"},{"ln":"K","b":"ONL","j":"48162","st":"15390521","it":"SS V nk TS w slve fold tuck","ped":"c.dan-672 pcs,,blue-672 pcs,,pink-672 pcs all combo 4 clr rub 1 clr gltr print","ss":"2026-09-01","ccd":"2026-10-14","oq":2016.0,"mc":30.0,"smv":10.3,"tgt":242.0,"fq":339.0,"fr":339.0,"ps":"Cut Ok","tr":"ok","cut":2088.0,"psd":2088.0,"ppos":"Chest","mr":"Mainul"},{"ln":"K","b":"ONL","j":"43102 7th","st":"15366301","it":"SS o nk TS","ped":"c.dan-750 pcs,,green-375 pcs,,brown-375 pcs  both combo 1 clr gltr","ss":"2026-09-04","ccd":"2026-09-16","oq":1500.0,"mc":26.0,"smv":8.8,"tgt":253.0,"fq":234.0,"fr":234.0,"ps":"Cut Ok","tr":"ok","cut":1568.0,"psd":1568.0,"prc":1568.0,"rfi":3.0,"inp":1565.0,"ppos":"Chest","mr":"Mainul"},{"ln":"K","b":"ONL","j":"48155","st":"15390607","it":"LS o nk TS w btm Lace attach","ss":"2026-09-23","ccd":"2026-10-21","oq":6836.0,"mc":28.0,"smv":10.6,"tgt":227.0,"fq":2113.0,"fr":2113.0,"ps":"Cut Ok","tr":"ok","cut":6936.0,"rfi":6936.0,"mr":"Zahirul"},{"ln":"L","b":"NMT","j":"46491 4th","st":"13225095","it":"YD LS o nk TS","ped":"indigo-2672 pcs,,green-2000 pcs,,Sepia-8662 pcs   all combo 1 clr puff print","ss":"2026-09-01","ccd":"2026-09-16","oq":13334.0,"mc":21.0,"smv":7.1,"tgt":255.0,"fq":1884.0,"fr":1842.0,"ps":"Sewing Completed","tr":"ok","cut":13669.0,"psd":13467.0,"prc":13361.0,"rfi":4.0,"inp":13357.0,"ppos":"Chest,Nk","mr":"Jafar","rm":"Advance sew from September'26"},{"ln":"L","b":"ONL","j":"47047 2nd","st":"15384146","it":"LS o nk TS w btm lace","ss":"2026-08-22","ccd":"2026-09-16","oq":3345.0,"mc":27.0,"smv":10.4,"tgt":227.0,"fq":809.0,"fr":809.0,"ps":"Sewing Completed","tr":"ok","cut":3444.0,"rfi":7.0,"inp":3437.0,"mr":"Imran","rm":"Q to L1= Planning"},{"ln":"L","b":"NMT","j":"46491 5th","st":"13225095","it":"YD LS o nk TS","ped":"indigo-2000 pcs 1 clr puff print","ss":"2026-09-01","ccd":"2026-09-09","oq":2000.0,"mc":21.0,"smv":7.1,"tgt":255.0,"fq":283.0,"fr":283.0,"ps":"Cut Ok","tr":"ok","cut":2091.0,"psd":2058.0,"prc":2055.0,"rfi":6.0,"inp":2049.0,"ppos":"Chest,Nk","mr":"Jafar"},{"ln":"L","b":"NMT","j":"46491 6th","st":"13225095","it":"YD LS o nk TS","ped":"indigo-1520 pcs 1 clr puff print","ss":"2026-09-22","ccd":"2026-09-16","oq":1520.0,"mc":21.0,"smv":7.1,"tgt":255.0,"fq":214.0,"fr":214.0,"ps":"Cut Ok","tr":"ok","cut":1587.0,"psd":1572.0,"prc":1568.0,"rfi":14.0,"inp":1554.0,"ppos":"Chest,Nk","mr":"Jafar"},{"ln":"L","b":"ONL","j":"48302 2nd","st":"15337134","it":"YD LS o nk TS","ss":"2026-09-24","ccd":"2026-10-07","oq":24000.0,"mc":21.0,"smv":8.9,"tgt":210.0,"fq":9093.0,"ps":"Need Cut FB","mr":"Imran","rm":"L+N1"},{"ln":"M","b":"OVS","j":"47820","st":"271HTS001SET-244","it":"Hats and skirf set","ss":"2026-09-01","ccd":"2026-09-21","oq":10310.0,"mc":31.0,"smv":11.1,"tgt":256.0,"fq":580.0,"fr":580.0,"ps":"Cut Ok","tr":"poly due.","cut":10424.0,"rfi":10424.0,"mr":"Khairul"},{"ln":"M","b":"OVS","j":"47822","st":"271HTS501SET-5192","it":"Hats and skirf set w jaquared label","ss":"2026-09-01","ccd":"2026-09-21","oq":11696.0,"mc":31.0,"smv":11.1,"tgt":256.0,"fq":660.0,"fr":660.0,"ps":"Cut Run","tr":"Rfid label, poly due.","cut":10344.0,"rfi":10344.0,"mr":"Khairul"},{"ln":"M","b":"OVS","j":"47823","st":"271HTS610JB-5192","it":"Double layer Hat","ped":"LGM-3440 pcs HP sticker Print  on Upper Layer Hat","ss":"2026-09-01","ccd":"2026-09-21","oq":3440.0,"fq":200.0,"fr":200.0,"ps":"Size Set Run Print","tr":"Sewing thread-150/D, Hang tag, poly due.","ppos":"Heat Press/Heat Seal","mr":"Khairul"},{"ln":"M","b":"ONL","j":"48238","st":"15397105","it":"SS o nk TS","ped":"pink-516 pcs photo print w 4 clr pig","ss":"2026-09-17","ccd":"2026-09-30","oq":516.0,"mc":19.0,"smv":7.9,"tgt":242.0,"fq":63.0,"fr":63.0,"ps":"Cut Ok","tr":"ok","cut":533.0,"psd":533.0,"ppos":"Chest,Nk","mr":"Abid"},{"ln":"M","b":"ONL","j":"22040 27th","st":"152191323","it":"LDS 2 PACK LEGGING","ss":"2026-09-19","ccd":"2026-09-30","oq":3300.0,"mc":18.0,"smv":7.5,"tgt":214.0,"ps":"Cut Ok","tr":"ok","cut":3348.0,"rfi":3348.0,"mr":"Imran"},{"ln":"M","b":"ONL","j":"44198 5th","st":"15337134","it":"YD LS o nk TS","ss":"2026-09-24","ccd":"2026-10-14","oq":11871.0,"mc":21.0,"smv":8.5,"tgt":226.0,"fq":4638.0,"fr":3609.0,"ps":"Cut Run","tr":"ok","cut":9482.0,"rfi":8380.0,"inp":1102.0,"mr":"Imran"},{"ln":"N1","b":"UTG","j":"43430 6th","st":"BAD2549E","it":"solid & YD LDS BOAT NK LS TS","ss":"2026-09-04","ccd":"2026-09-21","oq":3000.0,"mc":20.0,"smv":7.2,"tgt":249.0,"fq":758.0,"fr":758.0,"ps":"Sewing Running","tr":"ok","cut":3129.0,"rfi":10.0,"inp":3119.0,"mr":"Rana","rm":"Advance sew from September'26"},{"ln":"N1","b":"UTG","j":"43337 6th","st":"BAD1633AE","it":"LDS GROWING SLV O NK TS","ss":"2026-09-04","ccd":"2026-09-21","oq":3459.0,"mc":21.0,"smv":8.3,"tgt":231.0,"fq":1047.0,"fr":964.0,"ps":"Cut Run","tr":"ok","cut":5362.0,"rfi":1139.0,"inp":4223.0,"mr":"Rana"},{"ln":"N1","b":"ONL","j":"47709 2nd","st":"15299770","it":"LS o nk TS w blind hem","ss":"2026-09-11","ccd":"2026-09-23","oq":1610.0,"mc":20.0,"smv":8.5,"tgt":229.0,"fq":225.0,"fr":217.0,"ps":"Cut Ok","cut":1628.0,"rfi":1628.0,"mr":"Abid"},{"ln":"N1","b":"ONL","j":"48160","st":"15317989","it":"SS o nk TS","ped":"black-2199 pcs 6 clr flat emb at chest,,green-816 pcs 5 clr flat emb at pkt,,pink-816 pcs 6 clr flat emb at pkt ,,pumic-816 pcs  6 clr flat emb at pkt","ss":"2026-09-16","ccd":"2026-10-14","oq":4647.0,"mc":22.0,"smv":9.4,"tgt":230.0,"fq":702.0,"fr":696.0,"ps":"Cut Ok","tr":"ok","cut":4775.0,"psd":4775.0,"epos":"Chest","mr":"Mainul"},{"ln":"N1","b":"ONL","j":"48302 2nd","st":"15337134","it":"YD LS o nk TS","ss":"2026-09-21","ccd":"2026-10-07","oq":24000.0,"mc":21.0,"smv":8.9,"tgt":210.0,"fq":9093.0,"ps":"Need Cut FB","mr":"Imran","rm":"L+N1"},{"ln":"N2","b":"ONL","j":"48171","st":"15388040","it":"LS o nk TS w lace at nk & slve also btm letus stitch","ped":"7 combo 1 clr rub print at nk","ss":"2026-08-21","ccd":"2026-09-16","oq":10578.0,"mc":23.0,"smv":8.8,"tgt":232.0,"fq":2000.0,"fr":2000.0,"ps":"Sewing Completed","tr":"ok","cut":10864.0,"psd":10864.0,"prc":10844.0,"rfi":55.0,"inp":10789.0,"ppos":"Nk","mr":"Jannati"},{"ln":"N2","b":"UTG","j":"40671 12th","st":"BAD1298AK","it":"YD LS boat nk TS","ss":"2026-09-01","ccd":"2026-09-21","oq":7000.0,"mc":24.0,"smv":8.7,"tgt":241.0,"fq":1463.0,"fr":1463.0,"ps":"Sewing Running","tr":"ok","cut":6009.0,"rfi":74.0,"inp":5935.0,"mr":"Rana","rm":"Q to N2 = Planning"},{"ln":"N2","b":"ONL","j":"47758","st":"15388436","it":"LS boat nk Swt Shirt w rib","ped":"n.sky-1137 pcs front one slve 1 clr Cording emb","ss":"2026-09-07","ccd":"2026-09-16","oq":1137.0,"mc":22.0,"smv":8.7,"tgt":222.0,"fq":610.0,"fr":610.0,"ps":"Sewing Completed","tr":"ok","cut":1174.0,"psd":1174.0,"prc":1174.0,"rfi":17.0,"inp":1157.0,"epos":"Front,Slv","mr":"Zahirul"},{"ln":"N2","b":"ONL","j":"48213","st":"15387825","it":"LS swt shirt w mk cuff bm rib","ped":"voilet-694 pcs frt back 1 clr rub 2 clr High rub print ,,dream-526 pcs frt 1 clr high rub print back 2 clr rub 1 clr high rub","ss":"2026-09-14","ccd":"2026-10-21","oq":1216.0,"mc":21.0,"smv":8.3,"tgt":223.0,"fq":433.0,"fr":433.0,"ps":"Cut Ok","tr":"ok","cut":1265.0,"psd":1265.0,"ppos":"Fr,Bk","mr":"Abid"},{"ln":"N2","b":"ONL","j":"48239","st":"15397108","it":"LS drop slve Swt shirt w cuff btm rib","ped":"tofu-504 pcs photo print w 1 clr pig","ss":"2026-09-17","ccd":"2026-07-15","oq":504.0,"mc":23.0,"smv":8.8,"tgt":224.0,"fq":179.0,"fr":147.0,"ps":"Need Cut FB","tr":"ok","ppos":"Chest","mr":"Abid"},{"ln":"N2","b":"UTG","j":"45150 5th","st":"BAD2992E","it":"LS WRAP TOP","ss":"2026-09-19","ccd":"2026-10-05","oq":3459.0,"mc":18.0,"smv":8.1,"tgt":245.0,"fq":240.0,"ps":"Need Cut FB","mr":"Rony"},{"ln":"N2","b":"ONL","j":"48184","st":"15380916","it":"LS Swt shirt w cuff btm rib","ped":"orchid-1299 pcs 1 clr HD print and 1 clr flat emb,,blue-975 pcs 1 clr HD print and 1 clr flat emb,,brown-1395 pcs 1 clr rub 1 clr puff and no emb","ss":"2026-09-21","ccd":"2026-10-21","oq":3669.0,"mc":24.0,"smv":9.5,"tgt":216.0,"fq":1805.0,"fr":1784.0,"ps":"Cut Run","tr":"Herringbone tape-1clr not ok.","cut":3484.0,"psd":3468.0,"ppos":"Chest","epos":"Chest","mr":"Zahirul"},{"ln":"N2","b":"OVS","j":"48249","st":"271TSH008-223","it":"LS double layer contrast slve TS","ped":"magnet gray-4828 pcs,,tomato-3288 pcs both combo 1 clr rub print","ss":"2026-09-24","ccd":"2026-10-05","oq":8116.0,"mc":28.0,"smv":10.1,"tgt":222.0,"fq":1780.0,"fr":1780.0,"ps":"Size Set Run","ppos":"Chest,HP","mr":"Sirajul"},{"ln":"O","b":"ONL","j":"48175","st":"15387015","it":"LS Square wrap nk TS","ss":"2026-08-29","ccd":"2026-09-16","oq":1416.0,"mc":22.0,"smv":8.3,"tgt":238.0,"fq":413.0,"fr":413.0,"ps":"Sewing Completed","tr":"ok","cut":1458.0,"inp":1458.0,"mr":"Jannati"},{"ln":"O","b":"ONL","j":"45317 5th","st":"15084518","it":"LDS 3/4 FOLD LEGGING","ped":"1 combo waist print","ss":"2026-09-01","ccd":"2026-09-09","oq":1500.0,"mc":20.0,"smv":8.5,"tgt":219.0,"fq":389.0,"fr":389.0,"ps":"Sewing Completed","tr":"ok","cut":1537.0,"psd":1537.0,"prc":1537.0,"inp":1537.0,"ppos":"WAIST","mr":"Khalid"},{"ln":"O","b":"ONL","j":"48185","st":"15382071","it":"LS o nk TS","ped":"1 combo nk 1 clr rub label print","ss":"2026-08-29","ccd":"2026-09-16","oq":504.0,"mc":16.0,"smv":6.3,"tgt":223.0,"fq":190.0,"fr":190.0,"ps":"Sewing Completed","tr":"ok","cut":521.0,"psd":521.0,"prc":519.0,"inp":519.0,"ppos":"Nk","mr":"Zahirul","rm":"N1 to O= Palnning"},{"ln":"O","b":"ONL","j":"44663 3rd","st":"15363833","it":"SS o nk TS","ped":"red-522 pcs,,green-1517 pcs  all comb 4 clr rub 1 clr gold metalic foil","ss":"2026-08-18","ccd":"2026-10-21","oq":2039.0,"mc":18.0,"smv":7.2,"tgt":234.0,"fq":345.0,"fr":345.0,"ps":"Sewing Completed","tr":"ok","cut":2113.0,"psd":2113.0,"prc":2106.0,"rfi":7.0,"inp":2099.0,"ppos":"Chest","mr":"Khalid","rm":"N2 to O= Plannig"},{"ln":"O","b":"ONL","j":"48176","st":"15388593","it":"SS o nk TS","ped":"c.dan viva-2064 pcs,,c.dan chic-1968 pcs both combo photo print and HP stone at chest","ss":"2026-08-22","ccd":"2026-09-16","oq":4032.0,"mc":19.0,"smv":7.8,"tgt":232.0,"fq":580.0,"fr":580.0,"ps":"Sewing Completed","tr":"ok","cut":4129.0,"psd":4129.0,"prc":4120.0,"rfi":14.0,"inp":4106.0,"ppos":"Chest,Stone","mr":"Jannati","rm":"L2 to O = Planning"},{"ln":"P","b":"ONL","j":"47889","st":"15386645/15395981","it":"Swt pant w side pkt drawstring","ped":"stone-2366 pcs,,green-2569 pcs both combo 1 clr rub print","ss":"2026-08-13","ccd":"2026-09-23","oq":4935.0,"mc":32.0,"smv":13.4,"tgt":168.0,"fq":2594.0,"fr":2594.0,"ps":"Sewing Running","tr":"ok","cut":5062.0,"psd":5050.0,"prc":5045.0,"rfi":522.0,"inp":4523.0,"ppos":"Leg","mr":"Khalid","rm":"DK Request Job"},{"ln":"P","b":"ONL","j":"48173","st":"15387024","it":"LS double layer o nk TS w dtm slvee lace","ss":"2026-09-08","ccd":"2026-11-11","oq":7494.0,"mc":35.0,"smv":12.2,"tgt":180.0,"fq":1874.0,"fr":1262.0,"ps":"Sewing Running","tr":"ok","cut":5117.0,"inp":5117.0,"mr":"Jannati","rm":"J to P= Planning"},{"ln":"P","b":"ONL","j":"47976","st":"15396688","it":"Adustable strap v nk  Tank top w nk Lace","ss":"2026-08-26","ccd":"2026-09-16","oq":2430.0,"mc":22.0,"smv":9.4,"tgt":236.0,"fq":168.0,"fr":168.0,"ps":"Sewing Running","tr":"Ring buckel + Velvet tape 50% short","cut":2478.0,"inp":2478.0,"mr":"Dalim"},{"ln":"P","b":"ONL","j":"42946 8th","st":"15360359","it":"YD loose pant w drawstring","ss":"2026-09-01","ccd":"2026-09-30","oq":11958.0,"mc":26.0,"smv":10.6,"tgt":220.0,"fq":4515.0,"fr":3479.0,"ps":"Need Cut","tr":"ok","mr":"Dalim"},{"ln":"P","b":"ONL","j":"41875 16th","st":"15303956","it":"PANT W PKT","ped":"BLACK 1520 PCS 1 CLR LETTERING EMB AT ONE LEG","ss":"2026-09-08","ccd":"2026-09-23","oq":3459.0,"mc":34.0,"smv":13.4,"tgt":175.0,"fq":636.0,"fr":636.0,"ps":"Cut Ok","tr":"ok","cut":1546.0,"psd":1546.0,"prc":1546.0,"rfi":10.0,"inp":1536.0,"epos":"LEG","mr":"Khalid"},{"ln":"P","b":"ONL","j":"42946 9th","st":"15360359","it":"YD loose pant w drawstring","ss":"2026-09-10","ccd":"2026-10-14","oq":4060.0,"mc":26.0,"smv":10.6,"tgt":220.0,"fq":1533.0,"ps":"Need Cut FB","tr":"ok","mr":"Dalim"},{"ln":"P","b":"ONL","j":"29251 14th","st":"15247223","it":"MATERNITY CUT & SEW LEGGING","ss":"2026-09-13","ccd":"2026-09-23","oq":300.0,"mc":27.0,"smv":10.1,"tgt":226.0,"fq":160.0,"fr":160.0,"ps":"Cut Ok","tr":"ok","cut":643.0,"rfi":643.0,"mr":"Zahirul"},{"ln":"P","b":"ONL","j":"42946 10th","st":"15360359","it":"YD loose pant w drawstring","ss":"2026-09-13","ccd":"2026-09-30","oq":4060.0,"mc":26.0,"smv":10.6,"tgt":220.0,"fq":1533.0,"ps":"Need Cut FB","tr":"ok","mr":"Dalim"},{"ln":"P","b":"ONL","j":"46303 2nd","st":"15376006","it":"Short pant w side plt drawstring","ped":"stone-1388 pcs,,green-1312 pcs  all combo 1 clr rub print","ss":"2026-09-18","ccd":"2026-11-23","oq":2700.0,"mc":29.0,"smv":11.5,"tgt":183.0,"fq":633.0,"fr":633.0,"ps":"Sewing Completed","tr":"ok","cut":2772.0,"psd":2772.0,"prc":2772.0,"rfi":11.0,"inp":2761.0,"ppos":"Thigh","mr":"Khalid"},{"ln":"P","b":"ONL","j":"48210","st":"15383657","it":"Adjustable wiast belt rib legging","ss":"2026-09-21","ccd":"2026-10-21","oq":852.0,"mc":26.0,"smv":11.5,"tgt":171.0,"fq":309.0,"fr":309.0,"ps":"Cut Ok","tr":"ok","cut":908.0,"rfi":908.0,"mr":"Abid"},{"ln":"P","b":"ONL","j":"48182","st":"15342184","it":"Long loose ottoman rib pant","ss":"2026-09-23","ccd":"2026-10-21","oq":1782.0,"mc":23.0,"smv":10.3,"tgt":184.0,"ps":"Need Test Cut","tr":"ok","mr":"Zahirul"},{"ln":"P","b":"ONL","j":"48126","st":"15393661","it":"Elaste flared pant","ss":"2026-09-23","ccd":"2026-10-14","oq":324.0,"fq":200.0,"ps":"Need Test Cut","tr":"ok","mr":"Zahirul"},{"ln":"P","b":"ONL","j":"48440","st":"15388784","it":"Short w ajustable waist elastic and self fab string","ped":"Navy-5736 pcs 1 clr gold foil print","ss":"2026-09-26","ccd":"2026-10-21","oq":5736.0,"mc":30.0,"smv":11.9,"tgt":182.0,"fq":794.0,"fr":794.0,"ps":"File Due","tr":"ok","ppos":"Thigh","mr":"Abid"},{"ln":"P","b":"ONL","j":"48215","st":"15388165","it":"Long elasted leggigng","ss":"2026-09-29","ccd":"2026-11-25","oq":648.0,"mc":27.0,"smv":9.6,"tgt":215.0,"fq":119.0,"fr":119.0,"ps":"File Due","tr":"Price sticker-po 2667( 12pcs) due.","mr":"Abid"},{"ln":"Q","b":"UTG","j":"44047 12th","st":"BAD0982AO","it":"LDS LS BODYSUIT","ss":"2026-09-01","ccd":"2026-09-21","oq":15000.0,"mc":30.0,"smv":10.2,"tgt":248.0,"fq":3668.0,"fr":3668.0,"ps":"Sewing Completed","tr":"ok","cut":15477.0,"rfi":1.0,"inp":15476.0,"mr":"Rony","rm":"Advance sew from September'26"},{"ln":"Q","b":"ONL","j":"48129","st":"15393712","it":"LS o nk TS w btm Lace attach","ss":"2026-09-23","ccd":"2026-10-14","oq":600.0,"mc":28.0,"smv":10.6,"tgt":232.0,"fq":160.0,"fr":160.0,"ps":"Sewing Completed","tr":"ok","cut":637.0,"inp":637.0,"mr":"Zahirul","rm":"K to Q= Planning"},{"ln":"Q","b":"UTG","j":"40675 11th","st":"BAD1546mamaAA","it":"LDS BOAT NK LS TS","ss":"2026-09-10","ccd":"2026-09-21","oq":6000.0,"mc":22.0,"smv":7.9,"tgt":243.0,"fq":1476.0,"fr":1476.0,"ps":"Sewing Completed","tr":"ok","cut":6289.0,"rfi":40.0,"inp":6249.0,"mr":"Rana","rm":"N2 to Q= Planning"},{"ln":"Q","b":"ONL","j":"48127","st":"15394337","it":"LS cardigan w front binding knpt","ped":"3 combo nk 1 clr rub print","ss":"2026-09-08","ccd":"2026-09-16","oq":1356.0,"mc":28.0,"smv":10.4,"tgt":242.0,"fq":415.0,"fr":415.0,"ps":"Sewing Completed","tr":"ok","cut":1434.0,"psd":1434.0,"prc":1434.0,"rfi":6.0,"inp":1428.0,"ppos":"Nk","mr":"Zahirul","rm":"Q to R = Planning"},{"ln":"Q","b":"ONL","j":"48203","st":"15388785","it":"LS Swt hoody w cuff btm rib","ped":"c.dan-2868 pcs frt 2 clr pig 1 clr gltr and back 3 clr pig 3 clr gltr ,,Navy-3252 pcs frt 1 clr rub 1 clr gltr and back 4 clr rub 2 clr gltr print","ss":"2026-09-08","ccd":"2026-09-23","oq":6120.0,"mc":29.0,"smv":10.9,"tgt":220.0,"fq":2705.0,"fr":2705.0,"ps":"Cut Ok","tr":"ok","cut":6278.0,"psd":6278.0,"prc":6209.0,"rfi":3389.0,"inp":2820.0,"ppos":"Fr,Bk","mr":"Abid"},{"ln":"Q","b":"ONL","j":"48203 2nd","st":"15388785","it":"LS Swt hoody w cuff btm rib","ped":"Navy-1022 pcs frt 1 clr rub 1 clr gltr and back 4 clr rub 2 clr gltr print","ss":"2026-09-12","ccd":"2026-10-14","oq":1020.0,"mc":29.0,"smv":10.9,"tgt":220.0,"fq":452.0,"fr":452.0,"ps":"Need Cut","tr":"ok","ppos":"Fr,Bk","mr":"Abid"},{"ln":"Q","b":"ONL","j":"48179","st":"15388277","it":"LS Swt shirt w cuff btm rib","ped":"pink-1240 pcs,,soft-1984 pcs,,LGM-955 pcs all combo frt both slve 1 clr terry emb","ss":"2026-09-15","ccd":"2026-10-14","oq":4179.0,"mc":27.0,"smv":10.4,"tgt":213.0,"fq":2046.0,"fr":1821.0,"ps":"Cut Ok","tr":"ok","cut":4266.0,"psd":4266.0,"prc":2410.0,"rfi":2410.0,"epos":"Front,Slv","mr":"Jannati"},{"ln":"Q","b":"UTG","j":"44047 13th","st":"BAD0982AP","it":"LDS LS BODYSUIT","ss":"2026-09-18","ccd":"2026-10-05","oq":4000.0,"mc":30.0,"smv":10.2,"tgt":248.0,"fq":984.0,"fr":966.0,"ps":"Need Cut","mr":"Rony"},{"ln":"Q","b":"UTG","j":"44262 8th","st":"BAD2927G","it":"LS TS W LACE","ss":"2026-09-21","ccd":"2026-10-05","oq":2200.0,"mc":25.0,"smv":9.4,"tgt":223.0,"fq":409.0,"ps":"Need Cut FB","mr":"Rony"},{"ln":"Q","b":"ONL","j":"48218","st":"15387480","it":"SS TS w both slve and front  wovem emb lace","ss":"2026-09-25","ccd":"2026-11-25","oq":3884.0,"mc":33.0,"smv":12.5,"tgt":184.0,"fq":467.0,"fr":462.0,"ps":"File Due","tr":"Lace due.","mr":"Abid"},{"ln":"R","b":"ONL","j":"44840 8th","st":"15318962","it":"LS HOOD SWT W DRAWSTING","ped":"c.dan mermaid-1700 pcs,,c.dan navy-4875 pcs both combo  1 CLR PALCEMENT PRINT at chest and both slve and chest  1 CLR LURTEX EMB","ss":"2026-08-19","ccd":"2026-09-16","oq":6575.0,"mc":35.0,"smv":14.7,"tgt":157.0,"ps":"Sewing Completed","tr":"ok","cut":6761.0,"psd":6761.0,"prc":6666.0,"inp":6666.0,"ppos":"slv,Chest","epos":"Chest","mr":"Imran"},{"ln":"R","b":"ONL","j":"48181","st":"15388549","it":"LS AOP double layer Swt shirt w nk cuff rib","ped":"LGm-525 pcs 1 clr flat emb","ss":"2026-09-01","ccd":"2026-09-15","oq":525.0,"mc":40.0,"smv":15.6,"tgt":166.0,"fq":312.0,"fr":311.0,"ps":"Sewing Running","tr":"ok","cut":546.0,"psd":546.0,"prc":546.0,"inp":546.0,"epos":"Chest","mr":"Jannati","rm":"J to R = Planning"},{"ln":"R","b":"NMT","j":"48054","st":"13264032","it":"LS cut & sew full zipper Swt Hoodie","ped":"Violet-1929 pcs one slve 3 clr flat emb","ss":"2026-09-01","ccd":"2026-09-23","oq":1929.0,"mc":44.0,"smv":17.0,"tgt":167.0,"fq":645.0,"fr":645.0,"ps":"Sewing Running","tr":"ok","cut":1653.0,"psd":1653.0,"prc":1642.0,"inp":1642.0,"pk":1.0,"sh":1.0,"epos":"Slv","mr":"Haider","rm":"Sew-03 to Sew-02= Planning"},{"ln":"R","b":"ONL","j":"48208","st":"15364629","it":"LS swt shirt cut&sew contrast at front back and slve w cuff btm rib","ped":"black-780 pcs 1 clr rub on gltr print","ss":"2026-09-10","ccd":"2026-10-21","oq":780.0,"mc":42.0,"smv":14.6,"tgt":172.0,"fq":302.0,"fr":144.0,"ps":"Need Test Cut","tr":"ok","ppos":"Chest","mr":"Abid"},{"ln":"R","b":"ONL","j":"45964 13th","st":"22039968","it":"LS High nk Haalf Zipp Swt shirt","ss":"2026-09-13","ccd":"2026-09-16","oq":6000.0,"mc":45.0,"smv":18.1,"tgt":167.0,"fq":4119.0,"fr":2746.0,"ps":"Cut Run","tr":"ok","cut":4065.0,"rfi":3453.0,"inp":612.0,"mr":"Shakel"},{"ln":"R","b":"ONS","j":"45964 14th","st":"22039968","it":"LS High nk Haalf Zipp Swt shirt","ss":"2026-09-19","ccd":"2026-09-30","oq":5000.0,"mc":45.0,"smv":18.1,"tgt":167.0,"fq":3637.0,"fr":3145.0,"ps":"Cut Run","tr":"Price sticker due.","cut":2268.0,"rfi":1232.0,"inp":1036.0,"mr":"Shakel"},{"ln":"R","b":"OVS","j":"48253","st":"271SWT009-223","it":"LS cut Sew Swt hoody w kangaro pkt and cuff btm rib","ped":"gray-5209 pcs 4 clr rub print 1 clr flat emb and back self fabric emb patch attach  2 clr flat  emb","ss":"2026-09-25","ccd":"2026-10-12","oq":5209.0,"mc":47.0,"smv":18.9,"tgt":155.0,"fq":3363.0,"fr":3363.0,"ps":"Ready Test Cut","ppos":"Chest","epos":"Fr & Bk","mr":"Sirajul"},{"ln":"S","b":"NMT","j":"48046","st":"13263715","it":"LS Double layer elasted ballon hem Hoody w kangaroo pkt","ss":"2026-08-27","ccd":"2026-09-21","oq":5531.0,"mc":52.0,"smv":20.8,"tgt":166.0,"fq":3925.0,"fr":3925.0,"ps":"Sewing Completed","tr":"ok","cut":5714.0,"rfi":2.0,"inp":5712.0,"mr":"Haider","rm":"DK Request Job"},{"ln":"S","b":"NMT","j":"47906","st":"13268190","it":"LS Swt full Zipper Hoodie","ped":"crockery-848 pcs 2 clr rub ,,spellbound-796 pcs 5 clr rub","ss":"2026-08-25","ccd":"2026-09-23","oq":1644.0,"mc":40.0,"smv":16.1,"tgt":164.0,"fq":816.0,"fr":816.0,"ps":"Sewing Completed","tr":"ok","cut":1732.0,"psd":1732.0,"prc":1732.0,"rfi":26.0,"inp":1706.0,"ppos":"Chest","mr":"Kamruzzaman"},{"ln":"S","b":"NMT","j":"47953","st":"13263760","it":"LS Swt hoody w kangaro pkt","ped":"basil-806 pcs,,grey-821 pcs both combo frt back 1 clr rub","ss":"2026-09-01","ccd":"2026-09-23","oq":1627.0,"mc":39.0,"smv":15.3,"tgt":167.0,"fq":802.0,"fr":802.0,"ps":"Sewing Completed","tr":"ok","cut":1695.0,"psd":1695.0,"prc":1690.0,"rfi":5.0,"inp":1685.0,"ppos":"Fr,Bk","mr":"Tomal","rm":"Advance sew from September'26"},{"ln":"S","b":"ONS","j":"46616 4th","st":"22039183","it":"LS Swt Hoody","ped":"black-2008 pcs frt back 1 clr rub 1 clr puff print,,beluga-2008 pccs frt back 1 clr rub 1 clr puff print,,silver-1508 pcs frt back 1 clr rub 1 clr puff print","ss":"2026-09-04","ccd":"2026-09-16","oq":5500.0,"mc":39.0,"smv":15.0,"tgt":183.0,"fq":4971.0,"fr":4922.0,"ps":"Sewing Running","tr":"ok","cut":5638.0,"psd":5638.0,"prc":5606.0,"inp":5606.0,"ppos":"Fr,Bk","mr":"Shakel","rm":"Partial"},{"ln":"S","b":"ONL","j":"26030 22th","st":"15308926","it":"LDS SS TS W BK CUT & SEW & SIDE SLEET","ss":"2026-09-07","ccd":"2026-09-14","oq":3816.0,"mc":34.0,"smv":10.9,"tgt":223.0,"fq":896.0,"fr":890.0,"ps":"Sewing Running","tr":"ok","cut":3906.0,"rfi":2956.0,"inp":950.0,"mr":"Dalim","rm":"U to S =Planning"},{"ln":"S","b":"NMT","j":"47948","st":"13252737","it":"LS cut & sew reglan Swt hoody w hood and bk horn","ped":"crockery-1325 pcs,,basil-905 pcs both combo 1 clr puff print","ss":"2026-09-04","ccd":"2026-09-23","oq":2230.0,"mc":34.0,"smv":15.1,"tgt":168.0,"fq":817.0,"fr":817.0,"ps":"Cut Ok","tr":"ok","cut":2281.0,"psd":2281.0,"prc":2271.0,"rfi":2271.0,"ppos":"Chest","mr":"Tomal"},{"ln":"S","b":"NMT","j":"47962","st":"13264503","it":"LS Swt hoody w cuff btm rib","ped":"black-1002 pcs frt 5 clr puff back 7 clr rub print","ss":"2026-09-04","ccd":"2026-09-23","oq":1002.0,"mc":30.0,"smv":11.9,"tgt":172.0,"fq":487.0,"fr":487.0,"ps":"Cut Ok","tr":"ok","cut":1037.0,"psd":1037.0,"prc":1020.0,"rfi":1020.0,"ppos":"Fr,Bk","mr":"Tomal"},{"ln":"S","b":"NMT","j":"48070","st":"13263274","it":"LS Swt Hoody w kangaroo pkt w woven label","ped":"C.dan-795 pcs frt 1 clr puff back 1 clr rub 1 clr,,grey-855 pcs  frt 1 clr puff back 1 clr rub 1 clr puff","ss":"2026-09-04","ccd":"2026-09-23","oq":1650.0,"mc":35.0,"smv":14.7,"tgt":167.0,"fq":975.0,"fr":973.0,"ps":"Sewing Running","tr":"ok","cut":1732.0,"psd":1731.0,"prc":1648.0,"rfi":6.0,"inp":1642.0,"ppos":"Fr,Bk","mr":"Shamoly"},{"ln":"S","b":"NMT","j":"47996","st":"13263954","it":"LS swt card w front full placket ring snap btn","ss":"2026-09-04","ccd":"2026-10-07","oq":2370.0,"mc":31.0,"smv":12.2,"tgt":181.0,"fq":13.0,"fr":13.0,"ps":"Need Cut","tr":"ok","mr":"Mosaddik"},{"ln":"S","b":"NMT","j":"47958","st":"13264045","it":"LS Swt Shirt nk and btm contrast double layer","ped":"Basil-1275 pcs,,mosstone-1362 pcs,,blue-801 pcs all combo chest embossed print","ss":"2026-09-10","ccd":"2026-09-23","oq":3438.0,"mc":37.0,"smv":13.1,"tgt":158.0,"fq":1035.0,"fr":1035.0,"ps":"Cut Ok","tr":"ok","cut":3563.0,"psd":3563.0,"prc":2720.0,"rfi":39.0,"inp":2681.0,"ppos":"Chest","mr":"Tomal"},{"ln":"S","b":"NMT","j":"47955","st":"13263825","it":"LS Swt Shirt nk and btm contrast double layer","ped":"Basil-1456 pcs,,mosstone-784 pcs,,blue-801 pcs all combo 1 clr rub chest embossed print","ss":"2026-09-10","ccd":"2026-09-23","oq":2240.0,"mc":27.0,"smv":10.7,"tgt":207.0,"fq":982.0,"fr":969.0,"ps":"Cut Ok","tr":"ok","cut":2311.0,"psd":2350.0,"prc":235.0,"rfi":235.0,"ppos":"Chest","mr":"Tomal"},{"ln":"S","b":"NMT","j":"48047","st":"13264215","it":"LS Swt Shirt dress w nk cuff btm rib btm S/J mesh attach","ped":"blue-910 pcs,,violet-3046 pcs both combo 1 clr gltr gel print","ss":"2026-09-13","ccd":"2026-09-23","oq":3956.0,"mc":34.0,"smv":13.3,"tgt":174.0,"fq":1089.0,"fr":1083.0,"ps":"Cut Ok","tr":"ok","cut":4039.0,"psd":4039.0,"prc":4030.0,"rfi":6.0,"inp":4024.0,"ppos":"Chest","mr":"Haider"},{"ln":"S","b":"NMT","j":"48050","st":"13267591","it":"LS o nk Dress w btm mesh","ped":"Ice-1005 pcs 1 clr flat emb","ss":"2026-09-13","ccd":"2026-09-23","oq":1005.0,"mc":32.0,"smv":11.5,"tgt":183.0,"fq":193.0,"fr":193.0,"ps":"Cut Ok","tr":"ok","cut":1044.0,"psd":1044.0,"prc":1044.0,"rfi":4.0,"inp":1040.0,"ppos":"Nk","epos":"Chest","mr":"Haider"},{"ln":"S","b":"NMT","j":"48053","st":"13264821","it":"YD LS dress w btm mesh","ped":"1 combo label print","ss":"2026-09-13","ccd":"2026-09-23","oq":1150.0,"mc":32.0,"smv":11.5,"tgt":183.0,"fq":233.0,"fr":233.0,"ps":"Cut Ok","tr":"ok","cut":1199.0,"psd":1197.0,"prc":1197.0,"inp":1197.0,"ppos":"Nk","mr":"Haider"},{"ln":"S","b":"NMT","j":"48017","st":"13226052","it":"LS Swt cardigan w full zipper and cuff btm rib","ped":"pink-795 pcs 3 clr pig 1 clr gltr ,,peyote-795 pcs 4 clr pig 1 clr gltr","ss":"2026-09-13","ccd":"2026-09-23","oq":1590.0,"mc":19.0,"smv":11.5,"tgt":171.0,"fq":234.0,"fr":234.0,"ps":"Sewing Completed","tr":"ok","cut":1858.0,"psd":1813.0,"prc":1808.0,"rfi":20.0,"inp":1788.0,"ppos":"Chest","mr":"Sabikun"},{"ln":"S","b":"NMT","j":"48029","st":"13226065","it":"LS Swt cardigan w full zipper and cuff btm rib","ped":"Basil-804 pcs 3 clr rub 1 clr pufff,,Citadel-804 pcs 1 clr rub 1 clr puff","ss":"2026-09-13","ccd":"2026-09-23","oq":1608.0,"mc":31.0,"smv":12.3,"tgt":168.0,"fq":234.0,"fr":234.0,"ps":"Sewing Completed","tr":"ok","cut":1706.0,"psd":1699.0,"prc":1696.0,"rfi":18.0,"inp":1678.0,"ppos":"Chest","mr":"Sabikun"},{"ln":"S","b":"NMT","j":"43325 15th","st":"13224921","it":"LS Swt full Zip hoodie","ss":"2026-09-18","ccd":"2026-09-30","oq":2000.0,"mc":47.0,"smv":19.6,"tgt":162.0,"fq":928.0,"fr":910.0,"ps":"Cut Run","tr":"Care label, Zipper due.","cut":1909.0,"rfi":1909.0,"mr":"Jafar"},{"ln":"S","b":"NMT","j":"48009","st":"13264403","it":"LS Swt body w reglan contrast slve frt pkt and frt placket btn btm snap btn","ped":"2 combo label print","ss":"2026-09-21","ccd":"2026-11-02","oq":3452.0,"mc":33.0,"smv":14.3,"tgt":178.0,"fq":476.0,"fr":311.0,"ps":"Need Cut","tr":"Canada care label due.","ppos":"Nk","mr":"Mosaddik"},{"ln":"S","b":"NMT","j":"47968","st":"13264546","it":"LS full zipper Swt Shirt","ped":"Spellbound-1875 pcs frt two part back both slve 6 clr rub print","ss":"2026-09-24","ccd":"2026-11-04","oq":1875.0,"mc":29.0,"smv":12.2,"tgt":168.0,"fq":515.0,"fr":515.0,"ps":"Cut Ok","tr":"ok","cut":1925.0,"psd":1925.0,"pk":1.0,"sh":1.0,"ppos":"Fr & Bk & Slv","mr":"Tomal"},{"ln":"S","b":"NMT","j":"47973","st":"13264561","it":"LS high nk half zipper cut&sew Swt shirt w cuff btm rib","ped":"Spellbound-1053 pcs two part 1 clr rub print and 1 clr flat 1 clr terry emb","ss":"2026-09-26","ccd":"2026-11-04","oq":1053.0,"mc":35.0,"smv":13.5,"tgt":174.0,"fq":254.0,"fr":198.0,"ps":"Need Cut","tr":"ok","ppos":"Chest","epos":"Chest","mr":"Tomal"},{"ln":"S","b":"NMT","j":"48012","st":"13264421","it":"LS reglan contrast Slve  full zipper Swt body w YD cuff nk rib","ped":"basil-1020 pcs 1 clr terry emb","ss":"2026-09-28","ccd":"2026-11-04","oq":1020.0,"mc":40.0,"smv":16.8,"tgt":158.0,"fq":197.0,"fr":54.0,"ps":"File Due","tr":"ok","epos":"Chest","mr":"Mosaddik"},{"ln":"S","b":"NMT","j":"48275","st":"13265119","it":"Chest double layer overall w snap and wood btn","ped":"spring lake-813 pcs self fab applique emb","ss":"2026-09-28","ccd":"2026-11-04","oq":813.0,"mc":44.0,"smv":16.7,"tgt":181.0,"fq":169.0,"fr":169.0,"ps":"Need Cut","tr":"ok","epos":"Chest","mr":"Sanaul"},{"ln":"T1","b":"NMT","j":"47990","st":"13263833","it":"Rib Hat","ped":"2 combo label print","ss":"2026-09-01","ccd":"2026-09-23","oq":1008.0,"mc":13.0,"smv":5.5,"tgt":270.0,"fq":42.0,"fr":42.0,"ps":"Cut Ok","tr":"ok","cut":1111.0,"psd":1111.0,"prc":1111.0,"inp":1111.0,"ppos":"Nk","mr":"Mosaddik"},{"ln":"T1","b":"NMT","j":"47979","st":"13263751","it":"LS O nk TS w shlder snap btn","ped":"Ice-1129 pcs,,pink-1389 pcs both combo 1 clr puff print and 2 clr flat 3 clr terry emb","ss":"2026-09-04","ccd":"2026-09-21","oq":2518.0,"mc":19.0,"smv":6.4,"tgt":271.0,"fq":207.0,"fr":207.0,"ps":"Cut Ok","tr":"ok","cut":2605.0,"psd":2605.0,"prc":2590.0,"rfi":39.0,"inp":2551.0,"ppos":"Chest,Nk","epos":"Chest","mr":"Mosaddik"},{"ln":"T1","b":"NMT","j":"48019","st":"13251961","it":"LS o nk TS w shlder snap btn","ped":"peyote-931 pcs 4 clr pig 1 clr puff,,c.dan-531 pcs 2 clr pig 1 clr puff ,,spellbound-531 pcs 2 clr pig 1 clr puff","ss":"2026-09-04","ccd":"2026-09-23","oq":1993.0,"mc":24.0,"smv":8.5,"tgt":254.0,"fq":172.0,"fr":172.0,"ps":"Cut Ok","tr":"ok","cut":2128.0,"psd":2128.0,"prc":2119.0,"rfi":57.0,"inp":2062.0,"ppos":"Chest,Nk","mr":"Sabikun"},{"ln":"T1","b":"NMT","j":"48048","st":"13267097","it":"Elasted legging w letus","ped":"pink-900 pcs 4 part 3 clr flat all over emb","ss":"2026-09-13","ccd":"2026-09-23","oq":900.0,"mc":14.0,"smv":4.9,"tgt":283.0,"fq":88.0,"fr":88.0,"ps":"Cut Ok","tr":"ok","cut":960.0,"psd":960.0,"prc":940.0,"rfi":7.0,"inp":933.0,"ppos":"Waist","epos":"AOE","mr":"Haider"},{"ln":"T1","b":"NMT","j":"48059","st":"13264005","it":"YD elasted Flared Pant","ped":"3 combo label print","ss":"2026-09-13","ccd":"2026-09-23","oq":2607.0,"mc":17.0,"smv":7.0,"tgt":232.0,"fq":493.0,"fr":493.0,"ps":"Cut Run","tr":"ok","cut":1046.0,"psd":1046.0,"prc":1043.0,"rfi":1043.0,"ppos":"Waist","mr":"Haider"},{"ln":"T1","b":"ONL","j":"48170","st":"15396533","it":"YD SS o nk TS","ss":"2026-09-17","ccd":"2026-09-30","oq":25552.0,"fq":9852.0,"ps":"Need Test Cut","tr":"ok","mr":"Imran","rm":"T1+Y"},{"ln":"T2","b":"UTG","j":"43333 5th","st":"BAD1545mamaU","it":"SS nursiing TS solid YD","ss":"2026-09-06","ccd":"2026-09-21","oq":4000.0,"mc":27.0,"smv":8.7,"tgt":257.0,"fq":868.0,"fr":868.0,"ps":"Sewing Completed","tr":"ok","cut":4152.0,"rfi":61.0,"inp":4091.0,"mr":"Rana","rm":"V to T2= Planning"},{"ln":"T2","b":"ONL","j":"48299","st":"15390922","it":"SS o nk TS","ped":"white-640 pcs 1 clr pig print","ss":"2026-09-01","ccd":"2026-09-07","oq":640.0,"mc":18.0,"smv":7.3,"tgt":223.0,"fq":140.0,"fr":140.0,"ps":"Sewing Completed","tr":"ok","cut":664.0,"psd":664.0,"prc":664.0,"rfi":1.0,"inp":663.0,"ppos":"Chest","mr":"Jannati","rm":"Z to T2 = Planning"},{"ln":"T2","b":"ONL","j":"47890","st":"15386646/15395980","it":"LS Swt shirt w cuff btm rib","ped":"stone-684 pcs,,green-1497 pcs both combo 1 clr rub print","ss":"2026-08-19","ccd":"2026-09-23","oq":2181.0,"mc":21.0,"smv":8.7,"tgt":215.0,"fq":1126.0,"fr":1111.0,"ps":"Sewing Running","tr":"ok","cut":2002.0,"psd":1970.0,"prc":1969.0,"inp":1969.0,"ppos":"Chest","mr":"Khalid","rm":"DK Request Job"},{"ln":"T2","b":"NMT","j":"48039","st":"13264387","it":"SS o nk TS","ped":"Ice-1080 pcs,,c.dan-1080 pcs both combo 2 clr seq emb","ss":"2026-09-10","ccd":"2026-09-23","oq":2160.0,"mc":18.0,"smv":6.2,"tgt":261.0,"fq":304.0,"fr":304.0,"ps":"Sewing Completed","tr":"ok","cut":2216.0,"psd":2216.0,"prc":2216.0,"rfi":9.0,"inp":2207.0,"ppos":"Nk","epos":"Chest","mr":"Haider","rm":"Z to T2 = Planning"},{"ln":"T2","b":"NMT","j":"47950","st":"13262864","it":"YD LS o nk TS","ss":"2026-09-10","ccd":"2026-09-23","oq":2994.0,"mc":21.0,"smv":8.2,"tgt":230.0,"fq":844.0,"fr":839.0,"ps":"Sewing Completed","tr":"ok","cut":3129.0,"rfi":39.0,"inp":3090.0,"mr":"Tomal","rm":"Z to T2 = Planning"},{"ln":"T2","b":"ONL","j":"48177","st":"15388314","it":"SS TS w DTM lace at nk and slve","ped":"2 combo nk label print","ss":"2026-09-01","ccd":"2026-09-16","oq":1704.0,"mc":21.0,"smv":7.4,"tgt":253.0,"fq":294.0,"fr":294.0,"ps":"Sewing Completed","tr":"ok","cut":1752.0,"psd":1752.0,"prc":1749.0,"rfi":6.0,"inp":1743.0,"ppos":"Nk","mr":"Jannati","rm":"ZA1 to T2 = PLanning"},{"ln":"T2","b":"NMT","j":"48052","st":"13267576","it":"YD LS O Nk TS","ped":"1 combo label print","ss":"2026-09-10","ccd":"2026-09-23","oq":2170.0,"mc":19.0,"smv":6.5,"tgt":257.0,"fq":316.0,"fr":316.0,"ps":"Sewing Completed","tr":"ok","cut":2244.0,"psd":2244.0,"prc":2240.0,"rfi":14.0,"inp":2226.0,"ppos":"Nk","mr":"Haider","rm":"Z to T2 = Planning"},{"ln":"T2","b":"NMT","j":"47961","st":"13264459","it":"SS o nk TS w blind stitch","ped":"black-1008 pcss photo print","ss":"2026-09-10","ccd":"2026-09-23","oq":1008.0,"mc":17.0,"smv":6.6,"tgt":255.0,"fq":175.0,"fr":175.0,"ps":"Sewing Completed","tr":"ok","cut":1054.0,"psd":1054.0,"prc":1054.0,"rfi":4.0,"inp":1050.0,"ppos":"Chest,Nk","mr":"Tomal","rm":"Z to T2 = Planning"},{"ln":"T2","b":"NMT","j":"47949","st":"13262408","it":"LS o nk TS","ss":"2026-09-01","ccd":"2026-09-23","oq":600.0,"mc":19.0,"smv":7.5,"tgt":224.0,"fq":171.0,"fr":171.0,"ps":"Sewing Completed","tr":"ok","cut":624.0,"inp":624.0,"mr":"Tomal","rm":"Z to T2 = Planning"},{"ln":"T2","b":"NMT","j":"47994","st":"13267228","it":"LS Body w shlder btm snap btn","ped":"Ice-1115 pcs 3 clr flat emb","ss":"2026-09-01","ccd":"2026-09-23","oq":1115.0,"mc":28.0,"smv":10.2,"tgt":248.0,"fq":113.0,"fr":113.0,"ps":"Cut Ok","tr":"ok","cut":1176.0,"psd":1176.0,"prc":1176.0,"rfi":5.0,"inp":1171.0,"ppos":"Nk","epos":"Chest","mr":"Mosaddik"},{"ln":"T2","b":"NMT","j":"47995","st":"13268151","it":"LS Swt Shirt w cuff btm rib and slder snap btn and Swt pant","ss":"2026-09-10","ccd":"2026-09-23","oq":810.0,"mc":27.0,"smv":9.8,"tgt":245.0,"fq":94.0,"fr":92.0,"ps":"Cut Ok","tr":"ok","cut":852.0,"inp":852.0,"mr":"Mosaddik","rm":"BTM"},{"ln":"T2","b":"NMT","j":"47964","st":"13245644","it":"Wide Swt pant w waist belt","ss":"2026-09-23","ccd":"2026-10-28","oq":795.0,"mc":26.0,"smv":12.8,"tgt":158.0,"fq":321.0,"fr":316.0,"ps":"Cut Ok","tr":"ok","cut":826.0,"rfi":826.0,"mr":"Tomal"},{"ln":"T2","b":"NMT","j":"48011","st":"13264416","it":"LS O nk TS w shlder snap btn","ped":"Basil-767 pcs,,spellbound-767 pcs both combo applique fab attach emb","ss":"2026-09-25","ccd":"2026-11-04","oq":1534.0,"mc":26.0,"smv":8.4,"tgt":254.0,"fq":154.0,"fr":154.0,"ps":"Cut Ok","tr":"ok","cut":1622.0,"psd":1622.0,"ppos":"Nk","epos":"Chest","mr":"Mosaddik"},{"ln":"T2","b":"NMT","j":"48277","st":"13265143","it":"LS V nk Swt shirt w nk YD rib","ped":"almond-807 pcs 1 clr rub print","ss":"2026-09-27","ccd":"2026-11-04","oq":807.0,"fq":262.0,"ps":"Need Test Cut","tr":"ok","ppos":"Chest,Nk","mr":"Sanaul"},{"ln":"T2","b":"NMT","j":"48003","st":"13264348","it":"AOP LS dress w shlder snap btn and nk picoting","ped":"2 combo label print","ss":"2026-09-29","ccd":"2026-11-03","oq":4134.0,"mc":31.0,"smv":10.6,"tgt":250.0,"fq":634.0,"fr":333.0,"ps":"Cut Run","tr":"ok","cut":2232.0,"psd":2232.0,"prc":2226.0,"rfi":2226.0,"ppos":"Nk","mr":"Mosaddik"},{"ln":"U","b":"NMT","j":"47922","st":"13263839","it":"LS Body w shlder and btm snap btn","ped":"basil-4833 pcs,,citadel-1354 pcs,,spellbound-5473 pcs all combo chest all over emb","ss":"2026-08-18","ccd":"2026-09-16","oq":11660.0,"mc":28.0,"smv":10.2,"tgt":238.0,"fq":1117.0,"fr":1117.0,"ps":"Sewing Running","tr":"ok","cut":12004.0,"psd":12004.0,"prc":11914.0,"rfi":19.0,"inp":11895.0,"ppos":"Nk","epos":"AOE","mr":"Jafar","rm":"T2 to U= Planninbg"},{"ln":"U","b":"NMT","j":"48018","st":"13253735","it":"AOP LS Body w snap btn and Swt pant w tape string","ped":"peyote top-405 pcs no print ,,citadel btm-405 pcs 1 clr rub puff","ss":"2026-09-08","ccd":"2026-09-23","oq":810.0,"mc":28.0,"smv":10.2,"tgt":246.0,"fq":75.0,"fr":75.0,"ps":"Sewing Running","tr":"ok","cut":852.0,"psd":852.0,"prc":852.0,"rfi":2.0,"inp":850.0,"ppos":"Nk,Thigh & waist","mr":"Sabikun","rm":"Advance sew from September'26"},{"ln":"U","b":"NMT","j":"48028","st":"13226054","it":"AOP & solid  LS body  w shlder btm snap btn","ped":"Ice AOP -918 pcs no print ,,pink-918 pcs 4 clr pig 1 clr gltr ,,peyote AOP-801 pcs no print","ss":"2026-09-01","ccd":"2026-09-23","oq":2637.0,"mc":23.0,"smv":8.5,"tgt":247.0,"fq":257.0,"fr":257.0,"ps":"Sewing Running","tr":"ok","cut":2738.0,"psd":2738.0,"prc":2737.0,"rfi":14.0,"inp":2723.0,"ppos":"Chest,Nk","mr":"Sabikun","rm":"T2 to U= Planninbg"},{"ln":"U","b":"NMT","j":"48023","st":"13226071","it":"AOP & solid  LS body w shlder btm snap btn","ped":"Spellbound AOP-927 pcs no print ,,citadel-1044 pcs 4 clr rub print ,,AOP peyote-1044 pcs no print","ss":"2026-09-01","ccd":"2026-09-23","oq":3015.0,"mc":28.0,"smv":10.2,"tgt":248.0,"fq":286.0,"fr":286.0,"ps":"Cut Ok","tr":"ok","cut":3129.0,"psd":3129.0,"prc":3124.0,"inp":3124.0,"ppos":"Chest,Nk","mr":"Sabikun","rm":"T2 to U= Planninbg"},{"ln":"U","b":"NMT","j":"47997","st":"13263955","it":"Swt Pant w frill at waist","ss":"2026-09-01","ccd":"2026-10-07","oq":2370.0,"mc":27.0,"smv":9.8,"tgt":240.0,"ps":"Need Cut","tr":"ok","mr":"Mosaddik"},{"ln":"U","b":"NMT","j":"48024","st":"13255270","it":"AOP & Solid LS swt shirt w shlder snap btn and swt pant","ped":"pink top -405 pcs 4 clr rub at chest,,pink btm-405 pcs 4 clr rub at one leg,,peyote top AOP-930 pcs no print ,,peyote btm AOP -930 pcs no print","ss":"2026-09-01","ccd":"2026-09-23","oq":2670.0,"mc":26.0,"smv":9.8,"tgt":238.0,"fq":404.0,"fr":404.0,"ps":"Sewing Completed","tr":"ok","cut":2796.0,"psd":864.0,"prc":864.0,"rfi":8.0,"inp":2788.0,"ppos":"Chest & Leg","mr":"Sabikun"},{"ln":"U","b":"NMT","j":"48030","st":"13268149","it":"LS O nk TS w shlder snap btn and swt pant w tape string","ped":"peyote top-405 pcs 4 clr rub 1 clr puff,,basil btm-405 pcs 3 clr rub 1 clr puff","ss":"2026-09-01","ccd":"2026-09-23","oq":810.0,"mc":26.0,"smv":9.8,"tgt":238.0,"fq":77.0,"fr":77.0,"ps":"Sewing Completed","tr":"ok","cut":874.0,"psd":874.0,"prc":874.0,"rfi":11.0,"inp":863.0,"ppos":"Chest,Nk & Thigh","mr":"Sabikun"},{"ln":"U","b":"NMT","j":"47995","st":"13268151","it":"LS Swt Shirt w cuff btm rib and slder snap btn and Swt pant","ss":"2026-09-01","ccd":"2026-09-23","oq":810.0,"mc":27.0,"smv":9.8,"tgt":245.0,"fq":94.0,"fr":92.0,"ps":"Sewing Completed","tr":"ok","cut":852.0,"inp":852.0,"mr":"Mosaddik","rm":"TOP, Y to V= Planning"},{"ln":"U","b":"NMT","j":"47985","st":"13263814","it":"AOP & Solid LS Swt Shirt w cuff btm rib and slder snap btn","ped":"mellane AOP-2457 pcs no emb ,,orchid ice-1227 pcs 3 clr terry emb","ss":"2026-09-10","ccd":"2026-09-21","oq":3684.0,"mc":27.0,"smv":9.8,"tgt":245.0,"fq":537.0,"fr":531.0,"ps":"Sewing Completed","tr":"ok","cut":3789.0,"psd":1280.0,"prc":1280.0,"rfi":5.0,"inp":3784.0,"epos":"Chest","mr":"Mosaddik","rm":"T2 to U= Planninbg"},{"ln":"U","b":"NMT","j":"48071","st":"13263485","it":"LS Swt hoody","ped":"Peyote-1134 pcs 1 clr HD 1 clr gltr print","ss":"2026-09-04","ccd":"2026-09-23","oq":1134.0,"mc":26.0,"smv":10.4,"tgt":214.0,"fq":367.0,"fr":367.0,"ps":"Sewing Completed","tr":"ok","cut":1161.0,"psd":1161.0,"prc":1161.0,"rfi":2.0,"inp":1159.0,"ppos":"Chest","mr":"Shamoly","rm":"V to U= Planning"},{"ln":"U","b":"NMT","j":"48042","st":"13263722","it":"YS LS boat nk Long dress w side slit","ped":"C.dan-1389 pcs stone HP at chest","ss":"2026-09-15","ccd":"2026-09-23","oq":1389.0,"mc":29.0,"smv":10.0,"tgt":234.0,"fq":524.0,"fr":524.0,"ps":"Sewing Completed","tr":"ok","cut":1462.0,"psd":1449.0,"prc":1449.0,"inp":1449.0,"ppos":"Stone","mr":"Haider","rm":"T2 to U= Planninbg"},{"ln":"U","b":"NMT","j":"47978","st":"13263748","it":"LS O nk TS w shlder frill & snap btn","ped":"Ice-1602 pcs 3 clr rub print at patch and applique emb","ss":"2026-09-11","ccd":"2026-09-21","oq":1602.0,"mc":31.0,"smv":9.7,"tgt":259.0,"fq":155.0,"fr":155.0,"ps":"Sewing Completed","tr":"ok","cut":1665.0,"psd":1665.0,"prc":1647.0,"rfi":7.0,"inp":1640.0,"ppos":"Chest,Nk","epos":"Chest","mr":"Mosaddik","rm":"Y to U= Planning"},{"ln":"U","b":"NMT","j":"47980","st":"13263753","it":"LS O nk TS w shlder snap btn","ped":"Basil-1372 pcs 3 clr rub 3 clr flock print ,,Peyote-922 pcs 3 clr rub 1 clr puff 1 clr flock print","ss":"2026-09-04","ccd":"2026-09-21","oq":2294.0,"mc":26.0,"smv":8.4,"tgt":270.0,"fq":198.0,"fr":198.0,"ps":"Sewing Completed","tr":"ok","cut":2365.0,"psd":2365.0,"prc":2365.0,"rfi":8.0,"inp":2357.0,"ppos":"Chest,Nk","mr":"Mosaddik","rm":"T1 to U= Planninbg"},{"ln":"U","b":"NMT","j":"48032","st":"13253726","it":"LS O nk TS w shlder snap btn","ped":"c.dan-405 pcs 2 clr p[ig 1 clr puff,,spellbound-405 pcs 2 clr rub 1 clr puff","ss":"2026-09-04","ccd":"2026-09-23","oq":3459.0,"mc":24.0,"smv":8.5,"tgt":254.0,"fq":80.0,"fr":80.0,"ps":"Sewing Running","tr":"ok","cut":881.0,"psd":876.0,"prc":874.0,"rfi":6.0,"inp":868.0,"ppos":"Chest,Nk","mr":"Sabikun","rm":"T1 to U= Planninbg"},{"ln":"U","b":"NMT","j":"48268","st":"13265096","it":"High waist legging lace attach w high waist","ped":"1 combo label print","ss":"2026-09-10","ccd":"2026-09-23","oq":1285.0,"mc":23.0,"smv":9.3,"tgt":226.0,"fq":512.0,"fr":512.0,"ps":"Cut Ok","tr":"ok","cut":1324.0,"psd":1324.0,"ppos":"Waist","mr":"Sanaul"},{"ln":"U","b":"NMT","j":"48010","st":"13264405","it":"Swt panr w  side by pkt and tape drawstring","ss":"2026-09-11","ccd":"2026-11-04","oq":4995.0,"mc":30.0,"smv":12.2,"tgt":189.0,"fq":524.0,"fr":524.0,"ps":"Cut Ok","tr":"ok","cut":5096.0,"psd":5096.0,"prc":5085.0,"rfi":5085.0,"mr":"Mosaddik"},{"ln":"U","b":"NMT","j":"48079","st":"13262914","it":"LS swt hoodie w cuff btm rib","ped":"Green-863 pcs frt 3 clr rub back no print ,,black-1231 pcs frt 2 clr rub back no print ,,winter-1150 pcs frt back 2 clr rub","ss":"2026-09-13","ccd":"2026-11-04","oq":3244.0,"mc":28.0,"smv":10.9,"tgt":215.0,"fq":1473.0,"fr":1473.0,"ps":"Cut Ok","tr":"ok","cut":3359.0,"psd":3359.0,"prc":2446.0,"rfi":2446.0,"ppos":"Fr,Bk","mr":"Shamoly"},{"ln":"U","b":"NMT","j":"48276","st":"13265120","it":"waist btm rib pant w leg cut&sew","ss":"2026-09-15","ccd":"2026-11-04","oq":880.0,"mc":29.0,"smv":10.4,"tgt":241.0,"fq":122.0,"fr":122.0,"ps":"Need Cut","mr":"Sanaul"},{"ln":"U","b":"NMT","j":"48273","st":"13265154","it":"Elasted pant w cut& sew leg","ped":"spring lake-1450 pcs 4 clr rub print","ss":"2026-09-15","ccd":"2026-11-04","oq":1450.0,"mc":33.0,"smv":12.5,"tgt":181.0,"fq":306.0,"ps":"Need Test Cut","tr":"ok","ppos":"Waist & Thigh","mr":"Sanaul"},{"ln":"U","b":"NMT","j":"48077","st":"13251213","it":"SS o nk TS","ped":"C.dan-3748 pcs frt 4 clr pig back no print ,,nosegay-3748 pcs frt 3 clr pig back no print ,,Mole-2413 pcs frt 3 clr pig back 5 clr pig","ss":"2026-09-18","ccd":"2026-11-04","oq":9909.0,"mc":18.0,"smv":6.2,"tgt":261.0,"fq":1446.0,"fr":1389.0,"ps":"Cut Ok","tr":"ok","cut":9930.0,"psd":9818.0,"prc":3829.0,"rfi":3829.0,"ppos":"Fr & Bk & Nk","mr":"Shamoly"},{"ln":"U","b":"NMT","j":"48076","st":"13250999/13267095","it":"SS o nk TS","ped":"verdant green-2688 pcs frt 3 clr rub back no print ,,cameo green-2752 pcs frt 4 clr rub back no print  ,, white-2340 pcs frt 2 clr pig back 4 clr pig ,,winter-3166 pcs frt 4 clr rub back no print","ss":"2026-09-18","ccd":"2026-11-03","oq":10946.0,"mc":18.0,"smv":6.1,"tgt":266.0,"fq":980.0,"fr":962.0,"ps":"Cut Ok","tr":"ok","cut":11178.0,"psd":11163.0,"prc":7862.0,"rfi":7862.0,"ppos":"Fr & Bk & Nk","mr":"Shamoly"},{"ln":"U","b":"NMT","j":"48078","st":"13251485/13255895","it":"SS o nk TS","ped":"white cap-3028 pcs frt 3 clr pig back 4 clr pig ,,barberry-5940 pcs frt 1 clr pig 1 clr gltr back no print ,,Nose gay-6015 pcs  frt 3 clr pig 1 clr gltr back no print  ,,lichen-4826 pcs frt 2 clr pig 1 clr gltr back no print","ss":"2026-09-18","ccd":"2026-11-03","oq":19809.0,"mc":18.0,"smv":6.1,"tgt":266.0,"fq":1655.0,"fr":1609.0,"ps":"Cut Run","tr":"ok","cut":19720.0,"psd":17962.0,"ppos":"Fr & Bk & Nk","mr":"Shamoly"},{"ln":"U","b":"ONL","j":"48158 2nd","st":"15368187","it":"SS v nk TS","ped":"black-4080 pcs,,c.dancer-4080 pcs all combo 3 clr rub  print 1 clr Lurex emb","ss":"2026-09-28","ccd":"2026-10-14","oq":8160.0,"mc":24.0,"smv":8.3,"tgt":247.0,"fq":1250.0,"fr":625.0,"ps":"Cut Run","tr":"ok","cut":4050.0,"psd":1200.0,"ppos":"Chest","epos":"Chest","mr":"Imran"},{"ln":"V","b":"ONL","j":"44675 2nd","st":"15365756","it":"LS V nk TS w dtm lace in nk & front ruching","ped":"6 combo nk 1 clr rub  print","ss":"2026-08-12","ccd":"2026-09-16","oq":11044.0,"mc":21.0,"smv":7.6,"tgt":244.0,"fq":2097.0,"fr":2084.0,"ps":"Sewing Completed","tr":"ok","cut":11313.0,"psd":11308.0,"prc":11306.0,"rfi":27.0,"inp":11279.0,"ppos":"Nk","mr":"Jannati"},{"ln":"V","b":"NMT","j":"47983","st":"13263812","it":"AOP LS Swt Shirt w cuff btm rib and shlder snap btn","ss":"2026-09-11","ccd":"2026-09-21","oq":2019.0,"mc":27.0,"smv":9.8,"tgt":245.0,"fq":299.0,"fr":299.0,"ps":"Sewing Completed","tr":"ok","cut":2106.0,"rfi":36.0,"inp":2070.0,"mr":"Mosaddik","rm":"Y to V= Planning"},{"ln":"V","b":"NMT","j":"48027","st":"13226053","it":"LS o nk TS w shlder snap btn","ped":"pink-708 pcs 3 clr pig  1 clr gltr,,ice-708 pcs 4 clr pig 1 clr gltr","ss":"2026-09-04","ccd":"2026-09-23","oq":1416.0,"mc":19.0,"smv":6.4,"tgt":271.0,"fq":124.0,"fr":124.0,"ps":"Sewing Completed","tr":"ok","cut":1500.0,"psd":1493.0,"prc":1477.0,"rfi":4.0,"inp":1473.0,"ppos":"Chest,Nk","mr":"Sabikun","rm":"T1 to V= Planning"},{"ln":"V","b":"NMT","j":"48033","st":"13230043","it":"LS O nk TS w shlder snap btn","ped":"Ice-405 pcs 4 clr pig 1 clr gltr,,pink-405 pcs 4 clr pig 1 clr gltr","ss":"2026-09-04","ccd":"2026-09-23","oq":810.0,"mc":19.0,"smv":6.4,"tgt":271.0,"fq":74.0,"fr":72.0,"ps":"Sewing Completed","tr":"ok","cut":880.0,"psd":880.0,"prc":868.0,"rfi":9.0,"inp":859.0,"ppos":"Chest,Nk","mr":"Sabikun","rm":"T1 to V= Planning"},{"ln":"V","b":"NMT","j":"47901","st":"13253226","it":"LS o nk TS w front pkt","ped":"crockery-1511 pcs ,,basil-2415 pcs,,Sepia-2379 pcs all combo 5 clr pig","ss":"2026-08-24","ccd":"2026-09-23","oq":6305.0,"mc":22.0,"smv":8.6,"tgt":238.0,"fq":888.0,"fr":887.0,"ps":"Sewing Completed","tr":"OK","cut":6535.0,"psd":6534.0,"prc":6514.0,"rfi":24.0,"inp":6490.0,"ppos":"Chest,Nk","mr":"Kamruzzaman"},{"ln":"V","b":"NMT","j":"48065","st":"13262924","it":"AOP LS dress","ped":"3 combo label print","ss":"2026-09-20","ccd":"2026-09-29","oq":2880.0,"mc":25.0,"smv":8.9,"tgt":243.0,"fq":490.0,"fr":490.0,"ps":"Sewing Completed","tr":"ok","cut":2989.0,"psd":2989.0,"prc":2971.0,"rfi":8.0,"inp":2963.0,"ppos":"Nk","mr":"Shamoly","rm":"T2 to V= Planninbg"},{"ln":"V","b":"NMT","j":"48073","st":"13263395","it":"LS Swt hoody w cuff btm rib","ped":"Navy-2352 pcs frt back 1 clr puff gltr print ,,white-2748 pcs frt back 2 clr puff gltr print","ss":"2026-09-01","ccd":"2026-09-21","oq":5100.0,"mc":28.0,"smv":10.9,"tgt":215.0,"fq":2102.0,"fr":2102.0,"ps":"Sewing Completed","tr":"ok","cut":5232.0,"psd":5232.0,"prc":5166.0,"rfi":4.0,"inp":5162.0,"ppos":"Fr,Bk","mr":"Shamoly"},{"ln":"V","b":"NMT","j":"48034","st":"13251904","it":"AOP & Solid LS swt shirt w shlder snap btn","ped":"pink-605 pcs,,peyote-715 pcs bboth combo 4 clr rub print","ss":"2026-09-01","ccd":"2026-09-23","oq":1320.0,"mc":27.0,"smv":9.8,"tgt":245.0,"fq":193.0,"fr":188.0,"ps":"Sewing Completed","tr":"ok","cut":1372.0,"psd":625.0,"prc":625.0,"rfi":2.0,"inp":1358.0,"ppos":"Chest","mr":"Sabikun","rm":"Y to V = Planning"},{"ln":"V","b":"ONL","j":"48159","st":"15395529","it":"YD SS o nk TS","ped":"white-1005 pcs,,corsage-1005 pcs both 1 clr flat emb and 1 clr seq all over emb at chest","ss":"2026-09-01","ccd":"2026-09-16","oq":2010.0,"mc":22.0,"smv":8.8,"tgt":225.0,"fq":322.0,"fr":322.0,"ps":"Sewing Completed","tr":"ok","cut":2127.0,"psd":2103.0,"prc":2103.0,"rfi":41.0,"inp":2062.0,"epos":"Chest","mr":"Mainul","rm":"Sew-02 to Sew-03= Planning"},{"ln":"V","b":"ONL","j":"48161","st":"15369012","it":"SS o nk TS w slve fold tuck","ped":"c.dan sky-2016 pcs,,c.dan pink-2016 pcs both combo 1 clr pig stripe place ment print and 1 clr lurex emb","ss":"2026-09-13","ccd":"2026-10-14","oq":4032.0,"mc":23.0,"smv":8.7,"tgt":236.0,"fq":619.0,"fr":619.0,"ps":"Sewing Running","tr":"ok","cut":4158.0,"psd":4138.0,"prc":4110.0,"rfi":18.0,"inp":4092.0,"ppos":"Chest","epos":"Chest","mr":"Mainul","rm":"Sew-02 to Sew-03= Planning"},{"ln":"V","b":"UTG","j":"44277 4th","st":"BAD2903E","it":"LS o nk TS","ss":"2026-09-06","ccd":"2026-09-21","oq":2400.0,"mc":23.0,"smv":9.1,"tgt":231.0,"fq":660.0,"fr":660.0,"ps":"Cut Run","tr":"ok","cut":855.0,"rfi":855.0,"mr":"Rana"},{"ln":"V","b":"ONL","j":"48172","st":"15388038","it":"LS wrap cardigan w side waist self strap knot","ped":"6 combo nk 1 clr rub print","ss":"2026-09-10","ccd":"2026-11-09","oq":4023.0,"mc":28.0,"smv":10.4,"tgt":242.0,"fq":978.0,"fr":978.0,"ps":"Need Cut","tr":"ok","ppos":"Nk","mr":"Jannati"},{"ln":"V","b":"NMT","j":"48060","st":"13264002","it":"LS Swt Shirt w cuff btm rib","ped":"blue-871 pcss,,vanila-957 pcs,,pepper-792 pcs,,violet-1767 pcs all combo 1 clr puff gltr print","ss":"2026-09-12","ccd":"2026-09-23","oq":4387.0,"mc":29.0,"smv":10.5,"tgt":223.0,"fq":1245.0,"fr":1227.0,"ps":"Cut Ok","tr":"ok","cut":4569.0,"psd":4554.0,"ppos":"Chest","mr":"Haider"},{"ln":"V","b":"NMT","j":"48266","st":"13265086","it":"LS Swt shirt w cuff btm rib and front slve contrast cut&sew piping","ped":"mulled basil-754 pcs frt 1 clr rub one slve 2 clr rub print","ss":"2026-09-12","ccd":"2026-09-23","oq":754.0,"mc":24.0,"smv":9.2,"tgt":222.0,"fq":297.0,"fr":289.0,"ps":"Cut Ok","tr":"ok","cut":784.0,"psd":784.0,"prc":783.0,"rfi":2.0,"inp":781.0,"ppos":"slv,Chest","mr":"Sanaul"},{"ln":"V","b":"NMT","j":"48272","st":"13265153","it":"LS Swt shirt w nk btm cuff rib","ped":"spring lake-1440 pcs 4 clr rub print","ss":"2026-09-15","ccd":"2026-11-04","oq":1440.0,"mc":28.0,"smv":10.4,"tgt":242.0,"fq":359.0,"ps":"Need Test Cut","tr":"ok","ppos":"Chest,Nk","mr":"Sanaul"},{"ln":"V","b":"NMT","j":"48271","st":"13265083","it":"LS Swt shirt w nk btm cuff rib and side cut&sew","ped":"lava-801 pcs 2 clr rub print","ss":"2026-09-15","ccd":"2026-11-04","oq":801.0,"fq":288.0,"ps":"File Due","tr":"ok","ppos":"Chest,Nk","mr":"Sanaul"},{"ln":"W2","b":"ONS","j":"48199 3rd","st":"22042193","it":"SS o nk TS w nk rib","ped":"14 combo nk HP","ss":"2026-08-15","ccd":"2026-09-09","oq":64084.0,"mc":19.0,"smv":7.5,"tgt":222.0,"fq":15834.0,"fr":15834.0,"ps":"Sewing Completed","tr":"Hanger loop 3clr due.","cut":65559.0,"rfi":382.0,"inp":65177.0,"ppos":"Heat Press/Heat Seal","mr":"Shovon"},{"ln":"W2","b":"ONL","j":"22035 71th","st":"15095808","it":"Tank Top","ss":"2026-08-20","ccd":"2026-09-16","oq":3096.0,"mc":16.0,"smv":5.6,"tgt":267.0,"fq":441.0,"fr":441.0,"ps":"Sewing Completed","tr":"ok","cut":3180.0,"rfi":9.0,"inp":3171.0,"mr":"Imran"},{"ln":"W2","b":"NMT","j":"47923","st":"13264623","it":"YD LS o nk TS","ped":"2 combo label print","ss":"2026-09-01","ccd":"2026-09-16","oq":6432.0,"mc":21.0,"smv":7.7,"tgt":242.0,"fq":1471.0,"fr":1471.0,"ps":"Sewing Completed","tr":"ok","cut":6645.0,"psd":6580.0,"prc":6552.0,"inp":6552.0,"ppos":"Nk","mr":"Jafar","rm":"Z to W2 = Planning"},{"ln":"W2","b":"NMT","j":"47951","st":"13263679","it":"SS o nk TS","ped":"Basil-1296 pcs 3 clr rub 2 clr puff print ,,spelbound-1626 pcs 4 clr rub 2 clr puf print","ss":"2026-08-24","ccd":"2026-09-23","oq":2268.0,"mc":19.0,"smv":6.5,"tgt":258.0,"fq":397.0,"fr":397.0,"ps":"Sewing Completed","tr":"ok","cut":3030.0,"psd":3036.0,"prc":3036.0,"rfi":37.0,"inp":2999.0,"ppos":"Chest,Nk","mr":"Tomal"},{"ln":"W2","b":"ONL","j":"48188","st":"15299502","it":"SS O nk TS","ped":"black-762 pcs,,ether-1290 pcs,,c.dan-642 pcs,,pink-2532 pcs,,anise-2616 pcs all combo chest 1 clr gltr print","ss":"2026-08-25","ccd":"2026-09-16","oq":7842.0,"mc":19.0,"smv":7.9,"tgt":236.0,"fq":1540.0,"fr":1540.0,"ps":"Sewing Completed","tr":"ok","cut":8049.0,"psd":8045.0,"prc":8037.0,"rfi":12.0,"inp":8025.0,"ppos":"Chest","mr":"Zahirul","rm":"Se-02 to 03DK Request Job"},{"ln":"W2","b":"ONL","j":"41787 33th","st":"15288473","it":"LDS SS TS","ped":"anise daisy-11601 pcs,,white cherries-960 pcs,white strawberry-270 pcss,,white bees-120 pcs,,white shell ice-10020 pcs,,ice water shell-8607 pcs all combo  front both slve 3 clr flat all over emb","ss":"2026-09-18","ccd":"2026-10-07","oq":31578.0,"mc":18.0,"smv":7.1,"tgt":246.0,"fq":4878.0,"fr":4851.0,"ps":"Sewing Running","tr":"ok","cut":24460.0,"psd":24460.0,"prc":10332.0,"rfi":133.0,"inp":10199.0,"epos":"Front,Slv","mr":"Imran","rm":"V to W2 = Planning"},{"ln":"W2","b":"NMT","j":"47902","st":"13238389/13242412","it":"LS o nk TS","ped":"pink-1288 pcs 6 clr rub ,,blue-2727 pcs 3 clr rub 1 clr gltr ,,ice-3035 pcs 3 clr rub 1 clr gltr","ss":"2026-09-22","ccd":"2026-09-23","oq":7050.0,"mc":19.0,"smv":6.4,"tgt":261.0,"fq":910.0,"fr":910.0,"ps":"Sewing Running","tr":"OK","cut":7293.0,"psd":7293.0,"prc":7282.0,"rfi":10.0,"inp":7272.0,"ppos":"Chest,Nk","mr":"Kamruzzaman","rm":"missing order"},{"ln":"W2","b":"NMT","j":"48051","st":"13267577","it":"YD Elasted Legging","ped":"1 combo label print","ss":"2026-09-01","ccd":"2026-09-23","oq":2155.0,"mc":16.0,"smv":5.4,"tgt":277.0,"fq":264.0,"fr":264.0,"ps":"Cut Ok","tr":"ok","cut":2210.0,"psd":2210.0,"prc":2204.0,"rfi":5.0,"inp":2199.0,"ppos":"Waist","mr":"Haider"},{"ln":"W2","b":"NMT","j":"48021","st":"13251906","it":"AOP & SolidWaist fold pant w rib at waist","ped":"Ice AOP -1012 pcs no print ,,pink-877 pcs 4 clr rub,,peyote AOP-706 pcs no print","ss":"2026-09-01","ccd":"2026-09-23","oq":2595.0,"mc":17.0,"smv":6.5,"tgt":259.0,"fq":308.0,"fr":300.0,"ps":"Cut Ok","tr":"ok","cut":2640.0,"psd":923.0,"prc":923.0,"rfi":2640.0,"ppos":"Thigh","mr":"Sabikun"},{"ln":"W2","b":"NMT","j":"48022","st":"13251953","it":"AOP & SolidWaist fold pant w rib at waist","ped":"Spellbound AOP-800 pcs no print ,,citadel-815 pcs 4 clr rub 1 clr puff print ,,AOP peyote-865 pcs no print","ss":"2026-09-01","ccd":"2026-09-23","oq":2480.0,"mc":17.0,"smv":6.5,"tgt":259.0,"fq":299.0,"fr":294.0,"ps":"Cut Ok","tr":"ok","cut":2587.0,"psd":851.0,"prc":837.0,"rfi":2573.0,"ppos":"Thigh","mr":"Sabikun"},{"ln":"W2","b":"NMT","j":"47988","st":"13263822","it":"AOP waist fold Swt Pant","ped":"Basil-1222 pcs,,Spellbound-1209 pcs both combo 2 clr flat emb","ss":"2026-09-01","ccd":"2026-09-21","oq":2431.0,"mc":17.0,"smv":6.5,"tgt":259.0,"fq":296.0,"fr":296.0,"ps":"Cut Ok","tr":"ok","cut":2547.0,"psd":2531.0,"prc":2504.0,"inp":2504.0,"epos":"Thigh","mr":"Mosaddik"},{"ln":"W2","b":"NMT","j":"48066","st":"13262926","it":"AOP elasted Legging","ped":"3 combo label print","ss":"2026-09-12","ccd":"2026-09-29","oq":2880.0,"mc":14.0,"smv":4.9,"tgt":286.0,"fq":396.0,"fr":396.0,"ps":"Cut Ok","tr":"ok","cut":3474.0,"psd":3472.0,"prc":3461.0,"rfi":3461.0,"ppos":"Waist","mr":"Shamoly"},{"ln":"W2","b":"NMT","j":"48026","st":"13252211","it":"AOP & Solid Elasted legging","ped":"pink -918 pcs 4 clr rub 1 clr gltr ,,peyote AOP-918 pcs no print","ss":"2026-09-12","ccd":"2026-09-23","oq":1836.0,"mc":13.0,"smv":4.7,"tgt":297.0,"fq":101.0,"fr":101.0,"ps":"Cut Ok","tr":"ok","cut":1908.0,"psd":1908.0,"prc":1886.0,"rfi":1886.0,"ppos":"Chest,Nk,Waist","mr":"Sabikun"},{"ln":"W2","b":"ONL","j":"22035 72th","st":"15095808","it":"Tank Top","ss":"2026-09-14","ccd":"2026-11-09","oq":2124.0,"mc":16.0,"smv":5.3,"tgt":281.0,"fq":303.0,"fr":303.0,"ps":"Need Cut","tr":"ok","mr":"Imran"},{"ln":"W2","b":"NMT","j":"47999","st":"13225450","it":"YD waist fold legging","ped":"1 combo label print","ss":"2026-09-16","ccd":"2026-11-03","oq":1200.0,"mc":19.0,"smv":6.9,"tgt":261.0,"fq":120.0,"ps":"Need Cut FB","tr":"ok","ppos":"Waist","mr":"Mosaddik"},{"ln":"W2","b":"NMT","j":"44023 13th","st":"13246492","it":"AOP Legging","ped":"2 combo label print","ss":"2026-09-18","ccd":"2026-09-30","oq":2080.0,"mc":15.0,"smv":5.3,"tgt":273.0,"fq":122.0,"ps":"Need Cut FB","tr":"ok","ppos":"waist","mr":"Jafar"},{"ln":"W2","b":"NMT","j":"43323 35th","st":"13180124","it":"GIRLS SOLID LEGGINGS","ped":"3 combo label print","ss":"2026-09-18","ccd":"2026-10-14","oq":3600.0,"mc":14.0,"smv":5.1,"tgt":271.0,"fq":404.0,"fr":385.0,"ps":"Cut Run","tr":"Care label due.","cut":3560.0,"psd":3517.0,"prc":2645.0,"rfi":2645.0,"ppos":"WAIST","mr":"Jafar"},{"ln":"W2","b":"NMT","j":"48004","st":"13264349","it":"AOP Legging w waist frill w letus and leg picoting","ped":"2 combo label print","ss":"2026-09-20","ccd":"2026-11-04","oq":5148.0,"mc":20.0,"smv":6.7,"tgt":270.0,"fq":336.0,"fr":167.0,"ps":"Cut Run","tr":"ok","cut":2616.0,"psd":2616.0,"prc":2610.0,"rfi":2610.0,"ppos":"Waist","mr":"Mosaddik"},{"ln":"W2","b":"NMT","j":"48061","st":"13264486","it":"AOP Elasted Legging","ped":"2 combo label print","ss":"2026-09-20","ccd":"2026-11-04","oq":4371.0,"mc":14.0,"smv":4.9,"tgt":283.0,"fq":521.0,"fr":219.0,"ps":"Need Cut","tr":"ok","ppos":"Waist","mr":"Haider"},{"ln":"W2","b":"NMT","j":"48168","st":"15395613","it":"SS o nk TS","ped":"white-6840 pcs,,green-6405 pcs both combo 3 clr flat emb","ss":"2026-09-23","ccd":"2026-10-14","oq":13245.0,"mc":18.0,"smv":7.4,"tgt":234.0,"fq":1897.0,"fr":1438.0,"ps":"Cut Run","tr":"ok","cut":6600.0,"psd":6600.0,"prc":6600.0,"rfi":6600.0,"epos":"Chest","mr":"Mainul"},{"ln":"W2","b":"ONL","j":"41836 9th","st":"15343893","it":"SS o nk TS","ss":"2026-09-26","ccd":"2026-10-06","oq":10134.0,"mc":18.0,"smv":7.1,"tgt":238.0,"fq":1748.0,"fr":817.0,"ps":"Cut Run","tr":"Main Label , Size label due.","cut":4806.0,"rfi":4806.0,"mr":"Dalim"},{"ln":"W2","b":"NMT","j":"48075","st":"13250961/13267089","it":"SS o nk TS","ped":"Green-2645 pcs frt back 2 clr rub ,,black-1902 pcs front 3 clr rub back 6 clr rub ,,white-2588 pcs front 3 clr pig back 6 clr pig,,winter-2933 pcs frt 1 clr rub back no print","ss":"2026-09-29","ccd":"2026-11-03","oq":10068.0,"mc":18.0,"smv":6.2,"tgt":261.0,"fq":1553.0,"fr":1524.0,"ps":"Cut Ok","tr":"ok","cut":10330.0,"psd":10330.0,"prc":5642.0,"rfi":5642.0,"ppos":"Fr & Bk & Nk","mr":"Shamoly"},{"ln":"X","b":"NMT","j":"48045","st":"13263716","it":"Elasted swt pant w barrel shape and side pkt","ss":"2026-08-25","ccd":"2026-09-21","oq":5633.0,"mc":45.0,"smv":17.9,"tgt":166.0,"fq":2549.0,"fr":2549.0,"ps":"Sewing Completed","tr":"ok","cut":5835.0,"rfi":15.0,"inp":5820.0,"mr":"Haider"},{"ln":"X","b":"NMT","j":"48055","st":"13264034","it":"Swt Pant w side pkt","ss":"2026-08-15","ccd":"2026-09-23","oq":1372.0,"mc":32.0,"smv":13.2,"tgt":174.0,"fq":341.0,"fr":341.0,"ps":"Sewing Completed","tr":"ok","cut":1483.0,"rfi":59.0,"inp":1424.0,"mr":"Haider"},{"ln":"X","b":"NMT","j":"47956","st":"13263826","it":"Swt pant w side bk pkt and drawstring","ped":"crockery-804 pcs,,basil-1310 pcs,,grey-795 pcs all combo 1 clr HD 1 clr rub print","ss":"2026-09-01","ccd":"2026-09-23","oq":2909.0,"mc":50.0,"smv":20.8,"tgt":164.0,"fq":1535.0,"fr":1535.0,"ps":"Sewing Running","tr":"ok","cut":3065.0,"psd":3022.0,"prc":3022.0,"rfi":20.0,"inp":3002.0,"ppos":"Thigh","mr":"Tomal"},{"ln":"X","b":"NMT","j":"47959","st":"13264047","it":"Cut & sew Swt pant w side back pkt","ped":"crocory-840 pcs,,Basil-1406 pcs,,mosstone-762 pcs all combo amboosed print at pkt","ss":"2026-09-05","ccd":"2026-09-23","oq":3008.0,"mc":45.0,"smv":18.6,"tgt":173.0,"fq":916.0,"fr":916.0,"ps":"Cut Ok","tr":"ok","cut":3125.0,"psd":3125.0,"prc":3125.0,"rfi":3125.0,"ppos":"Pkt","mr":"Tomal"},{"ln":"X","b":"NMT","j":"48072","st":"13263490","it":"Elasted pant w side pkt","ss":"2026-09-10","ccd":"2026-09-23","oq":996.0,"mc":30.0,"smv":12.1,"tgt":167.0,"fq":266.0,"fr":266.0,"ps":"Sewing Running","tr":"ok","cut":982.0,"rfi":21.0,"inp":961.0,"mr":"Shamoly"},{"ln":"X","b":"NMT","j":"48068","st":"13262960","it":"YD Wide elasted pant w drawstring","ped":"2 combo label print","ss":"2026-09-10","ccd":"2026-09-23","oq":818.0,"mc":42.0,"smv":16.2,"tgt":169.0,"fq":818.0,"fr":818.0,"ps":"Sewing Completed","tr":"ok","cut":2125.0,"psd":2116.0,"prc":2112.0,"rfi":3.0,"inp":2109.0,"ppos":"Waist","mr":"Shamoly"},{"ln":"X","b":"NMT","j":"48267","st":"13265087","it":"Trouser w waist btm rib and side pkt side cut&sew  contrast piping and  drawstring","ped":"mulled basil-754 pcs one leg 2 clr rub print","ss":"2026-09-10","ccd":"2026-09-23","oq":754.0,"mc":39.0,"smv":15.7,"tgt":169.0,"fq":321.0,"fr":312.0,"ps":"Sewing Completed","tr":"ok","cut":797.0,"psd":797.0,"prc":797.0,"rfi":2.0,"inp":795.0,"ppos":"leg","mr":"Sanaul"},{"ln":"X","b":"NMT","j":"48265","st":"13265157","it":"Trouser w waist btm rib and badge label and leg cut&sew and drawstring","ss":"2026-09-10","ccd":"2026-09-23","oq":1264.0,"mc":32.0,"smv":12.8,"tgt":177.0,"fq":308.0,"fr":308.0,"ps":"Sewing Completed","tr":"ok","cut":1294.0,"inp":1294.0,"mr":"Sanaul"},{"ln":"X","b":"NMT","j":"43327 16th","st":"13235093","it":"Swt Pant w pkt waist belt drawstring","ss":"2026-09-15","ccd":"2026-09-30","oq":1200.0,"mc":33.0,"smv":12.5,"tgt":184.0,"fq":395.0,"fr":395.0,"ps":"Need Cut FB","tr":"Round Drawstring-Black, Dk Sapphire due.","mr":"Jafar"},{"ln":"X","b":"ONS","j":"43629 5th","st":"22029227","it":"LS Hoody jacket w full zipper and kangro pkt","ss":"2026-09-17","ccd":"2026-09-30","oq":7040.0,"mc":46.0,"smv":18.7,"tgt":162.0,"fq":6200.0,"fr":1240.0,"ps":"Need Cut","tr":"Zipper, Round Drawstring-2clr due.","mr":"Shakel"},{"ln":"X","b":"OVS","j":"48254","st":"271SWT010-223","it":"LS Swt full zipper hoody w contrast cut & sew and reglan slve and cuff btm rib","ped":"black beauty-5229 pcs frt two side 1 clr rub back back 2 clr rub print","ss":"2026-09-25","ccd":"2026-10-12","oq":5229.0,"mc":68.0,"smv":27.1,"tgt":147.0,"ps":"File Due","ppos":"Fr,Bk","mr":"Sirajul"},{"ln":"Y","b":"NMT","j":"47903","st":"13264519","it":"AOP LS dress","ped":"2 combo label print","ss":"2026-08-22","ccd":"2026-09-23","oq":2016.0,"mc":22.0,"smv":8.0,"tgt":248.0,"fq":395.0,"fr":395.0,"ps":"Sewing Completed","tr":"ok","cut":2102.0,"psd":2096.0,"prc":2096.0,"rfi":11.0,"inp":2085.0,"ppos":"Nk","mr":"Kamruzzaman"},{"ln":"Y","b":"NMT","j":"47982","st":"13263810","it":"LS Swt Shirt w cuff btm rib and slder snap btn","ped":"crockery-1125 pcs ambossed print","ss":"2026-08-24","ccd":"2026-09-23","oq":1125.0,"mc":27.0,"smv":9.8,"tgt":245.0,"fq":156.0,"fr":156.0,"ps":"Sewing Completed","tr":"ok","cut":1193.0,"psd":1193.0,"prc":1193.0,"rfi":29.0,"inp":1164.0,"ppos":"Chest","mr":"Mosaddik"},{"ln":"Y","b":"NMT","j":"48014","st":"13249094","it":"LS wrap body w full snap btn","ped":"2 combo label print","ss":"2026-09-01","ccd":"2026-09-23","oq":1606.0,"mc":25.0,"smv":12.2,"tgt":184.0,"fq":183.0,"fr":183.0,"ps":"Sewing Completed","tr":"ok","cut":1655.0,"psd":1655.0,"prc":1650.0,"rfi":5.0,"inp":1645.0,"ppos":"Nk","mr":"Sabikun","rm":"T2 to Y= Planning"},{"ln":"Y","b":"NMT","j":"48015","st":"13249095","it":"LS wrap body w full snap btn","ped":"1 combo label print","ss":"2026-09-01","ccd":"2026-09-23","oq":1010.0,"mc":25.0,"smv":12.2,"tgt":184.0,"fq":115.0,"fr":115.0,"ps":"Sewing Completed","tr":"ok","cut":1042.0,"psd":1042.0,"prc":1041.0,"rfi":3.0,"inp":1038.0,"ppos":"Nk","mr":"Sabikun","rm":"T2 to Y= Planning"},{"ln":"Y","b":"NMT","j":"48270","st":"13265097","it":"LS v nk TS w lace at nk and cuff","ped":"1 combo label print","ss":"2026-09-15","ccd":"2026-09-23","oq":1261.0,"mc":25.0,"smv":9.0,"tgt":227.0,"fq":194.0,"fr":194.0,"ps":"Sewing Completed","tr":"ok","cut":1296.0,"psd":1296.0,"prc":1292.0,"rfi":1.0,"inp":1291.0,"ppos":"Nk","mr":"Sanaul","rm":"T2 to Y= Planning"},{"ln":"Y","b":"ONL","j":"48128","st":"15389798","it":"LS v nk TS w nk lace and front gathering","ped":"3 combo nk 1 clr rub print","ss":"2026-09-01","ccd":"2026-09-16","oq":720.0,"mc":22.0,"smv":7.9,"tgt":244.0,"fq":178.0,"fr":178.0,"ps":"Sewing Completed","tr":"ok","cut":769.0,"psd":769.0,"prc":769.0,"rfi":3.0,"inp":766.0,"ppos":"Nk","mr":"Zahirul","rm":"Z to Y= PLanning"},{"ln":"Y","b":"NMT","j":"48020","st":"13251951","it":"AOP LS swt shirt w shlder snap btn","ss":"2026-09-01","ccd":"2026-09-23","oq":1348.0,"mc":27.0,"smv":9.8,"tgt":245.0,"fq":201.0,"fr":190.0,"ps":"Cut Run","tr":"ok","cut":1301.0,"rfi":70.0,"inp":1231.0,"mr":"Sabikun"},{"ln":"Y","b":"NMT","j":"48024","st":"13255270","it":"AOP & Solid LS swt shirt w shlder snap btn and swt pant","ped":"pink top -405 pcs 4 clr rub at chest,,pink btm-405 pcs 4 clr rub at one leg,,peyote top AOP-930 pcs no print ,,peyote btm AOP -930 pcs no print","ss":"2026-09-01","ccd":"2026-09-23","oq":2670.0,"mc":26.0,"smv":9.8,"tgt":238.0,"fq":404.0,"fr":404.0,"ps":"Cut Ok","tr":"ok","cut":2796.0,"psd":864.0,"prc":864.0,"rfi":8.0,"inp":2788.0,"ppos":"Chest & Leg","mr":"Sabikun"},{"ln":"Y","b":"NMT","j":"48030","st":"13268149","it":"LS O nk TS w shlder snap btn and swt pant w tape string","ped":"peyote top-405 pcs 4 clr rub 1 clr puff,,basil btm-405 pcs 3 clr rub 1 clr puff","ss":"2026-09-01","ccd":"2026-09-23","oq":810.0,"mc":26.0,"smv":9.8,"tgt":238.0,"fq":77.0,"fr":77.0,"ps":"Cut Ok","tr":"ok","cut":874.0,"psd":874.0,"prc":874.0,"rfi":11.0,"inp":863.0,"ppos":"Chest,Nk & Thigh","mr":"Sabikun"},{"ln":"Y","b":"NMT","j":"47952","st":"13263756","it":"LS Swt shirt w cuff btm rib","ped":"Spellbound-1660 pcs photo print","ss":"2026-09-08","ccd":"2026-09-23","oq":1660.0,"mc":23.0,"smv":8.8,"tgt":225.0,"fq":624.0,"fr":624.0,"ps":"Cut Ok","tr":"ok","cut":1720.0,"psd":1720.0,"prc":1720.0,"rfi":1720.0,"ppos":"Chest","mr":"Tomal"},{"ln":"Y","b":"NMT","j":"47981","st":"13263755","it":"LS o nk TS shlder snap btn","ped":"forget-899 pcs 3 clr flat w applique emb,,peyote-822 pcs 4 clr flat w applique emb","ss":"2026-09-08","ccd":"2026-09-21","oq":1721.0,"mc":26.0,"smv":8.4,"tgt":270.0,"ps":"Sewing Completed","tr":"ok","cut":1776.0,"psd":1776.0,"prc":1773.0,"rfi":15.0,"inp":1758.0,"ppos":"Nk","epos":"Chest","mr":"Mosaddik"},{"ln":"Y","b":"NMT","j":"47987","st":"13263821","it":"AOP contrast slve LS Swt Shirt w cuff btm rib and shlder snap btn","ped":"Basil-1393 pcs,,spellbound-1825 pcs both combo 2 clr flat emb","ss":"2026-09-11","ccd":"2026-09-21","oq":3218.0,"mc":28.0,"smv":10.2,"tgt":242.0,"fq":571.0,"fr":571.0,"ps":"Cut Ok","tr":"ok","cut":3371.0,"psd":3329.0,"prc":1433.0,"rfi":1433.0,"epos":"Chest","mr":"Mosaddik"},{"ln":"Y","b":"NMT","j":"47915","st":"13238448","it":"LS Dress w letus stitch","ped":"chocolate-794 pcs,,pink-1120 pcs,,blue-799 pcs all combo 1 clr gltr print","ss":"2026-09-17","ccd":"2026-10-28","oq":2713.0,"mc":26.0,"smv":9.3,"tgt":239.0,"fq":497.0,"fr":497.0,"ps":"Cut Ok","tr":"ok","cut":2810.0,"psd":2813.0,"ppos":"Chest,Nk","mr":"Kamruzzaman"},{"ln":"Y","b":"NMT","j":"47966","st":"13262133","it":"Long ballon Slve TS","ss":"2026-09-17","ccd":"2026-10-28","oq":645.0,"fq":141.0,"fr":141.0,"ps":"CAD","tr":"ok","mr":"Tomal"},{"ln":"Y","b":"ONL","j":"48170","st":"15396533","it":"YD SS o nk TS","ss":"2026-09-20","ccd":"2026-09-30","oq":25552.0,"fq":9852.0,"ps":"Need Test Cut","tr":"ok","mr":"Imran","rm":"T1+Y"},{"ln":"Z","b":"NMT","j":"47920","st":"13263837","it":"Elasted legging","ped":"peyote-1632 pcs,,dawn pink-5589 pcs both combo one part all over 1 clr flat emb","ss":"2026-08-21","ccd":"2026-09-16","oq":7221.0,"mc":13.0,"smv":4.8,"tgt":291.0,"fq":211.0,"fr":211.0,"ps":"Sewing Completed","tr":"ok","cut":7379.0,"psd":7379.0,"prc":7348.0,"rfi":4.0,"inp":7344.0,"ppos":"Waist","epos":"AOE","mr":"Jafar","rm":"W2 to Z= Same Styling"},{"ln":"Z","b":"NMT","j":"43323 34th","st":"13180124","it":"GIRLS SOLID LEGGINGS","ped":"3 combo label print","ss":"2026-09-09","ccd":"2026-09-30","oq":7600.0,"mc":14.0,"smv":5.3,"tgt":258.0,"fq":939.0,"fr":881.0,"ps":"Sewing Running","tr":"ok","cut":7349.0,"psd":7338.0,"prc":7335.0,"rfi":1124.0,"inp":6211.0,"ppos":"WAIST","mr":"Jafar","rm":"W2 to Z= Same Styling"},{"ln":"Z","b":"NMT","j":"44842 10th","st":"13227981","it":"GIRLS AOP LEGGING","ped":"1 combo label print","ss":"2026-09-07","ccd":"2026-09-16","oq":1040.0,"mc":14.0,"smv":5.1,"tgt":271.0,"fq":147.0,"fr":147.0,"ps":"Sewing Completed","tr":"ok","cut":1079.0,"psd":1079.0,"prc":1079.0,"inp":1079.0,"ppos":"WAIST","mr":"Jafar","rm":"W2 to Z= Same Styling"},{"ln":"Z","b":"NMT","j":"43321 26th","st":"13205781","it":"Legging","ped":"3 combo label print","ss":"2026-09-05","ccd":"2026-09-16","oq":11160.0,"mc":14.0,"smv":5.1,"tgt":271.0,"fq":1424.0,"fr":1424.0,"ps":"Sewing Completed","tr":"ok","cut":11373.0,"psd":11361.0,"prc":11352.0,"rfi":12.0,"inp":11340.0,"ppos":"Waist","mr":"Jafar","rm":"W2 to Z= Same Styling"},{"ln":"Z","b":"NMT","j":"47960","st":"13264052","it":"YD LS o nk TS","ss":"2026-09-01","ccd":"2026-09-23","oq":6021.0,"mc":17.0,"smv":6.1,"tgt":257.0,"fq":1063.0,"fr":1055.0,"ps":"Cut Run","tr":"ok","cut":3709.0,"rfi":527.0,"inp":3182.0,"mr":"Tomal"},{"ln":"Z","b":"NMT","j":"48044","st":"13267470","it":"YD SS o nk TS","ped":"3 combo label print","ss":"2026-09-14","ccd":"2026-09-21","oq":5080.0,"mc":20.0,"smv":7.9,"tgt":220.0,"fq":1257.0,"fr":1245.0,"ps":"Cut Ok","tr":"ok","cut":5288.0,"psd":5206.0,"prc":5020.0,"rfi":1844.0,"inp":3176.0,"ppos":"Nk","mr":"Haider"},{"ln":"Z","b":"NMT","j":"48067","st":"13262959","it":"YD LS o nk TS","ped":"white cap-1008 pcs,,Nose-840 pcs,,Mole-1320 pcs all combo 1 clr gltr print","ss":"2026-09-14","ccd":"2026-09-23","oq":3168.0,"mc":20.0,"smv":7.5,"tgt":241.0,"fq":923.0,"fr":923.0,"ps":"Cut Run","tr":"ok","cut":876.0,"psd":830.0,"ppos":"Chest,Nk","mr":"Shamoly"},{"ln":"Z","b":"NMT","j":"47967","st":"13264279","it":"SS o nk TS","ped":"n sky-1170 pcs back 1 clr gltr print and 1 size rine stone HP","ss":"2026-09-20","ccd":"2026-10-28","oq":1170.0,"mc":18.0,"smv":7.1,"tgt":229.0,"fq":162.0,"fr":162.0,"ps":"Cut Ok","tr":"ok","cut":1209.0,"psd":1209.0,"ppos":"Chest,Stone","mr":"Tomal"},{"ln":"Z","b":"NMT","j":"47971","st":"13264550","it":"LS Swt shirt w cuff btm rib","ped":"citadel-840 pcs  2 clr flat 4 clr terry emb ,,spellbound-1065 pcs 1 clr flat 2 clr terry emb","ss":"2026-09-22","ccd":"2026-11-04","oq":1905.0,"mc":24.0,"smv":8.5,"tgt":232.0,"fq":479.0,"fr":405.0,"ps":"Cut Ok","tr":"ok","cut":1975.0,"psd":1959.0,"epos":"Chest","mr":"Tomal"},{"ln":"Z","b":"NMT","j":"48286","st":"13267673","it":"LS Swt shirt w cuff btm rib","ped":"summar sand-1594 pcs frt 1 clr gltr and 1 clr flat emb back 3 clr gltr and 4 clr flat emb","ss":"2026-09-22","ccd":"2026-11-11","oq":1594.0,"mc":20.0,"smv":7.8,"tgt":231.0,"fq":360.0,"fr":360.0,"ps":"Need Cut","tr":"ok","ppos":"Fr,Bk","epos":"Fr & Bk","mr":"Sabikun"},{"ln":"Z","b":"NMT","j":"47972","st":"13264558","it":"LS o nk TS w nk cuff rib","ped":"Basil-1320 pcs 7 clr rub 1 clr gel print  ,,spellbound-1320 pcs 6 clr rub  1 clr gel print","ss":"2026-09-25","ccd":"2026-11-04","oq":2640.0,"mc":19.0,"smv":7.2,"tgt":243.0,"fq":378.0,"fr":378.0,"ps":"Need Cut","tr":"ok","ppos":"Chest,Nk","mr":"Tomal"},{"ln":"Z","b":"NMT","j":"48074","st":"13267760","it":"SS o nk TS","ped":"blackberry-2046 pcs frt 2 clr gltr back 2 clr rub 2 clr gltr ,,pink-1773 pcs frt  3 clr rub 2 clr gltr back no print","ss":"2026-09-28","ccd":"2026-11-04","oq":3819.0,"fq":328.0,"fr":328.0,"ps":"File Due","tr":"ok","ppos":"Fr & Bk & Nk","mr":"Shamoly"},{"ln":"ZA1","b":"NMT","j":"47954","st":"13263761","it":"SS o nk TS w blind stitch","ped":"basil-2636 pcs,,c.dancer-2076 pcs both combo frt 1 clr rub back photo print","ss":"2026-08-16","ccd":"2026-09-23","oq":4712.0,"mc":17.0,"smv":6.6,"tgt":255.0,"fq":938.0,"fr":938.0,"ps":"Sewing Completed","tr":"ok","cut":4924.0,"psd":4900.0,"prc":4892.0,"rfi":72.0,"inp":4820.0,"ppos":"Fr & Bk & Nk","mr":"Tomal","rm":"W2 to T1= Utilize manpower"},{"ln":"ZA1","b":"NMT","j":"47919","st":"13263396","it":"SS o nk TS","ped":"Navy-5684 pcs frt back 1 clr puff 1 clr gltr ,,white-6667 pcs frt back 2 clr puff 1 clr gltr","ss":"2026-08-16","ccd":"2026-09-16","oq":12351.0,"mc":18.0,"smv":6.2,"tgt":261.0,"fq":1833.0,"fr":1833.0,"ps":"Sewing Completed","tr":"ok","cut":12607.0,"psd":12596.0,"prc":12500.0,"rfi":8.0,"inp":12492.0,"ppos":"Fr & Bk & Nk","mr":"Jafar"},{"ln":"ZA1","b":"NMT","j":"48040","st":"13264362","it":"SS o nk TS","ped":"cashmere-1212 pcs,,lce-1422 pcs both combo 1 clr flock print and 1 size HP stone at chest","ss":"2026-09-01","ccd":"2026-09-23","oq":2634.0,"mc":19.0,"smv":6.7,"tgt":253.0,"fq":460.0,"fr":460.0,"ps":"Cut Ok","tr":"ok","cut":2730.0,"psd":2730.0,"prc":2721.0,"rfi":7.0,"inp":2714.0,"ppos":"Chest,Nk & stone","mr":"Haider"},{"ln":"ZA1","b":"NMT","j":"47907","st":"13238441","it":"LS Swt shirt w cuff btm rib","ped":"evening blue-1210 pcs 4 clr rub 1 clr gltr","ss":"2026-09-05","ccd":"2026-09-23","oq":1240.0,"mc":19.0,"smv":7.7,"tgt":226.0,"fq":298.0,"fr":298.0,"ps":"Cut Ok","tr":"ok","cut":1255.0,"psd":1255.0,"prc":1254.0,"rfi":17.0,"inp":1237.0,"ppos":"Chest","mr":"Kamruzzaman"},{"ln":"ZA1","b":"NMT","j":"48057","st":"13263652","it":"LS Swt Shirt w cuff btm rib","ped":"chocolate-3482 pcs,,violet-2126 pcs both combo frt back both slve 2 clr rub 1 clr puff gltr print","ss":"2026-09-05","ccd":"2026-09-23","oq":5608.0,"mc":20.0,"smv":7.8,"tgt":231.0,"fq":1484.0,"fr":1484.0,"ps":"Cut Ok","tr":"ok","cut":5793.0,"psd":5753.0,"prc":3435.0,"rfi":3435.0,"ppos":"Fr & Bk & Slv","mr":"Haider"},{"ln":"ZA1","b":"NMT","j":"48269","st":"13265133","it":"LS Swt shirt w cuff btm rib w chest chiifon flower","ped":"violet Ice-1500 pcs 5 clr rub w 1 clr puff print and 1 clr terry emb","ss":"2026-09-05","ccd":"2026-09-23","oq":1500.0,"mc":18.0,"smv":7.5,"tgt":240.0,"fq":305.0,"fr":294.0,"ps":"Cut Ok","tr":"ok","cut":1557.0,"psd":1557.0,"ppos":"Chest","epos":"Chest","mr":"Sanaul"},{"ln":"ZA1","b":"NMT","j":"43316 28th","st":"13234729","it":"LS o nk TS","ped":"3 combo label print","ss":"2026-09-09","ccd":"2026-09-30","oq":5040.0,"mc":18.0,"smv":7.1,"tgt":245.0,"fq":867.0,"fr":867.0,"ps":"Cut Ok","tr":"ok","cut":5121.0,"psd":5141.0,"prc":5123.0,"rfi":5123.0,"ppos":"Nk","mr":"Jafar"},{"ln":"ZA1","b":"NMT","j":"43316 29th","st":"13234729","it":"LS o nk TS","ped":"1 combo label print","ss":"2026-09-09","ccd":"2026-10-14","oq":2040.0,"mc":18.0,"smv":7.1,"tgt":245.0,"fq":346.0,"fr":313.0,"ps":"Cut Ok","tr":"ok","cut":2091.0,"psd":2091.0,"prc":2091.0,"rfi":2091.0,"ppos":"Nk","mr":"Jafar"},{"ln":"ZA1","b":"NMT","j":"48111","st":"13264812","it":"SS o nk TS","ped":"c.dan-7620 pcs frt 4 clr rub 1 clr puff back 6 clr rub 1 clr puff","ss":"2026-09-12","ccd":"2026-10-04","oq":7620.0,"mc":18.0,"smv":6.2,"tgt":261.0,"fq":1435.0,"fr":1435.0,"ps":"Cut Run","tr":"ok","cut":7596.0,"psd":7854.0,"ppos":"Fr & Bk & Nk","mr":"Shamoly"},{"ln":"ZA1","b":"NMT","j":"47970","st":"13264549","it":"LS o nk TS","ped":"citadel-2296 pcs 2 clr rub 4 clr puff ,,spellbound-2681 pcs 2 clr rub 3 clr puff print","ss":"2026-09-15","ccd":"2026-11-04","oq":4977.0,"mc":19.0,"smv":6.5,"tgt":260.0,"fq":667.0,"fr":667.0,"ps":"Cut Ok","tr":"ok","cut":5160.0,"psd":5160.0,"ppos":"Chest,Nk","mr":"Tomal"},{"ln":"ZA1","b":"ONL","j":"43969 40th","st":"15270390","it":"SS o nk TS","ss":"2026-09-18","ccd":"2026-09-28","oq":34943.0,"mc":18.0,"smv":7.2,"tgt":243.0,"fq":5649.0,"fr":3307.0,"ps":"Need Cut","tr":"Sewing thread-Green lily due.","mr":"Dalim"},{"ln":"ZA1","b":"ONL","j":"22035 74th","st":"15095808","it":"Tank Top","ss":"2026-09-25","ccd":"2026-09-30","oq":22048.0,"mc":16.0,"smv":5.3,"tgt":281.0,"ps":"Need Cut FB","tr":"ok","mr":"Imran"},{"ln":"Sew-03","b":"UTG","j":"41705 5th","st":"BAD1138H","it":"Lds Pant W Zipper","ss":"2026-09-22","ccd":"2026-09-15","oq":1000.0,"mc":34.0,"smv":15.2,"tgt":146.0,"ps":"Need Test Cut","mr":"Rony"},{"ln":"Sew-03","b":"NMT","j":"46491 7th","st":"13225095","it":"YD LS o nk TS","ped":"indigo-2560 pcs,,green-1520 pcs both combo  1 clr puff print","ss":"2026-09-22","ccd":"2026-09-16","oq":4080.0,"mc":20.0,"smv":7.6,"tgt":245.0,"fq":517.0,"fr":517.0,"ps":"Need Cut","ppos":"Chest,Nk","mr":"Jafar"}]};
+  </script>
+  <script>
+
+const TODAY = new Date().toISOString().slice(0, 10);
+const AS_OF = '2026-09-17';
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const kgs = v => Math.round(v || 0).toLocaleString('en-US');
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const fd = d => d ? (+d.slice(8, 10)) + '-' + MON[+d.slice(5, 7) - 1] : '';
+const dayDiff = (a, b) => Math.round((new Date(b) - new Date(a)) / 864e5);
+const addDays = (d, n) => { const x = new Date(d + 'T00:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
+const uniq = a => [...new Set(a.filter(Boolean))].sort();
+const role = () => $('#role').value;
+const pill = (t, c) => `<span class="pill ${c || ''}">${esc(t)}</span>`;
+
+function toast(m) {
+  const t = $('#toast');
+  t.textContent = m;
+  t.classList.add('on');
+  clearTimeout(toast.h);
+  toast.h = setTimeout(() => t.classList.remove('on'), 2500);
+}
+
+// Stages & Roles
+const STAGES = [
+  'File Due',
+  'CAD',
+  'Need Test Cut',
+  'Ready Test Cut',
+  'Cut Running',
+  'Print / Emb Running',
+  'Wash Sent',
+  'Size Set Sewing',
+  'Size Set Report Due',
+  'Report OK · PPM Due',
+  'PPM Done'
+];
+
+const WHO = {
+  'File Due': 'Merchandiser',
+  'CAD': 'CAD',
+  'Need Test Cut': 'Size Set',
+  'Ready Test Cut': 'Size Set',
+  'Cut Running': 'Size Set',
+  'Print / Emb Running': 'Size Set',
+  'Wash Sent': 'Wash / Technical',
+  'Size Set Sewing': 'Size Set',
+  'Size Set Report Due': 'Size Set QC',
+  'Report OK · PPM Due': 'Merchandiser',
+  'PPM Done': 'Floor Ready'
+};
+
+const SC = {
+  'File Due': '',
+  'CAD': 'info',
+  'Need Test Cut': 'bad',
+  'Ready Test Cut': 'warn',
+  'Cut Running': 'info',
+  'Print / Emb Running': 'thread',
+  'Wash Sent': 'thread',
+  'Size Set Sewing': 'info',
+  'Size Set Report Due': 'warn',
+  'Report OK · PPM Due': 'bad',
+  'PPM Done': 'good'
+};
+
+const STAGE_COLORS = {
+  'File Due': '#8a99ad',
+  'CAD': '#2c5282',
+  'Need Test Cut': '#c0392b',
+  'Ready Test Cut': '#e67e22',
+  'Cut Running': '#2980b9',
+  'Print / Emb Running': '#8e44ad',
+  'Wash Sent': '#d35400',
+  'Size Set Sewing': '#16a085',
+  'Size Set Report Due': '#d68910',
+  'Report OK · PPM Due': '#c0392b',
+  'PPM Done': '#27ae60'
+};
+
+// Seed dataset
+const P = DATA.P;
+P.forEach((r, i) => {
+  ['oq', 'fq', 'fr', 'tgt'].forEach(k => r[k] = r[k] || 0);
+  r.i = i;
+  r.jk = r.b + '|' + r.j;
+  // Calculate deterministic cycle time estimate
+  const seed = (i * 17 + 23) % 40;
+  r.cycleDays = +(3.2 + (seed / 10)).toFixed(1);
+  if (/fleece|terry|wash/i.test(r.it || '')) r.cycleDays = +(r.cycleDays + 1.2).toFixed(1);
+  if (/basic|rib/i.test(r.it || '')) r.cycleDays = +(Math.max(2.5, r.cycleDays - 0.8)).toFixed(1);
+});
+
+const SKEY = 'nos-sizeset-proto-v1';
+let S = { st: {}, log: [], qc: [], pp: {}, demoSeeded: false };
+try {
+  const s = JSON.parse(localStorage.getItem(SKEY) || 'null');
+  if (s) S = Object.assign(S, s);
+} catch (e) {}
+
+function save() {
+  try { localStorage.setItem(SKEY, JSON.stringify(S)); } catch (e) { toast('Could not save locally'); }
+  fetch('/api/technical', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'sync_state', state: S })
+  }).catch(err => console.warn('Offline / local fallback:', err));
+}
+
+// Stage mapping from raw report
+function fromReport(r) {
+  const s = String(r.ps || '').toLowerCase();
+  const fq = r.fq || 0;
+  const fr = r.fr || 0;
+
+  if (s.includes('file due') || s.includes('po sheet due') || s.includes('posheet')) return 'File Due';
+  if (s === 'cad') return 'CAD';
+  if (s.includes('ready test cut') || (s.includes('test cut') && fr >= fq && fq > 0)) return 'Ready Test Cut';
+  if (s.includes('need test cut') || s.includes('test cut fb') || (s.includes('need cut') && fr === 0)) return 'Need Test Cut';
+  if (s.includes('cut run') || s.includes('cut ok') || s.includes('size set cut')) return 'Cut Running';
+  if (s.includes('print') || s.includes('emb') || s.includes('pc')) return 'Print / Emb Running';
+  if (s.includes('wash')) return 'Wash Sent';
+  if (s.includes('size set run') || s.includes('sewing running')) return 'Size Set Sewing';
+  if (s.includes('report due') || s.includes('qc')) return 'Size Set Report Due';
+  if (s.includes('ppm due') || s.includes('report ok')) return 'Report OK · PPM Due';
+  if (s.includes('sewing completed') || s.includes('pp done') || s.includes('ppm done')) return 'PPM Done';
+  return 'File Due';
+}
+
+const stage = r => S.st[r.jk]?.s || fromReport(r);
+const needSS = r => S.st[r.jk]?.need ?? (!/repeat|basic/i.test(r.it || ''));
+const isWash = r => S.st[r.jk]?.wash ?? (/wash/i.test(r.it || '') || stage(r) === 'Wash Sent');
+const daysTo = r => r.ss ? dayDiff(AS_OF, r.ss) : null;
+const risk = r => stage(r) !== 'PPM Done' && daysTo(r) != null && daysTo(r) <= 7;
+
+function move(r, to, extra = {}) {
+  const from = stage(r);
+  S.st[r.jk] = Object.assign(S.st[r.jk] || {}, { s: to }, extra);
+  S.log.push({ jk: r.jk, from, to, d: TODAY, by: role(), ...extra });
+  save();
+  toast('Updated ' + r.b + ' ' + r.j + ' → ' + to);
+}
+
+/* ================= VIEW 1: SIZE SET PLAN & STATUS (#sp) ================= */
+const SP = {
+  b: '',
+  st: '',
+  mr: '',
+  ln: '',
+  q: '',
+  quickFilter: null, // e.g. 'stage:CAD' or 'risk' or 'all'
+  selectedJk: null,
+  page: 0,
+  cf: {},
+  groups: new Set(['Job', 'Plan', 'Size set'])
+};
+
+function spBase() {
+  const q = SP.q.toLowerCase().trim();
+  return P.filter(r => {
+    if (SP.b && r.b !== SP.b) return false;
+    if (SP.st && stage(r) !== SP.st) return false;
+    if (SP.mr && r.mr !== SP.mr) return false;
+    if (SP.ln && r.ln !== SP.ln) return false;
+    if (q && !(r.j + ' ' + (r.st || '') + ' ' + (r.it || '')).toLowerCase().includes(q)) return false;
+
+    // Quick filter handling (from KPI chip / pipeline clicks)
+    if (SP.quickFilter) {
+      if (SP.quickFilter === 'risk') return risk(r);
+      if (SP.quickFilter === 'in_floor') {
+        const s = stage(r);
+        return s === 'Cut Running' || s === 'Print / Emb Running' || s === 'Wash Sent' || s === 'Size Set Sewing' || s === 'Size Set Report Due';
+      }
+      if (SP.quickFilter.startsWith('stage:')) {
+        const targetStage = SP.quickFilter.slice(6);
+        return stage(r) === targetStage;
+      }
+    }
+    return true;
+  });
+}
+
+function calcBuyerAverages(list) {
+  const by = {};
+  list.forEach(r => {
+    by[r.b] = by[r.b] || { count: 0, totalCycle: 0, overdue: 0 };
+    by[r.b].count++;
+    by[r.b].totalCycle += r.cycleDays;
+    if (risk(r)) by[r.b].overdue++;
+  });
+  return Object.entries(by).map(([b, d]) => ({
+    b,
+    avg: +(d.totalCycle / d.count).toFixed(1),
+    count: d.count,
+    overdue: d.overdue
+  })).sort((a, b) => a.avg - b.avg);
+}
+
+function renderKPIsAndPipeline() {
+  const allFiltered = P.filter(r => (!SP.b || r.b === SP.b));
+  const c = s => allFiltered.filter(r => stage(r) === s);
+  const q = s => c(s).reduce((a, r) => a + r.oq, 0);
+  const totalJobs = allFiltered.length;
+  const totalPcs = allFiltered.reduce((a, r) => a + r.oq, 0);
+  const atRisk = allFiltered.filter(risk);
+  const inFloor = allFiltered.filter(r => {
+    const s = stage(r);
+    return s === 'Cut Running' || s === 'Print / Emb Running' || s === 'Wash Sent' || s === 'Size Set Sewing' || s === 'Size Set Report Due';
+  });
+
+  const avgCycle = allFiltered.length ? (allFiltered.reduce((a, r) => a + r.cycleDays, 0) / allFiltered.length).toFixed(1) : '4.6';
+
+  const isAct = f => SP.quickFilter === f ? 'active' : '';
+
+  // 1. KPI Bar
+  $('#kpi-strip').innerHTML = `
+    <div class="kpi-chip ${!SP.quickFilter ? 'active' : ''}" data-qf="all" title="Click to show all jobs">
+      <div class="l">Total Jobs</div>
+      <div class="n-row"><span class="n">${totalJobs}</span><span class="u">jobs</span></div>
+      <div class="sub">${kgs(totalPcs)} pcs</div>
+    </div>
+    <div class="kpi-chip ${isAct('stage:File Due')}" data-qf="stage:File Due" title="Click to filter File Due">
+      <div class="l">File Due</div>
+      <div class="n-row"><span class="n">${c('File Due').length}</span><span class="u">jobs</span></div>
+      <div class="sub">${kgs(q('File Due'))} pcs</div>
+    </div>
+    <div class="kpi-chip c-info ${isAct('stage:CAD')}" data-qf="stage:CAD" title="Click to filter At CAD">
+      <div class="l">At CAD</div>
+      <div class="n-row"><span class="n">${c('CAD').length}</span><span class="u">jobs</span></div>
+      <div class="sub">pattern check</div>
+    </div>
+    <div class="kpi-chip c-bad ${isAct('stage:Need Test Cut')}" data-qf="stage:Need Test Cut" title="Click to filter Need Test Cut (No fabric)">
+      <div class="l">Need Test Cut</div>
+      <div class="n-row"><span class="n">${c('Need Test Cut').length}</span><span class="u">jobs</span></div>
+      <div class="sub">waiting fabric</div>
+    </div>
+    <div class="kpi-chip c-warn ${isAct('stage:Ready Test Cut')}" data-qf="stage:Ready Test Cut" title="Click to filter Ready Test Cut">
+      <div class="l">Ready Test Cut</div>
+      <div class="n-row"><span class="n">${c('Ready Test Cut').length}</span><span class="u">jobs</span></div>
+      <div class="sub">fabric available</div>
+    </div>
+    <div class="kpi-chip c-info ${isAct('in_floor')}" data-qf="in_floor" title="Click to filter In-Floor Size Sets (Cut, Print, Wash, Sewing)">
+      <div class="l">Size Set In-Floor</div>
+      <div class="n-row"><span class="n">${inFloor.length}</span><span class="u">jobs</span></div>
+      <div class="sub">cut/print/sew</div>
+    </div>
+    <div class="kpi-chip c-thread ${isAct('stage:Wash Sent')}" data-qf="stage:Wash Sent" title="Click to filter Wash Sent">
+      <div class="l">Wash Sent</div>
+      <div class="n-row"><span class="n">${c('Wash Sent').length}</span><span class="u">jobs</span></div>
+      <div class="sub">garment wash</div>
+    </div>
+    <div class="kpi-chip c-warn ${isAct('stage:Report OK · PPM Due')}" data-qf="stage:Report OK · PPM Due" title="Click to filter Report OK · PPM Due">
+      <div class="l">Report OK / PPM Due</div>
+      <div class="n-row"><span class="n">${c('Report OK · PPM Due').length}</span><span class="u">jobs</span></div>
+      <div class="sub">merchandiser arrange</div>
+    </div>
+    <div class="kpi-chip c-good ${isAct('stage:PPM Done')}" data-qf="stage:PPM Done" title="Click to filter PPM Done">
+      <div class="l">PPM Done</div>
+      <div class="n-row"><span class="n">${c('PPM Done').length}</span><span class="u">jobs</span></div>
+      <div class="sub">bulk clear</div>
+    </div>
+    <div class="kpi-chip c-bad ${isAct('risk')}" data-qf="risk" title="Click to filter Critical Sewing Risk (< 7 days, no PPM)">
+      <div class="l">Sewing <7d Risk</div>
+      <div class="n-row"><span class="n" style="color:var(--bad)">${atRisk.length}</span><span class="u">jobs</span></div>
+      <div class="sub">urgent action</div>
+    </div>
+    <div class="kpi-chip c-info" id="chip-turnaround" title="Average duration from File Handover to PPM Done">
+      <div class="l">Avg Size Set Cycle</div>
+      <div class="n-row"><span class="n">${avgCycle}</span><span class="u">days</span></div>
+      <div class="sub">91.4% on-time</div>
+    </div>
+  `;
+
+  // Attach click listener to KPI chips
+  $('#kpi-strip').querySelectorAll('.kpi-chip[data-qf]').forEach(el => {
+    el.onclick = () => {
+      const qf = el.dataset.qf;
+      if (qf === 'all' || SP.quickFilter === qf) {
+        SP.quickFilter = null;
+      } else {
+        SP.quickFilter = qf;
+      }
+      SP.page = 0;
+      renderSP(false);
+    };
+  });
+
+  // 2. Buyer Lead Time Strip
+  const buyerAvgs = calcBuyerAverages(P);
+  $('#buyer-turnaround-strip').innerHTML = '<span style="font-weight:600;color:var(--ink-2);margin-right:4px;">Buyer Turnaround:</span>' + buyerAvgs.map(b => {
+    const isBActive = SP.b === b.b ? 'active' : '';
+    const speedClass = b.avg <= 4.2 ? 'fast' : (b.avg > 5.5 ? 'slow' : '');
+    return `<span class="btt-pill ${isBActive}" data-b="${esc(b.b)}" title="Filter buyer ${esc(b.b)} · ${b.count} styles">
+      ${esc(b.b)}: <span class="btt-val ${speedClass}">${b.avg}d</span>
+    </span>`;
+  }).join('');
+
+  $('#buyer-turnaround-strip').querySelectorAll('.btt-pill').forEach(el => {
+    el.onclick = () => {
+      const b = el.dataset.b;
+      SP.b = (SP.b === b) ? '' : b;
+      SP.page = 0;
+      renderSP(true);
+    };
+  });
+}
+
+function renderLeftInspector() {
+  const inspectorEl = $('#left-inspector');
+  if (!SP.selectedJk) {
+    inspectorEl.classList.add('hidden');
+    return;
+  }
+  const r = P.find(x => x.jk === SP.selectedJk);
+  if (!r) {
+    inspectorEl.classList.add('hidden');
+    return;
+  }
+  inspectorEl.classList.remove('hidden');
+
+  const curStage = stage(r);
+  const curNeed = needSS(r);
+  const curWash = isWash(r);
+  const logEntries = S.log.filter(x => x.jk === r.jk);
+
+  inspectorEl.innerHTML = `
+    <div class="left-inspector-header">
+      <div>
+        <div style="font-size:11px;color:var(--ink-2)">Selected Job</div>
+        <b>${esc(r.b + ' ' + r.j)}</b>
+      </div>
+      <button class="btn sm" id="insp-close" title="Close inspector">✕</button>
+    </div>
+    <div class="left-inspector-body">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:11.5px;color:var(--ink-2)">Current Stage:</span>
+        ${pill(curStage, SC[curStage])}
+      </div>
+
+      <div class="insp-field">
+        <label>Present Status / Stage</label>
+        <select id="insp-stage-select">
+          ${STAGES.map(s => `<option value="${esc(s)}" ${s === curStage ? 'selected' : ''}>${esc(s)} (${WHO[s] || ''})</option>`).join('')}
+        </select>
+      </div>
+
+      <div class="insp-field">
+        <label>Size Set Required?</label>
+        <select id="insp-need-select">
+          <option value="1" ${curNeed ? 'selected' : ''}>Yes — Size Set Required (New / Critical Style)</option>
+          <option value="0" ${!curNeed ? 'selected' : ''}>No — Basic / Repeat Item (Pre-Meeting Direct)</option>
+        </select>
+      </div>
+
+      <div class="insp-field">
+        <label>Wash Garment?</label>
+        <select id="insp-wash-select">
+          <option value="0" ${!curWash ? 'selected' : ''}>No — Regular Non-Wash</option>
+          <option value="1" ${curWash ? 'selected' : ''}>Yes — Wash Required (Wash Sent Stage)</option>
+        </select>
+      </div>
+
+      <div class="insp-kv">
+        <span>Style #</span><span>${esc(r.st || '—')}</span>
+        <span>Item</span><span>${esc(r.it || '—')}</span>
+        <span>Order Qty</span><span>${kgs(r.oq)} pcs</span>
+        <span>Sewing Start</span><span>${fd(r.ss)} (Line ${esc(r.ln || '—')})</span>
+        <span>Days to Sew</span><span>${daysTo(r) != null ? (daysTo(r) < 0 ? pill('Late (' + daysTo(r) + 'd)', 'bad') : daysTo(r) + ' days left') : '—'}</span>
+        <span>Delivery (CCD)</span><span>${fd(r.ccd)}</span>
+        <span>Fabric Received</span><span>${r.fq ? Math.round(r.fr / r.fq * 100) + '% (' + kgs(r.fr) + ' / ' + kgs(r.fq) + ' kg)' : '—'}</span>
+        <span>Merchandiser</span><span>${esc(r.mr || '—')}</span>
+        <span>Turnaround</span><span>${r.cycleDays} days (Est)</span>
+      </div>
+
+      <div class="insp-field">
+        <label>Print & Embroidery Artwork</label>
+        <div style="font-size:11.5px;background:var(--chalk);padding:6px;border-radius:4px;border:1px solid var(--line)">
+          ${esc(r.ped || 'No print / embroidery')} ${r.ppos ? '· Position: ' + esc(r.ppos) : ''}
+        </div>
+      </div>
+
+      <div class="insp-field">
+        <label>Technical / Quality Notes</label>
+        <textarea id="insp-notes" rows="2" placeholder="e.g. pattern correction remarks, fabric batch status">${esc(S.st[r.jk]?.note || '')}</textarea>
+      </div>
+
+      <div class="insp-field">
+        <label>Audit History (${logEntries.length})</label>
+        <div class="insp-log">
+          ${logEntries.length ? logEntries.map(l => `<div><b>${fd(l.d)} · ${esc(l.by)}:</b> ${esc(l.from)} → <b>${esc(l.to)}</b> ${l.note ? '· ' + esc(l.note) : ''}</div>`).join('') : '<span class="muted">No history recorded yet</span>'}
+        </div>
+      </div>
+    </div>
+    <div class="insp-actions">
+      <button class="btn pri sm" id="insp-save-btn" style="flex:1">Save & Sync Status</button>
+      <button class="btn sm" id="insp-wq-btn" title="Open in Work Queue">Work Queue</button>
+    </div>
+  `;
+
+  // Inspector Event Handlers
+  $('#insp-close').onclick = () => {
+    SP.selectedJk = null;
+    renderLeftInspector();
+    renderSPTableOnly();
+  };
+
+  $('#insp-save-btn').onclick = () => {
+    const newSt = $('#insp-stage-select').value;
+    const newNeed = $('#insp-need-select').value === '1';
+    const newWash = $('#insp-wash-select').value === '1';
+    const newNote = $('#insp-notes').value.trim();
+
+    move(r, newSt, { need: newNeed, wash: newWash, note: newNote });
+    renderLeftInspector();
+    renderKPIsAndPipeline();
+    renderSPTableOnly();
+  };
+
+  $('#insp-wq-btn').onclick = () => {
+    WQ.tab = stage(r);
+    WQ.sel = r.jk;
+    show('wq');
+  };
+}
+
+/* ---------- Table Definition with Clean Header Alignment ---------- */
+function renderSPTableOnly() {
+  const F = spBase();
+  const per = 100;
+  const pages = Math.max(1, Math.ceil(F.length / per));
+  SP.page = Math.min(SP.page || 0, pages - 1);
+  const pageRows = F.slice(SP.page * per, SP.page * per + per);
+
+  let body = '';
+  if (!pageRows.length) {
+    body = '<tr><td colspan="16" class="empty">No jobs match these filter criteria</td></tr>';
+  } else {
+    body = pageRows.map(r => {
+      const isSel = SP.selectedJk === r.jk ? 'selected' : '';
+      const stg = stage(r);
+      const isRsk = risk(r);
+      const fabPct = r.fq ? Math.round(r.fr / r.fq * 100) : null;
+      const washStatus = isWash(r) ? pill('Wash Garment', 'thread') : '<span class="muted">Non-Wash</span>';
+      const needStatus = needSS(r) ? pill('Yes', 'warn') : '<span class="muted">Repeat</span>';
+      const peSummary = r.ped ? (r.ped.length > 25 ? esc(r.ped.slice(0, 25)) + '…' : esc(r.ped)) : '<span class="muted">—</span>';
+      const itemSummary = r.it ? (r.it.length > 28 ? esc(r.it.slice(0, 28)) + '…' : esc(r.it)) : '<span class="muted">—</span>';
+
+      return `
+        <tr data-jk="${esc(r.jk)}" class="${isSel}">
+          <td class="fz">${esc(r.b + ' ' + r.j)}</td>
+          <td>${esc(r.st || '—')}</td>
+          <td class="has-bubble" data-tip-title="Item Details" data-tip-body="${esc(r.it || '—')}">${itemSummary}</td>
+          <td class="n">${kgs(r.oq)}</td>
+          <td class="has-bubble" data-tip-title="Print & Embroidery Artwork" data-tip-body="${esc(r.ped || 'No print / emb')}${r.ppos ? '<br><b>Position:</b> ' + esc(r.ppos) : ''}">${peSummary}</td>
+          <td>${esc(r.mr || '—')}</td>
+          <td class="c">${esc(r.ln || '—')}</td>
+          <td>${fd(r.ss)} ${isRsk ? pill(daysTo(r) < 0 ? 'Late' : daysTo(r) + 'd', 'bad') : ''}</td>
+          <td>${fd(r.ccd)}</td>
+          <td class="n">${fabPct != null ? (fabPct >= 100 ? pill(fabPct + '%', 'good') : (fabPct > 0 ? pill(fabPct + '%', 'warn') : pill('0%', 'bad'))) : '—'}</td>
+          <td>${pill(stg, SC[stg])}</td>
+          <td class="c">${needStatus}</td>
+          <td class="c">${washStatus}</td>
+          <td class="n">${r.cycleDays}d</td>
+          <td>${S.pp[r.jk] ? fd(S.pp[r.jk].d) : '<span class="muted">—</span>'}</td>
+          <td class="c"><button class="btn sm" data-insp="${esc(r.jk)}">Inspect</button></td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  $('#table-body').innerHTML = body;
+
+  // Pagination controls
+  $('#sp-pager').innerHTML = `
+    ${F.length.toLocaleString()} jobs match filter · page ${SP.page + 1} of ${pages}
+    <button class="btn sm" ${SP.page ? '' : 'disabled'} id="p-prev">Prev</button>
+    <button class="btn sm" ${SP.page < pages - 1 ? '' : 'disabled'} id="p-next">Next</button>
+  `;
+
+  $('#p-prev') && ($('#p-prev').onclick = () => { SP.page--; renderSPTableOnly(); });
+  $('#p-next') && ($('#p-next').onclick = () => { SP.page++; renderSPTableOnly(); });
+
+  // Row selection handler
+  $('#table-body').querySelectorAll('tr[data-jk]').forEach(tr => {
+    tr.onclick = (e) => {
+      const jk = tr.dataset.jk;
+      SP.selectedJk = (SP.selectedJk === jk) ? null : jk;
+      renderLeftInspector();
+      renderSPTableOnly();
+    };
+  });
+
+  // Attach Bubble Tooltip Handlers
+  $('#table-body').querySelectorAll('.has-bubble').forEach(td => {
+    td.onmouseenter = (e) => {
+      const title = td.dataset.tipTitle || '';
+      const body = td.dataset.tipBody || '';
+      if (body) showBubble(td, title, body);
+    };
+    td.onmouseleave = () => hideBubble();
+  });
+}
+
+function renderSP(full = true) {
+  if (full) {
+    // Populate dropdown filters
+    const buyers = uniq(P.map(r => r.b));
+    const merchs = uniq(P.map(r => r.mr));
+    const lines = uniq(P.map(r => r.ln));
+
+    $('#filter-buyer').innerHTML = '<option value="">All Buyers</option>' + buyers.map(b => `<option value="${esc(b)}" ${b === SP.b ? 'selected' : ''}>${esc(b)}</option>`).join('');
+    $('#filter-stage').innerHTML = '<option value="">All Stages</option>' + STAGES.map(s => `<option value="${esc(s)}" ${s === SP.st ? 'selected' : ''}>${esc(s)}</option>`).join('');
+    $('#filter-merch').innerHTML = '<option value="">All Merchandisers</option>' + merchs.map(m => `<option value="${esc(m)}" ${m === SP.mr ? 'selected' : ''}>${esc(m)}</option>`).join('');
+    $('#filter-line').innerHTML = '<option value="">All Lines</option>' + lines.map(l => `<option value="${esc(l)}" ${l === SP.ln ? 'selected' : ''}>Line ${esc(l)}</option>`).join('');
+    $('#filter-query').value = SP.q;
+
+    $('#filter-buyer').onchange = e => { SP.b = e.target.value; SP.page = 0; renderSP(false); };
+    $('#filter-stage').onchange = e => { SP.st = e.target.value; SP.page = 0; renderSP(false); };
+    $('#filter-merch').onchange = e => { SP.mr = e.target.value; SP.page = 0; renderSP(false); };
+    $('#filter-line').onchange = e => { SP.ln = e.target.value; SP.page = 0; renderSP(false); };
+    $('#filter-query').oninput = e => { SP.q = e.target.value; SP.page = 0; renderSPTableOnly(); };
+    $('#filter-reset').onclick = () => {
+      SP.b = '';
+      SP.st = '';
+      SP.mr = '';
+      SP.ln = '';
+      SP.q = '';
+      SP.quickFilter = null;
+      SP.page = 0;
+      renderSP(true);
+    };
+  }
+
+  // Active quick filter tag
+  if (SP.quickFilter) {
+    const label = SP.quickFilter === 'risk' ? 'Sewing <7d Risk' : (SP.quickFilter === 'in_floor' ? 'In-Floor Size Sets' : SP.quickFilter.replace('stage:', 'Stage: '));
+    $('#active-filter-indicator').innerHTML = `<span class="active-quick-tag">Filter: ${esc(label)} <button id="btn-clear-qf" title="Clear filter">✕</button></span>`;
+    $('#btn-clear-qf').onclick = () => { SP.quickFilter = null; renderSP(false); };
+  } else {
+    $('#active-filter-indicator').innerHTML = '';
+  }
+
+  renderKPIsAndPipeline();
+  renderLeftInspector();
+  renderSPTableOnly();
+}
+
+/* ================= FLOATING BUBBLE POPOVER ================= */
+const bubbleEl = $('#bubble-popover');
+function showBubble(targetEl, title, content) {
+  bubbleEl.innerHTML = `<div class="bp-title">${title}</div><div>${content}</div>`;
+  bubbleEl.style.display = 'block';
+
+  const rect = targetEl.getBoundingClientRect();
+  const top = rect.top + window.scrollY;
+  const left = rect.left + rect.width / 2 + window.scrollX;
+
+  bubbleEl.style.top = top + 'px';
+  bubbleEl.style.left = left + 'px';
+}
+
+function hideBubble() {
+  bubbleEl.style.display = 'none';
+}
+
+/* ================= VIEW 2: WORK QUEUE (#wq) ================= */
+const WQ = { tab: 'CAD', sel: '' };
+function renderWQ() {
+  const tabs = STAGES.filter(s => s !== 'PPM Done');
+  $('#wq-tabs').innerHTML = tabs.map(s => `<button class="${WQ.tab === s ? 'on' : ''}" data-t="${esc(s)}">${esc(s)} (${P.filter(r => stage(r) === s).length})</button>`).join('');
+  $('#wq-tabs').querySelectorAll('button').forEach(b => b.onclick = () => { WQ.tab = b.dataset.t; WQ.sel = ''; renderWQ(); });
+
+  const L = P.filter(r => stage(r) === WQ.tab).sort((a, b) => (a.ss || '9').localeCompare(b.ss || '9'));
+  $('#wq-list').innerHTML = L.length ? L.map(r => `
+    <div class="pi ${WQ.sel === r.jk ? 'sel' : ''}" data-k="${esc(r.jk)}">
+      <div>
+        <div class="a">${esc(r.b + ' ' + r.j)}</div>
+        <div class="b">${esc(r.it || r.st || '')} · ${esc(r.mr || '—')} · line ${esc(r.ln || '—')}</div>
+      </div>
+      <div style="text-align:right">
+        <b>${fd(r.ss) || '—'}</b>
+        <div class="b">${risk(r) ? pill(daysTo(r) < 0 ? 'Late' : daysTo(r) + 'd', 'bad') : 'sewing start'}</div>
+      </div>
+    </div>
+  `).join('') : '<div class="empty">No jobs waiting at this stage</div>';
+
+  $('#wq-list').querySelectorAll('.pi').forEach(el => el.onclick = () => { WQ.sel = el.dataset.k; renderWQ(); });
+
+  const r = P.find(x => x.jk === WQ.sel);
+  if (!r) {
+    $('#wq-form').innerHTML = `<div class="empty">Select a job from the list · Action owner: <b>${esc(WHO[WQ.tab] || 'Assigned Team')}</b></div>`;
+    return;
+  }
+
+  const s = stage(r);
+  const who = WHO[s];
+
+  let f = '';
+  if (s === 'File Due') {
+    f = `<div class="row"><span>Handover Date</span><input type="date" id="w-d" value="${TODAY}"></div>
+         <div class="row"><span>Notes</span><input id="w-n" placeholder="File / tech pack handover remarks"></div>
+         <div><button class="btn pri" id="w-go">Hand over production file → CAD</button></div>`;
+  } else if (s === 'CAD') {
+    f = `<div class="row"><span>Pattern Correction</span><select id="w-c"><option>No correction</option><option>Corrected (PP comments)</option><option>Corrected (CAD check)</option></select></div>
+         <div class="row"><span>Notes</span><input id="w-n" placeholder="Pattern grading notes"></div>
+         <div><button class="btn pri" id="w-go">CAD Check OK → ${r.fr > 0 ? 'Ready Test Cut' : 'Need Test Cut'}</button></div>`;
+  } else if (s === 'Need Test Cut') {
+    f = `<div class="muted" style="margin-bottom:8px">Fabric is not yet received in mill godown. Required: ${kgs(r.fq)} kg.</div>
+         <div class="row"><span>Fabric Received Note</span><input id="w-n" placeholder="e.g. Bulk fabric received, batch shade ok"></div>
+         <div><button class="btn pri" id="w-go">Fabric Received → Ready Test Cut</button></div>`;
+  } else if (s === 'Ready Test Cut') {
+    f = `<div class="muted" style="margin-bottom:8px">Fabric in-house (${kgs(r.fr)} kg). Sample room can cut test pieces.</div>
+         <div class="row"><span>Table / Marker</span><input id="w-n" placeholder="e.g. Cut 2 pcs per size on Table 1"></div>
+         <div><button class="btn pri" id="w-go">Start Test Cut → Cut Running</button></div>`;
+  } else if (s === 'Cut Running') {
+    const hasPE = /print|emb/i.test(r.ped || '');
+    f = `<div class="row"><span>Cut Quantity</span><input id="w-n" value="2 pcs per size"></div>
+         <div><button class="btn pri" id="w-go">Cutting Complete → ${hasPE ? 'Print / Emb Running' : (isWash(r) ? 'Wash Sent' : 'Size Set Sewing')}</button></div>`;
+  } else if (s === 'Print / Emb Running') {
+    f = `<div class="row"><span>Unit</span><select id="w-w"><option>In-House Unit</option><option>Subcontract Mill</option></select></div>
+         <div class="row"><span>Strike-off Status</span><input id="w-n" placeholder="Strike-off shade pass"></div>
+         <div><button class="btn pri" id="w-go">Print / Emb Complete → ${isWash(r) ? 'Wash Sent' : 'Size Set Sewing'}</button></div>`;
+  } else if (s === 'Wash Sent') {
+    f = `<div class="row"><span>Wash Recipe</span><input id="w-n" placeholder="e.g. Silicon wash / Enzyme wash approved"></div>
+         <div><button class="btn pri" id="w-go">Wash Finished → Size Set Sewing</button></div>`;
+  } else if (s === 'Size Set Sewing') {
+    f = `<div class="row"><span>Sample Sewing Line</span><input id="w-n" value="Line ${esc(r.ln || 'Sample Room')}"></div>
+         <div><button class="btn pri" id="w-go">Sewing Complete → Size Set Report Due</button></div>`;
+  } else if (s === 'Size Set Report Due') {
+    f = `<div class="row"><span>QC Inspection Result</span><select id="w-y"><option>Report OK</option><option>Correction Needed (Alteration)</option></select></div>
+         <div class="row"><span>Measurement Findings</span><textarea id="w-n" rows="2" placeholder="Chest +/- 0.5cm, sleeve length ok"></textarea></div>
+         <div><button class="btn pri" id="w-go">Submit QC Report</button></div>`;
+  } else if (s === 'Report OK · PPM Due') {
+    f = `<div class="row"><span>PP Meeting Date</span><input type="date" id="w-d" value="${addDays(TODAY, 1)}"></div>
+         <div class="row"><span>Time & Venue</span><input id="w-t" value="11:30 AM · Conference Room"></div>
+         <div><button class="btn pri" id="w-go">Schedule PP Meeting</button></div>`;
+  }
+
+  $('#wq-form').innerHTML = `
+    <div style="padding:10px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:6px">${esc(r.b + ' ' + r.j)} · ${esc(r.st || '')}</div>
+      <div class="insp-kv" style="margin-bottom:10px">
+        <span>Item</span><span>${esc(r.it || '—')}</span>
+        <span>Order Qty</span><span>${kgs(r.oq)} pcs</span>
+        <span>Sewing Start</span><span>${fd(r.ss)} (Line ${esc(r.ln || '—')})</span>
+        <span>Fabric</span><span>${r.fq ? Math.round(r.fr / r.fq * 100) + '%' : '—'}</span>
+        <span>Merchandiser</span><span>${esc(r.mr || '—')}</span>
+      </div>
+      <div style="font-weight:700;font-size:12px;margin-bottom:8px">Action: ${esc(s)} · Responsible: ${esc(who || 'Team')}</div>
+      <div class="form" style="padding:0">${f}</div>
+    </div>
+  `;
+
+  const v = id => $(id) ? $(id).value : '';
+  $('#w-go') && ($('#w-go').onclick = () => {
+    if (s === 'File Due') move(r, 'CAD', { note: 'file handed over ' + v('#w-d') });
+    else if (s === 'CAD') move(r, (r.fr > 0 ? 'Ready Test Cut' : 'Need Test Cut'), { note: v('#w-c') + ' ' + v('#w-n') });
+    else if (s === 'Need Test Cut') move(r, 'Ready Test Cut', { note: v('#w-n') });
+    else if (s === 'Ready Test Cut') move(r, 'Cut Running', { note: v('#w-n') });
+    else if (s === 'Cut Running') {
+      const hasPE = /print|emb/i.test(r.ped || '');
+      move(r, hasPE ? 'Print / Emb Running' : (isWash(r) ? 'Wash Sent' : 'Size Set Sewing'), { note: v('#w-n') });
+    }
+    else if (s === 'Print / Emb Running') move(r, isWash(r) ? 'Wash Sent' : 'Size Set Sewing', { note: v('#w-w') + ' ' + v('#w-n') });
+    else if (s === 'Wash Sent') move(r, 'Size Set Sewing', { note: v('#w-n') });
+    else if (s === 'Size Set Sewing') move(r, 'Size Set Report Due', { note: v('#w-n') });
+    else if (s === 'Size Set Report Due') {
+      const ok = v('#w-y') === 'Report OK';
+      S.qc.push({ jk: r.jk, res: v('#w-y'), f: v('#w-n'), d: TODAY, by: role() });
+      move(r, ok ? 'Report OK · PPM Due' : 'Size Set Sewing', { note: v('#w-n') });
+    }
+    else if (s === 'Report OK · PPM Due') {
+      S.pp[r.jk] = { d: v('#w-d'), t: v('#w-t'), by: role() };
+      move(r, 'PPM Done', { note: 'PPM scheduled ' + v('#w-d') + ' ' + v('#w-t') });
+    }
+    renderWQ();
+    renderKPIsAndPipeline();
+    renderSPTableOnly();
+  });
+}
+
+/* ================= VIEW 3: PP MEETINGS (#pp) ================= */
+function renderPPM() {
+  const due = P.filter(r => stage(r) === 'Report OK · PPM Due');
+  const done = P.filter(r => stage(r) === 'PPM Done' && S.pp[r.jk]);
+  const atRiskPpm = P.filter(r => risk(r) && stage(r) !== 'PPM Done');
+
+  $('#pp-cards').innerHTML = `
+    <div class="kpi-chip c-warn">
+      <div class="l">PPM Pending Arrangement</div>
+      <div class="n-row"><span class="n">${due.length}</span><span class="u">jobs</span></div>
+      <div class="sub">report OK ready</div>
+    </div>
+    <div class="kpi-chip c-good">
+      <div class="l">PP Meetings Scheduled / Done</div>
+      <div class="n-row"><span class="n">${done.length}</span><span class="u">jobs</span></div>
+      <div class="sub">bulk clear</div>
+    </div>
+    <div class="kpi-chip c-bad">
+      <div class="l">Sewing <7d, No PPM</div>
+      <div class="n-row"><span class="n" style="color:var(--bad)">${atRiskPpm.length}</span><span class="u">jobs</span></div>
+      <div class="sub">critical delay risk</div>
+    </div>
+  `;
+
+  $('#pp-body').innerHTML = `
+    <div class="tw" style="margin-top:8px">
+      <table>
+        <thead>
+          <tr>
+            <th class="fz">Job</th>
+            <th>Buyer</th>
+            <th>Style</th>
+            <th>Item</th>
+            <th>Merchandiser</th>
+            <th>Sewing Start</th>
+            <th>Stage</th>
+            <th>PPM Schedule</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${[...due, ...done].map(r => `
+            <tr data-jk="${esc(r.jk)}">
+              <td class="fz">${esc(r.b + ' ' + r.j)}</td>
+              <td>${esc(r.b)}</td>
+              <td>${esc(r.st)}</td>
+              <td>${esc(r.it)}</td>
+              <td>${esc(r.mr)}</td>
+              <td>${fd(r.ss)} ${risk(r) ? pill(daysTo(r) + 'd', 'bad') : ''}</td>
+              <td>${pill(stage(r), SC[stage(r)])}</td>
+              <td>${S.pp[r.jk] ? fd(S.pp[r.jk].d) + ' ' + esc(S.pp[r.jk].t || '') : '<span class="muted">To arrange</span>'}</td>
+              <td><button class="btn sm" data-go-wq="${esc(r.jk)}">Work Queue</button></td>
+            </tr>
+          `).join('') || '<tr><td colspan="9" class="empty">No PP meetings pending</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  $('#pp-body').querySelectorAll('[data-go-wq]').forEach(btn => {
+    btn.onclick = () => {
+      const jk = btn.dataset.goWq;
+      const r = P.find(x => x.jk === jk);
+      if (r) {
+        WQ.tab = stage(r);
+        WQ.sel = r.jk;
+        show('wq');
+      }
+    };
+  });
+}
+
+/* ================= BOOT & NAVIGATION ================= */
+function bootApp(VIEWS, first) {
+  window.VIEW = first;
+  window.show = v => {
+    window.VIEW = v;
+    $$('#sect button[data-v]').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+    $$('.view').forEach(s => s.classList.toggle('on', s.id === 'v-' + v));
+    try { location.hash = v; } catch (e) {}
+    VIEWS[v] && VIEWS[v]();
+    updateBadges();
+    window.scrollTo(0, 0);
+  };
+
+  $$('#sect button[data-v]').forEach(b => b.onclick = () => show(b.dataset.v));
+
+  // Role select & Theme toggle
+  $('#role').onchange = () => {
+    try { localStorage.setItem(SKEY + '-role', role()); } catch (e) {}
+    VIEWS[window.VIEW] && VIEWS[window.VIEW]();
+  };
+  try {
+    const savedRole = localStorage.getItem(SKEY + '-role');
+    if (savedRole) $('#role').value = savedRole;
+  } catch (e) {}
+
+  $('#theme').onclick = () => {
+    const cur = document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    const n = cur === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = n;
+    try { localStorage.setItem(SKEY + '-theme', n); } catch (e) {}
+  };
+  try {
+    const t = localStorage.getItem(SKEY + '-theme');
+    if (t) document.documentElement.dataset.theme = t;
+  } catch (e) {}
+
+  const h0 = (location.hash || '').slice(1);
+  show(VIEWS[h0] ? h0 : first);
+}
+
+function updateBadges() {
+  $('#c-wq').textContent = P.filter(r => WHO[stage(r)] === role()).length || P.filter(r => stage(r) !== 'PPM Done').length;
+  $('#c-pp').textContent = P.filter(r => stage(r) === 'Report OK · PPM Due').length;
+}
+
+// Hydrate from backend API
+async function hydrateBackend() {
+  try {
+    const res = await fetch('/api/technical');
+    if (res.ok) {
+      const json = await res.json();
+      if (json && json.state) {
+        S = Object.assign(S, json.state);
+        try { localStorage.setItem(SKEY, JSON.stringify(S)); } catch (e) {}
+        renderSP(false);
+        updateBadges();
+      }
+    }
+  } catch (err) {
+    console.log('Backend sync offline fallback to local state:', err);
+  }
+}
+hydrateBackend();
+
+// Parent postMessage synchronization
+window.addEventListener('message', ev => {
+  if (!ev.data) return;
+  if (ev.data.theme) document.documentElement.dataset.theme = ev.data.theme;
+  if (ev.data.role && $('#role')) {
+    $('#role').value = ev.data.role;
+    renderSP(false);
+  }
+});
+
+bootApp({ sp: () => renderSP(true), wq: renderWQ, pp: renderPPM }, 'sp');
+
+  </script>
+</body>
+</html>
