@@ -185,8 +185,10 @@
     '.erp-sb-group.open .erp-sb-gitems { display: block; }',
     '.erp-sb-foot { display: flex; align-items: center; gap: 8px; margin: 14px 4px 0; padding: 9px 10px; border-radius: 8px; background: rgba(255,255,255,0.04); color: #b8c2d2; font-size: 10.5px; }',
     '.erp-sb-dot { width: 7px; height: 7px; border-radius: 50%; background: #27c169; box-shadow: 0 0 0 3px rgba(39,193,105,0.15); flex-shrink: 0; }',
-    '.erp-ham-btn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; background: rgba(255,255,255,0.14) !important; border: 1px solid rgba(255,255,255,0.28) !important; color: #fff !important; border-radius: 7px !important; padding: 5px 10px !important; cursor: pointer; font-weight: 600 !important; font-size: 13px !important; line-height: 1; flex-shrink: 0; }',
+    '.erp-ham-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; background: rgba(255,255,255,0.14) !important; border: 1px solid rgba(255,255,255,0.28) !important; color: #fff !important; border-radius: 6px !important; padding: 3px 8px !important; cursor: pointer; font-weight: 600 !important; font-size: 12px !important; line-height: 1.1; flex-shrink: 0; }',
     '.erp-ham-btn:hover { background: rgba(255,255,255,0.24) !important; }',
+    'body.erp-kpis-collapsed .cards, body.erp-kpis-collapsed .charts, body.erp-kpis-collapsed .kpis, body.erp-kpis-collapsed .kc:not(.kmoq), body.erp-kpis-collapsed .minis, body.erp-kpis-collapsed .vgrid, body.erp-kpis-collapsed .invtop, body.erp-kpis-collapsed .ch2, body.erp-kpis-collapsed .ch3, body.erp-kpis-collapsed .ch4 { display: none !important; }',
+    'body.erp-kpis-collapsed .tablewrap, body.erp-kpis-collapsed .dt .tablewrap { max-height: calc(100vh - 118px) !important; }',
     '@media print { #nos-erp-sidebar, .erp-ham-btn { display: none !important; } body.has-erp-sidebar { padding-left: 0 !important; } }'
   ].join('\n');
   document.head.appendChild(style);
@@ -275,13 +277,23 @@
     '</nav>' +
     '<div class="erp-sb-foot"><div class="erp-sb-dot"></div><div><strong style="display:block;color:#e2e8f0">Connected ERP</strong><span style="color:#71819b">All Process Sections</span></div></div>';
 
+  function syncStickyHeight() {
+    var st = document.querySelector('.view.on .stick, .stick');
+    if (st) {
+      document.documentElement.style.setProperty('--stickH', (st.getBoundingClientRect().height + 61) + 'px');
+    }
+  }
+
   function mount() {
     document.body.classList.add('has-erp-sidebar');
     var collapsed = false;
+    var kpiCol = false;
     try {
       collapsed = localStorage.getItem('nos_sidebar_collapsed') === '1';
+      kpiCol = localStorage.getItem('nos_kpis_collapsed') === '1';
     } catch (e) {}
     if (collapsed) document.body.classList.add('erp-sidebar-collapsed');
+    if (kpiCol) document.body.classList.add('erp-kpis-collapsed');
 
     document.body.insertBefore(sb, document.body.firstChild);
     renderSidebar('');
@@ -299,6 +311,7 @@
         localStorage.setItem('nos_sidebar_collapsed', isCol ? '1' : '0');
       } catch (e) {}
       updateHamBtn();
+      setTimeout(syncStickyHeight, 200);
     }
 
     var hideBtn = sb.querySelector('#erp-sb-hide');
@@ -313,17 +326,37 @@
 
     function updateHamBtn() {
       var isCol = document.body.classList.contains('erp-sidebar-collapsed');
-      hamBtn.innerHTML = '☰ <span style="font-size:11.5px">' + (isCol ? 'Menu' : 'Hide menu') + '</span>';
+      hamBtn.innerHTML = '☰ <span style="font-size:11px">' + (isCol ? 'Menu' : 'Hide menu') + '</span>';
       hamBtn.setAttribute('aria-expanded', isCol ? 'false' : 'true');
     }
     updateHamBtn();
 
+    var kpiBtn = document.createElement('button');
+    kpiBtn.type = 'button';
+    kpiBtn.className = 'erp-ham-btn';
+    kpiBtn.title = 'Collapse or expand top summary cards & charts to maximize table space';
+    function updateKpiBtn() {
+      var isKCol = document.body.classList.contains('erp-kpis-collapsed');
+      kpiBtn.innerHTML = (isKCol ? '▼ Show KPIs' : '▲ Max Table');
+    }
+    kpiBtn.onclick = function () {
+      var isKCol = document.body.classList.toggle('erp-kpis-collapsed');
+      try {
+        localStorage.setItem('nos_kpis_collapsed', isKCol ? '1' : '0');
+      } catch (e) {}
+      updateKpiBtn();
+      requestAnimationFrame(syncStickyHeight);
+    };
+    updateKpiBtn();
+
     if (topHeader) {
+      topHeader.insertBefore(kpiBtn, topHeader.firstChild);
       topHeader.insertBefore(hamBtn, topHeader.firstChild);
     } else {
-      hamBtn.style.cssText = 'position:fixed;top:10px;left:10px;z-index:130;background:#1f3a5f!important;';
+      hamBtn.style.cssText = 'position:fixed;top:6px;left:8px;z-index:130;background:#1f3a5f!important;';
       document.body.appendChild(hamBtn);
     }
+    setTimeout(syncStickyHeight, 120);
   }
 
   if (document.readyState === 'loading') {

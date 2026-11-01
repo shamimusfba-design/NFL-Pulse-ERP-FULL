@@ -336,7 +336,32 @@ tr.clk{cursor:pointer}
 @media (max-width:1000px){:root:not(.desk) .cgrid{grid-template-columns:1fr 1fr}:root:not(.desk) .cgrid .wide2{grid-column:span 2}:root:not(.desk) .rgrid{grid-template-columns:1fr}}
 
 .kpi .n{white-space:nowrap;overflow:hidden;display:block;max-width:100%}
-
+/* compact headers, filters & maximized main tables */
+header.top{padding:4px 12px;gap:10px;min-height:34px}
+.logo{font-size:15px}.logo small{font-size:11.5px;margin-left:6px}
+.asof{font-size:11.5px}
+.topbtn,.topsel{padding:3px 9px;min-height:25px;font-size:12px;border-radius:6px}
+.themebtn span{padding:2px 8px;font-size:11.5px}
+.mainnav{padding:4px 12px;gap:5px;top:34px}
+.mainnav button{padding:4px 12px;font-size:13px;border-radius:7px}
+.subnav{padding:0 12px;top:67px}
+.subnav button{padding:5px 10px;font-size:12.5px}
+main{padding:6px 12px 6px}
+.typebar{gap:4px;margin-bottom:5px}
+.tbtn{padding:3px 9px;font-size:12px}.tbtn b{font-size:12.5px}.tbtn span{font-size:11px}
+.kpis{gap:5px;margin-bottom:6px}.kpi{padding:4px 8px;border-radius:7px}.kpi .n{font-size:16px;line-height:1.15}.kpi .l{font-size:11px}
+.minis{gap:6px;margin-bottom:6px}.mini{padding:6px 8px;height:142px}.mini .ptitle{font-size:12.5px}.mini .phint{margin-bottom:3px;font-size:11px}
+.donut{width:86px;height:86px}.donut::after{inset:17px}.donut .mid b{font-size:14px}
+.vgrid{gap:6px;margin-bottom:6px}.vbars{height:120px}
+.fbar{padding:4px 8px;margin-bottom:5px;gap:5px;border-radius:8px}
+select,input[type=text],input[type=number],input[type=date],input[type=search],textarea,input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]){min-height:26px;padding:2px 7px;font-size:12px;border-radius:6px}
+.btn{min-height:26px;padding:2px 9px;font-size:12px;border-radius:6px}
+.btn.sm{min-height:23px;padding:1px 7px;font-size:11.5px}
+.stchips,.achips,.rolebar{gap:4px;margin:0 0 5px}.stchips button{padding:1px 8px;font-size:11.5px}
+.tablewrap{max-height:calc(100vh - 145px);min-height:420px}
+th,td{padding:4px 7px;font-size:12.5px}
+.pager{padding:4px 8px;font-size:12px}
+.layout .entry{top:100px!important;height:calc(100vh - 110px)!important}
 </style>
 </head>
 <body>

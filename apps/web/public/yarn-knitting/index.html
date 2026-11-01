@@ -453,8 +453,39 @@ tr.cap-row td{background:color-mix(in srgb,var(--orange-bg) 32%,transparent)}
 .rct td{vertical-align:top}.rct .combo select{min-width:96px}.emptyw select,.emptyw input{border-color:var(--warn)!important}
 
 .form label.span2{grid-column:span 2}@media (max-width:700px){:root:not(.desk) .form label.span2{grid-column:span 1}}
-.vgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-bottom:12px}
-
+.vgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:8px;margin-bottom:6px}
+/* v8 ultra-compact headers, filters & maximized main tables */
+header.top{padding:4px 12px;gap:10px;min-height:34px}
+.logo{font-size:15px}.logo small{font-size:11.5px;margin-left:6px}
+.topbtn,.topsel{padding:3px 9px;min-height:25px;font-size:12px;border-radius:6px}
+.themebtn span{padding:2px 8px;font-size:11.5px}
+.mainnav{padding:4px 12px;gap:5px;top:34px}
+.mainnav button{padding:4px 12px;font-size:13px;border-radius:7px}
+.subnav{padding:0 12px;top:67px}
+.subnav button{padding:5px 10px;font-size:12.5px}
+main{padding:6px 12px 6px}
+.kpis,.kc{gap:5px;margin-bottom:6px}
+.kpi,.kc .kpi{padding:4px 8px;border-radius:7px}
+.kpi .n,.kc .kpi .n{font-size:15.5px;line-height:1.15}
+.kpi .l,.kc .kpi .l{font-size:11px;line-height:1.15}
+.invtop{gap:8px;margin-bottom:6px}
+.ch2,.ch3,.ch4{gap:6px;margin-bottom:6px}
+.ch{padding:5px 8px;max-height:118px}
+.vb2{height:76px}.vb2b{height:60px}
+.fbar,.fbar.one{padding:4px 8px;margin-bottom:5px;gap:5px;border-radius:8px}
+select,input[type=text],input[type=number],input[type=date],input[type=search],textarea,input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]){min-height:26px;padding:2px 7px;font-size:12px;border-radius:6px}
+.btn{min-height:26px;padding:2px 9px;font-size:12px;border-radius:6px}
+.btn.sm{min-height:23px;padding:1px 7px;font-size:11.5px}
+.chips,.stchips,.typebar{gap:4px;margin:0 0 5px}
+.chipb,.stchips button{padding:2px 8px;font-size:11.5px}
+.tbtn{padding:3px 10px;font-size:12px}.tbtn b{font-size:12.5px}.tbtn span{font-size:11px}
+.moqtop{gap:8px;margin-bottom:6px}
+.moqr{padding:5px 8px!important}
+.moqr .moqtw{max-height:132px}
+.dt{margin-top:4px}
+.tablewrap{max-height:calc(100vh - 145px);min-height:420px}
+.dt .tablewrap{max-height:calc(100vh - 145px);min-height:420px}
+.pager{padding:4px 8px;font-size:12px}
 </style>
 </head>
 <body>
