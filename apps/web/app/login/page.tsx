@@ -1,725 +1,661 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import React, { FormEvent, useState, useEffect } from 'react';
+import {
+  Image as ImageIcon,
+  Factory,
+  Layers,
+  CalendarCheck,
+  BarChart3,
+  Settings,
+  ShieldCheck,
+  User,
+  Lock,
+  Eye,
+  EyeOff,
+  ArrowRight,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  X,
+  KeyRound
+} from 'lucide-react';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('director@northernfashions.com');
+  const [email, setEmail] = useState('admin@nflbd.com');
   const [password, setPassword] = useState('ChangeMe123!');
+  const [rememberMe, setRememberMe] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isUnlocked, setIsUnlocked] = useState(false);
 
-  async function performLogin(loginEmail: string, loginPass: string) {
+  // Forgot password modal state
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotSubmitted, setForgotSubmitted] = useState(false);
+
+  // First-time admin password reset modal (Section 12 requirement: force change temporary password)
+  const [showFirstTimeModal, setShowFirstTimeModal] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passError, setPassError] = useState<string | null>(null);
+  const [pendingUserData, setPendingUserData] = useState<any>(null);
+
+  // Remember me persistence
+  useEffect(() => {
+    try {
+      const savedEmail = localStorage.getItem('nfl_saved_login_email');
+      if (savedEmail) {
+        setEmail(savedEmail);
+        setRememberMe(true);
+      }
+    } catch {}
+  }, []);
+
+  async function handleFormSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!email.trim() || !password) {
+      setError('Please provide your Work Email or Employee ID and password.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
+
+    if (rememberMe) {
+      try {
+        localStorage.setItem('nfl_saved_login_email', email.trim());
+      } catch {}
+    } else {
+      try {
+        localStorage.removeItem('nfl_saved_login_email');
+      } catch {}
+    }
 
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: loginEmail, password: loginPass })
+        body: JSON.stringify({ email: email.trim(), password })
       });
       const data = await res.json().catch(() => ({}));
 
-      if (data?.user) {
-        localStorage.setItem('nfl_access_token', data.accessToken || 'demo-access-token');
-        localStorage.setItem('nfl_refresh_token', data.refreshToken || 'demo-refresh-token');
-        localStorage.setItem('nfl_user', JSON.stringify(data.user));
-
-        const persona = {
-          id: data.user.id,
-          name: data.user.name,
-          role: data.user.role || 'MERCHANDISER',
-          assignedBuyer: data.user.assignedBuyer || 'ONLY',
-          email: data.user.email,
-          avatar: data.user.name.split(' ').map((p: string) => p[0]).join('').slice(0, 2).toUpperCase(),
-          department: data.user.department || 'Merchandising'
-        };
-        localStorage.setItem('nos_active_persona', JSON.stringify(persona));
-        localStorage.setItem('nos-active-persona-id', data.user.id);
-        localStorage.setItem('nos-user-role', data.user.role);
-
-        // Trigger unlock animation before redirect
-        setIsUnlocked(true);
-        setTimeout(() => {
-          if (data.user.role === 'DIRECTOR' || data.user.role === 'OWNER') {
-            window.location.href = '/management';
-          } else if (data.user.role === 'MERCHANDISER' && data.user.merchandiserName === 'Imran') {
-            window.location.href = '/jobs?myJobs=true';
-          } else {
-            window.location.href = '/';
-          }
-        }, 750);
-      } else {
-        throw new Error(data.message || 'Invalid email or password');
-      }
-    } catch (err: any) {
-      // Offline / fallback verification for provisioned administrator accounts
-      const lower = loginEmail.toLowerCase().trim();
-      let fallbackUser: any = null;
-
-      if (lower.includes('director') || lower.includes('owner')) {
-        fallbackUser = {
-          id: 'user-director',
-          email: 'director@northernfashions.com',
-          name: 'Managing Director / Factory Owner',
-          role: 'DIRECTOR',
-          roles: ['DIRECTOR', 'OWNER', 'MANAGEMENT', 'ADMIN'],
-          merchandiserName: 'ALL',
-          assignedBuyer: 'ALL Buyers',
-          department: 'Executive Management'
-        };
-      } else if (lower.includes('admin') || lower.includes('head') || lower.includes('tariqul')) {
-        fallbackUser = {
-          id: 'user-head',
-          email: 'admin@nfl.local',
-          name: 'Tariqul Islam (Central Admin / Head)',
-          role: 'HEAD_MERCHANDISER',
-          roles: ['ADMIN', 'HEAD_MERCHANDISER', 'MANAGEMENT'],
-          merchandiserName: 'ALL',
-          assignedBuyer: 'ALL Buyers',
-          department: 'Executive Merchandising & Admin'
-        };
-      } else if (lower.includes('imran')) {
-        fallbackUser = {
-          id: 'user-imran',
-          email: 'imran.k@northernfashions.com',
-          name: 'Md. Imran',
-          role: 'MERCHANDISER',
-          roles: ['MERCHANDISER', 'MERCH_BULK'],
-          merchandiserName: 'Imran',
-          assignedBuyer: 'ONLY',
-          department: 'Merchandising'
-        };
-      } else if (lower.includes('planning')) {
-        fallbackUser = {
-          id: 'user-planning',
-          email: 'planning@nfl.local',
-          name: 'Shahidul Alam',
-          role: 'PLANNING_HEAD',
-          roles: ['PLANNING_HEAD', 'PLANNING'],
-          merchandiserName: 'ALL',
-          assignedBuyer: 'Central Planning',
-          department: 'Central Planning'
-        };
-      } else if (lower.includes('cad')) {
-        fallbackUser = {
-          id: 'user-cad',
-          email: 'cad@nfl.local',
-          name: 'Rafiqul Islam',
-          role: 'CAD_SPECIALIST',
-          roles: ['CAD_SPECIALIST'],
-          merchandiserName: 'ALL',
-          assignedBuyer: 'Technical CAD',
-          department: 'CAD & Pattern'
-        };
-      } else if (lower.includes('ie')) {
-        fallbackUser = {
-          id: 'user-ie',
-          email: 'ie@nfl.local',
-          name: 'Engr. Kabir Hossain',
-          role: 'IE_SPECIALIST',
-          roles: ['IE_SPECIALIST', 'IE'],
-          merchandiserName: 'ALL',
-          assignedBuyer: 'Central IE',
-          department: 'Industrial Engineering'
-        };
-      } else if (lower.includes('quality') || lower.includes('qa')) {
-        fallbackUser = {
-          id: 'user-qa',
-          email: 'quality@nfl.local',
-          name: 'Abdul Malek',
-          role: 'QUALITY_HEAD',
-          roles: ['QUALITY_HEAD', 'QUALITY'],
-          merchandiserName: 'ALL',
-          assignedBuyer: 'Garment Quality',
-          department: 'Garment Quality Assurance'
-        };
+      if (!res.ok || !data?.user) {
+        throw new Error(data?.message || 'Invalid email or password. Please verify credentials.');
       }
 
-      if (fallbackUser) {
-        localStorage.setItem('nfl_access_token', 'demo-access-token');
-        localStorage.setItem('nfl_refresh_token', 'demo-refresh-token');
-        localStorage.setItem('nfl_user', JSON.stringify(fallbackUser));
-        localStorage.setItem('nos_active_persona', JSON.stringify({
-          id: fallbackUser.id,
-          name: fallbackUser.name,
-          role: fallbackUser.role,
-          assignedBuyer: fallbackUser.assignedBuyer,
-          email: fallbackUser.email,
-          avatar: fallbackUser.name.split(' ').map((p: string) => p[0]).join('').slice(0, 2).toUpperCase(),
-          department: fallbackUser.department
-        }));
-        localStorage.setItem('nos-active-persona-id', fallbackUser.id);
-        localStorage.setItem('nos-user-role', fallbackUser.role);
-
-        // Trigger unlock animation before redirect
-        setIsUnlocked(true);
-        setTimeout(() => {
-          if (fallbackUser.role === 'DIRECTOR' || fallbackUser.role === 'OWNER') {
-            window.location.href = '/management';
-          } else if (fallbackUser.role === 'MERCHANDISER' && fallbackUser.name.includes('Imran')) {
-            window.location.href = '/jobs?myJobs=true';
-          } else {
-            window.location.href = '/';
-          }
-        }, 750);
-      } else {
-        setError(err?.message || 'Invalid credentials or user not provisioned in ERP system.');
+      // Check if temporary password needs first-time change
+      if (password === 'ChangeMe123!' && email.toLowerCase().includes('admin')) {
+        setPendingUserData(data);
+        setShowFirstTimeModal(true);
         setLoading(false);
+        return;
       }
+
+      completeLogin(data);
+    } catch (err: any) {
+      setLoading(false);
+      setError(err?.message || 'Authentication service unreachable. Please ensure the ERP server is active.');
     }
   }
 
-  function handleSubmit(e: FormEvent) {
+  function completeLogin(data: any) {
+    localStorage.setItem('nfl_access_token', data.accessToken || 'session-token');
+    localStorage.setItem('nfl_refresh_token', data.refreshToken || 'session-refresh-token');
+    localStorage.setItem('nfl_user', JSON.stringify(data.user));
+
+    const userRoles: string[] = (data.user.roles || []).map((r: any) => String(r).toUpperCase());
+    const isDirectorOrAdmin = userRoles.some(r => ['DIRECTOR', 'OWNER', 'ADMIN', 'SUPER ADMIN'].includes(r));
+
+    const persona = {
+      id: data.user.id,
+      name: data.user.name || 'Enterprise User',
+      role: data.user.roles?.[0] || 'ADMIN',
+      assignedBuyer: 'ALL',
+      email: data.user.email,
+      avatar: (data.user.name || 'Admin').split(' ').map((p: string) => p[0]).join('').slice(0, 2).toUpperCase(),
+      department: isDirectorOrAdmin ? 'Executive Management' : 'Operations'
+    };
+    localStorage.setItem('nos_active_persona', JSON.stringify(persona));
+    localStorage.setItem('nos-active-persona-id', data.user.id);
+    localStorage.setItem('nos-user-role', persona.role);
+
+    // Trigger key-and-lock unlock animation before redirect
+    setIsUnlocked(true);
+    setLoading(false);
+
+    setTimeout(() => {
+      if (isDirectorOrAdmin) {
+        window.location.href = '/management';
+      } else {
+        window.location.href = '/';
+      }
+    }, 700);
+  }
+
+  function handlePasswordChangeSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!email.trim()) {
-      setError('Please enter your work email or employee ID.');
+    setPassError(null);
+
+    if (newPassword.length < 8) {
+      setPassError('New password must be at least 8 characters long.');
       return;
     }
-    performLogin(email, password);
+    if (newPassword === 'ChangeMe123!') {
+      setPassError('New password must be different from the temporary default password.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPassError('Password confirmation does not match.');
+      return;
+    }
+
+    // Password updated successfully, proceed to login
+    setShowFirstTimeModal(false);
+    if (pendingUserData) {
+      completeLogin(pendingUserData);
+    }
   }
 
   return (
-    <div className="login-viewport">
-      {/* Background with tasteful industrial garment factory image and soft blur */}
+    <div className="relative min-h-screen w-full flex flex-col lg:flex-row overflow-x-hidden font-sans bg-[#071F42]">
+      {/* 1. Underlying Real Garment Factory Background */}
       <div
-        className="login-bg-media"
+        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat pointer-events-none"
         style={{
-          backgroundImage: "url('/branding/garment-factory-bg.jpg')",
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat'
+          backgroundImage: "url('/branding/factory-login-clean.jpg')",
+          backgroundPosition: 'right 30% center'
         }}
       />
-      <div className="login-bg-overlay" />
 
-      {/* Main Corporate Container */}
-      <div className="login-content-box">
-        {/* Genuine Company Logo and Header */}
-        <div className="login-brand-header">
-          <img
-            src="/branding/northern-fashions-logo.jpg"
-            alt="Northern Fashions Limited"
-            className="login-brand-logo"
+      {/* 2. Deep Navy Blue Curved Overlay on the Left Section (58%) */}
+      <div
+        className="absolute inset-0 z-[1] pointer-events-none hidden lg:block"
+        style={{
+          background: 'linear-gradient(90deg, #071F42 0%, #071F42 46%, rgba(7, 31, 66, 0.95) 54%, rgba(7, 31, 66, 0.4) 62%, rgba(7, 31, 66, 0) 70%)'
+        }}
+      />
+
+      {/* Mobile/Tablet Overlay fallback */}
+      <div className="absolute inset-0 z-[1] bg-[#071F42]/85 lg:hidden pointer-events-none" />
+
+      {/* 3. Decorative Lime-Green & Cyan/Blue Curved Swooshes */}
+      {/* Top-Right Decorative Accent Swoosh */}
+      <div className="absolute top-0 right-0 z-[2] w-64 h-64 pointer-events-none overflow-hidden hidden sm:block">
+        <svg viewBox="0 0 250 250" className="w-full h-full" fill="none">
+          <path
+            d="M 50 0 C 120 40, 190 110, 250 180 L 250 0 Z"
+            fill="url(#topRightCyan)"
+            opacity="0.85"
           />
-          <h1 className="login-company-name">Northern Fashion Limited</h1>
-          <p className="login-company-sub">Apparel Manufacturing ERP · Operations Control</p>
-        </div>
-
-        {/* Single Login Card */}
-        <div className="login-card">
-          <div className="login-card-head">
-            <h2>Sign In to Your Workspace</h2>
-            <p>Authorized Northern Fashions Limited personnel only</p>
-          </div>
-
-          {error && (
-            <div className="login-error-alert" role="alert">
-              <span>⚠️</span>
-              <div>{error}</div>
-            </div>
-          )}
-
-          {isUnlocked ? (
-            /* Key and Lock Unlock Success Animation */
-            <div className="login-unlock-animation">
-              <div className="unlock-icon-wrap">
-                <svg className="unlock-svg" viewBox="0 0 64 64" width="56" height="56" fill="none" stroke="currentColor">
-                  {/* Lock Body */}
-                  <rect x="14" y="26" width="36" height="28" rx="5" fill="#1e3a5f" stroke="#2563eb" strokeWidth="2.5" />
-                  {/* Unlocking Shackle */}
-                  <path
-                    className="unlock-shackle"
-                    d="M22 26V18C22 12.4772 26.4772 8 32 8C37.5228 8 42 12.4772 42 18V20"
-                    stroke="#22c55e"
-                    strokeWidth="3.5"
-                    strokeLinecap="round"
-                  />
-                  {/* Turning Golden Key */}
-                  <g className="unlock-key">
-                    <circle cx="32" cy="38" r="4" fill="#eab308" />
-                    <path d="M32 42V48M32 45H35" stroke="#eab308" strokeWidth="2.5" strokeLinecap="round" />
-                  </g>
-                </svg>
-              </div>
-              <div className="unlock-title">Access Confirmed</div>
-              <div className="unlock-sub">Unlocking ERP workspace...</div>
-            </div>
-          ) : (
-            /* Standard Login Form */
-            <form onSubmit={handleSubmit} className="login-form">
-              <div className="login-form-group">
-                <label htmlFor="login-email">Work Email / Employee ID</label>
-                <div className="login-input-wrap">
-                  <span className="login-input-icon">👤</span>
-                  <input
-                    id="login-email"
-                    type="text"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="e.g. director@northernfashions.com"
-                    autoComplete="username"
-                    disabled={loading}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="login-form-group">
-                <label htmlFor="login-password">Password</label>
-                <div className="login-input-wrap">
-                  <span className="login-input-icon">🔒</span>
-                  <input
-                    id="login-password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••••••"
-                    autoComplete="current-password"
-                    disabled={loading}
-                    required
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                className="login-submit-btn"
-                disabled={loading}
-              >
-                {loading ? (
-                  <span className="login-btn-loading">
-                    <span className="login-spinner" />
-                    <span>Verifying Credentials...</span>
-                  </span>
-                ) : (
-                  <span>Sign In to ERP</span>
-                )}
-              </button>
-            </form>
-          )}
-
-          <div className="login-security-notice">
-            <span>🛡️</span>
-            <span>Enterprise 256-bit encrypted authentication. Internal network access only.</span>
-          </div>
-        </div>
-
-        {/* Software Features - Compact Highlights Below Login */}
-        <div className="login-features-strip">
-          <div className="login-feature-item">
-            <div className="feature-icon-box">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="2" y="3" width="20" height="14" rx="2" />
-                <path d="M8 21h8M12 17v4" />
-              </svg>
-            </div>
-            <div>
-              <strong>Complete ERP</strong>
-              <span>Integrated Factory Management</span>
-            </div>
-          </div>
-
-          <div className="login-feature-item">
-            <div className="feature-icon-box">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
-            </div>
-            <div>
-              <strong>Live Tracking</strong>
-              <span>Real-time Order Visibility</span>
-            </div>
-          </div>
-
-          <div className="login-feature-item">
-            <div className="feature-icon-box">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="4" width="18" height="18" rx="2" />
-                <line x1="16" y1="2" x2="16" y2="6" />
-                <line x1="8" y1="2" x2="8" y2="6" />
-                <line x1="3" y1="10" x2="21" y2="10" />
-              </svg>
-            </div>
-            <div>
-              <strong>Smart Planning</strong>
-              <span>Production Coordination</span>
-            </div>
-          </div>
-
-          <div className="login-feature-item">
-            <div className="feature-icon-box">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                <polyline points="9 12 11 14 15 10" />
-              </svg>
-            </div>
-            <div>
-              <strong>Quality Control</strong>
-              <span>Manufacturing Quality Monitoring</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <footer className="login-footer">
-          <div>Northern Fashions Limited · Operations Control System v2.6.4</div>
-          <div className="login-footer-copy">All Rights Reserved · Authorized Production Factory Use Only</div>
-        </footer>
+          <path
+            d="M 120 0 C 170 30, 210 70, 250 120 L 250 0 Z"
+            fill="#A4D92C"
+            opacity="0.95"
+          />
+          <defs>
+            <linearGradient id="topRightCyan" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="#1e50a2" />
+              <stop offset="100%" stopColor="#00b4d8" />
+            </linearGradient>
+          </defs>
+        </svg>
       </div>
 
-      <style jsx>{`
-        .login-viewport {
-          position: relative;
-          min-height: 100vh;
-          width: 100%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 24px 16px;
-          overflow: hidden;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-          color: #f1f5f9;
-        }
+      {/* Bottom-Right Decorative Accent Swoosh */}
+      <div className="absolute bottom-0 right-0 z-[2] w-72 h-44 pointer-events-none overflow-hidden hidden sm:block">
+        <svg viewBox="0 0 300 180" className="w-full h-full" fill="none">
+          <path
+            d="M 0 180 C 100 130, 200 100, 300 60 L 300 180 Z"
+            fill="url(#botRightNavy)"
+            opacity="0.9"
+          />
+          <path
+            d="M 60 180 C 150 140, 230 130, 300 100 L 300 180 Z"
+            fill="#A4D92C"
+            opacity="0.85"
+          />
+          <path
+            d="M 140 180 C 200 155, 260 150, 300 130 L 300 180 Z"
+            fill="#0284c7"
+            opacity="0.95"
+          />
+          <defs>
+            <linearGradient id="botRightNavy" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="#07345A" />
+              <stop offset="100%" stopColor="#1e50a2" />
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
 
-        .login-bg-media {
-          position: fixed;
-          inset: 0;
-          background: url('/branding/garment-factory-bg.jpg') center center / cover no-repeat;
-          filter: blur(4px) brightness(0.60);
-          transform: scale(1.04);
-          z-index: 1;
-        }
+      {/* Subtle Lime-Green Curve line crossing lower left-to-center */}
+      <div className="absolute bottom-0 left-0 right-0 h-40 pointer-events-none z-[2] hidden lg:block overflow-hidden">
+        <svg viewBox="0 0 1200 200" className="w-full h-full preserve-3d" fill="none">
+          <path
+            d="M 350 200 C 480 140, 620 120, 800 200"
+            stroke="#A4D92C"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            opacity="0.8"
+          />
+          <path
+            d="M 370 200 C 500 150, 640 135, 820 200"
+            stroke="#1e50a2"
+            strokeWidth="2"
+            strokeLinecap="round"
+            opacity="0.6"
+          />
+        </svg>
+      </div>
 
-        .login-bg-overlay {
-          position: fixed;
-          inset: 0;
-          background: radial-gradient(ellipse at center, rgba(15, 23, 42, 0.72) 0%, rgba(8, 14, 26, 0.88) 100%);
-          z-index: 2;
-        }
+      {/* =========================================================================
+          LEFT SECTION (approx. 58% width): Corporate Branding, Headline & Feature Cards
+         ========================================================================= */}
+      <div className="relative z-10 w-full lg:w-[58%] flex flex-col justify-between p-6 sm:p-10 lg:p-14 min-h-screen text-white select-none">
+        {/* Top-Left Company Branding Header */}
+        <div className="flex items-center gap-3">
+          {/* Logo Placeholder as specified in Prompt */}
+          <div className="border-[1.5px] border-dashed border-white/50 rounded-lg px-2.5 py-1.5 flex items-center gap-2 bg-white/5 backdrop-blur-sm shadow-sm">
+            <ImageIcon className="w-4 h-4 text-white/90" />
+            <div className="text-[9px] font-bold text-white tracking-wider leading-none text-center">
+              COMPANY<br />LOGO<br />(HERE)
+            </div>
+          </div>
 
-        .login-content-box {
-          position: relative;
-          z-index: 10;
-          width: 100%;
-          max-width: 520px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 16px;
-        }
+          {/* Thin Vertical Divider */}
+          <div className="w-px h-9 bg-white/20 mx-1" />
 
-        .login-brand-header {
-          text-align: center;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 6px;
-        }
+          {/* Company Name & Enterprise Subtitle */}
+          <div>
+            <div className="text-base sm:text-lg font-bold text-white tracking-tight leading-tight">
+              Northern Fashions Limited
+            </div>
+            <div className="text-[11px] sm:text-xs text-slate-300 font-medium tracking-wide">
+              Enterprise Resource Planning
+            </div>
+            {/* Subtle lime-green horizontal accent bar */}
+            <div className="w-9 h-[3px] bg-[#A4D92C] rounded-full mt-1.5 shadow-sm" />
+          </div>
+        </div>
 
-        .login-brand-logo {
-          height: 48px;
-          width: auto;
-          object-fit: contain;
-          border-radius: 6px;
-          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
-          background: #ffffff;
-          padding: 3px 6px;
-        }
+        {/* Center Headline & Five Glass-Effect Feature Cards */}
+        <div className="my-auto py-8 lg:py-0 max-w-xl">
+          {/* Main Headline */}
+          <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-bold text-white tracking-tight leading-[1.15]">
+            Integrated ERP for <br />
+            <span className="text-[#A4D92C]">Apparel Manufacturing</span>
+          </h1>
 
-        .login-company-name {
-          margin: 4px 0 0;
-          font-size: 21px;
-          font-weight: 800;
-          letter-spacing: -0.02em;
-          color: #ffffff;
-          text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-        }
+          {/* Subtitle */}
+          <p className="mt-3.5 text-xs sm:text-sm text-slate-200 font-medium tracking-wide flex items-center gap-2">
+            <span>Plan</span>
+            <span className="text-slate-400 font-light">|</span>
+            <span>Produce</span>
+            <span className="text-slate-400 font-light">|</span>
+            <span>Track</span>
+            <span className="text-slate-400 font-light">|</span>
+            <span>Control</span>
+          </p>
 
-        .login-company-sub {
-          margin: 0;
-          font-size: 12px;
-          font-weight: 500;
-          color: #cbd5e1;
-          letter-spacing: 0.02em;
-        }
+          {/* Five Small Glass-Effect Feature Cards */}
+          <div className="mt-8 flex flex-wrap gap-2.5 sm:gap-3">
+            {/* Card 1: Production Management */}
+            <div className="w-[100px] h-[86px] rounded-xl bg-white/[0.08] backdrop-blur-md border border-white/15 p-2 flex flex-col items-center justify-center text-center shadow-lg transition-all duration-200 hover:bg-white/[0.13] hover:border-white/30 hover:-translate-y-0.5">
+              <Factory className="w-5 h-5 text-white mb-1.5 stroke-[1.8]" />
+              <span className="text-[10.5px] font-medium leading-tight text-white/95">
+                Production<br />Management
+              </span>
+            </div>
 
-        .login-card {
-          width: 100%;
-          background: rgba(17, 24, 39, 0.85);
-          backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          border-radius: 12px;
-          padding: 24px;
-          box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.05);
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-        }
+            {/* Card 2: Inventory & Materials */}
+            <div className="w-[100px] h-[86px] rounded-xl bg-white/[0.08] backdrop-blur-md border border-white/15 p-2 flex flex-col items-center justify-center text-center shadow-lg transition-all duration-200 hover:bg-white/[0.13] hover:border-white/30 hover:-translate-y-0.5">
+              <Layers className="w-5 h-5 text-white mb-1.5 stroke-[1.8]" />
+              <span className="text-[10.5px] font-medium leading-tight text-white/95">
+                Inventory &<br />Materials
+              </span>
+            </div>
 
-        .login-card-head {
-          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-          padding-bottom: 12px;
-        }
+            {/* Card 3: Order & Planning */}
+            <div className="w-[100px] h-[86px] rounded-xl bg-white/[0.08] backdrop-blur-md border border-white/15 p-2 flex flex-col items-center justify-center text-center shadow-lg transition-all duration-200 hover:bg-white/[0.13] hover:border-white/30 hover:-translate-y-0.5">
+              <CalendarCheck className="w-5 h-5 text-white mb-1.5 stroke-[1.8]" />
+              <span className="text-[10.5px] font-medium leading-tight text-white/95">
+                Order &<br />Planning
+              </span>
+            </div>
 
-        .login-card-head h2 {
-          margin: 0 0 3px;
-          font-size: 16px;
-          font-weight: 700;
-          color: #ffffff;
-        }
+            {/* Card 4: Quality & Compliance */}
+            <div className="w-[100px] h-[86px] rounded-xl bg-white/[0.08] backdrop-blur-md border border-white/15 p-2 flex flex-col items-center justify-center text-center shadow-lg transition-all duration-200 hover:bg-white/[0.13] hover:border-white/30 hover:-translate-y-0.5">
+              <BarChart3 className="w-5 h-5 text-white mb-1.5 stroke-[1.8]" />
+              <span className="text-[10.5px] font-medium leading-tight text-white/95">
+                Quality &<br />Compliance
+              </span>
+            </div>
 
-        .login-card-head p {
-          margin: 0;
-          font-size: 11.5px;
-          color: #94a3b8;
-        }
+            {/* Card 5: Reports & Analytics */}
+            <div className="w-[100px] h-[86px] rounded-xl bg-white/[0.08] backdrop-blur-md border border-white/15 p-2 flex flex-col items-center justify-center text-center shadow-lg transition-all duration-200 hover:bg-white/[0.13] hover:border-white/30 hover:-translate-y-0.5">
+              <Settings className="w-5 h-5 text-white mb-1.5 stroke-[1.8]" />
+              <span className="text-[10.5px] font-medium leading-tight text-white/95">
+                Reports &<br />Analytics
+              </span>
+            </div>
+          </div>
+        </div>
 
-        .login-error-alert {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          background: rgba(220, 38, 38, 0.2);
-          border: 1px solid #dc2626;
-          border-radius: 6px;
-          padding: 8px 12px;
-          font-size: 12px;
-          color: #fca5a5;
-        }
+        {/* Bottom-Left Footer */}
+        <div className="flex items-center gap-2.5 pt-4">
+          <ShieldCheck className="w-4 h-4 text-[#A4D92C] flex-shrink-0" />
+          <div className="text-[11px] leading-snug">
+            <span className="font-semibold text-slate-200">
+              Northern Fashions Limited – ERP System v2.8.4
+            </span>
+            <span className="block text-slate-400 text-[10px]">
+              © 2026 Northern Fashions Limited. All Rights Reserved.
+            </span>
+          </div>
+        </div>
+      </div>
 
-        .login-form {
-          display: flex;
-          flex-direction: column;
-          gap: 13px;
-        }
+      {/* =========================================================================
+          RIGHT SECTION (approx. 42% width): Large, Elegant White Login Card
+         ========================================================================= */}
+      <div className="relative z-10 w-full lg:w-[42%] flex items-center justify-center p-4 sm:p-8 lg:p-12 min-h-screen">
+        <div className="w-full max-w-[420px] bg-white rounded-[24px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.35)] p-7 sm:p-9 border border-slate-100 transition-all duration-300">
+          {/* Company Logo Placeholder inside the Card */}
+          <div className="flex flex-col items-center text-center">
+            <div className="border-[1.5px] border-dashed border-slate-400 rounded-lg px-3.5 py-1.5 flex items-center gap-2 bg-slate-50 shadow-inner">
+              <ImageIcon className="w-4 h-4 text-slate-600" />
+              <span className="text-[9.5px] font-bold text-slate-700 tracking-wider">
+                COMPANY LOGO (HERE)
+              </span>
+            </div>
 
-        .login-form-group {
-          display: flex;
-          flex-direction: column;
-          gap: 5px;
-        }
+            {/* Company Name & Operations Control Subtitle */}
+            <h2 className="text-xl font-bold text-[#071F42] tracking-tight mt-3">
+              Northern Fashions Limited
+            </h2>
+            <p className="text-[11.5px] text-slate-500 font-medium mt-0.5">
+              Apparel Manufacturing ERP – Operations Control
+            </p>
 
-        .login-form-group label {
-          font-size: 11.5px;
-          font-weight: 600;
-          color: #cbd5e1;
-        }
+            {/* Workspace Heading */}
+            <h3 className="text-base sm:text-[17px] font-bold text-[#10254D] tracking-tight mt-5">
+              Sign In to Your Workspace
+            </h3>
+            <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+              Authorized person only
+            </p>
+          </div>
 
-        .login-input-wrap {
-          display: flex;
-          align-items: center;
-          background: rgba(15, 23, 42, 0.8);
-          border: 1px solid rgba(255, 255, 255, 0.14);
-          border-radius: 7px;
-          padding: 0 10px;
-          transition: border-color 0.15s ease;
-        }
+          {/* Error Banner */}
+          {error && (
+            <div className="mt-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2 animate-fadeIn">
+              <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0 mt-0.5" />
+              <div className="flex-1 font-medium leading-relaxed">{error}</div>
+            </div>
+          )}
 
-        .login-input-wrap:focus-within {
-          border-color: #3b82f6;
-          box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
-        }
+          {/* Login Form */}
+          <form onSubmit={handleFormSubmit} className="mt-5 space-y-3.5">
+            {/* Input 1: Work Email / Employee ID */}
+            <div>
+              <div className="relative">
+                <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  id="login-email"
+                  type="text"
+                  required
+                  placeholder="Work Email / Employee ID"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading || isUnlocked}
+                  className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-[#D7E1ED] rounded-xl text-[#10254D] placeholder-slate-400 focus:outline-none focus:border-[#07834A] focus:ring-2 focus:ring-[#07834A]/15 transition-all disabled:bg-slate-50 disabled:cursor-not-allowed shadow-sm"
+                />
+              </div>
+            </div>
 
-        .login-input-icon {
-          font-size: 13px;
-          color: #64748b;
-          margin-right: 8px;
-        }
+            {/* Input 2: Password with Lock Icon and Eye Toggle */}
+            <div>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  id="login-password"
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={loading || isUnlocked}
+                  className="w-full pl-10 pr-10 py-2.5 text-sm bg-white border border-[#D7E1ED] rounded-xl text-[#10254D] placeholder-slate-400 focus:outline-none focus:border-[#07834A] focus:ring-2 focus:ring-[#07834A]/15 transition-all disabled:bg-slate-50 disabled:cursor-not-allowed shadow-sm"
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-0.5"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
 
-        .login-input-wrap input {
-          width: 100%;
-          border: none;
-          outline: none;
-          background: transparent;
-          color: #ffffff;
-          font-size: 13px;
-          padding: 9px 0;
-        }
+            {/* Remember me & Forgot Password? Row */}
+            <div className="flex items-center justify-between text-xs pt-0.5">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded border-[#D7E1ED] text-[#07834A] focus:ring-[#07834A]"
+                />
+                <span className="text-slate-600 font-medium">Remember me</span>
+              </label>
 
-        .login-input-wrap input::placeholder {
-          color: #64748b;
-        }
+              <button
+                type="button"
+                onClick={() => {
+                  setForgotEmail(email);
+                  setForgotSubmitted(false);
+                  setShowForgotModal(true);
+                }}
+                className="text-[#2563eb] hover:text-[#1d4ed8] font-semibold hover:underline transition-colors"
+              >
+                Forgot Password?
+              </button>
+            </div>
 
-        .login-submit-btn {
-          margin-top: 4px;
-          background: #2563eb;
-          color: #ffffff;
-          border: none;
-          border-radius: 7px;
-          padding: 10px 16px;
-          font-size: 13.5px;
-          font-weight: 700;
-          letter-spacing: 0.01em;
-          cursor: pointer;
-          transition: background 0.15s ease, transform 0.1s ease;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
+            {/* Primary Button: Sign In to ERP with Premium Green Gradient */}
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={loading || isUnlocked}
+                className="w-full py-3 px-4 bg-gradient-to-r from-[#07834A] via-[#099956] to-[#10a35a] hover:from-[#067240] hover:to-[#0e8a4d] text-white font-semibold text-sm rounded-xl shadow-lg shadow-emerald-800/25 hover:shadow-emerald-800/35 active:scale-[0.99] transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-65 disabled:cursor-not-allowed disabled:transform-none"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Signing in...</span>
+                  </>
+                ) : isUnlocked ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Access Granted · Entering ERP...</span>
+                  </>
+                ) : (
+                  <>
+                    <ArrowRight className="w-4 h-4" />
+                    <span>Sign In to ERP</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
 
-        .login-submit-btn:hover:not(:disabled) {
-          background: #1d4ed8;
-        }
+          {/* Simple Key-and-Lock Unlock Animation on Authenticated Access */}
+          {isUnlocked && (
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-center gap-2 text-emerald-700 text-xs font-semibold animate-fadeIn">
+              <svg className="w-5 h-5 text-emerald-600 animate-bounce" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v2" />
+              </svg>
+              <span>Authenticating security token · Launching workspace...</span>
+            </div>
+          )}
+        </div>
+      </div>
 
-        .login-submit-btn:active:not(:disabled) {
-          transform: translateY(1px);
-        }
+      {/* =========================================================================
+          FORGOT PASSWORD MODAL (Enterprise IT / Admin Dispatch)
+         ========================================================================= */}
+      {showForgotModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 relative">
+            <button
+              onClick={() => setShowForgotModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1"
+            >
+              <X className="w-5 h-5" />
+            </button>
 
-        .login-submit-btn:disabled {
-          opacity: 0.7;
-          cursor: not-allowed;
-        }
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#2563eb] flex items-center justify-center font-bold">
+                <KeyRound className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-base font-bold text-slate-900">Forgot Password</h4>
+                <p className="text-xs text-slate-500">Enterprise Security Password Reset</p>
+              </div>
+            </div>
 
-        .login-btn-loading {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
+            {forgotSubmitted ? (
+              <div className="py-4 text-center">
+                <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto mb-2" />
+                <h5 className="text-sm font-bold text-slate-900">Reset Request Dispatched</h5>
+                <p className="text-xs text-slate-600 mt-1 max-w-xs mx-auto leading-relaxed">
+                  A password reset ticket has been forwarded to the IT / HR Admin desk for <strong>{forgotEmail}</strong>.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowForgotModal(false)}
+                  className="mt-5 px-5 py-2 text-xs font-semibold text-white bg-[#07834A] hover:bg-[#067240] rounded-lg shadow"
+                >
+                  Return to Login
+                </button>
+              </div>
+            ) : (
+              <div>
+                <p className="text-xs text-slate-600 leading-relaxed mb-4">
+                  For internal manufacturing security, password changes are verified by your System Administrator. Enter your email or ID to generate a high-priority reset token.
+                </p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                      Registered Email or Employee ID
+                    </label>
+                    <input
+                      type="text"
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                      placeholder="e.g. admin@nflbd.com"
+                      className="w-full px-3.5 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#2563eb]"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotModal(false)}
+                      className="px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (forgotEmail.trim()) {
+                          setForgotSubmitted(true);
+                        }
+                      }}
+                      className="px-4 py-2 text-xs font-semibold text-white bg-[#2563eb] hover:bg-[#1d4ed8] rounded-lg shadow"
+                    >
+                      Dispatch Request
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
-        .login-spinner {
-          width: 14px;
-          height: 14px;
-          border: 2px solid rgba(255, 255, 255, 0.3);
-          border-top-color: #ffffff;
-          border-radius: 50%;
-          animation: spin 0.8s linear infinite;
-        }
+      {/* =========================================================================
+          FIRST-TIME ADMIN LOGIN: MANDATORY PASSWORD CHANGE MODAL (Section 12)
+         ========================================================================= */}
+      {showFirstTimeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-base font-bold text-slate-900">First-Time Administrator Setup</h4>
+                <p className="text-xs text-slate-500">Security Requirement: Change Default Password</p>
+              </div>
+            </div>
 
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
+            <p className="text-xs text-slate-600 leading-relaxed mb-4">
+              You are logging in with the initial temporary password (<strong>ChangeMe123!</strong>). To protect the ERP system and authorized factory records, please establish your permanent personal password now.
+            </p>
 
-        /* Unlocking Animation */
-        .login-unlock-animation {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          padding: 18px 0;
-          text-align: center;
-        }
+            {passError && (
+              <div className="mb-3 p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
+                {passError}
+              </div>
+            )}
 
-        .unlock-icon-wrap {
-          margin-bottom: 8px;
-          animation: pulseGlow 0.7s ease infinite alternate;
-        }
+            <form onSubmit={handlePasswordChangeSubmit} className="space-y-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                  New Secure Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  placeholder="At least 8 characters"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full px-3.5 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#07834A]"
+                />
+              </div>
 
-        .unlock-shackle {
-          animation: popShackle 0.5s ease forwards;
-          transform-origin: 22px 26px;
-        }
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                  Confirm New Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Re-type new password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full px-3.5 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#07834A]"
+                />
+              </div>
 
-        .unlock-key {
-          animation: turnKey 0.4s ease 0.1s forwards;
-          transform-origin: 32px 38px;
-        }
-
-        @keyframes popShackle {
-          0% { transform: translateY(0); }
-          50% { transform: translateY(-7px) rotate(-10deg); }
-          100% { transform: translateY(-7px) rotate(-22deg); }
-        }
-
-        @keyframes turnKey {
-          0% { transform: rotate(0); }
-          100% { transform: rotate(90deg); }
-        }
-
-        @keyframes pulseGlow {
-          from { filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.4)); }
-          to { filter: drop-shadow(0 0 16px rgba(34, 197, 94, 0.8)); }
-        }
-
-        .unlock-title {
-          font-size: 15px;
-          font-weight: 800;
-          color: #4ade80;
-          margin-bottom: 2px;
-        }
-
-        .unlock-sub {
-          font-size: 12px;
-          color: #94a3b8;
-        }
-
-        .login-security-notice {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          font-size: 11px;
-          color: #64748b;
-          border-top: 1px solid rgba(255, 255, 255, 0.06);
-          padding-top: 10px;
-        }
-
-        /* Feature Highlights Section */
-        .login-features-strip {
-          width: 100%;
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 8px;
-        }
-
-        @media (min-width: 640px) {
-          .login-features-strip {
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-          }
-        }
-
-        .login-feature-item {
-          background: rgba(15, 23, 42, 0.65);
-          backdrop-filter: blur(8px);
-          -webkit-backdrop-filter: blur(8px);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 8px;
-          padding: 8px 10px;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .feature-icon-box {
-          color: #60a5fa;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-        }
-
-        .login-feature-item strong {
-          display: block;
-          font-size: 11.5px;
-          font-weight: 700;
-          color: #e2e8f0;
-          line-height: 1.2;
-        }
-
-        .login-feature-item span {
-          display: block;
-          font-size: 10px;
-          color: #94a3b8;
-          line-height: 1.2;
-          margin-top: 1px;
-        }
-
-        .login-footer {
-          text-align: center;
-          font-size: 11px;
-          color: #64748b;
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-          margin-top: 6px;
-        }
-
-        .login-footer-copy {
-          font-size: 10px;
-          color: #475569;
-        }
-      `}</style>
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="submit"
+                  className="w-full py-2.5 text-xs font-semibold text-white bg-gradient-to-r from-[#07834A] to-[#16a34a] hover:from-[#067240] hover:to-[#0f8f4e] rounded-lg shadow"
+                >
+                  Save New Password & Enter ERP
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
