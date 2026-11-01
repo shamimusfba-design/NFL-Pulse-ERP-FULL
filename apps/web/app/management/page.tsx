@@ -57,7 +57,7 @@ function money(num: number | null | undefined, decimals = 2): string {
   return `$${num.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 }
 
-// Compact KPI Card
+// Enhanced Readable KPI Card (Target 28px value, 13px label, min-height 88px)
 function CompactKpiCard({
   label,
   value,
@@ -92,40 +92,40 @@ function CompactKpiCard({
       style={{
         background: COLORS.cardBg,
         border: `1px solid ${COLORS.border}`,
-        borderLeft: `3px solid ${color}`,
-        borderRadius: '5px',
-        padding: '6px 8px',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+        borderLeft: `4px solid ${color}`,
+        borderRadius: '8px',
+        padding: '10px 14px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
         cursor: onClick ? 'pointer' : 'default',
         transition: 'transform 0.12s, box-shadow 0.12s',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
-        minHeight: '62px'
+        minHeight: '88px'
       }}
-      onMouseEnter={e => { if (onClick) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 3px 6px rgba(0,0,0,0.05)'; } }}
-      onMouseLeave={e => { if (onClick) { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.02)'; } }}
+      onMouseEnter={e => { if (onClick) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 10px rgba(0,0,0,0.06)'; } }}
+      onMouseLeave={e => { if (onClick) { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.03)'; } }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '4px' }}>
-        <span style={{ fontSize: '9.5px', fontWeight: 700, color: COLORS.grey, textTransform: 'uppercase', letterSpacing: '0.02em', lineHeight: 1.1 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
+        <span style={{ fontSize: '13px', fontWeight: 750, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.03em', lineHeight: 1.2 }}>
           {label}
         </span>
         {trend && (
-          <span style={{ fontSize: '8.5px', fontWeight: 700, padding: '1px 4px', borderRadius: '3px', background: trendBg, color: trendColor, whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: '11.5px', fontWeight: 750, padding: '2px 7px', borderRadius: '4px', background: trendBg, color: trendColor, whiteSpace: 'nowrap' }}>
             {trend}
           </span>
         )}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '3px', marginTop: '1px' }}>
-        <span style={{ fontSize: '15px', fontWeight: 800, color: COLORS.navy, letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '5px', marginTop: '4px' }}>
+        <span style={{ fontSize: '28px', fontWeight: 900, color: COLORS.navy, letterSpacing: '-0.03em', lineHeight: 1.1 }}>
           {typeof value === 'number' ? fmt(value) : value}
         </span>
-        {unit && <span style={{ fontSize: '9.5px', fontWeight: 600, color: COLORS.grey }}>{unit}</span>}
+        {unit && <span style={{ fontSize: '13px', fontWeight: 700, color: '#64748B' }}>{unit}</span>}
       </div>
 
       {subtext && (
-        <div style={{ fontSize: '9px', color: COLORS.grey, marginTop: '1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div style={{ fontSize: '12px', color: '#64748B', marginTop: '3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {subtext}
         </div>
       )}
@@ -133,7 +133,7 @@ function CompactKpiCard({
   );
 }
 
-// Compact Section Header
+// Readable Section Header
 function CompactSectionHeader({
   id,
   number,
@@ -153,20 +153,20 @@ function CompactSectionHeader({
       justifyContent: 'space-between',
       alignItems: 'center',
       flexWrap: 'wrap',
-      gap: '6px',
-      marginTop: '14px',
-      marginBottom: '6px',
-      paddingBottom: '3px',
-      borderBottom: `1.5px solid ${COLORS.navy}`
+      gap: '8px',
+      marginTop: '18px',
+      marginBottom: '10px',
+      paddingBottom: '6px',
+      borderBottom: `2px solid ${COLORS.navy}`
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-        <span style={{ fontSize: '9px', fontWeight: 800, color: COLORS.blue, background: COLORS.blueLight, padding: '1px 5px', borderRadius: '3px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <span style={{ fontSize: '12px', fontWeight: 800, color: COLORS.blue, background: COLORS.blueLight, padding: '2px 8px', borderRadius: '4px' }}>
           {number}
         </span>
-        <h2 style={{ fontSize: '12.5px', fontWeight: 800, color: COLORS.navy, margin: 0 }}>
+        <h2 style={{ fontSize: '16px', fontWeight: 800, color: COLORS.navy, margin: 0 }}>
           {title}
         </h2>
-        {subtitle && <span style={{ fontSize: '10px', color: COLORS.grey }}>· {subtitle}</span>}
+        {subtitle && <span style={{ fontSize: '13px', color: '#64748B' }}>· {subtitle}</span>}
       </div>
       {rightElement}
     </div>
@@ -742,7 +742,7 @@ export default function ManagementDashboardPage() {
                     setCustomStart('');
                     setCustomEnd('');
                   }}
-                  style={{ fontSize: '9.5px', background: COLORS.redLight, color: COLORS.red, border: '1px solid #FECACA', borderRadius: '3px', padding: '2px 5px', cursor: 'pointer', fontWeight: 700 }}
+                  style={{ fontSize: '12px', background: COLORS.redLight, color: COLORS.red, border: '1px solid #FECACA', borderRadius: '4px', padding: '4px 10px', cursor: 'pointer', fontWeight: 750 }}
                 >
                   Reset Filter
                 </button>
@@ -754,7 +754,7 @@ export default function ManagementDashboardPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
             {/* 1. Month / Year Filter */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-              <span style={{ fontSize: '9.5px', fontWeight: 700, color: COLORS.grey, textTransform: 'uppercase' }}>Month:</span>
+              <span style={{ fontSize: '13px', fontWeight: 750, color: '#475569', textTransform: 'uppercase' }}>Month:</span>
               <select
                 value={isCustomDate ? 'CUSTOM' : selectedMonth}
                 onChange={e => {
@@ -765,7 +765,7 @@ export default function ManagementDashboardPage() {
                     setSelectedMonth(e.target.value);
                   }
                 }}
-                style={{ fontSize: '10px', fontWeight: 700, color: COLORS.navy, background: '#F8FAFC', border: `1px solid ${COLORS.border}`, borderRadius: '4px', padding: '2px 5px', outline: 'none' }}
+                style={{ fontSize: '13.5px', fontWeight: 650, color: COLORS.navy, background: '#F8FAFC', border: `1px solid ${COLORS.border}`, borderRadius: '6px', padding: '5px 10px', outline: 'none' }}
               >
                 <option value="ALL">All Months (2026)</option>
                 <option value="Jul">Jul-26</option>
@@ -799,11 +799,11 @@ export default function ManagementDashboardPage() {
 
             {/* 2. Buyer Filter */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-              <span style={{ fontSize: '9.5px', fontWeight: 700, color: COLORS.grey, textTransform: 'uppercase' }}>Buyer:</span>
+              <span style={{ fontSize: '13px', fontWeight: 750, color: '#475569', textTransform: 'uppercase' }}>Buyer:</span>
               <select
                 value={selectedBuyer}
                 onChange={e => setSelectedBuyer(e.target.value)}
-                style={{ fontSize: '10px', fontWeight: 700, color: COLORS.navy, background: '#F8FAFC', border: `1px solid ${COLORS.border}`, borderRadius: '4px', padding: '2px 5px', outline: 'none' }}
+                style={{ fontSize: '13.5px', fontWeight: 650, color: COLORS.navy, background: '#F8FAFC', border: `1px solid ${COLORS.border}`, borderRadius: '6px', padding: '5px 10px', outline: 'none' }}
               >
                 <option value="ALL">All Buyers</option>
                 {Array.from(new Set(jobs.map(j => j.buyer).filter(Boolean))).sort().map((b: any) => (
@@ -814,11 +814,11 @@ export default function ManagementDashboardPage() {
 
             {/* 3. Team / Merchandiser Filter */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-              <span style={{ fontSize: '9.5px', fontWeight: 700, color: COLORS.grey, textTransform: 'uppercase' }}>Team:</span>
+              <span style={{ fontSize: '13px', fontWeight: 750, color: '#475569', textTransform: 'uppercase' }}>Team:</span>
               <select
                 value={selectedTeam}
                 onChange={e => setSelectedTeam(e.target.value)}
-                style={{ fontSize: '10px', fontWeight: 700, color: COLORS.navy, background: '#F8FAFC', border: `1px solid ${COLORS.border}`, borderRadius: '4px', padding: '2px 5px', outline: 'none' }}
+                style={{ fontSize: '13.5px', fontWeight: 650, color: COLORS.navy, background: '#F8FAFC', border: `1px solid ${COLORS.border}`, borderRadius: '6px', padding: '5px 10px', outline: 'none' }}
               >
                 <option value="ALL">All Teams</option>
                 <optgroup label="Merchandising Teams">
@@ -839,11 +839,11 @@ export default function ManagementDashboardPage() {
 
             {/* 4. Product Category Filter */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-              <span style={{ fontSize: '9.5px', fontWeight: 700, color: COLORS.grey, textTransform: 'uppercase' }}>Item:</span>
+              <span style={{ fontSize: '13px', fontWeight: 750, color: '#475569', textTransform: 'uppercase' }}>Item:</span>
               <select
                 value={selectedCategory}
                 onChange={e => setSelectedCategory(e.target.value)}
-                style={{ fontSize: '10px', fontWeight: 700, color: COLORS.navy, background: '#F8FAFC', border: `1px solid ${COLORS.border}`, borderRadius: '4px', padding: '2px 5px', outline: 'none' }}
+                style={{ fontSize: '13.5px', fontWeight: 650, color: COLORS.navy, background: '#F8FAFC', border: `1px solid ${COLORS.border}`, borderRadius: '6px', padding: '5px 10px', outline: 'none' }}
               >
                 <option value="ALL">All Items</option>
                 <option value="T-shirt">T-shirt</option>
@@ -868,13 +868,13 @@ export default function ManagementDashboardPage() {
           subtitle="Enterprise commitments, active bookings & shipping fulfillment"
           rightElement={
             <div style={{ display: 'flex', gap: '4px' }}>
-              <Link href="/jobs" style={{ fontSize: '9.5px', fontWeight: 700, color: COLORS.navy, background: '#FFFFFF', border: `1px solid ${COLORS.border}`, padding: '2px 5px', borderRadius: '3px', textDecoration: 'none' }}>
+              <Link href="/jobs" style={{ fontSize: '12.5px', fontWeight: 700, color: COLORS.navy, background: '#FFFFFF', border: `1px solid ${COLORS.border}`, padding: '5px 12px', borderRadius: '6px', textDecoration: 'none' }}>
                 View All Jobs
               </Link>
               <button
                 type="button"
                 onClick={() => setDrillModal({ title: 'Critical Risk Orders', rows: filteredJobs.filter(j => j.riskStatus === 'CRITICAL') })}
-                style={{ fontSize: '9.5px', fontWeight: 700, color: COLORS.red, background: COLORS.redLight, border: '1px solid #FECACA', padding: '2px 5px', borderRadius: '3px', cursor: 'pointer' }}
+                style={{ fontSize: '12.5px', fontWeight: 750, color: COLORS.red, background: COLORS.redLight, border: '1px solid #FECACA', padding: '5px 12px', borderRadius: '6px', cursor: 'pointer' }}
               >
                 Critical ({overviewStats.criticalOrdersCount})
               </button>
@@ -883,7 +883,7 @@ export default function ManagementDashboardPage() {
         />
 
         {/* 8 Compact KPI Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '5px', marginBottom: '8px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px', marginBottom: '14px' }}>
           <CompactKpiCard label="Active Orders" value={overviewStats.activeOrdersCount} unit="orders" trend="In-plant" trendType="neutral" color={COLORS.navy} />
           <CompactKpiCard label="Total Order Qty" value={overviewStats.totalOrderQty} unit="pcs" trend={`${fmt(overviewStats.totalJobs)} Jobs`} trendType="positive" color={COLORS.blue} />
           <CompactKpiCard label="Total Shipped" value={overviewStats.totalShippedQty} unit="pcs" trend="Delivered" trendType="positive" color={COLORS.green} />
@@ -898,16 +898,16 @@ export default function ManagementDashboardPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '8px', marginBottom: '12px' }}>
           {/* Chart 1: Monthly Export Trend */}
           <div style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '5px', padding: '7px 9px' }}>
-            <div style={{ fontSize: '10px', fontWeight: 700, color: COLORS.navy, marginBottom: '4px' }}>
+            <div style={{ fontSize: '14px', fontWeight: 800, color: COLORS.navy, marginBottom: '8px' }}>
               Monthly Export &amp; Plan Runway (1,000 pcs)
             </div>
-            <ResponsiveContainer width="100%" height={140}>
+            <ResponsiveContainer width="100%" height={260}>
               <BarChart data={overviewStats.monthlyTrendData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                <XAxis dataKey="month" tick={{ fontSize: 9 }} />
-                <YAxis tick={{ fontSize: 9 }} unit="K" />
+                <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} unit="K" />
                 <Tooltip formatter={(val: any) => [`${val}K pcs`, '']} />
-                <Legend wrapperStyle={{ fontSize: '9px' }} />
+                <Legend wrapperStyle={{ fontSize: '12.5px' }} />
                 <Bar dataKey="exported" fill={COLORS.blue} name="Exported (pcs)" radius={[2, 2, 0, 0]} />
                 <Line type="monotone" dataKey="target" stroke={COLORS.green} strokeWidth={2} name="Target (pcs)" />
               </BarChart>
@@ -916,18 +916,18 @@ export default function ManagementDashboardPage() {
 
           {/* Chart 2: Order Status Distribution (Donut) */}
           <div style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '5px', padding: '7px 9px' }}>
-            <div style={{ fontSize: '10px', fontWeight: 700, color: COLORS.navy, marginBottom: '4px' }}>
+            <div style={{ fontSize: '14px', fontWeight: 800, color: COLORS.navy, marginBottom: '8px' }}>
               Order Status Distribution · {fmt(overviewStats.totalJobs)} Matched Jobs
             </div>
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <ResponsiveContainer width="48%" height={140}>
+            <div style={{ display: 'flex', alignItems: 'center', minHeight: '260px' }}>
+              <ResponsiveContainer width="48%" height={260}>
                 <PieChart>
                   <Pie
                     data={overviewStats.donutData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={34}
-                    outerRadius={56}
+                    innerRadius={55}
+                    outerRadius={88}
                     paddingAngle={2}
                     dataKey="value"
                   >
@@ -940,7 +940,7 @@ export default function ManagementDashboardPage() {
               </ResponsiveContainer>
 
               {/* Legend */}
-              <div style={{ width: '52%', fontSize: '9px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+              <div style={{ width: '52%', fontSize: '12.5px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {overviewStats.donutData.map((d, i) => {
                   const pctVal = overviewStats.totalJobs > 0 ? Math.round((d.value / overviewStats.totalJobs) * 100) : 0;
                   return (
@@ -961,14 +961,14 @@ export default function ManagementDashboardPage() {
         {/* ========================================================================= */}
         {/* ROW 2: SIDE-BY-SIDE — Section 02 (Quota Matrix) & Section 03 (Buyer Delivery) */}
         {/* ========================================================================= */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.25fr) minmax(0, 0.75fr)', gap: '8px', marginBottom: '12px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.25fr) minmax(0, 0.75fr)', gap: '14px', marginBottom: '16px' }}>
           
           {/* LEFT: Section 02 — Merchandising Team & Buyer Quota Matrix */}
           <div style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', overflow: 'hidden' }}>
             <div style={{ padding: '6px 9px', background: '#F1F5F9', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <span style={{ fontSize: '9px', fontWeight: 800, color: COLORS.blue, background: COLORS.blueLight, padding: '1px 4px', borderRadius: '3px' }}>Sec 02</span>
-                <strong style={{ fontSize: '11px', color: COLORS.navy }}>Buyer Quota &amp; Sample Master Sheet</strong>
+                <span style={{ fontSize: '11.5px', fontWeight: 800, color: COLORS.blue, background: COLORS.blueLight, padding: '2px 7px', borderRadius: '4px' }}>Sec 02</span>
+                <strong style={{ fontSize: '14px', color: COLORS.navy }}>Buyer Quota &amp; Sample Master Sheet</strong>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 {selectedBuyer !== 'ALL' && (
@@ -986,19 +986,19 @@ export default function ManagementDashboardPage() {
               </div>
             </div>
 
-            <div style={{ overflowX: 'auto', maxHeight: '290px' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9.5px', textAlign: 'left' }}>
+            <div style={{ overflowX: 'auto', maxHeight: '380px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13.5px', textAlign: 'left' }}>
                 <thead style={{ position: 'sticky', top: 0, background: '#F8FAFC', zIndex: 10 }}>
                   <tr style={{ borderBottom: `1px solid ${COLORS.border}`, color: COLORS.grey }}>
-                    <th style={{ padding: '4px 6px' }}>Brand / Sub-Brand</th>
-                    <th style={{ padding: '4px 6px' }}>Team</th>
-                    <th style={{ padding: '4px 6px', textAlign: 'right' }}>Quota</th>
-                    <th style={{ padding: '4px 6px', textAlign: 'right' }}>Confirmed</th>
-                    <th style={{ padding: '4px 6px', textAlign: 'center' }}>Running M</th>
-                    <th style={{ padding: '4px 6px', textAlign: 'center' }}>+1M</th>
-                    <th style={{ padding: '4px 6px', textAlign: 'center' }}>+2M</th>
-                    <th style={{ padding: '4px 6px', textAlign: 'center' }}>+3M/+4M</th>
-                    <th style={{ padding: '4px 6px', textAlign: 'center' }}>Styles</th>
+                    <th style={{ padding: '8px 10px' }}>Brand / Sub-Brand</th>
+                    <th style={{ padding: '8px 10px' }}>Team</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>Quota</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>Confirmed</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'center' }}>Running M</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'center' }}>+1M</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'center' }}>+2M</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'center' }}>+3M/+4M</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'center' }}>Styles</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1009,31 +1009,31 @@ export default function ManagementDashboardPage() {
 
                     return (
                       <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9', background: isRowHighlighted ? '#EFF6FF' : 'transparent' }}>
-                        <td style={{ padding: '4px 6px' }}>
+                        <td style={{ padding: '8px 10px' }}>
                           <strong style={{ color: COLORS.navy }}>{t.brand}</strong>
-                          {t.subBrand && <span style={{ color: '#64748B', display: 'block', fontSize: '8.5px' }}>{t.subBrand}</span>}
+                          {t.subBrand && <span style={{ color: '#64748B', display: 'block', fontSize: '11.5px' }}>{t.subBrand}</span>}
                         </td>
                         <td style={{ padding: '4px 6px', fontWeight: 600, color: '#334155' }}>{t.team.replace('Team ', 'T')}</td>
                         <td style={{ padding: '4px 6px', textAlign: 'right', color: COLORS.grey }}>{fmt(t.monthlySalesQuotaPcs)}</td>
                         <td style={{ padding: '4px 6px', textAlign: 'right', fontWeight: 800, color: COLORS.blue }}>{fmt(t.actualReceivedPcs)}</td>
-                        <td style={{ padding: '4px 6px', textAlign: 'center' }}>
+                        <td style={{ padding: '8px 10px', textAlign: 'center' }}>
                           <span style={{
                             padding: '1px 4px',
                             borderRadius: '3px',
-                            fontSize: '8.5px',
-                            fontWeight: 800,
+                            fontSize: '12px',
+                            fontWeight: 750,
                             background: isMet ? COLORS.greenLight : isGap ? COLORS.amberLight : COLORS.redLight,
                             color: isMet ? COLORS.green : isGap ? COLORS.amber : COLORS.red
                           }}>
                             {isMet ? `${t.achievePct}%` : `${t.achievePct}%`}
                           </span>
                         </td>
-                        <td style={{ padding: '4px 6px', textAlign: 'center' }}>
+                        <td style={{ padding: '8px 10px', textAlign: 'center' }}>
                           <span style={{
                             padding: '1px 3px',
                             borderRadius: '3px',
-                            fontSize: '8.5px',
-                            fontWeight: 700,
+                            fontSize: '12px',
+                            fontWeight: 750,
                             background: t.nextMonthPct >= 100 ? COLORS.greenLight : t.nextMonthPct >= 80 ? COLORS.amberLight : COLORS.redLight,
                             color: t.nextMonthPct >= 100 ? COLORS.green : t.nextMonthPct >= 80 ? COLORS.amber : COLORS.red
                           }}>
@@ -1043,8 +1043,8 @@ export default function ManagementDashboardPage() {
                         <td style={{ padding: '4px 6px', textAlign: 'center', fontWeight: 700, color: COLORS.navy }}>
                           {t.m2ProjectionPct}%
                         </td>
-                        <td style={{ padding: '4px 6px', textAlign: 'center' }}>
-                          <span style={{ padding: '1px 3px', borderRadius: '3px', fontSize: '8.5px', fontWeight: 700, background: '#EFF6FF', color: COLORS.blue }}>
+                        <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                          <span style={{ padding: '1px 3px', borderRadius: '3px', fontSize: '12px', fontWeight: 750, background: '#EFF6FF', color: COLORS.blue }}>
                             {t.m3ProjectionPct}%
                           </span>
                         </td>
@@ -1063,22 +1063,22 @@ export default function ManagementDashboardPage() {
           <div style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', overflow: 'hidden' }}>
             <div style={{ padding: '6px 9px', background: '#F1F5F9', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <span style={{ fontSize: '9px', fontWeight: 800, color: COLORS.blue, background: COLORS.blueLight, padding: '1px 4px', borderRadius: '3px' }}>Sec 03</span>
-                <strong style={{ fontSize: '11px', color: COLORS.navy }}>Buyer Order &amp; Delivery Register</strong>
+                <span style={{ fontSize: '11.5px', fontWeight: 800, color: COLORS.blue, background: COLORS.blueLight, padding: '2px 7px', borderRadius: '4px' }}>Sec 03</span>
+                <strong style={{ fontSize: '14px', color: COLORS.navy }}>Buyer Order &amp; Delivery Register</strong>
               </div>
-              <span style={{ fontSize: '9px', color: COLORS.grey }}>{buyerPerformance.length} Buyers</span>
+              <span style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>{buyerPerformance.length} Buyers</span>
             </div>
 
-            <div style={{ overflowX: 'auto', maxHeight: '290px' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9.5px', textAlign: 'left' }}>
+            <div style={{ overflowX: 'auto', maxHeight: '380px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13.5px', textAlign: 'left' }}>
                 <thead style={{ position: 'sticky', top: 0, background: '#F8FAFC', zIndex: 10 }}>
                   <tr style={{ borderBottom: `1px solid ${COLORS.border}`, color: COLORS.grey }}>
-                    <th style={{ padding: '4px 6px' }}>Buyer</th>
-                    <th style={{ padding: '4px 6px', textAlign: 'right' }}>Orders</th>
-                    <th style={{ padding: '4px 6px', textAlign: 'right' }}>Order Qty</th>
-                    <th style={{ padding: '4px 6px', textAlign: 'right' }}>Shipped</th>
-                    <th style={{ padding: '4px 6px', textAlign: 'center' }}>On-Time</th>
-                    <th style={{ padding: '4px 6px', textAlign: 'center' }}>Action</th>
+                    <th style={{ padding: '8px 10px' }}>Buyer</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>Orders</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>Order Qty</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>Shipped</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'center' }}>On-Time</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'center' }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1086,21 +1086,21 @@ export default function ManagementDashboardPage() {
                     <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9', background: selectedBuyer === b.buyer ? '#EFF6FF' : 'transparent' }}>
                       <td style={{ padding: '4px 6px', fontWeight: 700, color: COLORS.navy }}>
                         {b.buyer}
-                        {b.delayedOrders > 0 && <span style={{ color: COLORS.red, marginLeft: '3px', fontSize: '8.5px' }}>({b.delayedOrders} delay)</span>}
+                        {b.delayedOrders > 0 && <span style={{ color: COLORS.red, marginLeft: '3px', fontSize: '11.5px' }}>({b.delayedOrders} delay)</span>}
                       </td>
-                      <td style={{ padding: '4px 6px', textAlign: 'right' }}>{fmt(b.orders)}</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmt(b.orders)}</td>
                       <td style={{ padding: '4px 6px', textAlign: 'right', fontWeight: 800 }}>{fmt(b.orderQty)}</td>
                       <td style={{ padding: '4px 6px', textAlign: 'right', color: COLORS.green }}>{fmt(b.shippedQty)}</td>
-                      <td style={{ padding: '4px 6px', textAlign: 'center' }}>
-                        <span style={{ padding: '1px 4px', borderRadius: '3px', fontSize: '8.5px', fontWeight: 700, background: b.onTimePct >= 95 ? COLORS.greenLight : COLORS.redLight, color: b.onTimePct >= 95 ? COLORS.green : COLORS.red }}>
+                      <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                        <span style={{ padding: '1px 4px', borderRadius: '3px', fontSize: '12px', fontWeight: 750, background: b.onTimePct >= 95 ? COLORS.greenLight : COLORS.redLight, color: b.onTimePct >= 95 ? COLORS.green : COLORS.red }}>
                           {b.onTimePct}%
                         </span>
                       </td>
-                      <td style={{ padding: '4px 6px', textAlign: 'center' }}>
+                      <td style={{ padding: '8px 10px', textAlign: 'center' }}>
                         <button
                           type="button"
                           onClick={() => setSelectedBuyer(selectedBuyer === b.buyer ? 'ALL' : b.buyer)}
-                          style={{ fontSize: '8.5px', background: selectedBuyer === b.buyer ? COLORS.navy : '#F1F5F9', color: selectedBuyer === b.buyer ? '#FFFFFF' : COLORS.navy, border: '1px solid #CBD5E1', borderRadius: '3px', padding: '1px 4px', cursor: 'pointer', fontWeight: 700 }}
+                          style={{ fontSize: '12px', background: selectedBuyer === b.buyer ? COLORS.navy : '#F1F5F9', color: selectedBuyer === b.buyer ? '#FFFFFF' : COLORS.navy, border: '1px solid #CBD5E1', borderRadius: '3px', padding: '1px 4px', cursor: 'pointer', fontWeight: 700 }}
                         >
                           {selectedBuyer === b.buyer ? 'Filtered' : 'Filter'}
                         </button>
@@ -1117,47 +1117,47 @@ export default function ManagementDashboardPage() {
         {/* ========================================================================= */}
         {/* ROW 3: SIDE-BY-SIDE — Section 04 (Category Costing) & Cost Structure Visual */}
         {/* ========================================================================= */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(0, 0.7fr)', gap: '8px', marginBottom: '12px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(0, 0.7fr)', gap: '14px', marginBottom: '16px' }}>
           
           {/* LEFT: Section 04 — Product Category Costing & Benchmarks */}
           <div style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', overflow: 'hidden' }}>
             <div style={{ padding: '6px 9px', background: '#F1F5F9', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <span style={{ fontSize: '9px', fontWeight: 800, color: COLORS.purple, background: COLORS.purpleLight, padding: '1px 4px', borderRadius: '3px' }}>Sec 04</span>
-                <strong style={{ fontSize: '11px', color: COLORS.navy }}>Item Category Pricing &amp; Factory Costing Summary</strong>
+                <span style={{ fontSize: '11.5px', fontWeight: 800, color: COLORS.purple, background: COLORS.purpleLight, padding: '2px 7px', borderRadius: '4px' }}>Sec 04</span>
+                <strong style={{ fontSize: '14px', color: COLORS.navy }}>Item Category Pricing &amp; Factory Costing Summary</strong>
               </div>
-              <span style={{ fontSize: '9px', color: COLORS.grey }}>Master Cost Sheet Benchmarks</span>
+              <span style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>Master Cost Sheet Benchmarks</span>
             </div>
 
-            <div style={{ overflowX: 'auto', maxHeight: '240px' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9.5px', textAlign: 'left' }}>
+            <div style={{ overflowX: 'auto', maxHeight: '340px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13.5px', textAlign: 'left' }}>
                 <thead style={{ position: 'sticky', top: 0, background: '#F8FAFC', zIndex: 10 }}>
                   <tr style={{ borderBottom: `1px solid ${COLORS.border}`, color: COLORS.grey }}>
-                    <th style={{ padding: '4px 6px' }}>Category</th>
-                    <th style={{ padding: '4px 6px', textAlign: 'right' }}>Orders</th>
-                    <th style={{ padding: '4px 6px', textAlign: 'right' }}>Order Qty</th>
-                    <th style={{ padding: '4px 6px', textAlign: 'right' }}>Total Value</th>
-                    <th style={{ padding: '4px 6px', textAlign: 'right' }}>Avg FOB</th>
-                    <th style={{ padding: '4px 6px', textAlign: 'center' }}>SMV</th>
-                    <th style={{ padding: '4px 6px', textAlign: 'right' }}>CM/pc</th>
-                    <th style={{ padding: '4px 6px', textAlign: 'right' }}>CM/Dzn</th>
-                    <th style={{ padding: '4px 6px', textAlign: 'right' }}>Fabric/pc</th>
-                    <th style={{ padding: '4px 6px', textAlign: 'right' }}>Print/Emb</th>
+                    <th style={{ padding: '8px 10px' }}>Category</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>Orders</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>Order Qty</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>Total Value</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>Avg FOB</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'center' }}>SMV</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>CM/pc</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>CM/Dzn</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>Fabric/pc</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>Print/Emb</th>
                   </tr>
                 </thead>
                 <tbody>
                   {categoryCosting.map((c, idx) => (
                     <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
                       <td style={{ padding: '4px 6px', fontWeight: 800, color: COLORS.navy }}>{c.category}</td>
-                      <td style={{ padding: '4px 6px', textAlign: 'right' }}>{fmt(c.orders)}</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmt(c.orders)}</td>
                       <td style={{ padding: '4px 6px', textAlign: 'right', fontWeight: 700 }}>{fmt(c.totalQty)}</td>
                       <td style={{ padding: '4px 6px', textAlign: 'right', fontWeight: 800, color: COLORS.blue }}>{money(c.totalValue, 0)}</td>
                       <td style={{ padding: '4px 6px', textAlign: 'right', fontWeight: 700, color: COLORS.navy }}>{money(c.avgFob)}</td>
                       <td style={{ padding: '4px 6px', textAlign: 'center', fontWeight: 700 }}>{c.avgSmv}m</td>
                       <td style={{ padding: '4px 6px', textAlign: 'right', color: COLORS.green, fontWeight: 700 }}>{money(c.cmPc)}</td>
                       <td style={{ padding: '4px 6px', textAlign: 'right', color: COLORS.green }}>{money(c.cmDzn)}</td>
-                      <td style={{ padding: '4px 6px', textAlign: 'right' }}>{money(c.fabricCostPc)}</td>
-                      <td style={{ padding: '4px 6px', textAlign: 'right' }}>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{money(c.fabricCostPc)}</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                         {money(c.printCostPc + c.embCostPc)}
                       </td>
                     </tr>
@@ -1172,7 +1172,7 @@ export default function ManagementDashboardPage() {
             <div>
               <div style={{ fontSize: '10px', fontWeight: 700, color: COLORS.navy, marginBottom: '5px', display: 'flex', justifyContent: 'space-between' }}>
                 <span>Cost Component Share by Category</span>
-                <span style={{ fontSize: '8.5px', color: COLORS.grey }}>FOB % Share</span>
+                <span style={{ fontSize: '12px', color: '#64748B' }}>FOB % Share</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                 {categoryCosting.slice(0, 4).map((c, i) => {
@@ -1197,7 +1197,7 @@ export default function ManagementDashboardPage() {
               </div>
             </div>
 
-            <div style={{ marginTop: '6px', display: 'flex', gap: '8px', fontSize: '8.5px', color: COLORS.grey }}>
+            <div style={{ marginTop: '6px', display: 'flex', gap: '8px', fontSize: '12px', color: '#64748B' }}>
               <span><strong style={{ color: COLORS.cyan }}>■</strong> Fabric Cost</span>
               <span><strong style={{ color: COLORS.green }}>■</strong> CM Earning</span>
               <span><strong style={{ color: COLORS.amber }}>■</strong> Trims &amp; Print/Emb</span>
@@ -1211,55 +1211,55 @@ export default function ManagementDashboardPage() {
         {/* Yarn: Stock, Pipeline, Requisition, MOQ | Grey: Stock, Allocated, Available, Rolls */}
         {/* Finish Fabric: Current Stock, Per Day Receive, Per Day Delivery, Shortage (NO RELAXATION!) */}
         {/* ========================================================================= */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '8px', marginBottom: '12px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '14px', marginBottom: '16px' }}>
           
           {/* LEFT: Section 05 & 06A — Yarn Stock & Grey Fabric Inventory */}
           <div style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', padding: '7px 9px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', paddingBottom: '3px', borderBottom: `1.5px solid ${COLORS.teal}` }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <span style={{ fontSize: '9px', fontWeight: 800, color: COLORS.teal, background: COLORS.tealLight, padding: '1px 4px', borderRadius: '3px' }}>Sec 05 &amp; 06A</span>
-                <strong style={{ fontSize: '11px', color: COLORS.navy }}>Yarn Godown &amp; Grey Fabric Inventory</strong>
+                <span style={{ fontSize: '11.5px', fontWeight: 800, color: COLORS.teal, background: COLORS.tealLight, padding: '2px 7px', borderRadius: '4px' }}>Sec 05 &amp; 06A</span>
+                <strong style={{ fontSize: '14px', color: COLORS.navy }}>Yarn Godown &amp; Grey Fabric Inventory</strong>
               </div>
-              <span style={{ fontSize: '9px', color: COLORS.grey }}>Stock &amp; Allocation</span>
+              <span style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>Stock &amp; Allocation</span>
             </div>
 
             {/* Yarn & Grey Metric Chips */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', marginBottom: '6px' }}>
               <div style={{ background: '#F8FAFC', padding: '5px 6px', borderRadius: '4px', border: `1px solid ${COLORS.borderLight}` }}>
-                <span style={{ fontSize: '8.5px', color: COLORS.grey, display: 'block' }}>Yarn Stock</span>
-                <strong style={{ fontSize: '12px', color: COLORS.navy }}>{materialData.yarn.physical} <span style={{ fontSize: '8px' }}>Tons</span></strong>
+                <span style={{ fontSize: '12.5px', fontWeight: 650, color: '#64748B', display: 'block' }}>Yarn Stock</span>
+                <strong style={{ fontSize: '20px', fontWeight: 800, color: COLORS.navy }}>{materialData.yarn.physical} <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748B' }}>Tons</span></strong>
               </div>
               <div style={{ background: '#F8FAFC', padding: '5px 6px', borderRadius: '4px', border: `1px solid ${COLORS.borderLight}` }}>
-                <span style={{ fontSize: '8.5px', color: COLORS.grey, display: 'block' }}>Pipeline Yarn</span>
-                <strong style={{ fontSize: '12px', color: COLORS.blue }}>{materialData.yarn.pipeline} <span style={{ fontSize: '8px' }}>Tons</span></strong>
+                <span style={{ fontSize: '12.5px', fontWeight: 650, color: '#64748B', display: 'block' }}>Pipeline Yarn</span>
+                <strong style={{ fontSize: '20px', fontWeight: 800, color: COLORS.blue }}>{materialData.yarn.pipeline} <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748B' }}>Tons</span></strong>
               </div>
               <div style={{ background: '#F8FAFC', padding: '5px 6px', borderRadius: '4px', border: `1px solid ${COLORS.borderLight}` }}>
-                <span style={{ fontSize: '8.5px', color: COLORS.grey, display: 'block' }}>Requisition</span>
-                <strong style={{ fontSize: '12px', color: COLORS.amber }}>{materialData.yarn.requisition} <span style={{ fontSize: '8px' }}>Tons</span></strong>
+                <span style={{ fontSize: '12.5px', fontWeight: 650, color: '#64748B', display: 'block' }}>Requisition</span>
+                <strong style={{ fontSize: '20px', fontWeight: 800, color: COLORS.amber }}>{materialData.yarn.requisition} <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748B' }}>Tons</span></strong>
               </div>
               <div style={{ background: '#F8FAFC', padding: '5px 6px', borderRadius: '4px', border: `1px solid ${COLORS.borderLight}` }}>
-                <span style={{ fontSize: '8.5px', color: COLORS.grey, display: 'block' }}>MOQ Buffer</span>
-                <strong style={{ fontSize: '12px', color: COLORS.navy }}>{materialData.yarn.moqBuffer} <span style={{ fontSize: '8px' }}>Tons</span></strong>
+                <span style={{ fontSize: '12.5px', fontWeight: 650, color: '#64748B', display: 'block' }}>MOQ Buffer</span>
+                <strong style={{ fontSize: '20px', fontWeight: 800, color: COLORS.navy }}>{materialData.yarn.moqBuffer} <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748B' }}>Tons</span></strong>
               </div>
             </div>
 
             {/* Grey Fabric Metric Chips */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px' }}>
               <div style={{ background: '#F8FAFC', padding: '5px 6px', borderRadius: '4px', border: `1px solid ${COLORS.borderLight}` }}>
-                <span style={{ fontSize: '8.5px', color: COLORS.grey, display: 'block' }}>Grey Stock</span>
-                <strong style={{ fontSize: '12px', color: COLORS.navy }}>{materialData.greige.physical} <span style={{ fontSize: '8px' }}>Tons</span></strong>
+                <span style={{ fontSize: '12.5px', fontWeight: 650, color: '#64748B', display: 'block' }}>Grey Stock</span>
+                <strong style={{ fontSize: '20px', fontWeight: 800, color: COLORS.navy }}>{materialData.greige.physical} <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748B' }}>Tons</span></strong>
               </div>
               <div style={{ background: '#F8FAFC', padding: '5px 6px', borderRadius: '4px', border: `1px solid ${COLORS.borderLight}` }}>
-                <span style={{ fontSize: '8.5px', color: COLORS.grey, display: 'block' }}>Dyeing Allocated</span>
-                <strong style={{ fontSize: '12px', color: COLORS.blue }}>{materialData.greige.allocated} <span style={{ fontSize: '8px' }}>Tons</span></strong>
+                <span style={{ fontSize: '12.5px', fontWeight: 650, color: '#64748B', display: 'block' }}>Dyeing Allocated</span>
+                <strong style={{ fontSize: '20px', fontWeight: 800, color: COLORS.blue }}>{materialData.greige.allocated} <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748B' }}>Tons</span></strong>
               </div>
               <div style={{ background: '#F8FAFC', padding: '5px 6px', borderRadius: '4px', border: `1px solid ${COLORS.borderLight}` }}>
-                <span style={{ fontSize: '8.5px', color: COLORS.grey, display: 'block' }}>Available Grey</span>
-                <strong style={{ fontSize: '12px', color: COLORS.green }}>{materialData.greige.available} <span style={{ fontSize: '8px' }}>Tons</span></strong>
+                <span style={{ fontSize: '12.5px', fontWeight: 650, color: '#64748B', display: 'block' }}>Available Grey</span>
+                <strong style={{ fontSize: '20px', fontWeight: 800, color: COLORS.green }}>{materialData.greige.available} <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748B' }}>Tons</span></strong>
               </div>
               <div style={{ background: '#F8FAFC', padding: '5px 6px', borderRadius: '4px', border: `1px solid ${COLORS.borderLight}` }}>
-                <span style={{ fontSize: '8.5px', color: COLORS.grey, display: 'block' }}>Grey Rolls</span>
-                <strong style={{ fontSize: '12px', color: COLORS.purple }}>{fmt(materialData.greige.rolls)} <span style={{ fontSize: '8px' }}>rolls</span></strong>
+                <span style={{ fontSize: '12.5px', fontWeight: 650, color: '#64748B', display: 'block' }}>Grey Rolls</span>
+                <strong style={{ fontSize: '20px', fontWeight: 800, color: COLORS.purple }}>{fmt(materialData.greige.rolls)} <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748B' }}>rolls</span></strong>
               </div>
             </div>
           </div>
@@ -1268,33 +1268,33 @@ export default function ManagementDashboardPage() {
           <div style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', padding: '7px 9px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', paddingBottom: '3px', borderBottom: `1.5px solid ${COLORS.blue}` }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <span style={{ fontSize: '9px', fontWeight: 800, color: COLORS.blue, background: COLORS.blueLight, padding: '1px 4px', borderRadius: '3px' }}>Sec 06B</span>
-                <strong style={{ fontSize: '11px', color: COLORS.navy }}>Finish Fabric Inventory &amp; Movement</strong>
+                <span style={{ fontSize: '11.5px', fontWeight: 800, color: COLORS.blue, background: COLORS.blueLight, padding: '2px 7px', borderRadius: '4px' }}>Sec 06B</span>
+                <strong style={{ fontSize: '14px', color: COLORS.navy }}>Finish Fabric Inventory &amp; Movement</strong>
               </div>
-              <span style={{ fontSize: '9px', color: COLORS.grey }}>Daily Throughput</span>
+              <span style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>Daily Throughput</span>
             </div>
 
             {/* Finish Fabric Metric Chips */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px' }}>
               <div style={{ background: '#F8FAFC', padding: '5px 6px', borderRadius: '4px', border: `1px solid ${COLORS.borderLight}` }}>
-                <span style={{ fontSize: '8.5px', color: COLORS.grey, display: 'block' }}>Current Stock</span>
-                <strong style={{ fontSize: '12px', color: COLORS.navy }}>{materialData.finished.physical} <span style={{ fontSize: '8px' }}>Tons</span></strong>
+                <span style={{ fontSize: '12.5px', fontWeight: 650, color: '#64748B', display: 'block' }}>Current Stock</span>
+                <strong style={{ fontSize: '20px', fontWeight: 800, color: COLORS.navy }}>{materialData.finished.physical} <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748B' }}>Tons</span></strong>
               </div>
               <div style={{ background: '#F8FAFC', padding: '5px 6px', borderRadius: '4px', border: `1px solid ${COLORS.borderLight}` }}>
-                <span style={{ fontSize: '8.5px', color: COLORS.grey, display: 'block' }}>Receive / Day</span>
-                <strong style={{ fontSize: '12px', color: COLORS.green }}>{materialData.finished.perDayReceive} <span style={{ fontSize: '8px' }}>T/day</span></strong>
+                <span style={{ fontSize: '12.5px', fontWeight: 650, color: '#64748B', display: 'block' }}>Receive / Day</span>
+                <strong style={{ fontSize: '20px', fontWeight: 800, color: COLORS.green }}>{materialData.finished.perDayReceive} <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748B' }}>T/day</span></strong>
               </div>
               <div style={{ background: '#F8FAFC', padding: '5px 6px', borderRadius: '4px', border: `1px solid ${COLORS.borderLight}` }}>
-                <span style={{ fontSize: '8.5px', color: COLORS.grey, display: 'block' }}>Delivery / Day</span>
-                <strong style={{ fontSize: '12px', color: COLORS.cyan }}>{materialData.finished.perDayDelivery} <span style={{ fontSize: '8px' }}>T/day</span></strong>
+                <span style={{ fontSize: '12.5px', fontWeight: 650, color: '#64748B', display: 'block' }}>Delivery / Day</span>
+                <strong style={{ fontSize: '20px', fontWeight: 800, color: COLORS.cyan }}>{materialData.finished.perDayDelivery} <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748B' }}>T/day</span></strong>
               </div>
               <div style={{ background: '#F8FAFC', padding: '5px 6px', borderRadius: '4px', border: `1px solid ${COLORS.borderLight}` }}>
-                <span style={{ fontSize: '8.5px', color: COLORS.grey, display: 'block' }}>Order Shortage</span>
-                <strong style={{ fontSize: '12px', color: materialData.finished.shortage > 0 ? COLORS.red : COLORS.green }}>{materialData.finished.shortage} <span style={{ fontSize: '8px' }}>Tons</span></strong>
+                <span style={{ fontSize: '12.5px', fontWeight: 650, color: '#64748B', display: 'block' }}>Order Shortage</span>
+                <strong style={{ fontSize: '20px', fontWeight: 800, color: materialData.finished.shortage > 0 ? COLORS.red : COLORS.green }}>{materialData.finished.shortage} <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748B' }}>Tons</span></strong>
               </div>
             </div>
 
-            <div style={{ marginTop: '8px', padding: '5px 7px', background: '#F8FAFC', borderRadius: '4px', display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: COLORS.grey }}>
+            <div style={{ marginTop: '8px', padding: '5px 7px', background: '#F8FAFC', borderRadius: '4px', display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: '#475569' }}>
               <span>Dyeing Delivery Flow: <strong style={{ color: COLORS.green }}>Normal</strong></span>
               <span>Cutting Issue Flow: <strong style={{ color: COLORS.navy }}>Active</strong></span>
               <span>Inspection: <strong style={{ color: COLORS.blue }}>4-Point Shade OK</strong></span>
@@ -1306,60 +1306,60 @@ export default function ManagementDashboardPage() {
         {/* ========================================================================= */}
         {/* ROW 5: SIDE-BY-SIDE — Section 07 Operational Table & Clean Efficiency/DHU Scorecard */}
         {/* ========================================================================= */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.25fr) minmax(0, 0.75fr)', gap: '8px', marginBottom: '12px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.25fr) minmax(0, 0.75fr)', gap: '14px', marginBottom: '16px' }}>
           
           {/* LEFT: Section 07 — Department-wise Production Run-Rate Table */}
           <div style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', overflow: 'hidden' }}>
             <div style={{ padding: '6px 9px', background: '#F1F5F9', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <span style={{ fontSize: '9px', fontWeight: 800, color: COLORS.blue, background: COLORS.blueLight, padding: '1px 4px', borderRadius: '3px' }}>Sec 07</span>
-                <strong style={{ fontSize: '11px', color: COLORS.navy }}>Department-wise Production &amp; Run-Rate Table</strong>
+                <span style={{ fontSize: '11.5px', fontWeight: 800, color: COLORS.blue, background: COLORS.blueLight, padding: '2px 7px', borderRadius: '4px' }}>Sec 07</span>
+                <strong style={{ fontSize: '14px', color: COLORS.navy }}>Department-wise Production &amp; Run-Rate Table</strong>
               </div>
-              <span style={{ fontSize: '9px', color: COLORS.grey }}>Total Plan · Daily Req vs Daily Ach</span>
+              <span style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>Total Plan · Daily Req vs Daily Ach</span>
             </div>
 
-            <div style={{ overflowX: 'auto', maxHeight: '360px' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9.5px', textAlign: 'left' }}>
+            <div style={{ overflowX: 'auto', maxHeight: '440px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13.5px', textAlign: 'left' }}>
                 <thead style={{ position: 'sticky', top: 0, background: '#F8FAFC', zIndex: 10 }}>
                   <tr style={{ borderBottom: `1px solid ${COLORS.border}`, color: COLORS.grey }}>
-                    <th style={{ padding: '4px 6px' }}>Department / Process</th>
-                    <th style={{ padding: '4px 6px', textAlign: 'right' }}>Total Plan</th>
-                    <th style={{ padding: '4px 6px', textAlign: 'right' }}>Req/Day</th>
-                    <th style={{ padding: '4px 6px', textAlign: 'right' }}>Ach/Day</th>
-                    <th style={{ padding: '4px 6px', textAlign: 'right' }}>Actual Output</th>
-                    <th style={{ padding: '4px 6px', textAlign: 'center' }}>Variance</th>
-                    <th style={{ padding: '4px 6px', textAlign: 'center' }}>Rating</th>
+                    <th style={{ padding: '8px 10px' }}>Department / Process</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>Total Plan</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>Req/Day</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>Ach/Day</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>Actual Output</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'center' }}>Variance</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'center' }}>Rating</th>
                   </tr>
                 </thead>
                 <tbody>
                   {sectionPerformanceData.map((s, idx) => (
                     <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                      <td style={{ padding: '4px 6px' }}>
+                      <td style={{ padding: '8px 10px' }}>
                         <strong style={{ color: COLORS.navy }}>{s.section}</strong>
-                        <span style={{ color: COLORS.grey, display: 'block', fontSize: '8px' }}>{s.metric}</span>
+                        <span style={{ color: COLORS.grey, display: 'block', fontSize: '11.5px' }}>{s.metric}</span>
                       </td>
                       <td style={{ padding: '4px 6px', textAlign: 'right', fontWeight: 600 }}>{s.plan}</td>
                       <td style={{ padding: '4px 6px', textAlign: 'right', color: '#475569' }}>{s.perDayReq}</td>
                       <td style={{ padding: '4px 6px', textAlign: 'right', fontWeight: 700, color: COLORS.navy }}>{s.perDayAch}</td>
                       <td style={{ padding: '4px 6px', textAlign: 'right', fontWeight: 800, color: COLORS.blue }}>{s.actual}</td>
-                      <td style={{ padding: '4px 6px', textAlign: 'center' }}>
+                      <td style={{ padding: '8px 10px', textAlign: 'center' }}>
                         <span style={{
                           padding: '1px 4px',
                           borderRadius: '3px',
-                          fontSize: '8.5px',
-                          fontWeight: 700,
+                          fontSize: '12px',
+                          fontWeight: 750,
                           background: s.variance.startsWith('+') || s.variance === '0.0%' ? COLORS.greenLight : COLORS.amberLight,
                           color: s.variance.startsWith('+') || s.variance === '0.0%' ? COLORS.green : COLORS.amber
                         }}>
                           {s.variance}
                         </span>
                       </td>
-                      <td style={{ padding: '4px 6px', textAlign: 'center' }}>
+                      <td style={{ padding: '8px 10px', textAlign: 'center' }}>
                         <span style={{
                           padding: '1px 4px',
                           borderRadius: '3px',
-                          fontSize: '8.5px',
-                          fontWeight: 800,
+                          fontSize: '12px',
+                          fontWeight: 750,
                           background: s.rating === 'Excellent' ? COLORS.greenLight : '#EFF6FF',
                           color: s.rating === 'Excellent' ? COLORS.green : COLORS.blue
                         }}>
@@ -1377,10 +1377,10 @@ export default function ManagementDashboardPage() {
           <div style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', padding: '7px 9px', display: 'flex', flexDirection: 'column', gap: '7px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1.5px solid ${COLORS.navy}`, paddingBottom: '3px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <span style={{ fontSize: '9px', fontWeight: 800, color: COLORS.green, background: COLORS.greenLight, padding: '1px 4px', borderRadius: '3px' }}>Sec 07B</span>
-                <strong style={{ fontSize: '11px', color: COLORS.navy }}>Department Efficiency &amp; Quality DHU Scorecard</strong>
+                <span style={{ fontSize: '11.5px', fontWeight: 800, color: COLORS.green, background: COLORS.greenLight, padding: '2px 7px', borderRadius: '4px' }}>Sec 07B</span>
+                <strong style={{ fontSize: '14px', color: COLORS.navy }}>Department Efficiency &amp; Quality DHU Scorecard</strong>
               </div>
-              <span style={{ fontSize: '8.5px', color: COLORS.grey }}>IE &amp; Quality Tracker</span>
+              <span style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>IE &amp; Quality Tracker</span>
             </div>
 
             {/* 1. Production Efficiency by Department */}
@@ -1394,7 +1394,7 @@ export default function ManagementDashboardPage() {
                   { name: 'Finishing Efficiency', actual: 78.5, target: 75.0, color: COLORS.green },
                   { name: 'Cutting Efficiency', actual: 82.2, target: 80.0, color: COLORS.cyan }
                 ].map((item, idx) => (
-                  <div key={idx} style={{ fontSize: '8.5px' }}>
+                  <div key={idx} style={{ fontSize: '12.5px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1px' }}>
                       <span style={{ color: COLORS.navy, fontWeight: 600 }}>{item.name}</span>
                       <strong style={{ color: item.actual >= item.target ? COLORS.green : COLORS.amber }}>
@@ -1415,35 +1415,35 @@ export default function ManagementDashboardPage() {
                 Quality DHU &amp; OQL Rates (Section-Attributed)
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px' }}>
-                <div style={{ background: '#FFFFFF', padding: '3px 4px', borderRadius: '3px', border: `1px solid ${COLORS.border}`, textAlign: 'center' }}>
-                  <span style={{ fontSize: '8px', color: COLORS.grey, display: 'block' }}>Sewing In-Line DHU</span>
-                  <strong style={{ fontSize: '10.5px', color: COLORS.navy }}>9.12%</strong>
+                <div style={{ background: '#FFFFFF', padding: '6px 8px', borderRadius: '5px', border: `1px solid ${COLORS.border}`, textAlign: 'center' }}>
+                  <span style={{ fontSize: '11.5px', fontWeight: 650, color: '#64748B', display: 'block' }}>Sewing In-Line DHU</span>
+                  <strong style={{ fontSize: '16px', fontWeight: 800, color: COLORS.navy }}>9.12%</strong>
                 </div>
-                <div style={{ background: '#FFFFFF', padding: '3px 4px', borderRadius: '3px', border: `1px solid ${COLORS.border}`, textAlign: 'center' }}>
-                  <span style={{ fontSize: '8px', color: COLORS.grey, display: 'block' }}>Sewing End-Line DHU</span>
-                  <strong style={{ fontSize: '10.5px', color: COLORS.green }}>3.41%</strong>
+                <div style={{ background: '#FFFFFF', padding: '6px 8px', borderRadius: '5px', border: `1px solid ${COLORS.border}`, textAlign: 'center' }}>
+                  <span style={{ fontSize: '11.5px', fontWeight: 650, color: '#64748B', display: 'block' }}>Sewing End-Line DHU</span>
+                  <strong style={{ fontSize: '16px', fontWeight: 800, color: COLORS.green }}>3.41%</strong>
                 </div>
-                <div style={{ background: '#FFFFFF', padding: '3px 4px', borderRadius: '3px', border: `1px solid ${COLORS.border}`, textAlign: 'center' }}>
-                  <span style={{ fontSize: '8px', color: COLORS.grey, display: 'block' }}>Sewing End-Line OQL</span>
-                  <strong style={{ fontSize: '10.5px', color: COLORS.amber }}>7.88%</strong>
+                <div style={{ background: '#FFFFFF', padding: '6px 8px', borderRadius: '5px', border: `1px solid ${COLORS.border}`, textAlign: 'center' }}>
+                  <span style={{ fontSize: '11.5px', fontWeight: 650, color: '#64748B', display: 'block' }}>Sewing End-Line OQL</span>
+                  <strong style={{ fontSize: '16px', fontWeight: 800, color: COLORS.amber }}>7.88%</strong>
                 </div>
-                <div style={{ background: '#FFFFFF', padding: '3px 4px', borderRadius: '3px', border: `1px solid ${COLORS.border}`, textAlign: 'center' }}>
-                  <span style={{ fontSize: '8px', color: COLORS.grey, display: 'block' }}>Pre-Final DHU</span>
-                  <strong style={{ fontSize: '10.5px', color: COLORS.navy }}>5.61%</strong>
+                <div style={{ background: '#FFFFFF', padding: '6px 8px', borderRadius: '5px', border: `1px solid ${COLORS.border}`, textAlign: 'center' }}>
+                  <span style={{ fontSize: '11.5px', fontWeight: 650, color: '#64748B', display: 'block' }}>Pre-Final DHU</span>
+                  <strong style={{ fontSize: '16px', fontWeight: 800, color: COLORS.navy }}>5.61%</strong>
                 </div>
-                <div style={{ background: '#FFFFFF', padding: '3px 4px', borderRadius: '3px', border: `1px solid ${COLORS.border}`, textAlign: 'center' }}>
-                  <span style={{ fontSize: '8px', color: COLORS.grey, display: 'block' }}>Final Audit DHU</span>
-                  <strong style={{ fontSize: '10.5px', color: COLORS.navy }}>6.63%</strong>
+                <div style={{ background: '#FFFFFF', padding: '6px 8px', borderRadius: '5px', border: `1px solid ${COLORS.border}`, textAlign: 'center' }}>
+                  <span style={{ fontSize: '11.5px', fontWeight: 650, color: '#64748B', display: 'block' }}>Final Audit DHU</span>
+                  <strong style={{ fontSize: '16px', fontWeight: 800, color: COLORS.navy }}>6.63%</strong>
                 </div>
                 <div style={{ background: '#DCFCE7', padding: '3px 4px', borderRadius: '3px', border: '1px solid #BBF7D0', textAlign: 'center' }}>
-                  <span style={{ fontSize: '8px', color: COLORS.green, display: 'block' }}>Final AQL Pass</span>
-                  <strong style={{ fontSize: '10.5px', color: COLORS.green }}>98.6%</strong>
+                  <span style={{ fontSize: '11.5px', color: COLORS.green, display: 'block' }}>Final AQL Pass</span>
+                  <strong style={{ fontSize: '16px', fontWeight: 800, color: COLORS.green }}>98.6%</strong>
                 </div>
               </div>
             </div>
 
             {/* 3. Section Material Wastage & Defect */}
-            <div style={{ background: '#F8FAFC', padding: '5px 7px', borderRadius: '4px', border: `1px solid ${COLORS.borderLight}`, display: 'flex', justifyContent: 'space-between', fontSize: '8.5px', color: COLORS.navy }}>
+            <div style={{ background: '#F8FAFC', padding: '5px 7px', borderRadius: '4px', border: `1px solid ${COLORS.borderLight}`, display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: COLORS.navy }}>
               <span>Cutting Reject: <strong>0.90%</strong></span>
               <span>Fabric Wastage: <strong>2.49%</strong></span>
               <span>Cut to Ship Loss: <strong>2.63%</strong></span>
@@ -1456,37 +1456,37 @@ export default function ManagementDashboardPage() {
         {/* ========================================================================= */}
         {/* ROW 6: SIDE-BY-SIDE — Section 08A (Dyeing Reprocess) & Section 08B (Multi-Factory Subcontracts) */}
         {/* ========================================================================= */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 0.75fr) minmax(0, 1.25fr)', gap: '8px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 0.75fr) minmax(0, 1.25fr)', gap: '14px' }}>
           
           {/* LEFT: Section 08A — Dyeing Reprocess & First-Time-Pass (RFT) */}
           <div style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', padding: '7px 9px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', paddingBottom: '3px', borderBottom: `1.5px solid ${COLORS.navy}` }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <span style={{ fontSize: '9px', fontWeight: 800, color: COLORS.navy, background: '#E2E8F0', padding: '1px 4px', borderRadius: '3px' }}>Sec 08A</span>
-                  <strong style={{ fontSize: '11px', color: COLORS.navy }}>Dyeing RFT &amp; Reprocess Intelligence</strong>
+                  <span style={{ fontSize: '11.5px', fontWeight: 800, color: COLORS.navy, background: '#E2E8F0', padding: '2px 7px', borderRadius: '4px' }}>Sec 08A</span>
+                  <strong style={{ fontSize: '14px', color: COLORS.navy }}>Dyeing RFT &amp; Reprocess Intelligence</strong>
                 </div>
-                <span style={{ fontSize: '9px', color: COLORS.grey }}>Total: {dyeingReprocessData.dyeingTotal} Tons</span>
+                <span style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>Total: {dyeingReprocessData.dyeingTotal} Tons</span>
               </div>
 
               {/* Reprocess Cards */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px', marginBottom: '6px' }}>
                 <div style={{ background: COLORS.greenLight, border: '1px solid #BBF7D0', padding: '5px 6px', borderRadius: '4px', textAlign: 'center' }}>
-                  <span style={{ fontSize: '8px', fontWeight: 700, color: COLORS.green, display: 'block', textTransform: 'uppercase' }}>RFT Pass</span>
-                  <div style={{ fontSize: '13px', fontWeight: 800, color: COLORS.green, margin: '1px 0' }}>{dyeingReprocessData.rftPct}%</div>
-                  <span style={{ fontSize: '8.5px', color: COLORS.grey }}>{dyeingReprocessData.rftTons} Tons</span>
+                  <span style={{ fontSize: '12px', fontWeight: 750, color: COLORS.green, display: 'block', textTransform: 'uppercase' }}>RFT Pass</span>
+                  <div style={{ fontSize: '22px', fontWeight: 900, color: COLORS.green, margin: '2px 0' }}>{dyeingReprocessData.rftPct}%</div>
+                  <span style={{ fontSize: '12.5px', color: '#475569', fontWeight: 600 }}>{dyeingReprocessData.rftTons} Tons</span>
                 </div>
 
                 <div style={{ background: COLORS.amberLight, border: '1px solid #FDE68A', padding: '5px 6px', borderRadius: '4px', textAlign: 'center' }}>
-                  <span style={{ fontSize: '8px', fontWeight: 700, color: COLORS.amber, display: 'block', textTransform: 'uppercase' }}>1st Topping</span>
-                  <div style={{ fontSize: '13px', fontWeight: 800, color: COLORS.amber, margin: '1px 0' }}>{dyeingReprocessData.toppingPct}%</div>
-                  <span style={{ fontSize: '8.5px', color: COLORS.grey }}>{dyeingReprocessData.toppingTons} Tons</span>
+                  <span style={{ fontSize: '12px', fontWeight: 750, color: COLORS.amber, display: 'block', textTransform: 'uppercase' }}>1st Topping</span>
+                  <div style={{ fontSize: '22px', fontWeight: 900, color: COLORS.amber, margin: '2px 0' }}>{dyeingReprocessData.toppingPct}%</div>
+                  <span style={{ fontSize: '12.5px', color: '#475569', fontWeight: 600 }}>{dyeingReprocessData.toppingTons} Tons</span>
                 </div>
 
                 <div style={{ background: COLORS.redLight, border: '1px solid #FECACA', padding: '5px 6px', borderRadius: '4px', textAlign: 'center' }}>
-                  <span style={{ fontSize: '8px', fontWeight: 700, color: COLORS.red, display: 'block', textTransform: 'uppercase' }}>Redyeing</span>
-                  <div style={{ fontSize: '13px', fontWeight: 800, color: COLORS.red, margin: '1px 0' }}>{dyeingReprocessData.redyeingPct}%</div>
-                  <span style={{ fontSize: '8.5px', color: COLORS.grey }}>{dyeingReprocessData.redyeingTons} Tons</span>
+                  <span style={{ fontSize: '12px', fontWeight: 750, color: COLORS.red, display: 'block', textTransform: 'uppercase' }}>Redyeing</span>
+                  <div style={{ fontSize: '22px', fontWeight: 900, color: COLORS.red, margin: '2px 0' }}>{dyeingReprocessData.redyeingPct}%</div>
+                  <span style={{ fontSize: '12.5px', color: '#475569', fontWeight: 600 }}>{dyeingReprocessData.redyeingTons} Tons</span>
                 </div>
               </div>
             </div>
@@ -1501,8 +1501,8 @@ export default function ManagementDashboardPage() {
           <div style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', overflow: 'hidden' }}>
             <div style={{ padding: '5px 9px', background: '#F1F5F9', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <span style={{ fontSize: '9px', fontWeight: 800, color: COLORS.blue, background: COLORS.blueLight, padding: '1px 4px', borderRadius: '3px' }}>Sec 08B</span>
-                <strong style={{ fontSize: '11px', color: COLORS.navy }}>Outside Subcontract Partner Mills Register</strong>
+                <span style={{ fontSize: '11.5px', fontWeight: 800, color: COLORS.blue, background: COLORS.blueLight, padding: '2px 7px', borderRadius: '4px' }}>Sec 08B</span>
+                <strong style={{ fontSize: '14px', color: COLORS.navy }}>Outside Subcontract Partner Mills Register</strong>
               </div>
 
               {/* Section Tabs */}
@@ -1518,8 +1518,8 @@ export default function ManagementDashboardPage() {
                     type="button"
                     onClick={() => setSubcontractSectionTab(tab.key as any)}
                     style={{
-                      fontSize: '8.5px',
-                      padding: '2px 6px',
+                      fontSize: '12px',
+                      padding: '4px 10px',
                       borderRadius: '3px',
                       border: '1px solid #CBD5E1',
                       background: subcontractSectionTab === tab.key ? COLORS.navy : '#FFFFFF',
@@ -1534,17 +1534,17 @@ export default function ManagementDashboardPage() {
               </div>
             </div>
 
-            <div style={{ overflowX: 'auto', maxHeight: '180px' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9.5px', textAlign: 'left' }}>
+            <div style={{ overflowX: 'auto', maxHeight: '280px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13.5px', textAlign: 'left' }}>
                 <thead style={{ position: 'sticky', top: 0, background: '#F8FAFC', zIndex: 10 }}>
                   <tr style={{ borderBottom: `1px solid ${COLORS.border}`, color: COLORS.grey }}>
                     <th style={{ padding: '4px 6px', width: '24px' }}>#</th>
-                    <th style={{ padding: '4px 6px' }}>Partner Factory Mill</th>
-                    <th style={{ padding: '4px 6px' }}>Order Type / Capability</th>
-                    <th style={{ padding: '4px 6px', textAlign: 'right' }}>Plan</th>
-                    <th style={{ padding: '4px 6px', textAlign: 'right' }}>Received</th>
-                    <th style={{ padding: '4px 6px', textAlign: 'right' }}>Balance</th>
-                    <th style={{ padding: '4px 6px', textAlign: 'center' }}>Status</th>
+                    <th style={{ padding: '8px 10px' }}>Partner Factory Mill</th>
+                    <th style={{ padding: '8px 10px' }}>Order Type / Capability</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>Plan</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>Received</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>Balance</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'center' }}>Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1553,11 +1553,11 @@ export default function ManagementDashboardPage() {
                       <td style={{ padding: '3px 6px', color: COLORS.grey }}>{idx + 1}</td>
                       <td style={{ padding: '3px 6px', fontWeight: 700, color: COLORS.navy }}>{sc.factory}</td>
                       <td style={{ padding: '3px 6px', color: '#475569' }}>{sc.workType}</td>
-                      <td style={{ padding: '3px 6px', textAlign: 'right' }}>{fmt(sc.planned)} {sc.unit}</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmt(sc.planned)} {sc.unit}</td>
                       <td style={{ padding: '3px 6px', textAlign: 'right', color: COLORS.green, fontWeight: 700 }}>{fmt(sc.received)} {sc.unit}</td>
                       <td style={{ padding: '3px 6px', textAlign: 'right', color: COLORS.amber, fontWeight: 700 }}>{fmt(sc.balance)} {sc.unit}</td>
-                      <td style={{ padding: '3px 6px', textAlign: 'center' }}>
-                        <span style={{ padding: '1px 5px', borderRadius: '3px', fontSize: '8px', fontWeight: 700, background: COLORS.greenLight, color: COLORS.green }}>
+                      <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                        <span style={{ padding: '1px 5px', borderRadius: '3px', fontSize: '12px', fontWeight: 750, background: COLORS.greenLight, color: COLORS.green }}>
                           {sc.status}
                         </span>
                       </td>
@@ -1607,31 +1607,31 @@ export default function ManagementDashboardPage() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px' }}>
                   <thead>
                     <tr style={{ background: '#F1F5F9', borderBottom: '1px solid #CBD5E1', textAlign: 'left' }}>
-                      <th style={{ padding: '4px 6px' }}>Job No</th>
-                      <th style={{ padding: '4px 6px' }}>Buyer</th>
-                      <th style={{ padding: '4px 6px' }}>Style</th>
-                      <th style={{ padding: '4px 6px', textAlign: 'right' }}>Order Qty</th>
-                      <th style={{ padding: '4px 6px' }}>Status</th>
-                      <th style={{ padding: '4px 6px' }}>Ex-Factory</th>
-                      <th style={{ padding: '4px 6px' }}>Merchandiser</th>
-                      <th style={{ padding: '4px 6px', textAlign: 'center' }}>Action</th>
+                      <th style={{ padding: '8px 10px' }}>Job No</th>
+                      <th style={{ padding: '8px 10px' }}>Buyer</th>
+                      <th style={{ padding: '8px 10px' }}>Style</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>Order Qty</th>
+                      <th style={{ padding: '8px 10px' }}>Status</th>
+                      <th style={{ padding: '8px 10px' }}>Ex-Factory</th>
+                      <th style={{ padding: '8px 10px' }}>Merchandiser</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'center' }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {drillModal.rows.slice(0, 50).map((r, i) => (
                       <tr key={i} style={{ borderBottom: '1px solid #E2E8F0' }}>
                         <td style={{ padding: '4px 6px', fontWeight: 700, color: COLORS.blue }}>{r.jobNo}</td>
-                        <td style={{ padding: '4px 6px' }}>{r.buyer}</td>
-                        <td style={{ padding: '4px 6px' }}>{r.styleNo}</td>
+                        <td style={{ padding: '8px 10px' }}>{r.buyer}</td>
+                        <td style={{ padding: '8px 10px' }}>{r.styleNo}</td>
                         <td style={{ padding: '4px 6px', textAlign: 'right', fontWeight: 600 }}>{fmt(r.orderQty)}</td>
-                        <td style={{ padding: '4px 6px' }}>
-                          <span style={{ fontSize: '8.5px', background: r.riskStatus === 'CRITICAL' ? COLORS.redLight : '#F1F5F9', color: r.riskStatus === 'CRITICAL' ? COLORS.red : COLORS.navy, padding: '1px 4px', borderRadius: '3px', fontWeight: 700 }}>
+                        <td style={{ padding: '8px 10px' }}>
+                          <span style={{ fontSize: '12px', background: r.riskStatus === 'CRITICAL' ? COLORS.redLight : '#F1F5F9', color: r.riskStatus === 'CRITICAL' ? COLORS.red : COLORS.navy, padding: '1px 4px', borderRadius: '3px', fontWeight: 700 }}>
                             {r.presentStatus || r.riskStatus || 'Running'}
                           </span>
                         </td>
-                        <td style={{ padding: '4px 6px' }}>{r.dates?.exFactory || 'N/A'}</td>
-                        <td style={{ padding: '4px 6px' }}>{r.merchandiser || 'Unassigned'}</td>
-                        <td style={{ padding: '4px 6px', textAlign: 'center' }}>
+                        <td style={{ padding: '8px 10px' }}>{r.dates?.exFactory || 'N/A'}</td>
+                        <td style={{ padding: '8px 10px' }}>{r.merchandiser || 'Unassigned'}</td>
+                        <td style={{ padding: '8px 10px', textAlign: 'center' }}>
                           <Link href={`/jobs/${r.jobNo}`} style={{ color: COLORS.blue, textDecoration: 'none', fontWeight: 700 }}>
                             Job 360 →
                           </Link>

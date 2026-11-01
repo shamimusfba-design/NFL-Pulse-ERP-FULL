@@ -83,6 +83,14 @@ export const MODULE_GROUPS: ModuleGroup[] = [
     ],
   },
   {
+    label: 'Fabric Quality',
+    overviewSlug: 'fabric-quality',
+    icon: 'quality',
+    items: [
+      { slug: 'fabric-quality', name: 'Fabric Quality Management', short: 'FQ', icon: 'quality', status: 'Live', description: 'Centralized fabric quality management for Knitting Quality, Greige Fabric Quality and Dyeing Quality.' },
+    ],
+  },
+  {
     label: 'Finish Fabric Store',
     overviewSlug: 'finished-fabric',
     icon: 'finish-fabric',
@@ -196,6 +204,7 @@ export const SECTION_OVERVIEWS: SectionOverview[] = [
   { slug: 'yarn-knitting', label: 'Yarn Store & Knitting', short: 'YK', description: 'Yarn, knitting, inventory and spinning mill purchase.', representativeSlug: 'yarn' },
   { slug: 'greige-store', label: 'Greige Fabric Store', short: 'GS', description: 'Greige roll receipt, 4-point inspection and issue to Dyeing.', representativeSlug: 'greige-store' },
   { slug: 'dyeing', label: 'Dyeing', short: 'DY', description: '23 winches & HTHP, dyeing planning, machine loading and finish fabric execution.', representativeSlug: 'dyeing' },
+  { slug: 'fabric-quality', label: 'Fabric Quality', short: 'FQ', description: 'Centralized fabric quality management across Knitting, Greige and Dyeing stages.', representativeSlug: 'fabric-quality' },
   { slug: 'finished-fabric', label: 'Finish Fabric Store', short: 'FS', description: 'Finished fabric inventory, 4-point inspection and roll delivery.', representativeSlug: 'finished-fabric' },
   { slug: 'cutting', label: 'Cutting & Input Management', short: 'CT', description: 'Cuttable gate, interactive Cut Planner, lay spreading and sewing input buffer.', representativeSlug: 'cutting' },
   { slug: 'printing', label: 'Printing Operations', short: 'PT', description: 'In-house and outsource print dispatch, receive and strike-off quality.', representativeSlug: 'printing' },

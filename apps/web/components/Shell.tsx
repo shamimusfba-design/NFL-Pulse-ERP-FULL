@@ -46,6 +46,7 @@ const DEPARTMENT_NAVIGATION_ITEMS: SidebarItem[] = [
   { id: 'yarn-knitting', name: 'Yarn Store & Knitting', href: '/modules/yarn-knitting', matchPrefixes: ['/modules/yarn-knitting', '/modules/yarn', '/modules/yarn-store', '/modules/knitting'] },
   { id: 'greige-store', name: 'Greige Fabric Store', href: '/modules/greige-store', matchPrefixes: ['/modules/greige-store'] },
   { id: 'dyeing', name: 'Dyeing', href: '/modules/dyeing', matchPrefixes: ['/modules/dyeing', '/modules/dyeing-machine-loading', '/modules/fabric-finishing'] },
+  { id: 'fabric-quality', name: 'Fabric Quality', href: '/modules/fabric-quality', matchPrefixes: ['/modules/fabric-quality'] },
   { id: 'finished-fabric', name: 'Finished Fabric Store', href: '/modules/finished-fabric', matchPrefixes: ['/modules/finished-fabric'] },
   { id: 'cad', name: 'CAD', href: '/modules/cad', matchPrefixes: ['/modules/cad'] },
   { id: 'technical', name: 'Technical', href: '/modules/technical', matchPrefixes: ['/modules/technical'] },
@@ -106,6 +107,18 @@ const DEPARTMENT_TOP_NAVS: DepartmentNavConfig[] = [
     ]
   },
   {
+    deptId: 'fabric-quality',
+    deptName: 'Fabric Quality',
+    matchPrefixes: ['/modules/fabric-quality'],
+    subItems: [
+      { name: 'Dashboard', href: '/modules/fabric-quality' },
+      { name: 'Knitting Quality', href: '/modules/fabric-quality?stage=knitting' },
+      { name: 'Greige Fabric Quality', href: '/modules/fabric-quality?stage=greige' },
+      { name: 'Dyeing Quality', href: '/modules/fabric-quality?stage=dyeing' },
+      { name: 'Defect Library', href: '/modules/fabric-quality?stage=defects' },
+    ]
+  },
+  {
     deptId: 'sewing',
     deptName: 'Sewing & Finishing',
     matchPrefixes: ['/modules/sewing', '/modules/finishing'],
@@ -119,8 +132,12 @@ const DEPARTMENT_TOP_NAVS: DepartmentNavConfig[] = [
     deptName: 'Garments Quality',
     matchPrefixes: ['/quality', '/modules/garment-quality', '/modules/quality-history'],
     subItems: [
-      { name: 'Quality Management & DHU', href: '/quality' },
-      { name: 'Job Quality History', href: '/modules/quality-history' },
+      { name: 'Overview Dashboard', href: '/quality' },
+      { name: 'Cutting Quality', href: '/quality?section=cutting' },
+      { name: 'Printing Quality', href: '/quality?section=printing' },
+      { name: 'Embroidery Quality', href: '/quality?section=embroidery' },
+      { name: 'Sewing Quality', href: '/quality?section=sewing' },
+      { name: 'Finishing Quality', href: '/quality?section=finishing' },
     ]
   },
   {
@@ -696,14 +713,36 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
 
             <button
               type="button"
-              className="btn btn-ghost"
-              style={{ fontSize: '11px' }}
+              className="btn btn-secondary"
+              style={{
+                fontSize: '13px',
+                fontWeight: 650,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                color: '#dc2626',
+                borderColor: '#fca5a5',
+                background: '#fff1f2'
+              }}
               onClick={async () => {
-                await api('/auth/logout').catch(() => {});
+                try {
+                  await api('/auth/logout').catch(() => {});
+                } catch {}
+                try {
+                  localStorage.removeItem('nfl_access_token');
+                  localStorage.removeItem('nfl_refresh_token');
+                  localStorage.removeItem('nfl_user');
+                  localStorage.removeItem('nos_active_persona');
+                  localStorage.removeItem('nos-active-persona-id');
+                  localStorage.removeItem('nos-user-role');
+                } catch {}
                 window.location.href = '/login';
               }}
+              title="Securely sign out and terminate ERP session"
             >
-              Sign Out
+              <span>🚪</span>
+              <span>Sign Out</span>
             </button>
           </div>
         </header>

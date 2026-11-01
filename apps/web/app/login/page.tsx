@@ -256,13 +256,12 @@ export default function LoginPage() {
       <div className="relative z-10 w-full lg:w-[58%] flex flex-col justify-between p-6 sm:p-10 lg:p-14 min-h-screen text-white select-none">
         {/* Top-Left Company Branding Header */}
         <div className="flex items-center gap-3">
-          {/* Logo Placeholder as specified in Prompt */}
-          <div className="border-[1.5px] border-dashed border-white/50 rounded-lg px-2.5 py-1.5 flex items-center gap-2 bg-white/5 backdrop-blur-sm shadow-sm">
-            <ImageIcon className="w-4 h-4 text-white/90" />
-            <div className="text-[9px] font-bold text-white tracking-wider leading-none text-center">
-              COMPANY<br />LOGO<br />(HERE)
-            </div>
-          </div>
+          {/* Official Company Logo */}
+          <img
+            src="/branding/northern-fashions-logo.jpg"
+            alt="Northern Fashions Limited"
+            className="w-11 h-11 object-contain rounded-lg bg-white p-1 shadow-md flex-shrink-0"
+          />
 
           {/* Thin Vertical Divider */}
           <div className="w-px h-9 bg-white/20 mx-1" />
@@ -362,14 +361,13 @@ export default function LoginPage() {
          ========================================================================= */}
       <div className="relative z-10 w-full lg:w-[42%] flex items-center justify-center p-4 sm:p-8 lg:p-12 min-h-screen">
         <div className="w-full max-w-[420px] bg-white rounded-[24px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.35)] p-7 sm:p-9 border border-slate-100 transition-all duration-300">
-          {/* Company Logo Placeholder inside the Card */}
+          {/* Official Company Logo inside the Card */}
           <div className="flex flex-col items-center text-center">
-            <div className="border-[1.5px] border-dashed border-slate-400 rounded-lg px-3.5 py-1.5 flex items-center gap-2 bg-slate-50 shadow-inner">
-              <ImageIcon className="w-4 h-4 text-slate-600" />
-              <span className="text-[9.5px] font-bold text-slate-700 tracking-wider">
-                COMPANY LOGO (HERE)
-              </span>
-            </div>
+            <img
+              src="/branding/northern-fashions-logo.jpg"
+              alt="Northern Fashions Limited"
+              className="h-12 w-auto object-contain rounded-md bg-white p-1 shadow-sm"
+            />
 
             {/* Company Name & Operations Control Subtitle */}
             <h2 className="text-xl font-bold text-[#071F42] tracking-tight mt-3">

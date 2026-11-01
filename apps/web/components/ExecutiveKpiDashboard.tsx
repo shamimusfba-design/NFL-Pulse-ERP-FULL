@@ -793,11 +793,11 @@ export function ExecutiveKpiDashboard() {
               <span style={{ fontSize: '11px', fontWeight: 800, color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 EXECUTIVE MANAGEMENT SYSTEM
               </span>
-              <span style={{ background: '#dcfce7', color: '#166534', fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '999px' }}>
+              <span style={{ background: '#dcfce7', color: '#166534', fontSize: '13px', fontWeight: 750, padding: '2px 8px', borderRadius: '999px' }}>
                 Active Operations
               </span>
             </div>
-            <h1 style={{ margin: '2px 0 0', fontSize: '20px', fontWeight: 800, color: '#0f172a' }}>
+            <h1 style={{ margin: '2px 0 0', fontSize: '26px', fontWeight: 900, color: '#0f172a' }}>
               Factory Operations &amp; Section-Wise KPI Board
             </h1>
             <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#64748b' }}>
@@ -1064,61 +1064,61 @@ export function ExecutiveKpiDashboard() {
           {/* KPI CARDS (6 Key Metrics for Owner / CEO) */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '12px' }}>
             <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Total In Stock</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#64748b', textTransform: 'uppercase' }}>Total In Stock</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#0f172a', margin: '2px 0' }}>
                 {n(yarnData.totalStockTons)} <span style={{ fontSize: '12px', color: '#64748b' }}>Tons</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#475569' }}>
+              <div style={{ fontSize: '12px', color: '#475569' }}>
                 White: <strong>{n(yarnData.whiteTons)} T</strong> | Color: <strong>{n(yarnData.colorTons)} T</strong>
               </div>
             </div>
 
             <div style={{ background: '#fef2f2', padding: '12px', borderRadius: '8px', border: '1px solid #fecaca' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#991b1b', textTransform: 'uppercase' }}>Safety Stock Deficit</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#b91c1c', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#991b1b', textTransform: 'uppercase' }}>Safety Stock Deficit</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#b91c1c', margin: '2px 0' }}>
                 {yarnData.safetyShortageCount} <span style={{ fontSize: '12px' }}>Counts Out</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#b91c1c' }}>
+              <div style={{ fontSize: '12px', color: '#b91c1c' }}>
                 Immediate mill PO needed
               </div>
             </div>
 
             <div style={{ background: '#fffbeb', padding: '12px', borderRadius: '8px', border: '1px solid #fde68a' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase' }}>Dead Stock (&gt;90 Days)</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#b45309', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#92400e', textTransform: 'uppercase' }}>Dead Stock (&gt;90 Days)</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#b45309', margin: '2px 0' }}>
                 {n(yarnData.deadStockTons)} <span style={{ fontSize: '12px' }}>Tons</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#92400e' }}>
+              <div style={{ fontSize: '12px', color: '#92400e' }}>
                 {yarnData.deadStockCount} idle lot items
               </div>
             </div>
 
             <div style={{ background: '#f0fdf4', padding: '12px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#166534', textTransform: 'uppercase' }}>Open Requisitions</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#15803d', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#166534', textTransform: 'uppercase' }}>Open Requisitions</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#15803d', margin: '2px 0' }}>
                 {n(yarnData.requisitionTons)} <span style={{ fontSize: '12px' }}>Tons</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#166534' }}>
+              <div style={{ fontSize: '12px', color: '#166534' }}>
                 From Merchandising
               </div>
             </div>
 
             <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Pipeline (LC Open)</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#64748b', textTransform: 'uppercase' }}>Pipeline (LC Open)</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#0f172a', margin: '2px 0' }}>
                 {n(yarnData.pipelineTons)} <span style={{ fontSize: '12px' }}>Tons</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#475569' }}>
+              <div style={{ fontSize: '12px', color: '#475569' }}>
                 Delivery ETA: 7–14 days
               </div>
             </div>
 
             <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Avg Daily Issue Rate</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#2563eb', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#64748b', textTransform: 'uppercase' }}>Avg Daily Issue Rate</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#2563eb', margin: '2px 0' }}>
                 {n(yarnData.avgDailyIssueTons)} <span style={{ fontSize: '12px' }}>Tons/day</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#475569' }}>
+              <div style={{ fontSize: '12px', color: '#475569' }}>
                 25.8 days store buffer
               </div>
             </div>
@@ -1158,7 +1158,7 @@ export function ExecutiveKpiDashboard() {
                 lineColor="#2563eb"
                 unit="Tons"
               />
-              <div style={{ fontSize: '10px', color: '#64748b', marginTop: '6px' }}>
+              <div style={{ fontSize: '12px', color: '#64748b', marginTop: '6px' }}>
                 Stable daily consumption: 38–44 Tons required to maintain Knitting Gantt schedule.
               </div>
             </div>
@@ -1207,51 +1207,51 @@ export function ExecutiveKpiDashboard() {
           {/* KNITTING KPI CARDS */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '12px' }}>
             <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Total Knitting Plan</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#64748b', textTransform: 'uppercase' }}>Total Knitting Plan</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#0f172a', margin: '2px 0' }}>
                 {n(knittingData.planTons)} <span style={{ fontSize: '12px' }}>Tons</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#475569' }}>
+              <div style={{ fontSize: '12px', color: '#475569' }}>
                 Monthly confirmed schedule
               </div>
             </div>
 
             <div style={{ background: '#f0fdf4', padding: '12px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#166534', textTransform: 'uppercase' }}>Achieved Production</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#15803d', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#166534', textTransform: 'uppercase' }}>Achieved Production</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#15803d', margin: '2px 0' }}>
                 {n(knittingData.prodTons)} <span style={{ fontSize: '12px' }}>Tons</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#166534' }}>
+              <div style={{ fontSize: '12px', color: '#166534' }}>
                 {knittingData.achievePct}% Plan Achievement
               </div>
             </div>
 
             <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Factory Capacity</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#64748b', textTransform: 'uppercase' }}>Factory Capacity</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#0f172a', margin: '2px 0' }}>
                 {knittingData.bookedCapPct}% <span style={{ fontSize: '12px' }}>Booked</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#475569' }}>
+              <div style={{ fontSize: '12px', color: '#475569' }}>
                 {knittingData.loadedCapPct}% Currently Loaded (107 M/C)
               </div>
             </div>
 
             <div style={{ background: '#fef2f2', padding: '12px', borderRadius: '8px', border: '1px solid #fecaca' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#991b1b', textTransform: 'uppercase' }}>Yarn Shortage Bottlenecks</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#dc2626', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#991b1b', textTransform: 'uppercase' }}>Yarn Shortage Bottlenecks</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#dc2626', margin: '2px 0' }}>
                 {knittingData.yarnShortageJobs.length} <span style={{ fontSize: '12px' }}>Jobs Blocked</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#dc2626' }}>
+              <div style={{ fontSize: '12px', color: '#dc2626' }}>
                 19.8 Tons yarn awaited
               </div>
             </div>
 
             <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>In-House vs Unplanned</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#64748b', textTransform: 'uppercase' }}>In-House vs Unplanned</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#0f172a', margin: '2px 0' }}>
                 82% <span style={{ fontSize: '12px' }}>In-House</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#475569' }}>
+              <div style={{ fontSize: '12px', color: '#475569' }}>
                 {knittingData.unplannedBatches} batches unplanned / urgent
               </div>
             </div>
@@ -1308,7 +1308,7 @@ export function ExecutiveKpiDashboard() {
                   >
                     <div>
                       <strong style={{ color: '#0f172a' }}>Job #{j.jobNo}</strong> ({j.buyer})
-                      <div style={{ fontSize: '10px', color: '#718096' }}>{j.count}</div>
+                      <div style={{ fontSize: '12px', color: '#718096' }}>{j.count}</div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <span style={{ color: '#e53e3e', fontWeight: 700 }}>-{j.shortageKg} Kg</span>
@@ -1363,51 +1363,51 @@ export function ExecutiveKpiDashboard() {
           {/* DYEING KPI CARDS */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '12px' }}>
             <div style={{ background: '#f0fdf4', padding: '12px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#166534', textTransform: 'uppercase' }}>Right First Time (RFT)</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#15803d', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#166534', textTransform: 'uppercase' }}>Right First Time (RFT)</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#15803d', margin: '2px 0' }}>
                 {dyeingSectionData.rftPct}%
               </div>
-              <div style={{ fontSize: '10px', color: '#166534' }}>
+              <div style={{ fontSize: '12px', color: '#166534' }}>
                 Target &ge; 92.0% (Benchmark)
               </div>
             </div>
 
             <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Total Dyeing Output</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#64748b', textTransform: 'uppercase' }}>Total Dyeing Output</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#0f172a', margin: '2px 0' }}>
                 {n(dyeingSectionData.prodTons)} <span style={{ fontSize: '12px' }}>Tons</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#475569' }}>
+              <div style={{ fontSize: '12px', color: '#475569' }}>
                 Plan: {n(dyeingSectionData.planTons)} T ({dyeingSectionData.achievePct}%)
               </div>
             </div>
 
             <div style={{ background: '#fef2f2', padding: '12px', borderRadius: '8px', border: '1px solid #fecaca' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#991b1b', textTransform: 'uppercase' }}>Reprocess &amp; Topping</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#dc2626', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#991b1b', textTransform: 'uppercase' }}>Reprocess &amp; Topping</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#dc2626', margin: '2px 0' }}>
                 {dyeingSectionData.toppingPct}% <span style={{ fontSize: '12px' }}>Top</span> / {dyeingSectionData.redyeingPct}% <span style={{ fontSize: '12px' }}>Redyed</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#dc2626' }}>
+              <div style={{ fontSize: '12px', color: '#dc2626' }}>
                 {dyeingSectionData.rectificationBatches} batches rectified
               </div>
             </div>
 
             <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Batches Evaluated</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#64748b', textTransform: 'uppercase' }}>Batches Evaluated</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#0f172a', margin: '2px 0' }}>
                 {dyeingSectionData.batchesEvaluated} <span style={{ fontSize: '12px' }}>Batches</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#475569' }}>
+              <div style={{ fontSize: '12px', color: '#475569' }}>
                 Direct pass: {dyeingSectionData.batchesEvaluated - dyeingSectionData.rectificationBatches}
               </div>
             </div>
 
             <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Sub-contract Dyeing</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#64748b', textTransform: 'uppercase' }}>Sub-contract Dyeing</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#0f172a', margin: '2px 0' }}>
                 {n(dyeingSectionData.subcontractTons)} <span style={{ fontSize: '12px' }}>Tons</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#475569' }}>
+              <div style={{ fontSize: '12px', color: '#475569' }}>
                 12% total dyeing load
               </div>
             </div>
@@ -1481,51 +1481,51 @@ export function ExecutiveKpiDashboard() {
           {/* LAB KPI CARDS */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '12px' }}>
             <div style={{ background: '#fffbeb', padding: '12px', borderRadius: '8px', border: '1px solid #fde68a' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase' }}>Pending Test Reports</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#b45309', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#92400e', textTransform: 'uppercase' }}>Pending Test Reports</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#b45309', margin: '2px 0' }}>
                 {labData.pendingTestReports} <span style={{ fontSize: '12px' }}>Due</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#92400e' }}>
+              <div style={{ fontSize: '12px', color: '#92400e' }}>
                 Fastness, Shrinkage, GSM
               </div>
             </div>
 
             <div style={{ background: '#f0fdf4', padding: '12px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#166534', textTransform: 'uppercase' }}>Tests Completed (Month)</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#15803d', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#166534', textTransform: 'uppercase' }}>Tests Completed (Month)</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#15803d', margin: '2px 0' }}>
                 {labData.completedMonthTests} <span style={{ fontSize: '12px' }}>Reports</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#166534' }}>
+              <div style={{ fontSize: '12px', color: '#166534' }}>
                 {labData.testPassRate}% Pass Rate
               </div>
             </div>
 
             <div style={{ background: '#fef2f2', padding: '12px', borderRadius: '8px', border: '1px solid #fecaca' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#991b1b', textTransform: 'uppercase' }}>Pending Color Dips</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#dc2626', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#991b1b', textTransform: 'uppercase' }}>Pending Color Dips</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#dc2626', margin: '2px 0' }}>
                 {labData.pendingColorDips} <span style={{ fontSize: '12px' }}>Shades</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#dc2626' }}>
+              <div style={{ fontSize: '12px', color: '#dc2626' }}>
                 Awaiting buyer shade approval
               </div>
             </div>
 
             <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Approved Dips (Month)</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#64748b', textTransform: 'uppercase' }}>Approved Dips (Month)</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#0f172a', margin: '2px 0' }}>
                 {labData.approvedColorDips} <span style={{ fontSize: '12px' }}>Approved</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#475569' }}>
+              <div style={{ fontSize: '12px', color: '#475569' }}>
                 {labData.colorMatchRate}% 1st-Time Match
               </div>
             </div>
 
             <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Avg Turnaround Time</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#2563eb', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#64748b', textTransform: 'uppercase' }}>Avg Turnaround Time</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#2563eb', margin: '2px 0' }}>
                 {labData.avgTurnaroundDays} <span style={{ fontSize: '12px' }}>Days</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#475569' }}>
+              <div style={{ fontSize: '12px', color: '#475569' }}>
                 Within 3-day target SLA
               </div>
             </div>
@@ -1598,41 +1598,41 @@ export function ExecutiveKpiDashboard() {
           {/* KPI CARDS */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '12px' }}>
             <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Total Finished Stock</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#64748b', textTransform: 'uppercase' }}>Total Finished Stock</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#0f172a', margin: '2px 0' }}>
                 {n(fabricStoreData.totalStoreStockTons)} <span style={{ fontSize: '12px' }}>Tons</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#475569' }}>
+              <div style={{ fontSize: '12px', color: '#475569' }}>
                 713 fabric rolls ready
               </div>
             </div>
 
             <div style={{ background: '#f0fdf4', padding: '12px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#166534', textTransform: 'uppercase' }}>Daily Delivery to Cutting</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#15803d', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#166534', textTransform: 'uppercase' }}>Daily Delivery to Cutting</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#15803d', margin: '2px 0' }}>
                 {n(fabricStoreData.avgDailyDeliveryTons)} <span style={{ fontSize: '12px' }}>Tons/day</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#166534' }}>
+              <div style={{ fontSize: '12px', color: '#166534' }}>
                 {fabricStoreData.bufferDays} days cutting buffer
               </div>
             </div>
 
             <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Inspection Pass Rate</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#64748b', textTransform: 'uppercase' }}>Inspection Pass Rate</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#0f172a', margin: '2px 0' }}>
                 {fabricStoreData.inspectionPassRate}%
               </div>
-              <div style={{ fontSize: '10px', color: '#475569' }}>
+              <div style={{ fontSize: '12px', color: '#475569' }}>
                 4-Point system standard
               </div>
             </div>
 
             <div style={{ background: '#fffbeb', padding: '12px', borderRadius: '8px', border: '1px solid #fde68a' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase' }}>Quarantine / Pending</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#b45309', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#92400e', textTransform: 'uppercase' }}>Quarantine / Pending</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#b45309', margin: '2px 0' }}>
                 {n(fabricStoreData.quarantineTons)} <span style={{ fontSize: '12px' }}>Tons</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#92400e' }}>
+              <div style={{ fontSize: '12px', color: '#92400e' }}>
                 32 rolls awaiting shade band
               </div>
             </div>
@@ -1706,51 +1706,51 @@ export function ExecutiveKpiDashboard() {
           {/* CUTTING KPI CARDS */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '12px' }}>
             <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Monthly Cutting Output</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#64748b', textTransform: 'uppercase' }}>Monthly Cutting Output</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#0f172a', margin: '2px 0' }}>
                 {n(cuttingData.monthlyProd, 0)} <span style={{ fontSize: '12px' }}>Pcs</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#475569' }}>
+              <div style={{ fontSize: '12px', color: '#475569' }}>
                 Avg {n(cuttingData.monthlyProd / 26, 0)} Pcs / Day
               </div>
             </div>
 
             <div style={{ background: '#f0fdf4', padding: '12px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#166534', textTransform: 'uppercase' }}>Cutting Efficiency</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#15803d', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#166534', textTransform: 'uppercase' }}>Cutting Efficiency</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#15803d', margin: '2px 0' }}>
                 {cuttingData.efficiencyPct}%
               </div>
-              <div style={{ fontSize: '10px', color: '#166534' }}>
+              <div style={{ fontSize: '12px', color: '#166534' }}>
                 Target: &ge; 80.0%
               </div>
             </div>
 
             <div style={{ background: '#f0fdf4', padding: '12px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#166534', textTransform: 'uppercase' }}>Marker Efficiency</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#15803d', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#166534', textTransform: 'uppercase' }}>Marker Efficiency</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#15803d', margin: '2px 0' }}>
                 {cuttingData.markerEfficiencyPct}%
               </div>
-              <div style={{ fontSize: '10px', color: '#166534' }}>
+              <div style={{ fontSize: '12px', color: '#166534' }}>
                 Fabric loss: only {cuttingData.fabricWastagePct}%
               </div>
             </div>
 
             <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Line Input Availability</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#2563eb', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#64748b', textTransform: 'uppercase' }}>Line Input Availability</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#2563eb', margin: '2px 0' }}>
                 {cuttingData.inputAvailabilityPct}%
               </div>
-              <div style={{ fontSize: '10px', color: '#475569' }}>
+              <div style={{ fontSize: '12px', color: '#475569' }}>
                 48 hrs buffer before sewing
               </div>
             </div>
 
             <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Cutting DHU %</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#64748b', textTransform: 'uppercase' }}>Cutting DHU %</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#0f172a', margin: '2px 0' }}>
                 {cuttingData.cuttingDhuPct}%
               </div>
-              <div style={{ fontSize: '10px', color: '#475569' }}>
+              <div style={{ fontSize: '12px', color: '#475569' }}>
                 Low cut defects
               </div>
             </div>
@@ -1823,41 +1823,41 @@ export function ExecutiveKpiDashboard() {
           {/* KPI CARDS */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '12px' }}>
             <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Monthly Print Output</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#64748b', textTransform: 'uppercase' }}>Monthly Print Output</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#0f172a', margin: '2px 0' }}>
                 {n(printData.monthlyProd, 0)} <span style={{ fontSize: '12px' }}>Panels</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#475569' }}>
+              <div style={{ fontSize: '12px', color: '#475569' }}>
                 {printData.inHousePct}% In-House Printed
               </div>
             </div>
 
             <div style={{ background: '#f0fdf4', padding: '12px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#166534', textTransform: 'uppercase' }}>Printing Efficiency</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#15803d', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#166534', textTransform: 'uppercase' }}>Printing Efficiency</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#15803d', margin: '2px 0' }}>
                 {printData.efficiencyPct}%
               </div>
-              <div style={{ fontSize: '10px', color: '#166534' }}>
+              <div style={{ fontSize: '12px', color: '#166534' }}>
                 Target: &ge; 90.0%
               </div>
             </div>
 
             <div style={{ background: '#f0fdf4', padding: '12px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#166534', textTransform: 'uppercase' }}>Defect % (DHU)</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#15803d', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#166534', textTransform: 'uppercase' }}>Defect % (DHU)</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#15803d', margin: '2px 0' }}>
                 {printData.dhuPct}%
               </div>
-              <div style={{ fontSize: '10px', color: '#166534' }}>
+              <div style={{ fontSize: '12px', color: '#166534' }}>
                 Under 1.0% tolerance
               </div>
             </div>
 
             <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Lost Time %</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#64748b', textTransform: 'uppercase' }}>Lost Time %</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#0f172a', margin: '2px 0' }}>
                 {printData.lostTimePct}%
               </div>
-              <div style={{ fontSize: '10px', color: '#475569' }}>
+              <div style={{ fontSize: '12px', color: '#475569' }}>
                 Screen changeover &amp; curing
               </div>
             </div>
@@ -1932,51 +1932,51 @@ export function ExecutiveKpiDashboard() {
           {/* KPI CARDS */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '12px' }}>
             <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Total Embroidery Panels</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#64748b', textTransform: 'uppercase' }}>Total Embroidery Panels</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#0f172a', margin: '2px 0' }}>
                 {n(embroideryData.rawTotalPanels, 0)} <span style={{ fontSize: '12px' }}>Panels</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#475569' }}>
+              <div style={{ fontSize: '12px', color: '#475569' }}>
                 {embroideryData.millionStitches} Million Total Stitches
               </div>
             </div>
 
             <div style={{ background: '#eff6ff', padding: '12px', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#1e40af', textTransform: 'uppercase' }}>In-House Production</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#1d4ed8', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#1e40af', textTransform: 'uppercase' }}>In-House Production</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#1d4ed8', margin: '2px 0' }}>
                 {n(embroideryData.inHousePanels, 0)} <span style={{ fontSize: '12px' }}>({embroideryData.inHousePct}%)</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#1e40af' }}>
+              <div style={{ fontSize: '12px', color: '#1e40af' }}>
                 {embroideryData.activeMachinesInHouse} Machines ({embroideryData.totalHeads} Heads) · {embroideryData.inHouseEfficiency}% Eff
               </div>
             </div>
 
             <div style={{ background: '#fffbeb', padding: '12px', borderRadius: '8px', border: '1px solid #fde68a' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase' }}>Outsource / Sub-Contract</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#b45309', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#92400e', textTransform: 'uppercase' }}>Outsource / Sub-Contract</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#b45309', margin: '2px 0' }}>
                 {n(embroideryData.outsourcePanels, 0)} <span style={{ fontSize: '12px' }}>({embroideryData.outsourcePct}%)</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#92400e' }}>
+              <div style={{ fontSize: '12px', color: '#92400e' }}>
                 3 Vendors · {embroideryData.outsourceOnTimeDelivery}% On-Time Delivery
               </div>
             </div>
 
             <div style={{ background: '#f0fdf4', padding: '12px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#166534', textTransform: 'uppercase' }}>In-House DHU %</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#15803d', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#166534', textTransform: 'uppercase' }}>In-House DHU %</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#15803d', margin: '2px 0' }}>
                 {embroideryData.inHouseDhu}%
               </div>
-              <div style={{ fontSize: '10px', color: '#166534' }}>
+              <div style={{ fontSize: '12px', color: '#166534' }}>
                 Low thread breakage loss
               </div>
             </div>
 
             <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Outsource Rejection</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#64748b', textTransform: 'uppercase' }}>Outsource Rejection</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#0f172a', margin: '2px 0' }}>
                 {embroideryData.outsourceRejectionPct}%
               </div>
-              <div style={{ fontSize: '10px', color: '#475569' }}>
+              <div style={{ fontSize: '12px', color: '#475569' }}>
                 Overall DHU: {embroideryData.totalDhuPct}%
               </div>
             </div>
@@ -2062,41 +2062,41 @@ export function ExecutiveKpiDashboard() {
           {/* SEWING KPI CARDS */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '12px' }}>
             <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Weekly Load Status</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#64748b', textTransform: 'uppercase' }}>Weekly Load Status</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#0f172a', margin: '2px 0' }}>
                 {sewingData.loadPct}% <span style={{ fontSize: '12px' }}>Capacity</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#475569' }}>
+              <div style={{ fontSize: '12px', color: '#475569' }}>
                 {n(sewingData.weeklyLoadBooked, 0)} / {n(sewingData.weeklyCapacity, 0)} Pcs
               </div>
             </div>
 
             <div style={{ background: '#f0fdf4', padding: '12px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#166534', textTransform: 'uppercase' }}>Monthly Total Sewing</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#15803d', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#166534', textTransform: 'uppercase' }}>Monthly Total Sewing</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#15803d', margin: '2px 0' }}>
                 {n(sewingData.monthlyProd, 0)} <span style={{ fontSize: '12px' }}>Pcs</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#166534' }}>
+              <div style={{ fontSize: '12px', color: '#166534' }}>
                 Factory Efficiency: {sewingData.efficiencyPct}%
               </div>
             </div>
 
             <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Sewing DHU %</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#64748b', textTransform: 'uppercase' }}>Sewing DHU %</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#0f172a', margin: '2px 0' }}>
                 {sewingData.dhuPct}% <span style={{ fontSize: '12px' }}>DHU</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#475569' }}>
+              <div style={{ fontSize: '12px', color: '#475569' }}>
                 Cut-to-ship loss: {sewingData.cutToShipLoss}%
               </div>
             </div>
 
             <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Plant Allocation</div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: '#2563eb', margin: '2px 0' }}>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#64748b', textTransform: 'uppercase' }}>Plant Allocation</div>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#2563eb', margin: '2px 0' }}>
                 NFL + NCL
               </div>
-              <div style={{ fontSize: '10px', color: '#475569' }}>
+              <div style={{ fontSize: '12px', color: '#475569' }}>
                 NFL: 67% | NCL: 33%
               </div>
             </div>
