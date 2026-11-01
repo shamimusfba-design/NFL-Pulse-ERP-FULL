@@ -360,7 +360,7 @@ export default function LoginPage() {
           RIGHT SECTION (approx. 42% width): Large, Elegant White Login Card
          ========================================================================= */}
       <div className="relative z-10 w-full lg:w-[42%] flex items-center justify-center p-4 sm:p-8 lg:p-12 min-h-screen">
-        <div className="w-full max-w-[420px] bg-white rounded-[24px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.35)] p-7 sm:p-9 border border-slate-100 transition-all duration-300">
+        <div className="w-full max-w-[425px] rounded-[26px] p-7 sm:p-9 transition-all duration-300" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', boxShadow: '0 25px 60px -15px rgba(2, 6, 23, 0.45)' }}>
           {/* Official Company Logo inside the Card */}
           <div className="flex flex-col items-center text-center">
             <img
@@ -408,7 +408,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={loading || isUnlocked}
-                  className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-[#D7E1ED] rounded-xl text-[#10254D] placeholder-slate-400 focus:outline-none focus:border-[#07834A] focus:ring-2 focus:ring-[#07834A]/15 transition-all disabled:bg-slate-50 disabled:cursor-not-allowed shadow-sm"
+                  className="w-full pl-10 pr-4 py-3 text-[14.5px] bg-white border border-[#CBD5E1] rounded-xl text-[#0F172A] placeholder-slate-400 focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15 transition-all disabled:bg-slate-50 disabled:cursor-not-allowed shadow-sm font-medium"
                 />
               </div>
             </div>
@@ -425,7 +425,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={loading || isUnlocked}
-                  className="w-full pl-10 pr-10 py-2.5 text-sm bg-white border border-[#D7E1ED] rounded-xl text-[#10254D] placeholder-slate-400 focus:outline-none focus:border-[#07834A] focus:ring-2 focus:ring-[#07834A]/15 transition-all disabled:bg-slate-50 disabled:cursor-not-allowed shadow-sm"
+                  className="w-full pl-10 pr-10 py-3 text-[14.5px] bg-white border border-[#CBD5E1] rounded-xl text-[#0F172A] placeholder-slate-400 focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15 transition-all disabled:bg-slate-50 disabled:cursor-not-allowed shadow-sm font-medium"
                 />
                 <button
                   type="button"
