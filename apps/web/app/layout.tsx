@@ -2,9 +2,24 @@ import './globals.css';
 import TableExportEnhancer from '../components/TableExportEnhancer';
 
 export const metadata = {
-  title: 'NOS · Northern Operating System — Merchandising Command Center',
-  description: 'NOS – Northern Operating System: Merchandising Control Tower & Operations Management for Northern Fashions Limited (NFL / NCL)',
+  title: 'NFL PULSE ERP · Northern Fashions Limited & Northern Clothing Ltd.',
+  description: 'NFL PULSE ERP – Integrated Garment & Textile Manufacturing Operations Control',
 };
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return <html lang="en"><body><TableExportEnhancer />{children}</body></html>;
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('nos-theme')||'light';document.documentElement.dataset.theme=t;}catch(e){}})();`
+          }}
+        />
+      </head>
+      <body>
+        <TableExportEnhancer />
+        {children}
+      </body>
+    </html>
+  );
 }

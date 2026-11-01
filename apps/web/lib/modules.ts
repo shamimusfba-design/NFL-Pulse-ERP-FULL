@@ -2,6 +2,7 @@ export type ModuleItem = {
   slug: string;
   name: string;
   short: string;
+  icon: string;
   status: 'Live' | 'Foundation' | 'Working' | 'Planned';
   description: string;
 };
@@ -9,6 +10,7 @@ export type ModuleItem = {
 export type ModuleGroup = {
   label: string;
   overviewSlug: string;
+  icon?: string;
   items: ModuleItem[];
 };
 
@@ -16,111 +18,165 @@ export const MODULE_GROUPS: ModuleGroup[] = [
   {
     label: 'Management',
     overviewSlug: 'management',
+    icon: 'factory',
     items: [
-      { slug: 'job-360', name: 'Job 360', short: 'J3', status: 'Foundation', description: 'One job view across order, material, production, quality, T&A and shipment.' },
-      { slug: 'kpi-board', name: 'KPI Board', short: 'KP', status: 'Working', description: 'Auto + manual KPI values, monthly board readiness and print-oriented KPI charts.' },
-      { slug: 'kaizen', name: 'Kaizen', short: 'KZ', status: 'Working', description: 'Kaizen submit, review, implement, sustain/spread and KPI saving history.' },
+      { slug: 'management', name: 'Executive Dashboard', short: 'MG', icon: 'factory', status: 'Live', description: 'Factory KPIs, executive register, overall risk and operations overview.' },
     ],
   },
   {
-    label: 'Merchandising',
+    label: 'Sales & Merchandising',
     overviewSlug: 'merchandising-overview',
+    icon: 'hanger',
     items: [
-      { slug: 'merchandising', name: 'Bulk Merchandising', short: 'BM', status: 'Live', description: 'Enterprise operational dashboard, real-time job monitoring, priority actions, and live production pipeline.' },
-      { slug: 'sample-merchandising', name: 'Sample Merchandising', short: 'SM', status: 'Working', description: 'Sample order sheets, sample development follow-up, sample approvals and sample delivery status.' },
+      { slug: 'merchandising', name: 'Bulk Merchandising', short: 'BM', icon: 'shirt', status: 'Live', description: 'Enterprise operational dashboard, real-time job monitoring, priority actions, and live production pipeline.' },
+      { slug: 'sample-merchandising', name: 'Sample Merchandising', short: 'SM', icon: 'dress', status: 'Working', description: 'Sample order sheets, sample development follow-up, sample approvals and sample delivery status.' },
+    ],
+  },
+  {
+    label: 'Trims & Accessories Store',
+    overviewSlug: 'trims',
+    icon: 'button-trim',
+    items: [
+      { slug: 'trims', name: 'Trims & Accessories Store', short: 'TR', icon: 'button-trim', status: 'Planned', description: 'Trims receive, stock ledger, color/size inventory, job reservation, issue to sewing floor and supplier return.' },
     ],
   },
   {
     label: 'Sample / CAD / Technical',
     overviewSlug: 'sample-cad-technical',
+    icon: 'sample-room',
     items: [
-      { slug: 'central-sample', name: 'Central Sample Department', short: 'CS', status: 'Planned', description: 'Sample cutting, sewing, finishing and final delivery.' },
-      { slug: 'sample-fabric-store', name: 'Sample Finish Fabric Store', short: 'SF', status: 'Planned', description: 'Sample finished fabric receive, issue, balance and handover.' },
-      { slug: 'cad', name: 'CAD / Consumption / Pattern', short: 'CD', status: 'Foundation', description: 'Order-linked CAD consumption, color-wise fabric requirement, pattern and size-set work.' },
-      { slug: 'technical', name: 'Technical / File Handover', short: 'TC', status: 'Planned', description: 'Technical files, specifications and handover status connected to sample and bulk jobs.' },
+      { slug: 'sample-room', name: 'Sample Room', short: 'SR', icon: 'sample-room', status: 'Live', description: 'Sample cutting, sewing, finishing, sample pattern and physical sample review.' },
+      { slug: 'cad', name: 'CAD / Consumption / Pattern', short: 'CD', icon: 'measuring-tape', status: 'Foundation', description: 'Order-linked CAD consumption, color-wise fabric requirement, pattern and size-set work.' },
+      { slug: 'technical', name: 'Technical / File Handover', short: 'TC', icon: 'tech-pack', status: 'Planned', description: 'Technical specifications, tech pack, critical quality specs and handover status.' },
     ],
   },
   {
     label: 'Central Planning',
     overviewSlug: 'central-planning',
+    icon: 'planning',
     items: [
-      { slug: 'ta', name: 'Time & Action & Control Tower', short: 'TA', status: 'Live', description: 'Backward T&A engine, Plan vs Actual, Critical Path & Shipment Risk, Fabric/Trims Weekly Follow-up, Sample Planning & Shipment Meetings.' },
-      { slug: 'planning-approvals', name: 'Approval Desk & Release', short: 'AD', status: 'Live', description: 'Physical signed copy verification, Merchandiser return, and colour × part Finish/Grey Kg release to Knitting & Dyeing.' },
-      { slug: 'capacity', name: 'Capacity & Holiday Calendar', short: 'CB', status: 'Live', description: '10-day slot-wise and section-wise capacity heatmaps with Sunday weekly holiday and Eid/closure holiday calendar.' },
-      { slug: 'sewing-planning', name: 'Sewing Line Gantt', short: 'LP', status: 'Live', description: 'Drag-and-drop Gantt, line allocation, machine capacity validation, baseline versioning and plan vs actual.' },
-      { slug: 'subcontract', name: 'Subcontract / Print-Emb Follow-up', short: 'SC', status: 'Live', description: 'Outside Print, Embroidery & Wash work order dispatch, challan receive, reject and balance follow-up.' },
+      { slug: 'ta', name: 'Time & Action & Control Tower', short: 'TA', icon: 'stopwatch', status: 'Live', description: 'Backward T&A engine, Plan vs Actual, Critical Path & Shipment Risk, Fabric/Trims Weekly Follow-up.' },
+      { slug: 'planning-approvals', name: 'Approval Desk & Release', short: 'AD', icon: 'approval', status: 'Live', description: 'Physical signed copy verification, Merchandiser return, and colour × part Finish/Grey Kg release to Knitting & Dyeing.' },
+      { slug: 'capacity', name: 'Capacity & Holiday Calendar', short: 'CB', icon: 'calendar', status: 'Live', description: '10-day slot-wise and section-wise capacity heatmaps with Sunday weekly holiday and Eid/closure holiday calendar.' },
+      { slug: 'sewing-planning', name: 'Sewing Line Gantt', short: 'LP', icon: 'gantt', status: 'Live', description: 'Drag-and-drop Gantt, line allocation, machine capacity validation, baseline versioning and plan vs actual.' },
+      { slug: 'subcontract', name: 'Subcontract / Print-Emb Follow-up', short: 'SC', icon: 'subcontract', status: 'Live', description: 'Outside Print, Embroidery & Wash work order dispatch, challan receive, reject and balance follow-up.' },
     ],
   },
   {
-    label: 'IE / Industrial Engineering',
+    label: 'Yarn Store & Knitting',
+    overviewSlug: 'yarn-knitting',
+    icon: 'yarn-cone',
+    items: [
+      { slug: 'yarn', name: 'Yarn Management & Purchasing', short: 'YM', icon: 'yarn-cone', status: 'Live', description: 'Merchandising requisition receipt, spinning mill PO purchasing, safety stock buffer monitoring, GRN receive and issue to knitting.' },
+      { slug: 'yarn-store', name: 'Yarn Store & Inventory', short: 'YS', icon: 'yarn-store', status: 'Live', description: 'Warehouse Godown A/B stock ledger, lot/location tracking, GRN vehicle intake and Knitting delivery challan.' },
+      { slug: 'knitting', name: 'Knitting Operations', short: 'KN', icon: 'knitting', status: 'Live', description: 'Circular and flat knitting programs, machine programs, greige roll production and yarn leftover returns.' },
+    ],
+  },
+  {
+    label: 'Greige Fabric Store',
+    overviewSlug: 'greige-store',
+    icon: 'fabric-roll',
+    items: [
+      { slug: 'greige-store', name: 'Greige Fabric Store', short: 'GS', icon: 'fabric-roll', status: 'Live', description: 'Greige roll receipt, 4-point inspection, fabric aging, daily machine plan matching and issue to Dyeing Winches.' },
+    ],
+  },
+  {
+    label: 'Dyeing',
+    overviewSlug: 'dyeing',
+    icon: 'dyeing',
+    items: [
+      { slug: 'dyeing', name: 'Dyeing Planning', short: 'DP', icon: 'dyeing', status: 'Live', description: '23 Winch & HTHP batch planning, multi-process (Peach, Brush, AOP), RFT quality, recipe issue and dye lot programming.' },
+      { slug: 'dyeing-machine-loading', name: 'Machine Loading Plan', short: 'ML', icon: 'machine-loading', status: 'Live', description: 'Winch & HTHP machine allocation, loading schedule, cycle time, nozzling and floor capacity balancing.' },
+      { slug: 'fabric-finishing', name: 'Finish Fabric Plan & Execution', short: 'FP', icon: 'stenter', status: 'Planned', description: 'Post-dyeing finishing processes, stenter & compactor output, width, GSM and moisture control.' },
+    ],
+  },
+  {
+    label: 'Finish Fabric Store',
+    overviewSlug: 'finished-fabric',
+    icon: 'finish-fabric',
+    items: [
+      { slug: 'finished-fabric', name: 'Finish Fabric Store', short: 'FS', icon: 'finish-fabric', status: 'Live', description: 'Finished fabric inventory, 4-point inspection, roll barcodes and delivery challan to cutting.' },
+    ],
+  },
+  {
+    label: 'Cutting & Input Management',
+    overviewSlug: 'cutting',
+    icon: 'cutting',
+    items: [
+      { slug: 'cutting', name: 'Cutting & Input Management', short: 'CT', icon: 'cutting', status: 'Live', description: 'Cuttable gate, interactive Cut Planner, marker lay planning, daily cut production and 48h sewing input feeding.' },
+    ],
+  },
+  {
+    label: 'Printing Operations',
+    overviewSlug: 'printing',
+    icon: 'screen-print',
+    items: [
+      { slug: 'printing', name: 'Printing Operations', short: 'PT', icon: 'screen-print', status: 'Live', description: 'In-house screen & rotary print tables, multi-vendor outsource challan dispatch, return and strike-off quality.' },
+    ],
+  },
+  {
+    label: 'Embroidery Operations',
+    overviewSlug: 'embroidery',
+    icon: 'embroidery',
+    items: [
+      { slug: 'embroidery', name: 'Embroidery Operations', short: 'EM', icon: 'embroidery', status: 'Live', description: 'In-house multi-head embroidery machines, outsource vendor challan dispatch, return and stitch counters.' },
+    ],
+  },
+  {
+    label: 'Sewing & Finishing',
+    overviewSlug: 'sewing',
+    icon: 'sewing',
+    items: [
+      { slug: 'sewing', name: 'Sewing Operations', short: 'SW', icon: 'sewing', status: 'Planned', description: 'Line input feeding, actual hourly production, floor supervisor follow-up and line balancing.' },
+      { slug: 'finishing', name: 'Finishing & Packing', short: 'FP', icon: 'shirt', status: 'Planned', description: 'Ironing, folding, poly packing, carton audit and final ex-factory readiness.' },
+    ],
+  },
+  {
+    label: 'Garment Quality',
+    overviewSlug: 'garment-quality',
+    icon: 'quality',
+    items: [
+      { slug: 'quality', name: 'Quality Management & DHU', short: 'QM', icon: 'quality', status: 'Foundation', description: 'DHU, OQL, inspections, testing links and section-wise job quality remarks/history.' },
+      { slug: 'quality-history', name: 'Job Quality History', short: 'QH', icon: 'quality-history', status: 'Foundation', description: 'Job-wise section/floor quality release, observations, holds and testing-lab links.' },
+    ],
+  },
+  {
+    label: 'Industrial & Production Engineering',
     overviewSlug: 'ie-overview',
+    icon: 'ie',
     items: [
-      { slug: 'kpi-board', name: 'KPI Data Entry & Board', short: 'KP', status: 'Live', description: 'Central factory KPI entry, section pull (Knitting, Dyeing, Sewing) and monthly KPI charts.' },
-      { slug: 'ie-bulletin', name: 'IE Bulletin & Follow-up', short: 'IB', status: 'Working', description: 'Bulk IE bulletin import, Central IE follow-up, SMV, target, manpower and machine type requirement released to Planning/Gantt.' },
-      { slug: 'ie-daily-target', name: 'Target Giving', short: 'TG', status: 'Working', description: 'Floor/line/job-wise daily target giving with WIP, normal/short job logic and released official target.' },
-      { slug: 'ie-mis-import', name: 'Daily MIS Import', short: 'MI', status: 'Working', description: 'Import manual Daily MIS Excel as the historical production, efficiency, manpower, OT and cost data source.' },
-      { slug: 'ie-npt', name: 'NPT', short: 'NP', status: 'Working', description: 'NPT import/manual entry, Pareto, line/date trend and machine breakdown analysis.' },
-      { slug: 'ie-qco', name: 'Quick Changeover', short: 'QC', status: 'Working', description: 'QCO status, SMV-wise customizable standard time, actual loss and failure reason.' },
-      { slug: 'ie-line-performance', name: 'Line-wise Performance', short: 'LP', status: 'Working', description: 'Floor/line/month/custom-date SMV vs efficiency trends with NPT/QCO hover context.' },
-      { slug: 'ie-responsibility', name: 'Responsible Person Master', short: 'RP', status: 'Working', description: 'Floor, area and line responsibility for Production, Quality and IE with effective dates.' },
-      { slug: 'ie-skill-matrix', name: 'Skill Matrix', short: 'SK', status: 'Working', description: 'Operator skill matrix by operation, machine type, proficiency and line/floor.' },
-      { slug: 'ie-production-checkpoints', name: 'Production Checkpoints', short: 'PC', status: 'Working', description: '1st Hour, 4th Hour, 8th Hour and OT production checkpoints with target vs actual.' },
-      { slug: 'ie-reports', name: 'IE Reports', short: 'IR', status: 'Planned', description: 'IE Bulletin, target, NPT, skill matrix and checkpoint reports.' },
+      { slug: 'kpi-board', name: 'KPI Data Entry & Board', short: 'KP', icon: 'kpi', status: 'Live', description: 'Central factory KPI entry, section pull (Knitting, Dyeing, Sewing) and monthly KPI charts.' },
+      { slug: 'ie-bulletin', name: 'IE Bulletin & Follow-up', short: 'IB', icon: 'bulletin', status: 'Working', description: 'Bulk IE bulletin import, Central IE follow-up, SMV, target, manpower and machine type requirement.' },
+      { slug: 'ie-daily-target', name: 'Target Giving', short: 'TG', icon: 'target', status: 'Working', description: 'Floor/line/job-wise daily target giving with WIP, normal/short job logic and released official target.' },
+      { slug: 'ie-mis-import', name: 'Daily MIS Import', short: 'MI', icon: 'import', status: 'Working', description: 'Import manual Daily MIS Excel as the historical production, efficiency, manpower, OT and cost data source.' },
+      { slug: 'ie-npt', name: 'NPT', short: 'NP', icon: 'npt', status: 'Working', description: 'NPT import/manual entry, Pareto, line/date trend and machine breakdown analysis.' },
+      { slug: 'ie-qco', name: 'Quick Changeover', short: 'QC', icon: 'qco', status: 'Working', description: 'QCO status, SMV-wise customizable standard time, actual loss and failure reason.' },
+      { slug: 'ie-line-performance', name: 'Line-wise Performance', short: 'LP', icon: 'performance', status: 'Working', description: 'Floor/line/month/custom-date SMV vs efficiency trends with NPT/QCO hover context.' },
+      { slug: 'ie-responsibility', name: 'Responsible Person Master', short: 'RP', icon: 'operator', status: 'Working', description: 'Floor, area and line responsibility for Production, Quality and IE with effective dates.' },
+      { slug: 'ie-skill-matrix', name: 'Skill Matrix', short: 'SK', icon: 'skill-matrix', status: 'Working', description: 'Operator skill matrix by operation, machine type, proficiency and line/floor.' },
+      { slug: 'ie-production-checkpoints', name: 'Production Checkpoints', short: 'PC', icon: 'checkpoints', status: 'Working', description: '1st Hour, 4th Hour, 8th Hour and OT production checkpoints with target vs actual.' },
+      { slug: 'ie-reports', name: 'IE Reports', short: 'IR', icon: 'report', status: 'Planned', description: 'IE Bulletin, target, NPT, skill matrix and checkpoint reports.' },
     ],
   },
   {
-    label: 'Yarn & Fabric',
-    overviewSlug: 'yarn-fabric',
+    label: 'MIS & IT',
+    overviewSlug: 'mis-it',
+    icon: 'floor-tv',
     items: [
-      { slug: 'yarn', name: 'Yarn Management & Purchasing', short: 'YM', status: 'Live', description: 'Merchandising requisition receipt, spinning mill PO purchasing, safety stock buffer monitoring, GRN receive and issue to knitting.' },
-      { slug: 'yarn-store', name: 'Yarn Store & Inventory', short: 'YS', status: 'Live', description: 'Warehouse Godown A/B stock ledger, lot/location tracking, GRN vehicle intake and Knitting delivery challan.' },
-      { slug: 'knitting', name: 'Knitting Operations', short: 'KN', status: 'Live', description: 'Circular and flat knitting programs, machine programs, greige roll production and yarn leftover returns.' },
-      { slug: 'greige-store', name: 'Greige Fabric Store', short: 'GS', status: 'Live', description: 'Greige roll receipt, 4-point inspection, fabric aging, daily machine plan matching and issue to Dyeing Winches.' },
-      { slug: 'dyeing', name: 'Dyeing Floor & Winches', short: 'DY', status: 'Live', description: '23 Winch & HTHP machines, batching, multi-process (Peach, Brush, AOP), RFT quality, stenter & compactor finishing.' },
-      { slug: 'lab', name: 'Lab & Testing', short: 'LB', status: 'Live', description: '3-Stage validation: Stage 1 Before Dyeing (Yarn/Dip), Stage 2 Before Bulk (Pilot trial), Stage 3 Testing Before Delivery (COA).' },
-      { slug: 'fabric-finishing', name: 'Fabric Finishing', short: 'FF', status: 'Planned', description: 'Post-dyeing finishing processes, stenter and compactor output.' },
-      { slug: 'finished-fabric', name: 'Finished Fabric Store', short: 'FS', status: 'Live', description: 'Finished fabric inventory, 4-point inspection, roll barcodes and delivery challan to cutting.' },
+      { slug: 'floor-display', name: 'Floor / TV Live Display', short: 'TV', icon: 'floor-tv', status: 'Foundation', description: 'Configurable production and quality TV widgets for factory floor.' },
+      { slug: 'reports', name: 'Reports & Analytics', short: 'RA', icon: 'report', status: 'Planned', description: 'Role-relevant operational reports and management analytics.' },
+      { slug: 'data-import', name: 'Excel Import & Running Data', short: 'XL', icon: 'import', status: 'Foundation', description: 'Admin-controlled Excel/XLS import, preview, mapping, validation, batch commit and rollback.' },
+      { slug: 'maintenance', name: 'Machine Utilization & Engineering', short: 'MT', icon: 'maintenance', status: 'Live', description: 'Machine master, daily utilization, IE/Gantt running requirement, idle/shortage and changeover add/remove action.' },
     ],
   },
   {
-    label: 'Garment Production',
-    overviewSlug: 'garment-production',
+    label: 'HR, Admin & Compliance',
+    overviewSlug: 'hr-admin-compliance',
+    icon: 'compliance',
     items: [
-      { slug: 'cutting', name: 'Cutting & Input Management', short: 'CT', status: 'Planned', description: 'Cuttable, daily cut plan, cutting execution and input follow-up.' },
-      { slug: 'printing', name: 'Printing Operations', short: 'PT', status: 'Live', description: 'In-house screen & rotary print tables, multi-vendor outsource challan dispatch, return and strike-off quality.' },
-      { slug: 'embroidery', name: 'Embroidery Operations', short: 'EM', status: 'Live', description: 'In-house multi-head embroidery machines, outsource vendor challan dispatch, return and stitch counters.' },
-      { slug: 'special-process', name: 'Special Processes', short: 'SP', status: 'Planned', description: 'Sequins, wash and other configurable garment processes.' },
-      { slug: 'sewing', name: 'Sewing', short: 'SW', status: 'Planned', description: 'Input, line production, execution and production status.' },
-      { slug: 'finishing', name: 'Finishing & Packing', short: 'FP', status: 'Planned', description: 'Finishing, packing, poly/carton status and shipment readiness.' },
-    ],
-  },
-  {
-    label: 'Quality & Stores',
-    overviewSlug: 'quality-stores',
-    items: [
-      { slug: 'quality', name: 'Quality Management', short: 'QM', status: 'Foundation', description: 'DHU, OQL, inspections, testing links and optional section-wise job quality remarks/history.' },
-      { slug: 'quality-history', name: 'Job Quality History', short: 'QH', status: 'Foundation', description: 'Job-wise section/floor quality release, observations, holds and testing-lab links.' },
-      { slug: 'trims', name: 'Trims & Accessories Store', short: 'TR', status: 'Planned', description: 'Trims receive, stock, issue, in-house status and job readiness.' },
-      { slug: 'inventory', name: 'General Stores & Inventory', short: 'IN', status: 'Planned', description: 'General store movements, stock controls and ledgers.' },
-    ],
-  },
-  {
-    label: 'Maintenance & Engineering',
-    overviewSlug: 'maintenance',
-    items: [
-      { slug: 'maintenance', name: 'Machine Utilization & Requirement', short: 'MT', status: 'Live', description: 'Machine master, daily utilization, IE/Gantt running requirement, idle/shortage and changeover add/remove action.' },
-    ],
-  },
-  {
-    label: 'Shipment & System',
-    overviewSlug: 'shipment-system',
-    items: [
-      { slug: 'shipment', name: 'Shipment & Commercial', short: 'SH', status: 'Planned', description: 'Shipment schedule, export/commercial follow-up and delivery status.' },
-      { slug: 'reports', name: 'Reports & Analytics', short: 'RA', status: 'Planned', description: 'Role-relevant operational reports and management analytics.' },
-      { slug: 'floor-display', name: 'Floor / TV Live Display', short: 'TV', status: 'Foundation', description: 'Configurable production and quality TV widgets.' },
-      { slug: 'masters', name: 'Masters & Configuration', short: 'MC', status: 'Foundation', description: 'Factory, section, floor, line, dropdown masters, job sequence and capacity policies.' },
-      { slug: 'data-import', name: 'Excel Import & Running Data', short: 'XL', status: 'Foundation', description: 'Admin-controlled Excel/XLS import, preview, mapping, validation, batch commit and rollback for running section data.' },
-      { slug: 'administration', name: 'Users, Roles & Permissions', short: 'AD', status: 'Foundation', description: 'User access, section/floor scope, job ownership, roles, permissions and audit.' },
+      { slug: 'administration', name: 'Users, Roles & Permissions', short: 'AD', icon: 'admin', status: 'Foundation', description: 'User access, section/floor scope, job ownership, roles, permissions and audit.' },
+      { slug: 'masters', name: 'Masters & Configuration', short: 'MC', icon: 'masters', status: 'Foundation', description: 'Factory, section, floor, line, dropdown masters, job sequence and capacity policies.' },
+      { slug: 'shipment', name: 'Shipment & Commercial Dispatch', short: 'SH', icon: 'shipment', status: 'Planned', description: 'Shipment schedule, export/commercial follow-up and delivery status.' },
     ],
   },
 ];
@@ -131,25 +187,34 @@ export function getModule(slug: string) {
   return MODULES.find((item) => item.slug === slug) || null;
 }
 
-
 export type SectionOverview = {
-  slug:string;
-  label:string;
-  short:string;
-  description:string;
-  representativeSlug:string;
+  slug: string;
+  label: string;
+  short: string;
+  description: string;
+  representativeSlug: string;
 };
 
 export const SECTION_OVERVIEWS: SectionOverview[] = [
-  {slug:'management',label:'Management',short:'MG',description:'Factory KPIs, order pipeline, delivery risk and executive register.',representativeSlug:'shipment'},
-  {slug:'merchandising-overview',label:'Merchandising',short:'ME',description:'Order execution, follow-up, production lots and forms.',representativeSlug:'merchandising'},
-  {slug:'sample-cad-technical',label:'Sample & CAD',short:'SC',description:'Sample, CAD consumption and technical files.',representativeSlug:'central-sample'},
-  {slug:'central-planning',label:'Planning',short:'CP',description:'T&A, capacity and sewing line planning.',representativeSlug:'sewing-planning'},
-  {slug:'ie-overview',label:'IE',short:'IE',description:'IE bulletin, line targets, NPT and factory KPIs.',representativeSlug:'ie-bulletin'},
-  {slug:'yarn-fabric',label:'Knitting & Dyeing',short:'YF',description:'Yarn, knitting, dyeing and fabric finishing.',representativeSlug:'yarn'},
-  {slug:'garment-production',label:'Sewing & Finishing',short:'GP',description:'Cutting, sewing, print, embroidery and packing.',representativeSlug:'sewing'},
-  {slug:'quality-stores',label:'Quality & Stores',short:'QS',description:'Quality inspections, trims and store stocks.',representativeSlug:'quality'},
-  {slug:'shipment-system',label:'Shipment',short:'SS',description:'Shipment schedule and commercial dispatch.',representativeSlug:'shipment'},
+  { slug: 'management', label: 'Management', short: 'MG', description: 'Factory KPIs, order pipeline, delivery risk and executive register.', representativeSlug: 'shipment' },
+  { slug: 'merchandising-overview', label: 'Sales & Merchandising', short: 'SM', description: 'Order execution, follow-up, bulk and sample merchandising.', representativeSlug: 'merchandising' },
+  { slug: 'trims', label: 'Trims & Accessories Store', short: 'TR', description: 'Trims receive, stock, issue, in-house status and job readiness.', representativeSlug: 'trims' },
+  { slug: 'sample-cad-technical', label: 'Sample / CAD / Technical', short: 'SC', description: 'Sample, CAD consumption and technical files.', representativeSlug: 'sample-room' },
+  { slug: 'central-planning', label: 'Planning', short: 'CP', description: 'T&A, capacity and sewing line planning.', representativeSlug: 'sewing-planning' },
+  { slug: 'yarn-knitting', label: 'Yarn Store & Knitting', short: 'YK', description: 'Yarn, knitting, inventory and spinning mill purchase.', representativeSlug: 'yarn' },
+  { slug: 'greige-store', label: 'Greige Fabric Store', short: 'GS', description: 'Greige roll receipt, 4-point inspection and issue to Dyeing.', representativeSlug: 'greige-store' },
+  { slug: 'dyeing', label: 'Dyeing', short: 'DY', description: '23 winches & HTHP, dyeing planning, machine loading and finish fabric execution.', representativeSlug: 'dyeing' },
+  { slug: 'finished-fabric', label: 'Finish Fabric Store', short: 'FS', description: 'Finished fabric inventory, 4-point inspection and roll delivery.', representativeSlug: 'finished-fabric' },
+  { slug: 'cutting', label: 'Cutting & Input Management', short: 'CT', description: 'Cuttable gate, interactive Cut Planner, lay spreading and sewing input buffer.', representativeSlug: 'cutting' },
+  { slug: 'printing', label: 'Printing Operations', short: 'PT', description: 'In-house and outsource print dispatch, receive and strike-off quality.', representativeSlug: 'printing' },
+  { slug: 'embroidery', label: 'Embroidery Operations', short: 'EM', description: 'Multi-head embroidery execution and vendor follow-up.', representativeSlug: 'embroidery' },
+  { slug: 'sewing', label: 'Sewing & Finishing', short: 'SF', description: 'Sewing lines, line balancing, finishing, poly and packing.', representativeSlug: 'sewing' },
+  { slug: 'garment-quality', label: 'Garment Quality', short: 'GQ', description: 'Quality inspections, DHU, line quality and testing records.', representativeSlug: 'quality' },
+  { slug: 'ie-overview', label: 'Industrial & Production Engineering', short: 'IE', description: 'IE bulletin, line targets, NPT and factory KPIs.', representativeSlug: 'ie-bulletin' },
+  { slug: 'mis-it', label: 'MIS & IT', short: 'MI', description: 'Floor TV display, reports, Excel import and machine utilization.', representativeSlug: 'floor-display' },
+  { slug: 'hr-admin-compliance', label: 'HR, Admin & Compliance', short: 'HR', description: 'Users, permissions, factory masters and commercial shipment dispatch.', representativeSlug: 'administration' },
 ];
 
-export function getSectionOverview(slug:string){ return SECTION_OVERVIEWS.find(x=>x.slug===slug)||null; }
+export function getSectionOverview(slug: string) {
+  return SECTION_OVERVIEWS.find((x) => x.slug === slug) || null;
+}

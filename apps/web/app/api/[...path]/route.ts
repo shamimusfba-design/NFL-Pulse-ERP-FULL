@@ -18,9 +18,30 @@ const knittingExecution = knittingExecutionMasterRaw as any;
 // ---------- Paths served by the NestJS API (apps/api) ----------
 // These are forwarded unchanged (method, body, Authorization header) instead of being answered by the mock data below.
 // Set NEST_API_URL when the API does not run on this machine at the default port.
-const NEST_PREFIXES = ['dyeing/', 'stores/', 'reuse/'];
+const NEST_PREFIXES = [
+  'orders',
+  'masters',
+  'planning',
+  'cad',
+  'ie',
+  'ie-ops',
+  'yarn',
+  'knitting',
+  'dyeing',
+  'reuse',
+  'stores',
+  'maintenance',
+  'tasks',
+  'uploads',
+  'imports',
+  'demo',
+  'production-lots',
+  'documents',
+  'domain',
+  'merch'
+];
 const NEST_API_URL = (process.env.NEST_API_URL || 'http://127.0.0.1:4000/api').replace(/\/$/, '');
-function isNestPath(pathStr: string) { return NEST_PREFIXES.some((p) => pathStr.startsWith(p)); }
+function isNestPath(pathStr: string) { return NEST_PREFIXES.some((p) => pathStr === p || pathStr.startsWith(p + '/')); }
 async function proxyToNest(request: NextRequest, pathStr: string) {
   const url = new URL(request.url);
   const headers = new Headers();
@@ -28,9 +49,12 @@ async function proxyToNest(request: NextRequest, pathStr: string) {
   const body = request.method === 'GET' || request.method === 'HEAD' ? undefined : await request.text();
   try {
     const res = await fetch(`${NEST_API_URL}/${pathStr}${url.search}`, { method: request.method, headers, body, cache: 'no-store' });
-    return new NextResponse(await res.text(), { status: res.status, headers: { 'content-type': res.headers.get('content-type') || 'application/json' } });
+    if (res.status !== 404) {
+      return new NextResponse(await res.text(), { status: res.status, headers: { 'content-type': res.headers.get('content-type') || 'application/json' } });
+    }
+    return null;
   } catch {
-    return NextResponse.json({ message: 'The ERP server (API) is not reachable. Start the API and try again.' }, { status: 502 });
+    return null;
   }
 }
 
@@ -1700,7 +1724,7 @@ function getAllConsolidatedStyles(): any[] {
 }
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
-  { const { path: _p } = await params; const _ps = _p.join('/'); if (isNestPath(_ps)) return proxyToNest(request, _ps); }
+  { const { path: _p } = await params; const _ps = _p.join('/'); if (isNestPath(_ps)) { const _res = await proxyToNest(request, _ps); if (_res) return _res; } }
   const { path } = await params;
   const pathStr = path.join('/');
   const url = new URL(request.url);
@@ -4366,7 +4390,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
-  { const { path: _p } = await params; const _ps = _p.join('/'); if (isNestPath(_ps)) return proxyToNest(request, _ps); }
+  { const { path: _p } = await params; const _ps = _p.join('/'); if (isNestPath(_ps)) { const _res = await proxyToNest(request, _ps); if (_res) return _res; } }
   const { path } = await params;
   const pathStr = path.join('/');
 
@@ -6139,7 +6163,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 }
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
-  { const { path: _p } = await params; const _ps = _p.join('/'); if (isNestPath(_ps)) return proxyToNest(request, _ps); }
+  { const { path: _p } = await params; const _ps = _p.join('/'); if (isNestPath(_ps)) { const _res = await proxyToNest(request, _ps); if (_res) return _res; } }
   const { path } = await params;
   const pathStr = path.join('/');
   const body = await request.json().catch(() => ({}));
@@ -6166,12 +6190,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
-  { const { path: _p } = await params; const _ps = _p.join('/'); if (isNestPath(_ps)) return proxyToNest(request, _ps); }
+  { const { path: _p } = await params; const _ps = _p.join('/'); if (isNestPath(_ps)) { const _res = await proxyToNest(request, _ps); if (_res) return _res; } }
   return NextResponse.json({ success: true });
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
-  { const { path: _p } = await params; const _ps = _p.join('/'); if (isNestPath(_ps)) return proxyToNest(request, _ps); }
+  { const { path: _p } = await params; const _ps = _p.join('/'); if (isNestPath(_ps)) { const _res = await proxyToNest(request, _ps); if (_res) return _res; } }
   const { path } = await params;
   const pathStr = path.join('/');
   const body = await request.json().catch(() => ({}));

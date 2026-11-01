@@ -44,6 +44,21 @@ function TasksContent() {
     [tasks]
   );
 
+  // Section-wise pending tasks aggregation and grand total sum
+  const sectionPendingStats = useMemo(() => {
+    const stats: Record<string, number> = {};
+    let totalPending = 0;
+    tasks.forEach((t) => {
+      const isPending = t.status === 'PENDING' || !t.status;
+      if (isPending) {
+        const sec = t.department || (t.module === 'cad' ? 'CAD Section' : t.module === 'ie-bulletin' ? 'Central IE' : t.module === 'lab' ? 'Dyeing Lab' : t.module === 'sewing-planning' ? 'Central Planning' : 'Merchandising');
+        stats[sec] = (stats[sec] || 0) + 1;
+        totalPending++;
+      }
+    });
+    return { stats, totalPending };
+  }, [tasks]);
+
   const rows = useMemo(() => {
     return tasks.filter((t) => {
       if (moduleFilter !== 'ALL' && String(t.module) !== moduleFilter) return false;
@@ -99,6 +114,69 @@ function TasksContent() {
             <Link href="/jobs?tab=preproduction" className="btn btn-secondary" style={{ fontSize: '12px', padding: '6px 14px', textDecoration: 'none' }}>
               ⚡ Pre-Production Stage Control
             </Link>
+          </div>
+        </div>
+
+        {/* Section-wise Pending Tasks Summary & Total Sum Card */}
+        <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px 16px', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '20px' }}>📊</span>
+              <div>
+                <strong style={{ fontSize: '13px', color: '#0f172a' }}>Section-wise Pending Tasks Summary</strong>
+                <div style={{ fontSize: '11px', color: '#64748b' }}>Individual pending task count by department and overall total sum</div>
+              </div>
+            </div>
+            <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', padding: '5px 14px', borderRadius: '7px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 800, color: '#991b1b', textTransform: 'uppercase' }}>Total Pending Across All Sections:</span>
+              <strong style={{ fontSize: '17px', fontWeight: 900, color: '#dc2626' }}>{sectionPendingStats.totalPending}</strong>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={() => { setDepartmentFilter('ALL'); setStatusFilter('PENDING'); }}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px',
+                borderRadius: '8px', border: departmentFilter === 'ALL' && statusFilter === 'PENDING' ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                background: departmentFilter === 'ALL' && statusFilter === 'PENDING' ? '#eff6ff' : '#ffffff',
+                cursor: 'pointer', textAlign: 'left'
+              }}
+            >
+              <div>
+                <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#1e293b' }}>All Sections Combined</div>
+                <div style={{ fontSize: '9.5px', color: '#64748b' }}>Total Sum</div>
+              </div>
+              <span style={{ background: '#dc2626', color: '#fff', fontSize: '11.5px', fontWeight: 800, padding: '2px 8px', borderRadius: '5px' }}>
+                {sectionPendingStats.totalPending}
+              </span>
+            </button>
+
+            {Object.entries(sectionPendingStats.stats).map(([secName, count]) => {
+              const isSelected = departmentFilter === secName && statusFilter === 'PENDING';
+              return (
+                <button
+                  key={secName}
+                  type="button"
+                  onClick={() => { setDepartmentFilter(secName); setStatusFilter('PENDING'); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px',
+                    borderRadius: '8px', border: isSelected ? '2px solid #2563eb' : '1px solid #e2e8f0',
+                    background: isSelected ? '#eff6ff' : '#ffffff',
+                    cursor: 'pointer', textAlign: 'left'
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{secName}</div>
+                    <div style={{ fontSize: '9.5px', color: '#64748b' }}>Pending tasks</div>
+                  </div>
+                  <span style={{ background: '#f59e0b', color: '#000', fontSize: '11.5px', fontWeight: 800, padding: '2px 7px', borderRadius: '5px', marginLeft: '6px' }}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -172,7 +250,7 @@ function TasksContent() {
               <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1' }}>
                 <th style={{ padding: '10px 12px' }}>Job No</th>
                 <th style={{ padding: '10px 12px' }}>Department</th>
-                <th style={{ padding: '10px 12px' }}>Task Title & Workflow Objective</th>
+                <th style={{ padding: '10px 12px' }}>Task Title &amp; Workflow Objective</th>
                 <th style={{ padding: '10px 12px' }}>Module</th>
                 <th style={{ padding: '10px 12px' }}>Priority</th>
                 <th style={{ padding: '10px 12px' }}>Status</th>

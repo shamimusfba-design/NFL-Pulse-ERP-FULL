@@ -7,6 +7,7 @@ import { api } from '../lib/api';
 import { MODULE_GROUPS, SectionOverview } from '../lib/modules';
 import { displayJobNo, formatFloorLine } from '../lib/display';
 import demo2000DataRaw from '../data/demo-2000-master.json';
+import ApparelIcon from './ApparelIcon';
 
 function n(v: any) {
   return Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 1 });
@@ -499,7 +500,13 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
     })();
   }, [overview.slug, overview.representativeSlug]);
 
-  const group = MODULE_GROUPS.find(g => g.overviewSlug === overview.slug);
+  const group = overview.slug === 'yarn-fabric'
+    ? {
+        label: 'Knitting & Dyeing',
+        overviewSlug: 'yarn-fabric',
+        items: MODULE_GROUPS.filter(g => ['yarn-knitting', 'dyeing', 'finished-fabric'].includes(g.overviewSlug)).flatMap(g => g.items)
+      }
+    : MODULE_GROUPS.find(g => g.overviewSlug === overview.slug);
 
   // 1. BASE FILTERED ROWS (Based on Week, Month, Merchandiser, Floor/Line, Status, Buyer, Search)
   const baseFilteredRows = useMemo(() => {
@@ -860,7 +867,7 @@ export default function SectionOverviewDashboard({ overview }: { overview: Secti
                   width: '26px', height: '26px', borderRadius: '6px', background: '#eff6ff',
                   color: '#1d4ed8', fontWeight: 800, fontSize: '10px', display: 'grid', placeItems: 'center', flexShrink: 0
                 }}>
-                  {item.short}
+                  <ApparelIcon name={item.icon || item.slug} size={15} />
                 </span>
                 <div style={{ minWidth: 0, overflow: 'hidden' }}>
                   <strong style={{ display: 'block', fontSize: '11px', color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
