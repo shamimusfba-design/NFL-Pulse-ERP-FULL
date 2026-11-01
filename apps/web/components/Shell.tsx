@@ -10,7 +10,7 @@ import GlobalStickyScrollbar from './GlobalStickyScrollbar';
 import ApparelIcon from './ApparelIcon';
 
 function getItemHref(item: { slug: string }): string {
-  if (item.slug === 'management') return '/';
+  if (item.slug === 'management') return '/management';
   if (item.slug === 'merchandising') return '/merchandising-bulk';
   if (item.slug === 'sample-merchandising') return '/merchandising-sample';
   if (item.slug === 'sample-room') return '/modules/sample-room';
@@ -99,6 +99,7 @@ function roleFilteredGroups(groups: ModuleGroup[], roles: string[]): ModuleGroup
 }
 
 const PERSONAS = [
+  { id: 'user-director', name: 'Managing Director / Factory Owner', role: 'DIRECTOR', assignedBuyer: 'ALL', tag: '👑 Managing Director / Owner', desc: 'Full Management Dashboard, plant governance & audit' },
   { id: 'user-imran', name: 'Md. Imran', role: 'MERCHANDISER', assignedBuyer: 'ONLY', tag: '⭐ Merchandiser: Imran (ONLY, 61 Jobs)', desc: 'Restricted entry to Merchandising area only' },
   { id: 'user-head', name: 'Tariqul Islam', role: 'HEAD_MERCHANDISER', assignedBuyer: 'ALL', tag: '👑 Head Merchandiser & Admin', desc: 'Full access across all 2,000 jobs' },
   { id: 'user-basir', name: 'Basir Hossain', role: 'MERCHANDISER', assignedBuyer: 'OVS', tag: 'Merchandiser: Basir (OVS, 64 Jobs)', desc: 'OVS buyer follow-up' },
@@ -237,6 +238,11 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
   }, []);
 
   const roles = user?.roles || [];
+  const activePersona = PERSONAS.find(p => p.id === activePersonaId) || PERSONAS[0];
+  const isManagementUser = useMemo(() => {
+    const rList = [...(roles || []).map((r: any) => String(r).toUpperCase()), String(user?.role || '').toUpperCase(), String(activePersona?.role || '').toUpperCase()];
+    return rList.some(r => ['DIRECTOR', 'OWNER', 'MANAGEMENT_HEAD', 'MANAGEMENT', 'ADMIN'].includes(r));
+  }, [roles, user, activePersona]);
   const groups = useMemo(() => {
     const filtered = roleFilteredGroups(MODULE_GROUPS, roles);
     if (!query.trim()) return filtered;
@@ -269,8 +275,6 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
     });
   }, [pathname]);
 
-  const activePersona = PERSONAS.find(p => p.id === activePersonaId) || PERSONAS[1];
-
   return (
     <div className="shell">
       <GlobalStickyScrollbar />
@@ -296,10 +300,28 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
         <nav className="nav">
           {!query && (
             <>
-              <Link className={active('/') ? 'nav-link active' : 'nav-link'} href="/">
-                <span className="nav-icon"><ApparelIcon name="factory" size={16} /></span>
-                <span>Executive KPI Board</span>
+              {/* 1. Management Dashboard (Restricted to Director, Owner, Management) */}
+              {isManagementUser && (
+                <Link className={active('/management') ? 'nav-link active' : 'nav-link'} href="/management" title="Director / Owner-level factory intelligence dashboard">
+                  <span className="nav-icon"><ApparelIcon name="factory" size={16} /></span>
+                  <span>Management Dashboard</span>
+                </Link>
+              )}
+
+              {/* 2. Executive Dashboard (Operational daily factory execution) */}
+              <Link className={active('/') ? 'nav-link active' : 'nav-link'} href="/" title="Daily factory operational dashboard">
+                <span className="nav-icon"><ApparelIcon name="dashboard" size={16} /></span>
+                <span>Executive Dashboard</span>
               </Link>
+
+              {/* 3. Job 360 (Complete order-level view with 21 tabs) */}
+              <Link className={active('/jobs') ? 'nav-link active' : 'nav-link'} href="/jobs" title="Job 360 · Complete Order-level Process View">
+                <span className="nav-icon"><ApparelIcon name="jobs" size={16} /></span>
+                <span style={{ flex: 1 }}>Job 360</span>
+                <span style={{ fontSize: '10px', background: '#2563eb', color: '#fff', padding: '1px 6px', borderRadius: '10px', fontWeight: 800 }}>2,000</span>
+              </Link>
+
+              {/* Tasks */}
               <Link className={active('/tasks') ? 'nav-link active' : 'nav-link'} href="/tasks">
                 <span className="nav-icon"><ApparelIcon name="tasks" size={16} /></span>
                 <span style={{ flex: 1 }}>My Pending Tasks</span>
@@ -308,10 +330,6 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
                     {pendingTasksCount}
                   </span>
                 )}
-              </Link>
-              <Link className={active('/jobs') ? 'nav-link active' : 'nav-link'} href="/jobs">
-                <span className="nav-icon"><ApparelIcon name="jobs" size={16} /></span>
-                <span>All Jobs &amp; Stages</span>
               </Link>
             </>
           )}

@@ -1,22 +1,38 @@
 'use client';
 
-import React, { Suspense, useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Shell from '../../../components/Shell';
-import JobDetailDrawer from '../../../components/JobDetailDrawer';
 import demo2000DataRaw from '../../../data/demo-2000-master.json';
 import { displayJobNo } from '../../../lib/display';
 import { api } from '../../../lib/api';
 
-export const dynamic = 'force-dynamic';
+// Strict Color Standard
+const COLORS = {
+  navy: '#14243A',
+  blue: '#2563EB',
+  cyan: '#0891B2',
+  green: '#16A34A',
+  lightGreen: '#86EFAC',
+  amber: '#F59E0B',
+  orange: '#EA580C',
+  red: '#DC2626',
+  purple: '#7C3AED',
+  teal: '#0F766E',
+  grey: '#64748B',
+  bg: '#F8FAFC',
+  cardBg: '#FFFFFF',
+  border: '#E2E8F0'
+};
 
-function n(v: any) {
-  return Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 1 });
+function fmt(num: any, decimals = 0): string {
+  if (num === null || num === undefined || isNaN(num) || num === '') return 'N/A';
+  return Number(num).toLocaleString('en-US', { maximumFractionDigits: decimals });
 }
 
 function d2(dateStr: any) {
-  if (!dateStr || dateStr === '—') return '—';
+  if (!dateStr || dateStr === '—') return 'N/A';
   const s = String(dateStr).trim();
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
     const d = new Date(s);
@@ -30,213 +46,60 @@ function d2(dateStr: any) {
   return s.replace(/20(\d{2})/g, '$1');
 }
 
-function getWeekNumber(dateStr: any) {
-  if (!dateStr) return 'W33';
-  const d = new Date(dateStr);
-  if (!isNaN(d.getTime())) {
-    const target = new Date(d.valueOf());
-    const dayNr = (d.getDay() + 6) % 7;
-    target.setDate(target.getDate() - dayNr + 3);
-    const firstThursday = target.valueOf();
-    target.setMonth(0, 1);
-    if (target.getDay() !== 4) {
-      target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
-    }
-    return `W${1 + Math.ceil((firstThursday - target.valueOf()) / 604800000)}`;
-  }
-  return 'W33';
-}
+export type Job360TabId =
+  | 'overview'
+  | 'po'
+  | 'merch'
+  | 'tna'
+  | 'sample'
+  | 'yarn'
+  | 'knitting'
+  | 'dyeing'
+  | 'fabric'
+  | 'trims'
+  | 'cutting'
+  | 'printing'
+  | 'embroidery'
+  | 'sewing'
+  | 'washing'
+  | 'finishing'
+  | 'quality'
+  | 'packing'
+  | 'shipment'
+  | 'documents'
+  | 'history';
 
-function generateJobManufacturingProfile(job: any) {
-  const qty = Number(job.orderQty || 3000);
-  const jobSeed = parseInt(String(job.jobNo).replace(/\D/g, ''), 10) || 45000;
+const TAB_DEFS: { id: Job360TabId; num: string; label: string; icon: string }[] = [
+  { id: 'overview', num: '01', label: 'Order Overview', icon: '📋' },
+  { id: 'po', num: '02', label: 'PO Breakdown', icon: '📦' },
+  { id: 'merch', num: '03', label: 'Merchandising', icon: '👔' },
+  { id: 'tna', num: '04', label: 'TNA', icon: '⏱️' },
+  { id: 'sample', num: '05', label: 'Sample', icon: '👗' },
+  { id: 'yarn', num: '06', label: 'Yarn', icon: '🧶' },
+  { id: 'knitting', num: '07', label: 'Knitting', icon: '⚙️' },
+  { id: 'dyeing', num: '08', label: 'Dyeing', icon: '🧪' },
+  { id: 'fabric', num: '09', label: 'Fabric', icon: '🧵' },
+  { id: 'trims', num: '10', label: 'Trims', icon: '🔘' },
+  { id: 'cutting', num: '11', label: 'Cutting', icon: '✂️' },
+  { id: 'printing', num: '12', label: 'Printing', icon: '🎨' },
+  { id: 'embroidery', num: '13', label: 'Embroidery', icon: '🪡' },
+  { id: 'sewing', num: '14', label: 'Sewing', icon: '👕' },
+  { id: 'washing', num: '15', label: 'Washing', icon: '🧼' },
+  { id: 'finishing', num: '16', label: 'Finishing', icon: '♨️' },
+  { id: 'quality', num: '17', label: 'Quality', icon: '✅' },
+  { id: 'packing', num: '18', label: 'Packing', icon: '📫' },
+  { id: 'shipment', num: '19', label: 'Shipment', icon: '🚢' },
+  { id: 'documents', num: '20', label: 'Documents', icon: '📑' },
+  { id: 'history', num: '21', label: 'Activity History', icon: '📜' }
+];
 
-  // Size Breakdown (From imported Buyer PO Pack Sheet or Default Ratios)
-  let sizeBreakdown: any[] = [];
-  if (job.importedOrder?.styles?.[0]?.breakdowns?.length) {
-    const rawBreakdowns = job.importedOrder.styles[0].breakdowns;
-    const sizeMap: Record<string, number> = {};
-    for (const b of rawBreakdowns) {
-      const sz = String(b.size || 'M');
-      sizeMap[sz] = (sizeMap[sz] || 0) + Number(b.qty || 0);
-    }
-    sizeBreakdown = Object.entries(sizeMap).map(([size, sizeQty]) => ({
-      size,
-      ratio: Math.max(1, Math.round((sizeQty / (qty || 1)) * 10)),
-      orderQty: sizeQty,
-      shippedQty: 0
-    }));
-  } else {
-    const sizeRatios = [
-      { size: 'XS', ratio: 1 },
-      { size: 'S', ratio: 2 },
-      { size: 'M', ratio: 3 },
-      { size: 'L', ratio: 3 },
-      { size: 'XL', ratio: 2 },
-      { size: '2XL', ratio: 1 },
-      { size: '3XL', ratio: 0.5 },
-    ];
-    const totalRatio = sizeRatios.reduce((s, r) => s + r.ratio, 0);
-    sizeBreakdown = sizeRatios.map((item) => {
-      const orderSizeQty = Math.round((qty * item.ratio) / totalRatio);
-      return {
-        size: item.size,
-        ratio: item.ratio,
-        orderQty: orderSizeQty,
-        shippedQty: orderSizeQty,
-      };
-    });
-    const sumOrder = sizeBreakdown.reduce((s, x) => s + x.orderQty, 0);
-    if (sumOrder !== qty && sizeBreakdown.length > 2) {
-      sizeBreakdown[2].orderQty += (qty - sumOrder);
-      sizeBreakdown[2].shippedQty += (qty - sumOrder);
-    }
-  }
-
-  // PO & Destination Country Breakdown
-  let poBreakdown: any[] = [];
-  if (job.importedOrder?.styles?.[0]?.purchaseOrders?.length) {
-    poBreakdown = job.importedOrder.styles[0].purchaseOrders.map((p: any) => ({
-      poNo: p.poNumber || `PO-${job.jobNo}`,
-      country: p.destination || p.market || 'Export Destination',
-      flag: '🌐',
-      port: p.destination || 'Chittagong Port',
-      terms: 'FOB Chittagong',
-      packType: 'Standard PO Pack',
-      cartons: Math.ceil((p.totalQty || 0) / 24),
-      qty: Number(p.totalQty || 0),
-      status: 'Awaiting Production'
-    }));
-  } else {
-    const countries = [
-      { country: 'Germany (DE)', code: 'DE', flag: '🇩🇪', port: 'Hamburg', term: 'CIF Hamburg', share: 0.35 },
-      { country: 'France (FR)', code: 'FR', flag: '🇫🇷', port: 'Le Havre', term: 'CIF Le Havre', share: 0.25 },
-      { country: 'United Kingdom (UK)', code: 'UK', flag: '🇬🇧', port: 'Felixstowe', term: 'FOB Chittagong', share: 0.20 },
-      { country: 'Spain (ES)', code: 'ES', flag: '🇪🇸', port: 'Valencia', term: 'CIF Valencia', share: 0.12 },
-      { country: 'Italy (IT)', code: 'IT', flag: '🇮🇹', port: 'Genoa', term: 'CIF Genoa', share: 0.08 },
-    ];
-    poBreakdown = countries.map((c, i) => {
-      const poQty = Math.round(qty * c.share);
-      return {
-        poNo: `PO-${job.jobNo}-${c.code}`,
-        country: c.country,
-        flag: c.flag,
-        port: c.port,
-        terms: c.term,
-        packType: i % 2 === 0 ? 'Ratio Pack (1:2:2:1)' : 'Solid Size Pack (24 pcs/ctn)',
-        cartons: Math.ceil(poQty / 24),
-        qty: poQty,
-        status: job.shipment?.status === 'SHIPPED' ? 'Shipped' : 'Packed in Cartons'
-      };
-    });
-  }
-
-  // Fabric & Trims Details
-  const fabricTypes = [
-    { type: '100% Cotton Single Jersey', comp: '100% Combed Cotton', count: '28/1 Ne Ring Spun', gsm: '180 GSM (±5)', width: '76" Open Width' },
-    { type: '95/5 Cotton Lycra Rib 1x1', comp: '95% Cotton, 5% Spandex', count: '30/1 Ne + 20D Lycra', gsm: '220 GSM (±5)', width: '48" Tubular' },
-    { type: 'CVC 60/40 French Terry', comp: '60% Cotton, 40% Polyester', count: '24/1 Ne CVC + 10/1 Fleece', gsm: '260 GSM (±5)', width: '72" Open Width' },
-    { type: '100% Organic Cotton Interlock', comp: '100% Organic Cotton (GOTS)', count: '34/1 Ne Combed Organic', gsm: '200 GSM (±5)', width: '74" Open Width' },
-  ];
-  const fabricSpec = fabricTypes[jobSeed % fabricTypes.length];
-  const yarnMills = ['Badsha Textiles Ltd', 'Square Spinners Ltd', 'Maksons Spinning Mills', 'Akij Textile Mills'];
-  const yarnMill = yarnMills[jobSeed % yarnMills.length];
-  const dyeColors = [
-    { name: 'Navy Blazer', pantone: '19-3921 TPG' },
-    { name: 'Bright White', pantone: '11-0601 TPG' },
-    { name: 'Anthracite Melange', pantone: '19-4007 TPG' },
-    { name: 'Racing Green', pantone: '19-5513 TPG' },
-    { name: 'Coral Rose', pantone: '16-1632 TPG' },
-  ];
-  const colorSpec = dyeColors[jobSeed % dyeColors.length];
-
-  // Trims Register
-  const trimsBOM = [
-    { item: 'Sewing Thread', spec: '100% Spun Poly 40/2 & 120 (Tex 24)', supplier: 'Aman Threads / Coats', required: `${Math.round(qty * 140 / 1000)} cones`, received: `${Math.round(qty * 140 / 1000)} cones`, balance: '0 cones', status: 'IN-HOUSE' },
-    { item: 'Main Label', spec: 'High-Definition Damask Woven Label', supplier: 'Dekko Accessories Ltd', required: `${n(qty)} pcs`, received: `${n(qty)} pcs`, balance: '0 pcs', status: 'IN-HOUSE' },
-    { item: 'Care / Wash Label', spec: 'Printed Satin Ribbon (4-Language)', supplier: 'Uniglory Paper & Packaging', required: `${n(qty)} pcs`, received: `${n(qty)} pcs`, balance: '0 pcs', status: 'IN-HOUSE' },
-    { item: 'Size Label', spec: 'Woven Center-Fold Size Pip', supplier: 'Dekko Accessories Ltd', required: `${n(qty)} pcs`, received: `${n(qty)} pcs`, balance: '0 pcs', status: 'IN-HOUSE' },
-    { item: 'Hangtag & Price Ticket', spec: '350 GSM FSC Art Card with Seal Tag', supplier: 'Montrims Limited', required: `${n(qty)} pcs`, received: `${n(qty)} pcs`, balance: '0 pcs', status: 'APPROVED' },
-    { item: 'Polybag', spec: 'Recycled LDPE 0.04mm self-adhesive', supplier: 'KDS Accessories Ltd', required: `${n(qty)} pcs`, received: `${n(qty)} pcs`, balance: '0 pcs', status: 'IN-HOUSE' },
-    { item: 'Master Carton', spec: '5-Ply 150/150 Kraft Corrugated', supplier: 'Bengal Corrugated Cartons', required: `${Math.ceil(qty / 24)} ctn`, received: `${Math.ceil(qty / 24)} ctn`, balance: '0 ctn', status: 'IN-HOUSE' },
-  ];
-
-  // Certified Lab Test Reports
-  const testReports = [
-    { test: 'Color Fastness to Washing (ISO 105-C06)', certNo: `LAB-CF-${job.jobNo}-A1`, result: 'Grade 4-5 (PASS)', std: 'Min Grade 4.0', lab: 'Central QA Lab', analyst: 'S. K. Paul (Sr. Chemist)' },
-    { test: 'Color Fastness to Rubbing / Crocking (ISO 105-X12)', certNo: `LAB-CR-${job.jobNo}-A2`, result: 'Dry 4-5 / Wet 4.0 (PASS)', std: 'Min Dry 4.0 / Wet 3.5', lab: 'Intertek Bangladesh', analyst: 'F. Rahman (Lab Tech)' },
-    { test: 'Pilling Resistance (Martindale ISO 12945-2)', certNo: `LAB-PIL-${job.jobNo}-B1`, result: 'Grade 4.0 @ 2000 revs (PASS)', std: 'Min Grade 3-4', lab: 'Central QA Lab', analyst: 'S. K. Paul (Sr. Chemist)' },
-    { test: 'Dimensional Stability / Shrinkage (ISO 6330)', certNo: `LAB-SHR-${job.jobNo}-C1`, result: 'Length -2.2%, Width -1.4% (PASS)', std: 'Max ±3.5%', lab: 'SGS Bangladesh', analyst: 'M. Ali (Quality Lab)' },
-    { test: 'Spirality / Torque after Laundering (ISO 16322)', certNo: `LAB-SPI-${job.jobNo}-C2`, result: '1.2% (PASS)', std: 'Max 3.0%', lab: 'Central QA Lab', analyst: 'M. Ali (Quality Lab)' },
-    { test: 'Bursting Strength (ASTM D3786)', certNo: `LAB-BST-${job.jobNo}-D1`, result: '320 kPa (PASS)', std: 'Min 250 kPa', lab: 'Intertek Bangladesh', analyst: 'T. Hossain (Material Lab)' },
-    { test: 'Formaldehyde & Restricted Substances (OEKO-TEX 100)', certNo: `LAB-OEK-${job.jobNo}-E1`, result: '<16 ppm (ND - PASS)', std: '<75 ppm / Oeko-Tex Class 1', lab: 'Hohenstein / Testex', analyst: 'Dr. Nazrul Islam' },
-    { test: 'pH Value of Aqueous Extract (ISO 3071)', certNo: `LAB-PH-${job.jobNo}-E2`, result: 'pH 6.4 (PASS)', std: 'pH 5.0 - 7.5', lab: 'Central QA Lab', analyst: 'Dr. Nazrul Islam' },
-  ];
-
-  return { sizeBreakdown, poBreakdown, fabricSpec, yarnMill, colorSpec, trimsBOM, testReports };
-}
-
-function JobDetailContent() {
+export default function Job360Page() {
   const params = useParams();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const idParam = decodeURIComponent(String(params?.id || ''));
-
-  const initialTab = searchParams.get('tab') || 'sizes';
-  const [activeTab, setActiveTab] = useState<'sizes' | 'po' | 'material' | 'production' | 'quality' | 'leadtime' | 'reports'>(
-    ['sizes', 'po', 'material', 'production', 'quality', 'leadtime', 'reports'].includes(initialTab) ? (initialTab as any) : 'sizes'
-  );
-  const [viewMode, setViewMode] = useState<'tab' | 'all'>('tab');
-  const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
-
-  useEffect(() => {
-    const t = searchParams?.get('tab');
-    if (t && ['sizes', 'po', 'material', 'production', 'quality', 'leadtime', 'reports'].includes(t)) {
-      setActiveTab(t as any);
-      setViewMode('tab');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const [apiJob, setApiJob] = useState<any>(null);
-  const [workflow, setWorkflow] = useState<any>(null);
-  const [stageMsg, setStageMsg] = useState('');
-  const [busyStage, setBusyStage] = useState(false);
-
-  const loadJobData = () => {
-    if (idParam) {
-      api(`/jobs/${encodeURIComponent(idParam)}`).then(res => {
-        if (res?.job) {
-          setApiJob(res.job);
-          if (res.workflow) setWorkflow(res.workflow);
-        }
-      }).catch(() => {});
-    }
-  };
-
-  useEffect(() => {
-    loadJobData();
-  }, [idParam]);
-
-  const handleWorkflowAction = async (action: string, payload: any = {}) => {
-    if (!job) return;
-    setBusyStage(true);
-    setStageMsg('');
-    try {
-      await api(`/jobs/${job.jobNo}/workflow`, {
-        method: 'POST',
-        body: JSON.stringify({ action, ...payload })
-      });
-      setStageMsg('✓ Stage successfully updated and synchronized across all departments!');
-      loadJobData();
-    } catch (err: any) {
-      setStageMsg(`❌ Error: ${err.message || 'Server error'}`);
-    } finally {
-      setBusyStage(false);
-    }
-  };
-
+  const idParam = typeof params?.id === 'string' ? params.id : Array.isArray(params?.id) ? params.id[0] : '';
+  const [activeTab, setActiveTab] = useState<Job360TabId>('overview');
   const [currentUser, setCurrentUser] = useState<any>(null);
+
   useEffect(() => {
     try {
       const stored = localStorage.getItem('nfl_user');
@@ -244,1203 +107,733 @@ function JobDetailContent() {
     } catch {}
   }, []);
 
-  const isMerchandiser = currentUser?.role === 'MERCHANDISER';
-  const isHeadOrAdmin = !currentUser || currentUser?.role === 'HEAD_MERCHANDISER' || currentUser?.role === 'ADMIN' || currentUser?.roles?.includes('ADMIN');
+  const masterJobs: any[] = useMemo(() => (demo2000DataRaw as any)?.jobs || [], []);
 
-  const jobsList = (demo2000DataRaw as any)?.jobs || [];
-
-  // Find job by ID or Job No (flexible normalized search)
+  // Match Job
   const job = useMemo(() => {
-    if (apiJob) return apiJob;
-    if (!idParam) return jobsList[0] || null;
+    if (!idParam) return masterJobs[0] || null;
     const cleanId = decodeURIComponent(idParam).toLowerCase().trim();
-    const strippedId = cleanId
-      .replace(/^job\s*(#|no\.?|num\.?)?\s*/i, '')
-      .replace(/^#\s*/, '')
-      .replace(/^(onl|ons|ovs|nmt|utg)\s+/i, '')
-      .trim();
-    const digitsId = strippedId.replace(/\D/g, '');
-    const found = jobsList.find((j: any) => {
+    const strippedId = cleanId.replace(/^job\s*(#|no\.?|num\.?)?\s*/i, '').replace(/^#\s*/, '').trim();
+    return masterJobs.find((j: any) => {
       const jNo = String(j.jobNo || '').toLowerCase().trim();
-      const cleanJNo = jNo.replace(/^(onl|ons|ovs|nmt|utg)\s+/i, '').replace(/^#\s*/, '').trim();
-      const jDigits = cleanJNo.replace(/\D/g, '');
-      const jId = String(j.id || '').toLowerCase().trim();
       const sNo = String(j.styleNo || '').toLowerCase().trim();
-      return jNo === cleanId ||
-             jNo === strippedId ||
-             cleanJNo === strippedId ||
-             jId === cleanId ||
-             sNo === cleanId ||
-             cleanJNo.startsWith(strippedId) ||
-             (strippedId.length >= 3 && cleanJNo.includes(strippedId)) ||
-             (digitsId.length >= 3 && (jDigits === digitsId || jDigits.startsWith(digitsId) || jNo.startsWith(digitsId))) ||
-             cleanId.includes(jNo);
-    });
-    return found || null;
-  }, [idParam, jobsList, apiJob]);
+      return jNo === cleanId || jNo === strippedId || jNo.includes(strippedId) || sNo === cleanId;
+    }) || masterJobs[0];
+  }, [idParam, masterJobs]);
 
-  const isAssignedToUser = useMemo(() => {
-    if (isHeadOrAdmin) return true;
-    if (!isMerchandiser) return true;
-    if (!job) return true;
-    if (job.isNewlyImported) return true;
-    const uMerch = (currentUser?.merchandiserName || 'imran').toLowerCase();
-    const jMerch = String(job.merchandiser || '').toLowerCase();
-    return jMerch.includes(uMerch) || uMerch.includes(jMerch);
-  }, [isHeadOrAdmin, isMerchandiser, job, currentUser]);
-
-  const profile = useMemo(() => {
-    if (!job) return null;
-    return generateJobManufacturingProfile(job);
-  }, [job]);
-
-  if (!job || !profile) {
+  if (!job) {
     return (
-      <Shell title="Job Details" eyebrow="Garment Manufacturing Order Profile">
-        <div style={{ padding: '40px', textAlign: 'center', background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-          <h3 style={{ fontWeight: 800 }}>Job Record Not Found</h3>
-          <p style={{ color: '#64748b' }}>No record matching &quot;{idParam}&quot; was found in the ERP database.</p>
-          <button onClick={() => router.back()} className="btn btn-primary" style={{ marginTop: '12px', fontWeight: 800 }}>
-            ← Back to Job Register
+      <Shell title="Job 360" eyebrow="Order Intelligence">
+        <div style={{ padding: '40px', textAlign: 'center', background: '#FFFFFF', borderRadius: '12px' }}>
+          <h3>Order not found</h3>
+          <button onClick={() => router.push('/jobs')} className="btn btn-primary" style={{ marginTop: '12px' }}>
+            ← Back to All Jobs
           </button>
         </div>
       </Shell>
     );
   }
 
-  const factory = job.lineAllocation?.factory || 'NFL';
-  const rawFloor = job.lineAllocation?.floor || 'Floor 1';
-  let floorLabel = `${factory} 1`;
-  if (rawFloor.includes('2') || rawFloor.includes('02')) floorLabel = `${factory} 2`;
-  else if (rawFloor.includes('3') || rawFloor.includes('03')) floorLabel = `${factory} 3`;
-  else floorLabel = `${factory} 1`;
+  const oq = Number(job.orderQty) || 0;
+  const sewQty = Number(job.sewing?.sewingActualQty) || (job.presentStatus === 'Shipped' ? oq : Math.round(oq * 0.85));
+  const cutQty = Number(job.cutting?.cutQty || job.cutting?.cutDone) || Math.round(oq * 1.02);
+  const prodPct = oq > 0 ? Math.min(100, Math.round((sewQty / oq) * 100)) : 0;
+  const tnaPct = job.presentStatus === 'Shipped' ? 100 : prodPct > 50 ? 92 : 75;
+  const matPct = job.fabric?.fabricStatus?.includes('100%') ? 100 : 96;
+  const sampleStatus = job.overallStage === 'SAMPLE' ? 'In Progress' : 'PP Approved';
+  const shipPct = job.presentStatus === 'Shipped' ? 100 : Math.round(prodPct * 0.95);
+  const delRisk = job.riskStatus === 'CRITICAL' ? 'High Risk' : 'On-Time / Low Risk';
 
-  const exDate = job.dates?.exFactory || '05-Aug-2026';
-  const shipmentWeek = getWeekNumber(exDate);
-  const formattedJob = displayJobNo(job.jobNo, job.buyer);
-
-  const pipeline = [
-    { title: 'Order PO', date: d2(job.dates?.poReceived), status: 'OK' },
-    { title: 'T&A Planning', date: d2(job.dates?.tnaPlan), status: 'OK' },
-    { title: 'Yarn In-House', date: d2(job.dates?.tnaPlan), status: 'OK' },
-    { title: 'Knitting Greige', date: d2(job.dates?.cuttingStart), status: 'OK' },
-    { title: 'Dyeing / Finish', date: d2(job.dates?.cuttingStart), status: 'OK' },
-    { title: 'Cutting', date: d2(job.dates?.cuttingEnd), status: 'OK' },
-    { title: 'Sewing Floor', date: d2(job.dates?.sewingEnd), status: 'RUNNING' },
-    { title: 'Finishing & Pack', date: d2(job.dates?.sewingEnd), status: 'IN_PROGRESS' },
-    { title: 'Ex-Factory Cargo', date: d2(job.dates?.cargoClosing), status: 'PENDING' },
-  ];
-
-  function handleTabClick(tabId: 'sizes' | 'material' | 'production' | 'quality' | 'leadtime' | 'reports') {
-    setViewMode('tab');
-    setActiveTab(tabId);
-    if (typeof window !== 'undefined') {
-      try {
-        const url = new URL(window.location.href);
-        url.searchParams.set('tab', tabId);
-        window.history.replaceState({}, '', url.toString());
-      } catch {}
-    }
-  }
+  const printEmbStr = typeof job.printEmb === 'string' ? job.printEmb : JSON.stringify(job.printEmb || '');
+  const hasPrint = Boolean(printEmbStr.includes('P') || String(job.itemDescription || '').toLowerCase().includes('print'));
+  const hasEmb = Boolean(printEmbStr.includes('E') || String(job.itemDescription || '').toLowerCase().includes('emb'));
+  const hasWash = Boolean(String(job.itemDescription || '').toLowerCase().includes('wash') || String(job.itemDescription || '').toLowerCase().includes('pant') || String(job.itemDescription || '').toLowerCase().includes('fleece'));
 
   return (
     <Shell
-      title={`Job ${formattedJob} · ${job.styleNo}`}
-      eyebrow={`Comprehensive Garment Manufacturing Profile · ${job.buyer} · ${floorLabel}`}
+      title={`Job 360 · ${displayJobNo(job.jobNo, job.buyer)} · ${job.styleNo}`}
+      eyebrow={`Comprehensive 21-Process Manufacturing Profile · ${job.buyer} · Assigned Floor: ${job.lineAllocation?.floor || 'Floor 1'}`}
     >
-      {/* 1. TOP NAVIGATION & ACTION BAR */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <button
-            onClick={() => router.back()}
-            className="reg-btn-compact"
-            style={{ height: '34px', padding: '0 14px', fontSize: '12px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}
-          >
-            ← Back to Table
-          </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', color: '#64748b' }}>
-            <Link href="/" style={{ color: '#2563eb', fontWeight: 700, textDecoration: 'none' }}>Management Overview</Link>
-            <span>/</span>
-            <Link href="/modules/central-planning" style={{ color: '#2563eb', fontWeight: 700, textDecoration: 'none' }}>Central Planning</Link>
-            <span>/</span>
-            <strong style={{ color: '#0f172a', fontWeight: 900 }}>{formattedJob}</strong>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button
-            onClick={() => setIsWorkspaceOpen(true)}
-            className="reg-btn-compact"
-            style={{ background: '#2563eb', color: '#ffffff', fontWeight: 800, border: 'none' }}
-            title="Open Operational Merchandising Workspace (16 Workflow Tabs)"
-          >
-            ⚡ Operational Workspace (16 Tabs)
-          </button>
-          <button
-            onClick={() => window.print()}
-            className="reg-btn-compact"
-            style={{ fontWeight: 800 }}
-            title="Print Complete Job Spec Sheet"
-          >
-            🖨️ Print Spec Sheet
-          </button>
-          <span className="status-pill ok" style={{ fontSize: '12px', padding: '6px 12px', fontWeight: 800 }}>
-            {job.presentStatus || 'Cut OK'}
-          </span>
-        </div>
-      </div>
-
-      {/* 2. JOB HEADER HERO CARD (BOLD QUANTITIES & HIGH CONTRAST) */}
-      <section className="panel" style={{ padding: '18px 24px', background: '#ffffff', border: '1px solid #cbd5e1', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', marginBottom: '14px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-              <span style={{ fontSize: '11px', fontWeight: 900, color: '#1d4ed8', textTransform: 'uppercase', letterSpacing: '.06em', background: '#eff6ff', padding: '3px 10px', borderRadius: '4px' }}>
-                Buyer: {job.buyer}
-              </span>
-              <span style={{ fontSize: '11px', fontWeight: 800, color: '#047857', background: '#ecfdf5', padding: '3px 10px', borderRadius: '4px' }}>
-                Status: {job.presentStatus || 'Cut OK'}
-              </span>
-            </div>
-
-            <h1 style={{ margin: '0 0 6px', fontSize: '24px', fontWeight: 900, color: '#0f172a' }}>
-              {formattedJob} · <span style={{ color: '#2563eb' }}>{job.styleNo}</span>
-            </h1>
-            <p style={{ margin: 0, fontSize: '13px', color: '#475569', fontWeight: 600 }}>
-              {job.itemDescription || 'Garment Production Item'} · Assigned Line: <strong style={{ fontWeight: 900, color: '#0f172a' }}>{job.lineAllocation?.line || '16B'}</strong> ({floorLabel}) · Merchandiser: <strong style={{ fontWeight: 800, color: '#0f172a' }}>{job.merchandiser || 'Md. Jahidul Islam'}</strong>
-            </p>
-          </div>
-
-          {/* Quick Metrics Badge Row (BOLD DIGITS) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-            <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px 16px', textAlign: 'right' }}>
-              <span style={{ fontSize: '10.5px', fontWeight: 800, color: '#475569', display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em' }}>TOTAL ORDER</span>
-              <strong style={{ fontSize: '20px', fontWeight: 900, color: '#0f172a' }}>{n(job.orderQty)} <span style={{ fontSize: '12px', fontWeight: 700 }}>pcs</span></strong>
-            </div>
-            <div style={{ background: '#eff6ff', border: '1px solid #93c5fd', borderRadius: '8px', padding: '10px 16px', textAlign: 'right' }}>
-              <span style={{ fontSize: '10.5px', fontWeight: 800, color: '#1e40af', display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em' }}>EX-FACTORY DATE</span>
-              <strong style={{ fontSize: '20px', fontWeight: 900, color: '#2563eb' }}>{d2(exDate)}</strong>
-            </div>
-            <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '8px', padding: '10px 16px', textAlign: 'right' }}>
-              <span style={{ fontSize: '10.5px', fontWeight: 800, color: '#047857', display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em' }}>SEWING OUTPUT</span>
-              <strong style={{ fontSize: '20px', fontWeight: 900, color: '#16a34a' }}>{n(job.sewing?.sewingActualQty || job.orderQty)} <span style={{ fontSize: '12px', fontWeight: 700 }}>pcs</span></strong>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 3. END-TO-END FACTORY PIPELINE TRACKER */}
-      <section className="panel" style={{ padding: '14px 20px', marginBottom: '14px' }}>
-        <div className="panel-title" style={{ fontSize: '12px', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <strong style={{ fontWeight: 900, color: '#0f172a' }}>End-to-End Production Process Milestone Tracking</strong>
-          <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>Connected factory logs</span>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(9, minmax(0, 1fr))', gap: '6px', overflowX: 'auto' }}>
-          {pipeline.map((p, idx) => (
-            <div
-              key={idx}
+      <div style={{ background: COLORS.bg, minHeight: '100vh', padding: '0 0 30px' }}>
+        
+        {/* Navigation & Action Bar */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={() => router.push('/jobs')}
               style={{
-                background: p.status === 'OK' ? '#ecfdf5' : p.status === 'RUNNING' ? '#eff6ff' : '#f8fafc',
-                border: p.status === 'OK' ? '1px solid #a7f3d0' : p.status === 'RUNNING' ? '1px solid #93c5fd' : '1px solid #e2e8f0',
-                borderRadius: '8px',
-                padding: '8px 6px',
-                textAlign: 'center'
+                background: '#FFFFFF',
+                border: `1px solid ${COLORS.border}`,
+                borderRadius: '6px',
+                padding: '6px 12px',
+                fontSize: '11.5px',
+                fontWeight: 700,
+                color: COLORS.navy,
+                cursor: 'pointer'
               }}
             >
-              <span style={{ fontSize: '9px', fontWeight: 900, color: p.status === 'OK' ? '#047857' : p.status === 'RUNNING' ? '#1d4ed8' : '#94a3b8' }}>
-                STEP {idx + 1}
-              </span>
-              <strong style={{ display: 'block', fontSize: '11px', fontWeight: 800, color: '#0f172a', margin: '2px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {p.title}
-              </strong>
-              <span style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', display: 'block' }}>{p.date}</span>
-            </div>
-          ))}
-        </div>
-      </section>
+              ← Back to Jobs Register
+            </button>
+            <span style={{ fontSize: '11px', color: COLORS.grey }}>
+              Job ID: <strong style={{ color: COLORS.navy }}>{job.jobNo}</strong> · PO Recv: {d2(job.dates?.poReceived)}
+            </span>
+          </div>
 
-      {/* 3b. MULTI-DEPARTMENT GARMENT PIPELINE & STAGE CONTROLS */}
-      <section className="panel" style={{ padding: '18px 24px', background: '#f8fafc', border: '1px solid #cbd5e1', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', marginBottom: '16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <span style={{
+              fontSize: '11px',
+              fontWeight: 800,
+              padding: '4px 10px',
+              borderRadius: '6px',
+              background: delRisk === 'High Risk' ? '#FEE2E2' : '#DCFCE7',
+              color: delRisk === 'High Risk' ? COLORS.red : COLORS.green
+            }}>
+              {delRisk}
+            </span>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              style={{
+                background: COLORS.navy,
+                color: '#FFFFFF',
+                border: 'none',
+                padding: '6px 14px',
+                fontSize: '11.5px',
+                fontWeight: 700,
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
+            >
+              🖨️ Export Spec Sheet
+            </button>
+          </div>
+        </div>
+
+        {/* 7 HEADER KPIS */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+          gap: '8px',
+          background: COLORS.cardBg,
+          padding: '12px 14px',
+          borderRadius: '10px',
+          border: `1px solid ${COLORS.border}`,
+          boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+          marginBottom: '14px'
+        }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '18px' }}>🏭</span>
-              <h3 style={{ fontSize: '15.5px', fontWeight: 900, color: '#0f172a', margin: 0 }}>
-                Multi-Department Pre-Production Pipeline & Stage Control
-              </h3>
-              <span style={{ fontSize: '10.5px', background: '#e0f2fe', color: '#0369a1', padding: '2px 8px', borderRadius: '12px', fontWeight: 800 }}>
-                Job #{job.jobNo}
-              </span>
-            </div>
-            <p style={{ fontSize: '12px', color: '#64748b', margin: '3px 0 0' }}>
-              From PO Import → Central IE Bulletin & CAD → Merchandising FOS, Trims & T&A → Central Planning Approval → Auto-Dispatch to Knitting & Dyeing.
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <Link
-              href={`/tasks?jobNo=${job.jobNo}`}
-              className="btn btn-secondary"
-              style={{ fontSize: '11.5px', padding: '5px 12px', textDecoration: 'none', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}
-            >
-              <span>📋</span> Department Tasks ({job.jobNo})
-            </Link>
-            <Link
-              href="/jobs?tab=preproduction"
-              className="btn btn-secondary"
-              style={{ fontSize: '11.5px', padding: '5px 12px', textDecoration: 'none', fontWeight: 700 }}
-            >
-              ⚡ Stage Division
-            </Link>
-          </div>
-        </div>
-
-        {stageMsg && (
-          <div style={{ background: stageMsg.startsWith('✓') ? '#ecfdf5' : '#fef2f2', color: stageMsg.startsWith('✓') ? '#065f46' : '#991b1b', border: `1px solid ${stageMsg.startsWith('✓') ? '#6ee7b7' : '#fecaca'}`, padding: '10px 16px', borderRadius: '8px', marginBottom: '14px', fontSize: '12.5px', fontWeight: 700 }}>
-            {stageMsg}
-          </div>
-        )}
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
-          {/* 1. Central IE Bulletin */}
-          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>1. Central IE</span>
-                <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: 800, background: workflow?.ieBulletin?.status === 'READY_IMPORTED' ? '#ecfdf5' : '#f1f5f9', color: workflow?.ieBulletin?.status === 'READY_IMPORTED' ? '#065f46' : '#64748b' }}>
-                  {workflow?.ieBulletin?.status === 'READY_IMPORTED' ? '✓ Ready / Attached' : 'Pending IE'}
-                </span>
-              </div>
-              <strong style={{ fontSize: '13px', color: '#0f172a' }}>Operation Bulletin & Target SMV</strong>
-              <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '4px', lineHeight: 1.4 }}>
-                Target SMV: <strong>{workflow?.ieBulletin?.smv || job.ie?.smv || 8.5}</strong> · Ops: 18 · Target/hr: 180 pcs.
-                <div style={{ color: '#059669', fontSize: '10.5px', marginTop: '2px' }}>Auto-pulls data when Planning inputs Job No.</div>
-              </div>
-            </div>
-            <div style={{ marginTop: '10px' }}>
-              {isMerchandiser && !isHeadOrAdmin ? (
-                <div style={{ fontSize: '11px', color: '#64748b', fontStyle: 'italic', padding: '6px 8px', textAlign: 'center', background: '#f8fafc', borderRadius: '5px', border: '1px dashed #cbd5e1' }}>
-                  🔒 Central IE Department Area (View Only for Merchandiser · IE Specialist Authority)
-                </div>
-              ) : (
-                <button
-                  disabled={busyStage || workflow?.ieBulletin?.status === 'READY_IMPORTED'}
-                  onClick={() => handleWorkflowAction('ie_bulletin_ready', { smv: 8.5 })}
-                  style={{ width: '100%', padding: '5px 10px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', border: '1px solid #cbd5e1', background: workflow?.ieBulletin?.status === 'READY_IMPORTED' ? '#f1f5f9' : '#0284c7', color: workflow?.ieBulletin?.status === 'READY_IMPORTED' ? '#64748b' : '#fff', cursor: workflow?.ieBulletin?.status === 'READY_IMPORTED' ? 'default' : 'pointer' }}
-                >
-                  {workflow?.ieBulletin?.status === 'READY_IMPORTED' ? '✓ Bulletin Active & Pulled' : 'Attach / Complete IE Bulletin'}
-                </button>
-              )}
+            <span style={{ fontSize: '10px', fontWeight: 700, color: COLORS.grey, textTransform: 'uppercase' }}>Order Quantity</span>
+            <div style={{ fontSize: '18px', fontWeight: 800, color: COLORS.navy, marginTop: '2px' }}>
+              {fmt(oq)} <span style={{ fontSize: '11px', color: COLORS.grey }}>pcs</span>
             </div>
           </div>
 
-          {/* 2. CAD Consumption */}
-          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>2. CAD Section</span>
-                <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: 800, background: workflow?.cad?.status === 'COMPLETED' ? '#ecfdf5' : '#fefce8', color: workflow?.cad?.status === 'COMPLETED' ? '#065f46' : '#854d0e' }}>
-                  {workflow?.cad?.status === 'COMPLETED' ? '✓ Consumption Done' : 'Pending Marker & Cons.'}
-                </span>
-              </div>
-              <strong style={{ fontSize: '13px', color: '#0f172a' }}>Marker & Fabric Consumption</strong>
-              <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '4px', lineHeight: 1.4 }}>
-                Cons: <strong>{workflow?.cad?.consumptionKgPerDz || 2.65} kg/dz</strong> · Marker Eff: <strong>{workflow?.cad?.markerEfficiencyPct || 86.4}%</strong>.
-                <div style={{ color: '#0284c7', fontSize: '10.5px', marginTop: '2px' }}>Completing CAD unlocks Merchandiser Fabric Order Sheet.</div>
-              </div>
-            </div>
-            <div style={{ marginTop: '10px' }}>
-              {isMerchandiser && !isHeadOrAdmin ? (
-                <div style={{ fontSize: '11px', color: '#64748b', fontStyle: 'italic', padding: '6px 8px', textAlign: 'center', background: '#f8fafc', borderRadius: '5px', border: '1px dashed #cbd5e1' }}>
-                  🔒 CAD Section Area (View Only for Merchandiser · CAD Marker Authority)
-                </div>
-              ) : (
-                <button
-                  disabled={busyStage || workflow?.cad?.status === 'COMPLETED'}
-                  onClick={() => handleWorkflowAction('cad_consumption_submit', { consumptionKgPerDz: 2.65, markerEfficiencyPct: 86.4 })}
-                  style={{ width: '100%', padding: '5px 10px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', border: '1px solid #cbd5e1', background: workflow?.cad?.status === 'COMPLETED' ? '#f1f5f9' : '#0284c7', color: workflow?.cad?.status === 'COMPLETED' ? '#64748b' : '#fff', cursor: workflow?.cad?.status === 'COMPLETED' ? 'default' : 'pointer' }}
-                >
-                  {workflow?.cad?.status === 'COMPLETED' ? '✓ CAD Consumption Submitted' : 'Submit CAD Consumption'}
-                </button>
-              )}
+          <div>
+            <span style={{ fontSize: '10px', fontWeight: 700, color: COLORS.grey, textTransform: 'uppercase' }}>Production Completion</span>
+            <div style={{ fontSize: '18px', fontWeight: 800, color: prodPct >= 90 ? COLORS.green : COLORS.blue, marginTop: '2px' }}>
+              {prodPct}%
             </div>
           </div>
 
-          {/* 3. Merchandising Fabric Order Sheet */}
-          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>3. Fabric Order Sheet</span>
-                <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: 800, background: workflow?.fabricOrderSheet?.status === 'PLANNING_APPROVED' ? '#dbeafe' : workflow?.fabricOrderSheet?.status === 'PREPARED_OK' ? '#ecfdf5' : '#fef2f2', color: workflow?.fabricOrderSheet?.status === 'PLANNING_APPROVED' ? '#1e40af' : workflow?.fabricOrderSheet?.status === 'PREPARED_OK' ? '#065f46' : '#991b1b' }}>
-                  {workflow?.fabricOrderSheet?.status === 'PLANNING_APPROVED' ? '✓ Planning Approved' : workflow?.fabricOrderSheet?.status === 'PREPARED_OK' ? '✓ Prepared OK' : 'Awaiting Preparation'}
-                </span>
-              </div>
-              <strong style={{ fontSize: '13px', color: '#0f172a' }}>Fabric Booking & Handover</strong>
-              <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '4px', lineHeight: 1.4 }}>
-                Required: <strong>{workflow?.fabricOrderSheet?.requiredFabricKg || Math.round((job.orderQty || 3000) * 0.22)} kg</strong> · {job.fabric?.fabricType || 'Single Jersey'} {job.fabric?.gsm || 180} GSM.
-                <div style={{ color: '#475569', fontSize: '10.5px', marginTop: '2px' }}>Combines CAD consumption + PO pack sheet.</div>
-              </div>
-            </div>
-            <div style={{ marginTop: '10px' }}>
-              {!isAssignedToUser ? (
-                <div style={{ fontSize: '11px', color: '#64748b', fontStyle: 'italic', padding: '6px 8px', textAlign: 'center', background: '#f8fafc', borderRadius: '5px', border: '1px dashed #cbd5e1' }}>
-                  🔒 View Only · Assigned to {job.merchandiser || 'Another Merchandiser'}
-                </div>
-              ) : (
-                <button
-                  disabled={busyStage || workflow?.fabricOrderSheet?.status === 'PREPARED_OK' || workflow?.fabricOrderSheet?.status === 'PLANNING_APPROVED'}
-                  onClick={() => handleWorkflowAction('fabric_order_sheet_prepared', { preparedBy: currentUser?.name || 'Md. Imran' })}
-                  style={{ width: '100%', padding: '5px 10px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', border: '1px solid #cbd5e1', background: (workflow?.fabricOrderSheet?.status === 'PREPARED_OK' || workflow?.fabricOrderSheet?.status === 'PLANNING_APPROVED') ? '#f1f5f9' : '#059669', color: (workflow?.fabricOrderSheet?.status === 'PREPARED_OK' || workflow?.fabricOrderSheet?.status === 'PLANNING_APPROVED') ? '#64748b' : '#fff', cursor: 'pointer' }}
-                >
-                  {workflow?.fabricOrderSheet?.status === 'PLANNING_APPROVED' ? '✓ Approved by Planning' : workflow?.fabricOrderSheet?.status === 'PREPARED_OK' ? '✓ Prepared OK (Sent to Planning)' : 'Mark Prepared OK'}
-                </button>
-              )}
+          <div>
+            <span style={{ fontSize: '10px', fontWeight: 700, color: COLORS.grey, textTransform: 'uppercase' }}>Material Readiness</span>
+            <div style={{ fontSize: '18px', fontWeight: 800, color: matPct === 100 ? COLORS.green : COLORS.amber, marginTop: '2px' }}>
+              {matPct}%
             </div>
           </div>
 
-          {/* 4. Trims & Accessories BOM */}
-          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>4. Trims & Accessories</span>
-                <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: 800, background: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1' }}>
-                  {workflow?.trims?.orderingStatus === 'ORDER_OK' ? '✓ Order OK' : 'Partial / Pending'}
-                </span>
-              </div>
-              <strong style={{ fontSize: '13px', color: '#0f172a' }}>BOM & Materials Ordering Status</strong>
-              <div style={{ fontSize: '11px', color: '#475569', marginTop: '4px', lineHeight: 1.35 }}>
-                • Labels, Polybag & Hangtag: <span style={{ color: '#059669', fontWeight: 700 }}>Order OK</span><br />
-                • Sewing Thread: <span style={{ color: '#d97706', fontWeight: 700 }}>Pending lab shade match</span><br />
-                • Master Cartons: <span style={{ color: '#d97706', fontWeight: 700 }}>Pending final ratio packing</span>
-              </div>
-            </div>
-            <div style={{ marginTop: '10px' }}>
-              {!isAssignedToUser ? (
-                <div style={{ fontSize: '11px', color: '#64748b', fontStyle: 'italic', padding: '6px 8px', textAlign: 'center', background: '#f8fafc', borderRadius: '5px', border: '1px dashed #cbd5e1' }}>
-                  🔒 View Only · Assigned to {job.merchandiser || 'Another Merchandiser'}
-                </div>
-              ) : (
-                <button
-                  disabled={busyStage}
-                  onClick={() => handleWorkflowAction('trims_item_status', { itemIndex: 0, status: 'ORDER_OK', remarks: 'Thread order placed with Coats' })}
-                  style={{ width: '100%', padding: '5px 10px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#334155', cursor: 'pointer' }}
-                >
-                  ✓ Mark Thread Order OK
-                </button>
-              )}
+          <div>
+            <span style={{ fontSize: '10px', fontWeight: 700, color: COLORS.grey, textTransform: 'uppercase' }}>Sample Status</span>
+            <div style={{ fontSize: '15px', fontWeight: 800, color: COLORS.purple, marginTop: '4px' }}>
+              {sampleStatus}
             </div>
           </div>
 
-          {/* 5. Dyeing Lab Shade */}
-          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>5. Dyeing Lab</span>
-                <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: 800, background: workflow?.labShade?.status === 'SHADE_OK' ? '#ecfdf5' : '#fff7ed', color: workflow?.labShade?.status === 'SHADE_OK' ? '#065f46' : '#9a3412' }}>
-                  {workflow?.labShade?.status === 'SHADE_OK' ? '✓ Shade OK' : 'Pending Lab'}
-                </span>
-              </div>
-              <strong style={{ fontSize: '13px', color: '#0f172a' }}>Lab Dip & Color Shade Approval</strong>
-              <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '4px', lineHeight: 1.4 }}>
-                Colors: <strong>{job.fabric?.colors || 'Navy / Standard'}</strong>.
-                <div style={{ color: workflow?.labShade?.status === 'SHADE_OK' ? '#059669' : '#d97706', fontSize: '10.5px', marginTop: '2px', fontWeight: 700 }}>
-                  {workflow?.labShade?.status === 'SHADE_OK' ? '✓ Shade Approved by Dyeing Lab Chief' : 'Lab testing match against buyer swatch'}
-                </div>
-              </div>
-            </div>
-            <div style={{ marginTop: '10px' }}>
-              {isMerchandiser && !isHeadOrAdmin ? (
-                <div style={{ fontSize: '11px', color: '#64748b', fontStyle: 'italic', padding: '6px 8px', textAlign: 'center', background: '#f8fafc', borderRadius: '5px', border: '1px dashed #cbd5e1' }}>
-                  🔒 Dyeing Lab Area (View Only for Merchandiser · Lab Chief Certification)
-                </div>
-              ) : (
-                <button
-                  disabled={busyStage || workflow?.labShade?.status === 'SHADE_OK'}
-                  onClick={() => handleWorkflowAction('shade_approval_submit', { approvedBy: 'Dyeing Lab Chief' })}
-                  style={{ width: '100%', padding: '5px 10px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', border: '1px solid #cbd5e1', background: workflow?.labShade?.status === 'SHADE_OK' ? '#f1f5f9' : '#059669', color: workflow?.labShade?.status === 'SHADE_OK' ? '#64748b' : '#fff', cursor: 'pointer' }}
-                >
-                  {workflow?.labShade?.status === 'SHADE_OK' ? '✓ Shade Certified OK' : 'Approve Lab Shade (Shade OK)'}
-                </button>
-              )}
+          <div>
+            <span style={{ fontSize: '10px', fontWeight: 700, color: COLORS.grey, textTransform: 'uppercase' }}>TNA Completion</span>
+            <div style={{ fontSize: '18px', fontWeight: 800, color: tnaPct >= 90 ? COLORS.green : COLORS.amber, marginTop: '2px' }}>
+              {tnaPct}%
             </div>
           </div>
 
-          {/* 6. T&A (Time & Action Plan) */}
-          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>6. T&A Schedule</span>
-                <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: 800, background: workflow?.tna?.status === 'PLANNING_APPROVED' ? '#dbeafe' : workflow?.tna?.status === 'PREPARED_OK' ? '#ecfdf5' : '#fefce8', color: workflow?.tna?.status === 'PLANNING_APPROVED' ? '#1e40af' : workflow?.tna?.status === 'PREPARED_OK' ? '#065f46' : '#854d0e' }}>
-                  {workflow?.tna?.status === 'PLANNING_APPROVED' ? '✓ Approved' : workflow?.tna?.status === 'PREPARED_OK' ? '✓ Prepared OK' : 'Pending Prep'}
-                </span>
-              </div>
-              <strong style={{ fontSize: '13px', color: '#0f172a' }}>Time & Action Plan Schedule</strong>
-              <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '4px', lineHeight: 1.4 }}>
-                Review milestones, print for signature, and submit with FOS to Central Planning.
-                <div style={{ color: '#475569', fontSize: '10.5px', marginTop: '2px' }}>Ex-Factory Target: {job.dates?.exFactory || '05-Aug-2026'}.</div>
-              </div>
-            </div>
-            <div style={{ marginTop: '10px', display: 'flex', gap: '6px' }}>
-              <button
-                type="button"
-                onClick={() => window.print()}
-                style={{ flex: 1, padding: '5px', fontSize: '11px', fontWeight: 700, borderRadius: '5px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#334155', cursor: 'pointer' }}
-              >
-                🖨️ Print T&A
-              </button>
-              {!isAssignedToUser ? (
-                <div style={{ flex: 1.5, fontSize: '11px', color: '#64748b', fontStyle: 'italic', padding: '5px', textAlign: 'center', background: '#f8fafc', borderRadius: '5px', border: '1px dashed #cbd5e1' }}>
-                  🔒 Assigned to {job.merchandiser || 'Another Team'}
-                </div>
-              ) : (
-                <button
-                  disabled={busyStage || workflow?.tna?.status === 'PREPARED_OK' || workflow?.tna?.status === 'PLANNING_APPROVED'}
-                  onClick={() => handleWorkflowAction('tna_prepared', { preparedBy: currentUser?.name || 'Md. Imran' })}
-                  style={{ flex: 1.5, padding: '5px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', border: '1px solid #cbd5e1', background: (workflow?.tna?.status === 'PREPARED_OK' || workflow?.tna?.status === 'PLANNING_APPROVED') ? '#f1f5f9' : '#059669', color: (workflow?.tna?.status === 'PREPARED_OK' || workflow?.tna?.status === 'PLANNING_APPROVED') ? '#64748b' : '#fff', cursor: 'pointer' }}
-                >
-                  {workflow?.tna?.status === 'PLANNING_APPROVED' ? '✓ Approved' : workflow?.tna?.status === 'PREPARED_OK' ? '✓ Prepared OK' : 'Mark Prepared OK'}
-                </button>
-              )}
+          <div>
+            <span style={{ fontSize: '10px', fontWeight: 700, color: COLORS.grey, textTransform: 'uppercase' }}>Shipment Readiness</span>
+            <div style={{ fontSize: '18px', fontWeight: 800, color: shipPct >= 90 ? COLORS.green : COLORS.cyan, marginTop: '2px' }}>
+              {shipPct}%
             </div>
           </div>
 
-          {/* 7. Central Planning Approval & Auto-Dispatch */}
-          <div style={{ background: '#eff6ff', border: '2px solid #3b82f6', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gridColumn: 'span 2' }}>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 900, color: '#1e40af', textTransform: 'uppercase' }}>7. Central Planning Approval & Auto-Dispatch</span>
-                <span style={{ fontSize: '10.5px', padding: '2px 8px', borderRadius: '4px', fontWeight: 900, background: workflow?.fabricOrderSheet?.dispatchedToKnitting ? '#ecfdf5' : '#fef3c7', color: workflow?.fabricOrderSheet?.dispatchedToKnitting ? '#047857' : '#92400e' }}>
-                  {workflow?.fabricOrderSheet?.dispatchedToKnitting ? '✓ Dispatched to Knitting & Dyeing' : 'Awaiting Planning Approval'}
-                </span>
-              </div>
-              <strong style={{ fontSize: '14px', color: '#1e3a8a' }}>Final Sign-off & Automated Mill Transmission</strong>
-              <div style={{ fontSize: '12px', color: '#1e40af', marginTop: '4px', lineHeight: 1.4 }}>
-                Print the Fabric Order Sheet and T&A Plan, collect the required physical signature(s), then record the signed copy here. Final approval releases the approved fabric requirement by colour, composition and construction to the relevant teams and stores.
-              </div>
-            </div>
-            <div style={{ marginTop: '12px', display: 'grid', gap: '8px' }}>
-              {workflow?.fabricOrderSheet?.dispatchedToKnitting ? (
-                <div style={{ background: '#ecfdf5', border: '1px solid #6ee7b7', padding: '8px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 800, color: '#065f46' }}>
-                  ✓ Approved and distributed to Knitting, Dyeing, Grey Fabric Store and Finished Fabric Store on {d2(workflow?.fabricOrderSheet?.knitDyeCopySentAt || new Date())}.
-                </div>
-              ) : isMerchandiser && !isHeadOrAdmin ? (
-                <div style={{ fontSize: '12px', color: '#1e40af', fontStyle: 'italic', padding: '10px 14px', textAlign: 'center', background: '#e0f2fe', borderRadius: '6px', border: '1px dashed #38bdf8', fontWeight: 700 }}>
-                  🔒 Central Planning Authority (View Only for Merchandiser · Planning Sign-off Required)
-                </div>
-              ) : (
-                <>
-                  {workflow?.fabricOrderSheet?.physicalCopySigned ? (
-                    <div style={{ background: '#eff6ff', border: '1px solid #93c5fd', padding: '8px 12px', borderRadius: '6px', fontSize: '12px', color: '#1e40af' }}>
-                      ✓ Physical signature recorded by {workflow?.fabricOrderSheet?.physicalSignedBy || 'Planning'} on {d2(workflow?.fabricOrderSheet?.physicalSignedAt)}. Ready for ERP approval.
-                    </div>
-                  ) : (
-                    <button
-                      disabled={busyStage}
-                      onClick={() => handleWorkflowAction('fabric_order_sheet_physical_signed', { signedBy: 'Central Planning Head' })}
-                      style={{ width: '100%', padding: '8px 16px', fontSize: '12.5px', fontWeight: 900, borderRadius: '6px', border: '1px solid #2563eb', background: '#eff6ff', color: '#1d4ed8', cursor: 'pointer' }}
-                    >
-                      Record Physical Copy Signed
-                    </button>
-                  )}
-                  <button
-                    disabled={busyStage || !workflow?.fabricOrderSheet?.physicalCopySigned}
-                    onClick={() => handleWorkflowAction('planning_approval_submit', { approvedBy: 'Central Planning Head' })}
-                    style={{ width: '100%', padding: '8px 16px', fontSize: '12.5px', fontWeight: 900, borderRadius: '6px', border: 'none', background: workflow?.fabricOrderSheet?.physicalCopySigned ? '#2563eb' : '#94a3b8', color: '#ffffff', cursor: workflow?.fabricOrderSheet?.physicalCopySigned ? 'pointer' : 'not-allowed', boxShadow: '0 2px 6px rgba(37,99,235,0.3)' }}
-                  >
-                    Approve Signed T&A + Fabric Order Sheet & Distribute
-                  </button>
-                </>
-              )}
+          <div>
+            <span style={{ fontSize: '10px', fontWeight: 700, color: COLORS.grey, textTransform: 'uppercase' }}>Delivery Risk</span>
+            <div style={{ fontSize: '15px', fontWeight: 800, color: delRisk === 'High Risk' ? COLORS.red : COLORS.green, marginTop: '4px' }}>
+              {delRisk}
             </div>
           </div>
         </div>
-      </section>
 
-      {/* 4. DETAIL TABS NAVIGATION (ACTUAL SEPARATE SUB-PAGE VIEWS) */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', borderBottom: '2px solid #e2e8f0', paddingBottom: '10px', marginBottom: '16px' }}>
-        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', flexWrap: 'wrap' }}>
-          {[
-            { id: 'sizes', label: '📏 Size Breakdown', desc: 'Order ratio & size matrix' },
-            { id: 'po', label: '📦 PO Breakdown', desc: 'Destination allocation & export ports' },
-            { id: 'material', label: '🧵 Fabric & Trims', desc: 'Yarn, fabric & accessories BOM' },
-            { id: 'production', label: '🏭 Stage Production & IE', desc: 'Lines, SMV & stage runs' },
-            { id: 'quality', label: '🔍 Quality & Inspection', desc: 'Audit log & defect control' },
-            { id: 'leadtime', label: '⏱️ T&A Schedule', desc: 'Planned vs actual milestones' },
-            { id: 'reports', label: '🧪 Lab Test Reports', desc: 'ISO certified lab tests' },
-          ].map(t => {
-            const isActive = viewMode === 'tab' && activeTab === t.id;
+        {/* 21 TABS HORIZONTAL SCROLLBAR */}
+        <div style={{
+          display: 'flex',
+          gap: '3px',
+          overflowX: 'auto',
+          background: '#FFFFFF',
+          padding: '6px 8px',
+          borderRadius: '8px',
+          border: `1px solid ${COLORS.border}`,
+          marginBottom: '14px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+        }}>
+          {TAB_DEFS.map((t) => {
+            const isSelected = activeTab === t.id;
             return (
               <button
-                type="button"
                 key={t.id}
-                onClick={() => handleTabClick(t.id as any)}
-                className={`tab-btn-360 ${isActive ? 'active' : ''}`}
+                type="button"
+                onClick={() => setActiveTab(t.id)}
                 style={{
-                  padding: '9px 16px',
-                  fontSize: '12.5px',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  border: isActive ? '2px solid #2563eb' : '1px solid #cbd5e1',
-                  background: isActive ? '#2563eb' : '#ffffff',
-                  color: isActive ? '#ffffff' : '#1e293b',
-                  fontWeight: isActive ? 900 : 700,
-                  boxShadow: isActive ? '0 3px 10px rgba(37,99,235,0.28)' : '0 1px 3px rgba(0,0,0,0.03)',
-                  transition: 'all .15s ease',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px'
+                  gap: '5px',
+                  background: isSelected ? COLORS.navy : 'transparent',
+                  color: isSelected ? '#FFFFFF' : COLORS.navy,
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '7px 11px',
+                  fontSize: '11.5px',
+                  fontWeight: isSelected ? 800 : 600,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.1s ease'
                 }}
               >
+                <span style={{ fontSize: '10px', opacity: isSelected ? 0.8 : 0.5, fontWeight: 700 }}>{t.num}</span>
+                <span>{t.icon}</span>
                 <span>{t.label}</span>
               </button>
             );
           })}
         </div>
 
-        {/* View All Sections Toggle */}
-        <button
-          type="button"
-          onClick={() => setViewMode(viewMode === 'all' ? 'tab' : 'all')}
-          style={{
-            padding: '9px 14px',
-            fontSize: '12px',
-            fontWeight: 800,
-            borderRadius: '8px',
-            cursor: 'pointer',
-            border: viewMode === 'all' ? '2px solid #059669' : '1px solid #94a3b8',
-            background: viewMode === 'all' ? '#ecfdf5' : '#f8fafc',
-            color: viewMode === 'all' ? '#047857' : '#475569'
-          }}
-          title="Toggle viewing all 6 sections on one screen"
-        >
-          {viewMode === 'all' ? '✓ Showing All 6 Sections' : '📑 View All Sections (Full View)'}
-        </button>
+        {/* TAB CONTENTS CONTAINER */}
+        <div style={{
+          background: COLORS.cardBg,
+          borderRadius: '10px',
+          border: `1px solid ${COLORS.border}`,
+          padding: '20px 24px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+        }}>
+          {/* TAB 01: ORDER OVERVIEW */}
+          {activeTab === 'overview' && (
+            <div>
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: COLORS.navy, margin: '0 0 14px' }}>
+                01 · Order Master Overview &amp; Specifications
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', fontSize: '12px' }}>
+                <div style={{ background: '#F8FAFC', padding: '12px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+                  <div style={{ color: COLORS.grey, fontSize: '10.5px', fontWeight: 700 }}>BUYER &amp; STYLE</div>
+                  <div style={{ fontSize: '16px', fontWeight: 800, color: COLORS.navy, marginTop: '2px' }}>{job.buyer}</div>
+                  <div style={{ color: COLORS.blue, fontWeight: 700, marginTop: '2px' }}>Style: {job.styleNo}</div>
+                  <div style={{ color: '#475569', marginTop: '4px' }}>{job.itemDescription || 'Garment Item'}</div>
+                </div>
+
+                <div style={{ background: '#F8FAFC', padding: '12px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+                  <div style={{ color: COLORS.grey, fontSize: '10.5px', fontWeight: 700 }}>ORDER QUANTITIES</div>
+                  <div style={{ fontSize: '16px', fontWeight: 800, color: COLORS.navy, marginTop: '2px' }}>{fmt(oq)} pcs</div>
+                  <div style={{ color: COLORS.green, fontWeight: 700, marginTop: '2px' }}>Sewing Finished: {fmt(sewQty)} pcs</div>
+                  <div style={{ color: COLORS.amber, fontWeight: 700, marginTop: '2px' }}>Sewing Balance: {fmt(Math.max(0, oq - sewQty))} pcs</div>
+                </div>
+
+                <div style={{ background: '#F8FAFC', padding: '12px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+                  <div style={{ color: COLORS.grey, fontSize: '10.5px', fontWeight: 700 }}>KEY TIMELINE MILESTONES</div>
+                  <div style={{ marginTop: '4px' }}>PO Received: <strong>{d2(job.dates?.poReceived)}</strong></div>
+                  <div style={{ marginTop: '2px' }}>Cutting Start: <strong>{d2(job.dates?.cuttingStart)}</strong></div>
+                  <div style={{ marginTop: '2px' }}>Sewing Start: <strong>{d2(job.dates?.sewingStart)}</strong></div>
+                  <div style={{ marginTop: '2px', color: COLORS.blue }}>Ex-Factory Cargo: <strong>{d2(job.dates?.exFactory)}</strong></div>
+                </div>
+
+                <div style={{ background: '#F8FAFC', padding: '12px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+                  <div style={{ color: COLORS.grey, fontSize: '10.5px', fontWeight: 700 }}>PLANT ALLOCATION</div>
+                  <div style={{ marginTop: '4px' }}>Factory: <strong>{job.lineAllocation?.factory || 'NFL Plant 1'}</strong></div>
+                  <div style={{ marginTop: '2px' }}>Floor: <strong>{job.lineAllocation?.floor || 'Floor 2'}</strong></div>
+                  <div style={{ marginTop: '2px' }}>Sewing Line: <strong style={{ color: COLORS.orange }}>{job.lineAllocation?.line || 'Line 14B'}</strong></div>
+                  <div style={{ marginTop: '2px' }}>Merchandiser: <strong>{job.merchandiser || 'Md. Imran'}</strong></div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 02: PO BREAKDOWN */}
+          {activeTab === 'po' && (
+            <div>
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: COLORS.navy, margin: '0 0 14px' }}>
+                02 · Purchase Order Breakdown &amp; Destination Country Splits
+              </h3>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ background: '#F1F5F9', borderBottom: `1px solid ${COLORS.border}` }}>
+                    <th style={{ padding: '8px 10px' }}>PO Number</th>
+                    <th style={{ padding: '8px 10px' }}>Destination Market</th>
+                    <th style={{ padding: '8px 10px' }}>Delivery Port</th>
+                    <th style={{ padding: '8px 10px' }}>Terms</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right' }}>PO Quantity</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right' }}>Cartons</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'center' }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { po: `PO-${job.jobNo}-DE`, country: 'Germany 🇩🇪', port: 'Hamburg', terms: 'FOB Chittagong', qty: Math.round(oq * 0.45), cartons: Math.ceil((oq * 0.45) / 24) },
+                    { po: `PO-${job.jobNo}-FR`, country: 'France 🇫🇷', port: 'Le Havre', terms: 'FOB Chittagong', qty: Math.round(oq * 0.30), cartons: Math.ceil((oq * 0.30) / 24) },
+                    { po: `PO-${job.jobNo}-UK`, country: 'United Kingdom 🇬🇧', port: 'Felixstowe', terms: 'FOB Chittagong', qty: Math.round(oq * 0.25), cartons: Math.ceil((oq * 0.25) / 24) },
+                  ].map((p, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                      <td style={{ padding: '8px 10px', fontWeight: 700, color: COLORS.blue }}>{p.po}</td>
+                      <td style={{ padding: '8px 10px' }}>{p.country}</td>
+                      <td style={{ padding: '8px 10px' }}>{p.port}</td>
+                      <td style={{ padding: '8px 10px' }}>{p.terms}</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700 }}>{fmt(p.qty)} pcs</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right' }}>{fmt(p.cartons)} ctn</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', background: '#DCFCE7', color: COLORS.green }}>
+                          Production Ready
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* TAB 03: MERCHANDISING */}
+          {activeTab === 'merch' && (
+            <div>
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: COLORS.navy, margin: '0 0 14px' }}>
+                03 · Merchandising Account &amp; Cost Sheet Control
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px', fontSize: '12px' }}>
+                <div style={{ background: '#F8FAFC', padding: '14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+                  <div style={{ fontWeight: 800, color: COLORS.navy, marginBottom: '6px' }}>Merchandising Team Contacts</div>
+                  <div>Account Lead: <strong>{job.merchandiser || 'Md. Imran'}</strong></div>
+                  <div>Department: <strong>Team {job.buyer} (Bulk Division)</strong></div>
+                  <div>Email: <span style={{ color: COLORS.blue }}>{job.merchandiser?.toLowerCase().replace(/\s+/g, '.') || 'merch'}@northernfashions.com</span></div>
+                </div>
+
+                <div style={{ background: '#F8FAFC', padding: '14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+                  <div style={{ fontWeight: 800, color: COLORS.navy, marginBottom: '6px' }}>Cost Sheet &amp; Consumption Reference</div>
+                  <div>CAD Consumption: <strong>210 GSM Single Jersey · 2.45 kg / dzn</strong></div>
+                  <div>Sewing SMV: <strong>{job.ie?.smv || '7.5'} min</strong></div>
+                  <div>Fabric Requirement: <strong>{fmt(Math.round(oq * 0.22))} kg</strong></div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 04: TNA */}
+          {activeTab === 'tna' && (
+            <div>
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: COLORS.navy, margin: '0 0 14px' }}>
+                04 · Time &amp; Action (TNA) Critical Path Engine
+              </h3>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ background: '#F1F5F9', borderBottom: `1px solid ${COLORS.border}` }}>
+                    <th style={{ padding: '7px 10px' }}>Milestone Event</th>
+                    <th style={{ padding: '7px 10px' }}>Department</th>
+                    <th style={{ padding: '7px 10px' }}>Target Plan Date</th>
+                    <th style={{ padding: '7px 10px' }}>Actual Date</th>
+                    <th style={{ padding: '7px 10px', textAlign: 'center' }}>Variance</th>
+                    <th style={{ padding: '7px 10px', textAlign: 'center' }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { event: 'Order Confirmation & PO Receipt', dept: 'Merchandising', plan: d2(job.dates?.poReceived), actual: d2(job.dates?.poReceived), diff: '0d', status: 'OK' },
+                    { event: 'Lab Dip & Shade Approval', dept: 'Testing Lab', plan: '10-Feb-26', actual: '08-Feb-26', diff: '-2d', status: 'OK' },
+                    { event: 'Yarn In-House Godown', dept: 'Yarn Store', plan: '25-Feb-26', actual: '24-Feb-26', diff: '-1d', status: 'OK' },
+                    { event: 'Knitting Greige Output', dept: 'Knitting', plan: '15-Mar-26', actual: '16-Mar-26', diff: '+1d', status: 'OK' },
+                    { event: 'Dyeing Batch Release', dept: 'Dyeing', plan: '05-Apr-26', actual: '05-Apr-26', diff: '0d', status: 'OK' },
+                    { event: 'PP Sample Buyer Sign-off', dept: 'Sample Room', plan: '20-Apr-26', actual: '18-Apr-26', diff: '-2d', status: 'OK' },
+                    { event: 'Bulk Fabric In-House', dept: 'Fabric Store', plan: '02-May-26', actual: '02-May-26', diff: '0d', status: 'OK' },
+                    { event: 'Cutting Lay & Cut Out', dept: 'Cutting', plan: d2(job.dates?.cuttingStart), actual: d2(job.dates?.cuttingStart), diff: '0d', status: 'OK' },
+                    { event: 'Sewing Line Input', dept: 'Sewing', plan: d2(job.dates?.sewingStart), actual: d2(job.dates?.sewingStart), diff: '0d', status: 'RUNNING' },
+                    { event: 'Ex-Factory Cargo Handover', dept: 'Commercial', plan: d2(job.dates?.exFactory), actual: 'Pending', diff: '0d', status: 'PENDING' }
+                  ].map((m, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                      <td style={{ padding: '7px 10px', fontWeight: 700, color: COLORS.navy }}>{m.event}</td>
+                      <td style={{ padding: '7px 10px' }}>{m.dept}</td>
+                      <td style={{ padding: '7px 10px' }}>{m.plan}</td>
+                      <td style={{ padding: '7px 10px', fontWeight: 600 }}>{m.actual}</td>
+                      <td style={{ padding: '7px 10px', textAlign: 'center', color: m.diff.includes('+') ? COLORS.red : COLORS.green, fontWeight: 700 }}>{m.diff}</td>
+                      <td style={{ padding: '7px 10px', textAlign: 'center' }}>
+                        <span style={{ fontSize: '9.5px', fontWeight: 800, padding: '2px 6px', borderRadius: '4px', background: m.status === 'OK' ? '#DCFCE7' : m.status === 'RUNNING' ? '#EFF6FF' : '#F1F5F9', color: m.status === 'OK' ? COLORS.green : m.status === 'RUNNING' ? COLORS.blue : COLORS.grey }}>
+                          {m.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* TAB 05: SAMPLE */}
+          {activeTab === 'sample' && (
+            <div>
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: COLORS.navy, margin: '0 0 14px' }}>
+                05 · Sample Development &amp; Buyer Sign-off
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
+                {[
+                  { name: 'Proto Sample', status: 'Approved', date: '14-Feb-26', comment: 'Fit approved without amendment' },
+                  { name: 'Fit Sample', status: 'Approved', date: '28-Feb-26', comment: 'Armhole adjusted +0.5cm' },
+                  { name: 'Size-Set Sample', status: 'Approved', date: '15-Mar-26', comment: 'Grading verified S-XXL' },
+                  { name: 'PP (Pre-Production)', status: 'Approved', date: '18-Apr-26', comment: 'Buyer sealed gold seal' },
+                  { name: 'SMS (Salesman)', status: 'Delivered', date: '02-May-26', comment: '14 sets dispatched' }
+                ].map((s, i) => (
+                  <div key={i} style={{ background: '#F8FAFC', padding: '12px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+                    <div style={{ fontSize: '13px', fontWeight: 800, color: COLORS.navy }}>{s.name}</div>
+                    <div style={{ fontSize: '11px', color: COLORS.green, fontWeight: 700, margin: '3px 0' }}>✓ {s.status} ({s.date})</div>
+                    <div style={{ fontSize: '11px', color: COLORS.grey }}>{s.comment}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 06: YARN */}
+          {activeTab === 'yarn' && (
+            <div>
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: COLORS.navy, margin: '0 0 14px' }}>
+                06 · Yarn Procurement, Lot Numbers &amp; Physical Stock
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px', fontSize: '12px' }}>
+                <div style={{ background: '#F8FAFC', padding: '12px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+                  <div style={{ color: COLORS.grey, fontSize: '10.5px', fontWeight: 700 }}>YARN SPECIFICATION</div>
+                  <div style={{ fontSize: '14px', fontWeight: 800, color: COLORS.navy, marginTop: '2px' }}>30/1 Carded Cotton 100%</div>
+                  <div>Spinning Mill: <strong>Badsha Spinning Ltd</strong></div>
+                  <div>Lot No: <strong style={{ color: COLORS.blue }}>BS-2026-889</strong></div>
+                </div>
+                <div style={{ background: '#F8FAFC', padding: '12px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+                  <div style={{ color: COLORS.grey, fontSize: '10.5px', fontWeight: 700 }}>QUANTITY TRACKER</div>
+                  <div>Required: <strong>{fmt(Math.round(oq * 0.23))} kg</strong></div>
+                  <div>Received in Godown: <strong style={{ color: COLORS.green }}>{fmt(Math.round(oq * 0.23))} kg (100%)</strong></div>
+                  <div>Issued to Knitting: <strong>{fmt(Math.round(oq * 0.22))} kg</strong></div>
+                  <div>Balance in Store: <strong>{fmt(Math.round(oq * 0.01))} kg</strong></div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 07: KNITTING */}
+          {activeTab === 'knitting' && (
+            <div>
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: COLORS.navy, margin: '0 0 14px' }}>
+                07 · Knitting Operations &amp; Greige Output
+              </h3>
+              <div style={{ fontSize: '12px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+                <div style={{ background: '#F8FAFC', padding: '12px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+                  <div>Machine Type: <strong>Circular Knitting (Terrot 30&quot; x 24GG)</strong></div>
+                  <div>Greige Roll Output: <strong>148 Rolls ({fmt(Math.round(oq * 0.22))} kg)</strong></div>
+                  <div>Quality 4-point inspection: <strong style={{ color: COLORS.green }}>Pass (1.2 pts/100m)</strong></div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 08: DYEING */}
+          {activeTab === 'dyeing' && (
+            <div>
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: COLORS.navy, margin: '0 0 14px' }}>
+                08 · Dyeing Batch Processing &amp; Shade Approvals
+              </h3>
+              <div style={{ fontSize: '12px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+                <div style={{ background: '#F8FAFC', padding: '12px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+                  <div>Batch No: <strong style={{ color: COLORS.blue }}>DYE-{job.jobNo}-01</strong></div>
+                  <div>Winch Allocated: <strong>HTHP Winch #12 (Fong&apos;s 1000kg)</strong></div>
+                  <div>RFT %: <strong style={{ color: COLORS.green }}>98.2% (First Time Right)</strong></div>
+                  <div>Shade OK: <strong style={{ color: COLORS.green }}>✓ Lab Head Approved</strong></div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 09: FABRIC */}
+          {activeTab === 'fabric' && (
+            <div>
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: COLORS.navy, margin: '0 0 14px' }}>
+                09 · Finished Fabric Store &amp; Roll Release
+              </h3>
+              <div style={{ fontSize: '12px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+                <div style={{ background: '#F8FAFC', padding: '12px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+                  <div>Available Finish Fabric: <strong style={{ color: COLORS.green }}>{fmt(Math.round(oq * 0.21))} kg</strong></div>
+                  <div>Relaxation Time: <strong>24 hrs completed</strong></div>
+                  <div>Width &amp; GSM: <strong>68&quot; Open Width · 180 GSM (Spec 180 ± 5)</strong></div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 10: TRIMS */}
+          {activeTab === 'trims' && (
+            <div>
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: COLORS.navy, margin: '0 0 14px' }}>
+                10 · Trims &amp; Accessories Store Readiness
+              </h3>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ background: '#F1F5F9', borderBottom: `1px solid ${COLORS.border}` }}>
+                    <th style={{ padding: '6px 8px' }}>Item</th>
+                    <th style={{ padding: '6px 8px' }}>Specification</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'right' }}>Required</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'right' }}>Received</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'center' }}>Readiness</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { item: 'Main Label', spec: 'Woven Heat-cut', req: oq, recv: oq },
+                    { item: 'Care Label', spec: 'Satin Printed Barcode', req: oq, recv: oq },
+                    { item: 'Sewing Thread', spec: '40/2 Poly Green Lily', req: `${Math.ceil(oq / 200)} cones`, recv: `${Math.ceil(oq / 200)} cones` },
+                    { item: 'Poly Bag', spec: 'Self Adhesive Recycled', req: oq, recv: oq }
+                  ].map((tr, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                      <td style={{ padding: '6px 8px', fontWeight: 700 }}>{tr.item}</td>
+                      <td style={{ padding: '6px 8px' }}>{tr.spec}</td>
+                      <td style={{ padding: '6px 8px', textAlign: 'right' }}>{typeof tr.req === 'number' ? fmt(tr.req) : tr.req}</td>
+                      <td style={{ padding: '6px 8px', textAlign: 'right', color: COLORS.green, fontWeight: 700 }}>{typeof tr.recv === 'number' ? fmt(tr.recv) : tr.recv}</td>
+                      <td style={{ padding: '6px 8px', textAlign: 'center' }}>
+                        <span style={{ fontSize: '9.5px', background: '#DCFCE7', color: COLORS.green, padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                          100% OK
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* TAB 11: CUTTING */}
+          {activeTab === 'cutting' && (
+            <div>
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: COLORS.navy, margin: '0 0 14px' }}>
+                11 · Cutting Floor &amp; CAD Marker Execution
+              </h3>
+              <div style={{ fontSize: '12px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+                <div style={{ background: '#F8FAFC', padding: '12px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+                  <div>CAD Marker Efficiency: <strong>84.2%</strong></div>
+                  <div>Cut Target: <strong>{fmt(cutQty)} pcs</strong></div>
+                  <div>Cut Actual: <strong style={{ color: COLORS.green }}>{fmt(cutQty)} pcs</strong></div>
+                  <div>Cut Balance: <strong style={{ color: COLORS.green }}>0 pcs (Completed)</strong></div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 12: PRINTING */}
+          {activeTab === 'printing' && (
+            <div>
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: COLORS.navy, margin: '0 0 14px' }}>
+                12 · Printing Section &amp; Strike-off Follow-up
+              </h3>
+              {hasPrint ? (
+                <div style={{ fontSize: '12px', background: '#F8FAFC', padding: '14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+                  <div>Print Technique: <strong>Rubber &amp; High-Density Puff Print</strong></div>
+                  <div>Location: <strong>Front Chest &amp; Back Neck</strong></div>
+                  <div>Strike-off Approval: <strong style={{ color: COLORS.green }}>✓ Approved by Buyer</strong></div>
+                  <div>Delivered from Print: <strong>{fmt(cutQty)} pcs (100%)</strong></div>
+                </div>
+              ) : (
+                <div style={{ padding: '20px', textAlign: 'center', color: COLORS.grey, background: '#F8FAFC', borderRadius: '8px' }}>
+                  <strong>N/A</strong> — No printing operation applicable for this solid style.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 13: EMBROIDERY */}
+          {activeTab === 'embroidery' && (
+            <div>
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: COLORS.navy, margin: '0 0 14px' }}>
+                13 · Embroidery Operations &amp; Swatches
+              </h3>
+              {hasEmb ? (
+                <div style={{ fontSize: '12px', background: '#F8FAFC', padding: '14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+                  <div>Stitch Count: <strong>6,400 Stitches</strong></div>
+                  <div>Position: <strong>Left Chest Monogram</strong></div>
+                  <div>Machine: <strong>Tajima 20-Head Embroidery</strong></div>
+                  <div>Approved Swatch: <strong style={{ color: COLORS.green }}>✓ Sealed</strong></div>
+                </div>
+              ) : (
+                <div style={{ padding: '20px', textAlign: 'center', color: COLORS.grey, background: '#F8FAFC', borderRadius: '8px' }}>
+                  <strong>N/A</strong> — No embroidery operation specified in Buyer Tech Pack.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 14: SEWING */}
+          {activeTab === 'sewing' && (
+            <div>
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: COLORS.navy, margin: '0 0 14px' }}>
+                14 · Sewing Line Output &amp; Hourly Efficiency
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', fontSize: '12px' }}>
+                <div style={{ background: '#F8FAFC', padding: '12px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+                  <div>Allocated Line: <strong style={{ color: COLORS.blue }}>{job.lineAllocation?.line || 'Line 14B'}</strong></div>
+                  <div>Daily Target: <strong>1,800 pcs / day</strong></div>
+                  <div>Cumulative Produced: <strong style={{ color: COLORS.green }}>{fmt(sewQty)} pcs</strong></div>
+                  <div>Sewing DHU: <strong>1.4% (Within AQL)</strong></div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 15: WASHING */}
+          {activeTab === 'washing' && (
+            <div>
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: COLORS.navy, margin: '0 0 14px' }}>
+                15 · Garment Washing &amp; Softener Finish
+              </h3>
+              {hasWash ? (
+                <div style={{ fontSize: '12px', background: '#F8FAFC', padding: '14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+                  <div>Wash Formula: <strong>Enzyme Silicon Wash with Peach Hand-feel</strong></div>
+                  <div>Wash Plant: <strong>NFL In-house Eco Wash</strong></div>
+                  <div>Washed Output: <strong>{fmt(sewQty)} pcs</strong></div>
+                </div>
+              ) : (
+                <div style={{ padding: '20px', textAlign: 'center', color: COLORS.grey, background: '#F8FAFC', borderRadius: '8px' }}>
+                  <strong>N/A</strong> — Garment wash not required for this knit order.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 16: FINISHING */}
+          {activeTab === 'finishing' && (
+            <div>
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: COLORS.navy, margin: '0 0 14px' }}>
+                16 · Finishing, Thread Trimming &amp; Ironing
+              </h3>
+              <div style={{ fontSize: '12px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+                <div style={{ background: '#F8FAFC', padding: '12px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+                  <div>Ironed &amp; Trimmed: <strong style={{ color: COLORS.green }}>{fmt(sewQty)} pcs</strong></div>
+                  <div>Metal Detector Scan: <strong style={{ color: COLORS.green }}>✓ 100% Passed (9-point needle safe)</strong></div>
+                  <div>Hangtag Attached: <strong>{fmt(sewQty)} pcs</strong></div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 17: QUALITY */}
+          {activeTab === 'quality' && (
+            <div>
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: COLORS.navy, margin: '0 0 14px' }}>
+                17 · Quality Assurance &amp; Final AQL Audit
+              </h3>
+              <div style={{ fontSize: '12px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+                <div style={{ background: '#F8FAFC', padding: '12px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+                  <div>Inspection Standard: <strong>AQL 1.5 Major / 2.5 Minor</strong></div>
+                  <div>Sample Inspected: <strong>315 pcs</strong></div>
+                  <div>Major Defects: <strong>1 pc (Accepted &lt;= 7)</strong></div>
+                  <div>Minor Defects: <strong>3 pcs (Accepted &lt;= 14)</strong></div>
+                  <div>Audit Result: <strong style={{ color: COLORS.green }}>PASSED ✓</strong></div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 18: PACKING */}
+          {activeTab === 'packing' && (
+            <div>
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: COLORS.navy, margin: '0 0 14px' }}>
+                18 · Packing List, Carton Markings &amp; Barcode Verification
+              </h3>
+              <div style={{ fontSize: '12px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+                <div style={{ background: '#F8FAFC', padding: '12px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+                  <div>Total Cartons Packed: <strong>{fmt(Math.ceil(oq / 24))} Cartons</strong></div>
+                  <div>Packing Method: <strong>Single Poly · 24 pcs / Solid Size Assorted Ratio</strong></div>
+                  <div>Carton Dimensions: <strong>60cm x 40cm x 30cm (7-ply heavy board)</strong></div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 19: SHIPMENT */}
+          {activeTab === 'shipment' && (
+            <div>
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: COLORS.navy, margin: '0 0 14px' }}>
+                19 · Shipment, Forwarder Handover &amp; Export Challan
+              </h3>
+              <div style={{ fontSize: '12px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+                <div style={{ background: '#F8FAFC', padding: '12px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+                  <div>Designated Forwarder: <strong>Kuehne + Nagel Logistics</strong></div>
+                  <div>Port of Loading: <strong>Chittagong Seaport, Bangladesh</strong></div>
+                  <div>Scheduled Ex-Factory: <strong style={{ color: COLORS.blue }}>{d2(job.dates?.exFactory)}</strong></div>
+                  <div>Commercial Invoice: <strong>NFL/EXP/2026/0488</strong></div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 20: DOCUMENTS */}
+          {activeTab === 'documents' && (
+            <div>
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: COLORS.navy, margin: '0 0 14px' }}>
+                20 · Official Documents &amp; Technical Archives
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px', fontSize: '11.5px' }}>
+                {[
+                  { name: `Buyer Purchase Order PO-${job.jobNo}.pdf`, type: 'Commercial PO', size: '1.2 MB' },
+                  { name: `Approved Tech Pack - ${job.styleNo}.pdf`, type: 'Technical Spec', size: '3.8 MB' },
+                  { name: `Signed Backward T&A Schedule.pdf`, type: 'Planning', size: '640 KB' },
+                  { name: `Lab Dip Shade Approval Card.pdf`, type: 'Testing Lab', size: '1.4 MB' },
+                  { name: `CAD Marker Layout & Consumption.dxf`, type: 'CAD File', size: '5.2 MB' }
+                ].map((doc, i) => (
+                  <div key={i} style={{ background: '#F8FAFC', padding: '10px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontWeight: 700, color: COLORS.navy }}>{doc.name}</div>
+                      <div style={{ fontSize: '10px', color: COLORS.grey }}>{doc.type} · {doc.size}</div>
+                    </div>
+                    <button type="button" onClick={() => alert(`Downloading ${doc.name}`)} style={{ fontSize: '10px', background: '#FFFFFF', border: '1px solid #CBD5E1', padding: '3px 8px', borderRadius: '4px', cursor: 'pointer', fontWeight: 700 }}>
+                      Download
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 21: ACTIVITY HISTORY */}
+          {activeTab === 'history' && (
+            <div>
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: COLORS.navy, margin: '0 0 14px' }}>
+                21 · System Audit Trail &amp; Production Stage Transitions
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '11.5px' }}>
+                {[
+                  { user: 'Tariqul Islam (Head)', role: 'ADMIN', action: 'Approved Planning Release Draft to Knitting & Dyeing', time: '18-Apr-2026 14:32' },
+                  { user: 'Md. Imran', role: 'MERCHANDISER', action: 'Uploaded Final Sealed PP Comments from Buyer', time: '18-Apr-2026 11:15' },
+                  { user: 'Dr. Nazrul Islam', role: 'LAB_HEAD', action: 'Certified Lab Dip Shade OK (Delta-E: 0.42)', time: '08-Feb-2026 16:45' },
+                  { user: 'Md. Rafiqul Islam', role: 'CAD_SPECIALIST', action: 'Generated Marker Efficiency (84.2%) and color consumption', time: '28-Jan-2026 10:20' },
+                  { user: 'Md. Imran', role: 'MERCHANDISER', action: 'Created Job Order from Official Buyer PO', time: '21-Jan-2026 09:00' }
+                ].map((h, i) => (
+                  <div key={i} style={{ background: '#F8FAFC', padding: '8px 12px', borderRadius: '6px', borderLeft: `3px solid ${COLORS.blue}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <strong style={{ color: COLORS.navy }}>{h.user}</strong> <span style={{ fontSize: '10px', color: COLORS.grey }}>({h.role})</span>: {h.action}
+                    </div>
+                    <div style={{ fontSize: '10px', color: COLORS.grey, whiteSpace: 'nowrap', marginLeft: '12px' }}>{h.time}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+        </div>
+
       </div>
-
-      {/* 5. TAB DETAILS CONTENT */}
-      <section style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
-        {/* ========================================================================= */}
-        {/* TAB 1: SIZE & PO ALLOCATION */}
-        {/* ========================================================================= */}
-        {(viewMode === 'all' || activeTab === 'sizes') && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {/* Header description */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <h2 style={{ fontSize: '17px', fontWeight: 900, color: '#0f172a', margin: '0 0 2px' }}>
-                  📏 Size & Destination PO Allocation
-                </h2>
-                <span style={{ fontSize: '11.5px', color: '#64748b' }}>
-                  PO breakdown and destination allocation
-                </span>
-              </div>
-              <span className="status-pill ok" style={{ fontWeight: 800 }}>Total Order: {n(job.orderQty)} pcs</span>
-            </div>
-
-            {/* Standard Factory Operating Flow Notice */}
-            <div style={{ padding: '8px 12px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', fontSize: '11.5px', color: '#1e40af', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '15px' }}>ℹ️</span>
-              <div>
-                <strong>PO Allocation:</strong> Captured from buyer pack sheet; verified against ex-factory packing list.
-              </div>
-            </div>
-
-            {/* Size Breakdown Matrix */}
-            <div className="panel" style={{ padding: 0, overflow: 'hidden', border: '1px solid #cbd5e1' }}>
-              <div style={{ padding: '12px 18px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <strong style={{ fontSize: '13.5px', fontWeight: 900, color: '#0f172a' }}>Size-Wise Breakdown Matrix (From PO Pack Sheet)</strong>
-                <span className="status-pill" style={{ background: '#ecfdf5', color: '#047857', fontWeight: 800 }}>Pack Ratio: 1 : 2 : 3 : 3 : 2 : 1 : 0.5</span>
-              </div>
-              <div className="register-table-wrap">
-                <table className="register-table">
-                  <thead>
-                    <tr>
-                      <th style={{ fontWeight: 800 }}>Measurement / Specification</th>
-                      {profile.sizeBreakdown.map(s => (
-                        <th key={s.size} style={{ textAlign: 'center', fontWeight: 800 }}>{s.size}</th>
-                      ))}
-                      <th style={{ textAlign: 'right', fontWeight: 900 }}>Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td style={{ fontWeight: 700, color: '#334155' }}>Order Pack Ratio</td>
-                      {profile.sizeBreakdown.map(s => (
-                        <td key={s.size} style={{ textAlign: 'center', color: '#475569', fontWeight: 700 }}>{s.ratio}</td>
-                      ))}
-                      <td style={{ textAlign: 'right', fontWeight: 800, color: '#0f172a' }}>12.5</td>
-                    </tr>
-                    <tr style={{ background: '#f8fafc' }}>
-                      <td style={{ fontWeight: 800, color: '#1e40af' }}>Order Quantity (pcs)</td>
-                      {profile.sizeBreakdown.map(s => (
-                        <td key={s.size} style={{ textAlign: 'center', fontWeight: 900, color: '#0f172a', fontSize: '13px' }}>{n(s.orderQty)}</td>
-                      ))}
-                      <td style={{ textAlign: 'right', fontWeight: 900, color: '#2563eb', fontSize: '14px' }}>{n(job.orderQty)}</td>
-                    </tr>
-                    <tr>
-                      <td style={{ fontWeight: 700, color: '#047857' }}>Ex-Factory Shipped / Audit Qty</td>
-                      {profile.sizeBreakdown.map(s => (
-                        <td key={s.size} style={{ textAlign: 'center', fontWeight: 800, color: '#16a34a' }}>{n(s.shippedQty)}</td>
-                      ))}
-                      <td style={{ textAlign: 'right', fontWeight: 900, color: '#16a34a', fontSize: '14px' }}>{n(job.orderQty)}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Overall Stage Production Totals (How the factory actually tracks intermediate stages) */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px' }}>
-              <div className="panel" style={{ padding: '14px 18px', border: '1px solid #cbd5e1' }}>
-                <span style={{ fontSize: '11px', color: '#475569', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>OVERALL CUTTING BATCH</span>
-                <strong style={{ fontSize: '22px', fontWeight: 900, color: '#0f172a', display: 'block', marginTop: '2px' }}>
-                  {n(job.cutting?.cuttingQty || Math.round(job.orderQty * 1.025))} <span style={{ fontSize: '13px', fontWeight: 700 }}>pcs</span>
-                </strong>
-                <span style={{ fontSize: '11px', color: '#16a34a', fontWeight: 700, display: 'block', marginTop: '3px' }}>102.5% Marker lay ratio</span>
-              </div>
-
-              <div className="panel" style={{ padding: '14px 18px', border: '1px solid #93c5fd', background: '#f8fafc' }}>
-                <span style={{ fontSize: '11px', color: '#1e40af', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>OVERALL SEWING OUTPUT</span>
-                <strong style={{ fontSize: '22px', fontWeight: 900, color: '#2563eb', display: 'block', marginTop: '2px' }}>
-                  {n(job.sewing?.sewingActualQty || job.orderQty)} <span style={{ fontSize: '13px', fontWeight: 700 }}>pcs</span>
-                </strong>
-                <span style={{ fontSize: '11px', color: '#475569', fontWeight: 700, display: 'block', marginTop: '3px' }}>Line {job.lineAllocation?.line || '16B'} cumulative run</span>
-              </div>
-
-              <div className="panel" style={{ padding: '14px 18px', border: '1px solid #cbd5e1' }}>
-                <span style={{ fontSize: '11px', color: '#475569', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>EXPORT PACKED CARTONS</span>
-                <strong style={{ fontSize: '22px', fontWeight: 900, color: '#0f172a', display: 'block', marginTop: '2px' }}>
-                  {n(Math.ceil(job.orderQty / 24))} <span style={{ fontSize: '13px', fontWeight: 700 }}>cartons</span>
-                </strong>
-                <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 700, display: 'block', marginTop: '3px' }}>24 pcs per carton packing spec</span>
-              </div>
-            </div>
-
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* TAB: PO NUMBER & DESTINATION COUNTRY ALLOCATION */}
-        {/* ========================================================================= */}
-        {(viewMode === 'all' || activeTab === 'po') && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <h2 style={{ fontSize: '17px', fontWeight: 900, color: '#0f172a', margin: '0 0 2px' }}>
-                  📦 PO Number &amp; Destination Country Allocation
-                </h2>
-                <span style={{ fontSize: '11.5px', color: '#64748b' }}>
-                  Export port discharge, delivery terms, cartons and shipment status
-                </span>
-              </div>
-              <span className="status-pill ok" style={{ fontWeight: 800 }}>5 Export Ports · {n(job.orderQty)} pcs</span>
-            </div>
-
-            {/* PO Number & Destination Country Allocation Table */}
-            <div className="panel" style={{ padding: 0, overflow: 'hidden', border: '1px solid #cbd5e1' }}>
-              <div style={{ padding: '12px 18px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <strong style={{ fontSize: '13.5px', fontWeight: 900, color: '#0f172a' }}>PO Number & Destination Country Allocation</strong>
-                <span className="status-pill" style={{ background: '#dbeafe', color: '#1e40af', fontWeight: 800 }}>5 Destination Ports</span>
-              </div>
-              <div className="register-table-wrap">
-                <table className="register-table">
-                  <thead>
-                    <tr>
-                      <th style={{ fontWeight: 800 }}>Destination Country</th>
-                      <th style={{ fontWeight: 800 }}>PO Number</th>
-                      <th style={{ fontWeight: 800 }}>Discharge Port</th>
-                      <th style={{ fontWeight: 800 }}>Delivery Terms</th>
-                      <th style={{ fontWeight: 800 }}>Packaging Ratio</th>
-                      <th style={{ textAlign: 'right', fontWeight: 800 }}>Cartons</th>
-                      <th style={{ textAlign: 'right', fontWeight: 800 }}>PO Qty</th>
-                      <th style={{ textAlign: 'center', fontWeight: 800 }}>Ship Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {profile.poBreakdown.map((po, i) => (
-                      <tr key={i}>
-                        <td style={{ fontWeight: 700, color: '#0f172a' }}>
-                          <span style={{ marginRight: '6px' }}>{po.flag}</span> {po.country}
-                        </td>
-                        <td style={{ fontWeight: 800, color: '#2563eb' }}>{po.poNo}</td>
-                        <td style={{ fontWeight: 600 }}>{po.port}</td>
-                        <td><span className="register-status-badge neutral" style={{ fontWeight: 700 }}>{po.terms}</span></td>
-                        <td style={{ fontWeight: 600 }}>{po.packType}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 700 }}>{po.cartons} ctn</td>
-                        <td style={{ textAlign: 'right', fontWeight: 900, color: '#0f172a' }}>{n(po.qty)} pcs</td>
-                        <td style={{ textAlign: 'center' }}>
-                          <span className="register-status-badge ok" style={{ fontWeight: 800 }}>{po.status}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* TAB 2: FABRIC & TRIMS (COMPREHENSIVE MATERIAL MANAGEMENT) */}
-        {/* ========================================================================= */}
-        {(viewMode === 'all' || activeTab === 'material') && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <h2 style={{ fontSize: '17px', fontWeight: 900, color: '#0f172a', margin: '0 0 2px' }}>
-                  🧵 Fabric, Yarn & Trims Bill of Materials (BOM)
-                </h2>
-                <span style={{ fontSize: '11.5px', color: '#64748b' }}>
-                  Raw material in-house status, yarn lot tracking, dyeing recipe & trims approval records
-                </span>
-              </div>
-              <span className="status-pill ok" style={{ fontWeight: 800 }}>Material 100% In-House</span>
-            </div>
-
-            {/* Fabric & Dyeing Technical Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '14px' }}>
-              <div className="panel" style={{ padding: '18px', border: '1px solid #cbd5e1' }}>
-                <strong style={{ fontSize: '14px', fontWeight: 900, color: '#1e40af', display: 'block', marginBottom: '12px' }}>
-                  Fabric & Yarn Technical Specification
-                </strong>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '12px', color: '#334155' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '6px' }}>
-                    <span style={{ color: '#64748b', fontWeight: 700 }}>Fabric Structure:</span>
-                    <strong style={{ fontWeight: 800, color: '#0f172a' }}>{profile.fabricSpec.type}</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '6px' }}>
-                    <span style={{ color: '#64748b', fontWeight: 700 }}>Fiber Composition:</span>
-                    <strong style={{ fontWeight: 800, color: '#0f172a' }}>{profile.fabricSpec.comp}</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '6px' }}>
-                    <span style={{ color: '#64748b', fontWeight: 700 }}>Yarn Count:</span>
-                    <strong style={{ fontWeight: 800, color: '#0f172a' }}>{profile.fabricSpec.count}</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '6px' }}>
-                    <span style={{ color: '#64748b', fontWeight: 700 }}>Fabric Weight (GSM):</span>
-                    <strong style={{ fontWeight: 900, color: '#0f172a' }}>{profile.fabricSpec.gsm}</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '6px' }}>
-                    <span style={{ color: '#64748b', fontWeight: 700 }}>Cuttable Width:</span>
-                    <strong style={{ fontWeight: 800, color: '#0f172a' }}>{profile.fabricSpec.width}</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '6px' }}>
-                    <span style={{ color: '#64748b', fontWeight: 700 }}>Spinning Mill:</span>
-                    <strong style={{ fontWeight: 800, color: '#0f172a' }}>{profile.yarnMill}</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#64748b', fontWeight: 700 }}>Yarn Lot Number:</span>
-                    <strong style={{ fontWeight: 900, color: '#2563eb' }}>Lot #Y-26-{String(job.jobNo || '45000').slice(-4)}</strong>
-                  </div>
-                </div>
-              </div>
-
-              <div className="panel" style={{ padding: '18px', border: '1px solid #cbd5e1' }}>
-                <strong style={{ fontSize: '14px', fontWeight: 900, color: '#1e40af', display: 'block', marginBottom: '12px' }}>
-                  Dyeing, Wash & Finishing Recipe
-                </strong>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '12px', color: '#334155' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '6px' }}>
-                    <span style={{ color: '#64748b', fontWeight: 700 }}>Approved Shade / Color:</span>
-                    <strong style={{ fontWeight: 800, color: '#0f172a' }}>{profile.colorSpec.name}</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '6px' }}>
-                    <span style={{ color: '#64748b', fontWeight: 700 }}>Pantone TPG Ref:</span>
-                    <strong style={{ fontWeight: 900, color: '#2563eb' }}>{profile.colorSpec.pantone}</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '6px' }}>
-                    <span style={{ color: '#64748b', fontWeight: 700 }}>Dyeing Unit / Winch:</span>
-                    <strong style={{ fontWeight: 800, color: '#0f172a' }}>Northern Dyeing Winch #06</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '6px' }}>
-                    <span style={{ color: '#64748b', fontWeight: 700 }}>Dye Batch Number:</span>
-                    <strong style={{ fontWeight: 900, color: '#0f172a' }}>BD-26-{String(job.jobNo || '45000').slice(-3)}</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '6px' }}>
-                    <span style={{ color: '#64748b', fontWeight: 700 }}>Finishing Treatment:</span>
-                    <strong style={{ fontWeight: 800, color: '#0f172a' }}>Stenter Compacting + Bio-Polish</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '6px' }}>
-                    <span style={{ color: '#64748b', fontWeight: 700 }}>Print / Embroidery:</span>
-                    <strong style={{ fontWeight: 800, color: '#047857' }}>4-Color Pigment Print (Strike-off Pass)</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#64748b', fontWeight: 700 }}>Lab Dip Status:</span>
-                    <strong style={{ fontWeight: 900, color: '#16a34a' }}>Option B Approved by Buyer</strong>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Trims & Packaging BOM Table */}
-            <div className="panel" style={{ padding: 0, overflow: 'hidden', border: '1px solid #cbd5e1' }}>
-              <div style={{ padding: '12px 18px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <strong style={{ fontSize: '13.5px', fontWeight: 900, color: '#0f172a' }}>Trims & Accessories Bill of Materials (BOM)</strong>
-                <span className="status-pill ok" style={{ fontWeight: 800 }}>All Trims In-House & Passed</span>
-              </div>
-              <div className="register-table-wrap">
-                <table className="register-table">
-                  <thead>
-                    <tr>
-                      <th style={{ fontWeight: 800 }}>Trim Item</th>
-                      <th style={{ fontWeight: 800 }}>Detailed Technical Specification</th>
-                      <th style={{ fontWeight: 800 }}>Approved Supplier</th>
-                      <th style={{ textAlign: 'right', fontWeight: 800 }}>Required Qty</th>
-                      <th style={{ textAlign: 'right', fontWeight: 800 }}>In-House Qty</th>
-                      <th style={{ textAlign: 'right', fontWeight: 800 }}>Balance</th>
-                      <th style={{ textAlign: 'center', fontWeight: 800 }}>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {profile.trimsBOM.map((t, i) => (
-                      <tr key={i}>
-                        <td style={{ fontWeight: 800, color: '#1e40af' }}>{t.item}</td>
-                        <td style={{ fontWeight: 600 }}>{t.spec}</td>
-                        <td style={{ fontWeight: 600, color: '#475569' }}>{t.supplier}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 800, color: '#0f172a' }}>{t.required}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 900, color: '#16a34a' }}>{t.received}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 700, color: '#64748b' }}>{t.balance}</td>
-                        <td style={{ textAlign: 'center' }}>
-                          <span className="register-status-badge ok" style={{ fontWeight: 800 }}>{t.status}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* TAB 3: STAGE PRODUCTION & IE ENGINEERING */}
-        {/* ========================================================================= */}
-        {(viewMode === 'all' || activeTab === 'production') && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <h2 style={{ fontSize: '17px', fontWeight: 900, color: '#0f172a', margin: '0 0 2px' }}>
-                  🏭 Stage Production & Industrial Engineering (IE)
-                </h2>
-                <span style={{ fontSize: '11.5px', color: '#64748b' }}>
-                  Floor line allocation, SMV parameters, daily output targets & line balancing metrics
-                </span>
-              </div>
-              <span className="status-pill ok" style={{ fontWeight: 800 }}>Efficiency: {job.ie?.efficiencyPct || 82}%</span>
-            </div>
-
-            {/* IE Top KPI Strip */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '12px' }}>
-              <div className="panel" style={{ padding: '14px 18px', border: '1px solid #cbd5e1' }}>
-                <span style={{ fontSize: '11px', color: '#475569', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>STANDARD SMV</span>
-                <strong style={{ fontSize: '24px', fontWeight: 900, color: '#0f172a', display: 'block', marginTop: '2px' }}>
-                  {job.ie?.smv || 7.5} <span style={{ fontSize: '13px', fontWeight: 700 }}>min</span>
-                </strong>
-                <span style={{ fontSize: '11px', color: '#16a34a', fontWeight: 700, display: 'block', marginTop: '3px' }}>GSD motion study verified</span>
-              </div>
-
-              <div className="panel" style={{ padding: '14px 18px', border: '1px solid #93c5fd', background: '#f8fafc' }}>
-                <span style={{ fontSize: '11px', color: '#1e40af', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>DAILY LINE TARGET</span>
-                <strong style={{ fontSize: '24px', fontWeight: 900, color: '#2563eb', display: 'block', marginTop: '2px' }}>
-                  {n(job.ie?.dailyTarget || 2000)} <span style={{ fontSize: '13px', fontWeight: 700 }}>pcs/day</span>
-                </strong>
-                <span style={{ fontSize: '11px', color: '#475569', fontWeight: 700, display: 'block', marginTop: '3px' }}>Hourly target: {Math.round((job.ie?.dailyTarget || 2000) / 8)} pcs/hr</span>
-              </div>
-
-              <div className="panel" style={{ padding: '14px 18px', border: '1px solid #cbd5e1' }}>
-                <span style={{ fontSize: '11px', color: '#475569', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>ALLOCATED MANPOWER</span>
-                <strong style={{ fontSize: '24px', fontWeight: 900, color: '#0f172a', display: 'block', marginTop: '2px' }}>
-                  {job.ie?.manpower || 30} <span style={{ fontSize: '13px', fontWeight: 700 }}>ops</span>
-                </strong>
-                <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 700, display: 'block', marginTop: '3px' }}>+ 6 Helpers, 2 Line QIs</span>
-              </div>
-
-              <div className="panel" style={{ padding: '14px 18px', border: '1px solid #cbd5e1' }}>
-                <span style={{ fontSize: '11px', color: '#475569', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>LINE EFFICIENCY</span>
-                <strong style={{ fontSize: '24px', fontWeight: 900, color: '#16a34a', display: 'block', marginTop: '2px' }}>
-                  {job.ie?.efficiencyPct || 82}%
-                </strong>
-                <span style={{ fontSize: '11px', color: '#16a34a', fontWeight: 700, display: 'block', marginTop: '3px' }}>Benchmark: 78% target</span>
-              </div>
-            </div>
-
-            {/* 4-Stage Production Tracking Table */}
-            <div className="panel" style={{ padding: 0, overflow: 'hidden', border: '1px solid #cbd5e1' }}>
-              <div style={{ padding: '12px 18px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <strong style={{ fontSize: '13.5px', fontWeight: 900, color: '#0f172a' }}>Departmental Stage-Wise Execution Progress</strong>
-                <span className="status-pill ok" style={{ fontWeight: 800 }}>Allocated: Line {job.lineAllocation?.line || '16B'} ({floorLabel})</span>
-              </div>
-              <div className="register-table-wrap">
-                <table className="register-table">
-                  <thead>
-                    <tr>
-                      <th style={{ fontWeight: 800 }}>Production Department</th>
-                      <th style={{ fontWeight: 800 }}>Operating Floor & Machine</th>
-                      <th style={{ fontWeight: 800 }}>Execution Dates</th>
-                      <th style={{ textAlign: 'right', fontWeight: 800 }}>Target Qty</th>
-                      <th style={{ textAlign: 'right', fontWeight: 800 }}>Achieved Qty</th>
-                      <th style={{ textAlign: 'right', fontWeight: 800 }}>Balance</th>
-                      <th style={{ textAlign: 'center', fontWeight: 800 }}>Floor Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      { dept: '1. Automated Cutting Floor', floor: 'Cutting Floor 1 · Auto Cutter #02', dates: `${d2(job.dates?.cuttingStart)} to ${d2(job.dates?.cuttingEnd)}`, target: `${n(job.orderQty)} pcs`, achieved: `${n(job.cutting?.cuttingQty || job.orderQty)} pcs`, bal: '0 pcs', st: 'COMPLETED' },
-                      { dept: '2. Printing & Heat Transfer', floor: 'Print Unit 1 · 8-Color Oval MHM', dates: `${d2(job.dates?.cuttingEnd)} to ${d2(job.dates?.sewingStart)}`, target: `${n(job.orderQty)} pcs`, achieved: `${n(job.orderQty)} pcs`, bal: '0 pcs', st: 'COMPLETED' },
-                      { dept: '3. Sewing Production Floor', floor: `${floorLabel} · Line ${job.lineAllocation?.line || '16B'}`, dates: `${d2(job.dates?.sewingStart)} to ${d2(job.dates?.sewingEnd)}`, target: `${n(job.orderQty)} pcs`, achieved: `${n(job.sewing?.sewingActualQty || job.orderQty)} pcs`, bal: `${n(Math.max(0, job.orderQty - (job.sewing?.sewingActualQty || job.orderQty)))} pcs`, st: 'RUNNING' },
-                      { dept: '4. Finishing & Carton Packing', floor: 'Finishing Floor 1 · Steam Tunnel', dates: `${d2(job.dates?.sewingEnd)} to ${d2(exDate)}`, target: `${n(job.orderQty)} pcs`, achieved: `${n(job.finishing?.packingQty || job.orderQty)} pcs`, bal: '0 pcs', st: 'IN-PROGRESS' },
-                    ].map((s, i) => (
-                      <tr key={i}>
-                        <td style={{ fontWeight: 800, color: '#1e40af' }}>{s.dept}</td>
-                        <td style={{ fontWeight: 600 }}>{s.floor}</td>
-                        <td style={{ fontWeight: 600, color: '#475569' }}>{s.dates}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 800 }}>{s.target}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 900, color: '#16a34a' }}>{s.achieved}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 700, color: '#64748b' }}>{s.bal}</td>
-                        <td style={{ textAlign: 'center' }}>
-                          <span className={`register-status-badge ${s.st === 'COMPLETED' ? 'ok' : 'pending'}`} style={{ fontWeight: 800 }}>
-                            {s.st}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* TAB 4: QUALITY & INSPECTION AUDIT LOG */}
-        {/* ========================================================================= */}
-        {(viewMode === 'all' || activeTab === 'quality') && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <h2 style={{ fontSize: '17px', fontWeight: 900, color: '#0f172a', margin: '0 0 2px' }}>
-                  🔍 Quality Assurance, Defect Log & Inspection Audits
-                </h2>
-                <span style={{ fontSize: '11.5px', color: '#64748b' }}>
-                  Stage-wise 4-point fabric audits, traffic-light inline checks, needle detector tests & AQL 2.5 final inspection
-                </span>
-              </div>
-              <span className="status-pill ok" style={{ fontWeight: 800 }}>Final QA Passed</span>
-            </div>
-
-            {/* Quality KPI Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '12px' }}>
-              <div className="panel" style={{ padding: '14px 18px', border: '1px solid #cbd5e1' }}>
-                <span style={{ fontSize: '11px', color: '#475569', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>AUDIT PASS RATE</span>
-                <strong style={{ fontSize: '24px', fontWeight: 900, color: '#16a34a', display: 'block', marginTop: '2px' }}>100%</strong>
-                <span style={{ fontSize: '11px', color: '#16a34a', fontWeight: 700, display: 'block', marginTop: '3px' }}>Zero critical failures</span>
-              </div>
-
-              <div className="panel" style={{ padding: '14px 18px', border: '1px solid #cbd5e1' }}>
-                <span style={{ fontSize: '11px', color: '#475569', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>DEFECT RATE (DHU)</span>
-                <strong style={{ fontSize: '24px', fontWeight: 900, color: '#0f172a', display: 'block', marginTop: '2px' }}>1.4%</strong>
-                <span style={{ fontSize: '11px', color: '#16a34a', fontWeight: 700, display: 'block', marginTop: '3px' }}>Standard threshold: 2.5% max</span>
-              </div>
-
-              <div className="panel" style={{ padding: '14px 18px', border: '1px solid #cbd5e1' }}>
-                <span style={{ fontSize: '11px', color: '#475569', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>AQL SAMPLING</span>
-                <strong style={{ fontSize: '24px', fontWeight: 900, color: '#2563eb', display: 'block', marginTop: '2px' }}>Level II</strong>
-                <span style={{ fontSize: '11px', color: '#475569', fontWeight: 700, display: 'block', marginTop: '3px' }}>AQL 2.5 Major / 4.0 Minor</span>
-              </div>
-
-              <div className="panel" style={{ padding: '14px 18px', border: '1px solid #cbd5e1' }}>
-                <span style={{ fontSize: '11px', color: '#475569', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>NEEDLE DETECTION</span>
-                <strong style={{ fontSize: '24px', fontWeight: 900, color: '#16a34a', display: 'block', marginTop: '2px' }}>1.0mm 9-PT</strong>
-                <span style={{ fontSize: '11px', color: '#16a34a', fontWeight: 700, display: 'block', marginTop: '3px' }}>100% garments calibrated</span>
-              </div>
-            </div>
-
-            {/* 9-Stage Comprehensive Inspection Log Table */}
-            <div className="panel" style={{ padding: 0, overflow: 'hidden', border: '1px solid #cbd5e1' }}>
-              <div style={{ padding: '12px 18px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <strong style={{ fontSize: '13.5px', fontWeight: 900, color: '#0f172a' }}>Stage-Wise Quality & Root Cause Audit Log</strong>
-                <span className="status-pill ok" style={{ fontWeight: 800 }}>Certified Inspector Sign-offs</span>
-              </div>
-              <div className="register-table-wrap">
-                <table className="register-table">
-                  <thead>
-                    <tr>
-                      <th style={{ fontWeight: 800 }}>Section Process</th>
-                      <th style={{ fontWeight: 800 }}>Audit Location</th>
-                      <th style={{ fontWeight: 800 }}>Quality Inspector</th>
-                      <th style={{ fontWeight: 800 }}>Date</th>
-                      <th style={{ fontWeight: 800 }}>Sample Inspected</th>
-                      <th style={{ fontWeight: 800 }}>Observation & Corrective Action</th>
-                      <th style={{ textAlign: 'center', fontWeight: 800 }}>Decision</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      { section: '1. Knitting Greige Audit', root: 'Knitting Shed #1 · Machine #14', qi: 'Md. Rafiqul Islam (QI-KN04)', date: d2(job.dates?.tnaPlan), sample: '2,400 kg inspected', defect: 'Minor Lycra tension variation rectified; loop length ±2% within tolerance.', status: 'PASSED' },
-                      { section: '2. Greige Store Roll Check', root: 'Greige Fabric Store Bay 4', qi: 'M. A. Mannan (Store QC Lead)', date: d2(job.dates?.tnaPlan), sample: '100% Roll Barcode & Weight', defect: 'GSM 180 verified, 4-point inspection passed (<18 points/100 sq.yd).', status: 'RELEASED' },
-                      { section: '3. Dyeing & Shade Matching', root: 'Dyeing Floor Winch #06', qi: 'Dr. Nazrul Islam (Dyeing Lab Head)', date: d2(job.dates?.cuttingStart), sample: 'Full Batch (2,350 kg)', defect: 'Shade matched vs master swatch under D65 / TL84; batch topping completed.', status: 'PASSED' },
-                      { section: '4. Finished Fabric Inspection', root: 'Finished Fabric Store Rack B-12', qi: 'Jashim Uddin (QC Controller)', date: d2(job.dates?.cuttingStart), sample: '2,350 kg delivered', defect: 'Color fastness to wash Grade 4-5, shrinkage within allowable -3%.', status: 'RELEASED' },
-                      { section: '5. Cutting Spread & Notch', root: 'Cutting Floor 1 · Auto Spreader #2', qi: 'Aminul Islam (Cutting QI)', date: d2(job.dates?.cuttingStart), sample: `${n(job.orderQty)} Cut Pcs`, defect: 'Pattern grain line & bundle numbering 100% verified; zero marker overlap.', status: 'PASSED' },
-                      { section: '6. Print & Embroidery Audit', root: 'Print / Embroidery Unit 1', qi: 'Shahidul Alam (Print QI Officer)', date: d2(job.dates?.sewingStart), sample: '100 Pcs Strike-off + Run Sample', defect: 'Strike-off wash fastness passed, sharp edge registration maintained.', status: 'PASSED' },
-                      { section: '7. Sewing In-Line & End-Line', root: `${floorLabel} · Line ${job.lineAllocation?.line || '16B'}`, qi: 'Tariqul Hasan (Senior Sewing QI)', date: d2(job.dates?.sewingStart), sample: `${n(job.orderQty)} Sewing Pcs`, defect: 'SPI 12 maintained; minor skip stitch at sleeve hem corrected during balancing.', status: 'PASSED' },
-                      { section: '8. Finishing & Steam Press', root: 'Finishing Floor 1 · Tunnel Steam Press', qi: 'Rezaul Karim (Finishing QC Controller)', date: d2(job.dates?.sewingEnd), sample: `${n(job.orderQty)} Finished Garments`, defect: 'Ironing shine check ok; needle detector 1.0mm ferrous test 100% passed.', status: 'PASSED' },
-                      { section: '9. Final Inspection & AQL Audit', root: 'Central QA Audit Room · AQL 2.5', qi: 'Kabir Hossain (QA Manager)', date: d2(exDate), sample: '315 Pcs (AQL Level II Sample)', defect: 'Carton drop test pass, barcode scan pass, final shipment release signed.', status: 'PASSED' }
-                    ].map((q, i) => (
-                      <tr key={i}>
-                        <td style={{ fontWeight: 800, color: '#1e40af' }}>{q.section}</td>
-                        <td style={{ fontWeight: 600 }}>{q.root}</td>
-                        <td style={{ fontWeight: 600, color: '#334155' }}>{q.qi}</td>
-                        <td style={{ fontWeight: 700 }}>{q.date}</td>
-                        <td style={{ fontWeight: 800, color: '#0f172a' }}>{q.sample}</td>
-                        <td style={{ maxWidth: '280px', whiteSpace: 'normal', fontSize: '11.5px', color: '#475569' }}>{q.defect}</td>
-                        <td style={{ textAlign: 'center' }}>
-                          <span className="register-status-badge ok" style={{ fontWeight: 800 }}>{q.status}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* TAB 5: LEAD TIME & T&A SCHEDULE */}
-        {/* ========================================================================= */}
-        {(viewMode === 'all' || activeTab === 'leadtime') && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <h2 style={{ fontSize: '17px', fontWeight: 900, color: '#0f172a', margin: '0 0 2px' }}>
-                  ⏱️ Time & Action (T&A) Master Milestone Calendar
-                </h2>
-                <span style={{ fontSize: '11.5px', color: '#64748b' }}>
-                  Planned vs actual execution schedule, variance tracking & shipment lead time analysis
-                </span>
-              </div>
-              <span className="status-pill ok" style={{ fontWeight: 800 }}>Zero Critical Delays</span>
-            </div>
-
-            <div className="panel" style={{ padding: 0, overflow: 'hidden', border: '1px solid #cbd5e1' }}>
-              <div style={{ padding: '12px 18px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <strong style={{ fontSize: '13.5px', fontWeight: 900, color: '#0f172a' }}>T&A Milestone Planned vs Actual Schedule</strong>
-                <span className="status-pill ok" style={{ fontWeight: 800 }}>Ex-Factory: {d2(exDate)} (Week {shipmentWeek})</span>
-              </div>
-              <div className="register-table-wrap">
-                <table className="register-table">
-                  <thead>
-                    <tr>
-                      <th style={{ fontWeight: 800 }}>Milestone Stage</th>
-                      <th style={{ fontWeight: 800 }}>Planned Date</th>
-                      <th style={{ fontWeight: 800 }}>Actual Date</th>
-                      <th style={{ fontWeight: 800 }}>Lead Time Duration</th>
-                      <th style={{ fontWeight: 800 }}>Variance</th>
-                      <th style={{ textAlign: 'center', fontWeight: 800 }}>Delivery Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      { milestone: '1. PO Order Confirmation & Import', plan: d2(job.dates?.poReceived), actual: d2(job.dates?.poReceived), lead: 'Day 0', var: '0 Days', st: 'ON TIME' },
-                      { milestone: '2. T&A Planning & Routing Release', plan: d2(job.dates?.tnaPlan), actual: d2(job.dates?.tnaPlan), lead: '4 Days', var: '0 Days', st: 'ON TIME' },
-                      { milestone: '3. Yarn & Fabric Raw Material In-House', plan: d2(job.dates?.tnaPlan), actual: d2(job.dates?.tnaPlan), lead: '10 Days', var: '0 Days', st: 'ON TIME' },
-                      { milestone: '4. PP Sample Approved by Buyer', plan: d2(job.dates?.cuttingStart), actual: d2(job.dates?.cuttingStart), lead: '14 Days', var: '0 Days', st: 'ON TIME' },
-                      { milestone: '5. Automated Cutting Execution', plan: d2(job.dates?.cuttingStart), actual: d2(job.dates?.cuttingEnd), lead: '4 Days', var: '0 Days', st: 'ON TIME' },
-                      { milestone: '6. Sewing Production Line Output', plan: d2(job.dates?.sewingStart), actual: d2(job.dates?.sewingEnd), lead: '13 Days', var: '0 Days', st: 'ON TIME' },
-                      { milestone: '7. Final Inspection & QA Release', plan: d2(exDate), actual: d2(exDate), lead: '48 Days Total', var: '0 Days', st: 'ON TIME' },
-                      { milestone: '8. Port Cargo Closing & Feeder Vessel', plan: d2(job.dates?.cargoClosing), actual: d2(job.dates?.cargoClosing), lead: '52 Days Total', var: '0 Days', st: 'ON TIME' }
-                    ].map((m, i) => (
-                      <tr key={i}>
-                        <td style={{ fontWeight: 800, color: '#1e40af' }}>{m.milestone}</td>
-                        <td style={{ fontWeight: 600 }}>{m.plan}</td>
-                        <td style={{ fontWeight: 800, color: '#0f172a' }}>{m.actual}</td>
-                        <td style={{ fontWeight: 700 }}>{m.lead}</td>
-                        <td style={{ color: '#16a34a', fontWeight: 800 }}>{m.var}</td>
-                        <td style={{ textAlign: 'center' }}>
-                          <span className="register-status-badge ok" style={{ fontWeight: 800 }}>{m.st}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* TAB 6: CERTIFIED TESTING LAB REPORTS */}
-        {/* ========================================================================= */}
-        {(viewMode === 'all' || activeTab === 'reports') && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <h2 style={{ fontSize: '17px', fontWeight: 900, color: '#0f172a', margin: '0 0 2px' }}>
-                  🧪 Certified Physical & Chemical Testing Lab Reports
-                </h2>
-                <span style={{ fontSize: '11.5px', color: '#64748b' }}>
-                  ISO / ASTM accredited laboratory certificates for color fastness, shrinkage, tensile strength & chemical safety
-                </span>
-              </div>
-              <span className="status-pill ok" style={{ fontWeight: 800 }}>All Tests Passed</span>
-            </div>
-
-            <div className="panel" style={{ padding: 0, overflow: 'hidden', border: '1px solid #cbd5e1' }}>
-              <div style={{ padding: '12px 18px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <strong style={{ fontSize: '13.5px', fontWeight: 900, color: '#0f172a' }}>Accredited Buyer & In-House Lab Test Certificates</strong>
-                <span className="status-pill ok" style={{ fontWeight: 800 }}>100% Conforming to Buyer Spec</span>
-              </div>
-              <div className="register-table-wrap">
-                <table className="register-table">
-                  <thead>
-                    <tr>
-                      <th style={{ fontWeight: 800 }}>Test Standard & Method</th>
-                      <th style={{ fontWeight: 800 }}>Certificate Ref</th>
-                      <th style={{ fontWeight: 800 }}>Test Result</th>
-                      <th style={{ fontWeight: 800 }}>Buyer Requirement</th>
-                      <th style={{ fontWeight: 800 }}>Testing Lab</th>
-                      <th style={{ fontWeight: 800 }}>Chemist / Analyst</th>
-                      <th style={{ textAlign: 'center', fontWeight: 800 }}>Decision</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {profile.testReports.map((t, i) => (
-                      <tr key={i}>
-                        <td style={{ fontWeight: 800, color: '#1e40af' }}>{t.test}</td>
-                        <td style={{ fontWeight: 800, color: '#2563eb' }}>{t.certNo}</td>
-                        <td style={{ fontWeight: 900, color: '#16a34a' }}>{t.result}</td>
-                        <td style={{ fontWeight: 700, color: '#475569' }}>{t.std}</td>
-                        <td style={{ fontWeight: 600 }}>{t.lab}</td>
-                        <td style={{ fontWeight: 600, color: '#334155' }}>{t.analyst}</td>
-                        <td style={{ textAlign: 'center' }}>
-                          <span className="register-status-badge ok" style={{ fontWeight: 900 }}>PASSED</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-      </section>
-
-      {/* Full Operational Merchandising Workspace (16 Workflow Tabs) */}
-      <JobDetailDrawer
-        job={job}
-        isOpen={isWorkspaceOpen}
-        onClose={() => setIsWorkspaceOpen(false)}
-      />
     </Shell>
-  );
-}
-
-export default function JobDetailPage() {
-  return (
-    <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center', fontWeight: 800 }}>Loading Job Manufacturing Profile...</div>}>
-      <JobDetailContent />
-    </Suspense>
   );
 }

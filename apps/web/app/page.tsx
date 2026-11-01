@@ -397,16 +397,16 @@ export default function Dashboard() {
   }, [selectedJob]);
 
   return (
-    <Shell title="Management Overview" eyebrow="Executive Overview">
+    <Shell title="Executive Dashboard" eyebrow="Daily Operational Factory Execution">
       {/* Dashboard Hero */}
       <section className="dashboard-hero">
         <div>
           <div className="hero-kicker">Operations Dashboard</div>
-          <h2>Factory Overview & Order Register</h2>
-          <p>Real-time order pipeline, floor execution, and risk tracking.</p>
+          <h2>Executive Operational Dashboard & Factory Execution</h2>
+          <p>Real-time factory floor KPIs, daily production targets, WIP & critical order follow-up.</p>
         </div>
         <div className="hero-actions">
-          <Link className="btn btn-primary" href="/modules/job-360">Job 360</Link>
+          <Link className="btn btn-primary" href="/jobs">Job 360</Link>
           <Link className="btn btn-ghost" href="/tasks">Tasks Board</Link>
         </div>
       </section>

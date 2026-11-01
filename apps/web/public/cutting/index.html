@@ -245,65 +245,6 @@ tr.crit td{background:var(--bad-bg)}tr.sel td{background:var(--sel)}
 @media (max-width:820px){.dtrio span{white-space:normal;line-height:1.2}.hrow{grid-template-columns:100px 1fr 96px}}
 .sugl{color:var(--ink);text-decoration:none;font-weight:600;border:1px solid var(--line);border-radius:4px;padding:1px 6px;background:var(--paper);white-space:nowrap}.sugl:hover{background:var(--sel)}
 
-/* Master Cuttable Candidate Table Styles */
-.ct-sug-panel{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:14px;margin-top:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
-.ct-sug-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;border-bottom:1px solid var(--line);padding-bottom:10px}
-.ct-sug-head h3{margin:0;font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px}
-.ct-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
-.ct-search{flex:1;min-width:240px;position:relative}
-.ct-search input{width:100%;padding:6px 10px 6px 28px;border:1px solid var(--line);border-radius:6px;background:var(--paper);font-size:12.5px}
-.ct-search::before{content:"🔍";position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:12px;opacity:0.6}
-.ct-filter-sel{border:1px solid var(--line);border-radius:6px;padding:6px 8px;background:var(--paper);font-size:12px;color:var(--ink)}
-.ct-tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:6px}
-.ct-table{width:100%;border-collapse:collapse;font-size:12px;text-align:left}
-.ct-table th{background:var(--chip);color:var(--ink-2);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
-.ct-table td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
-.ct-table tr:hover td{background:var(--sel)}
-.ct-badge{display:inline-block;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;white-space:nowrap}
-.ct-badge.crit{background:#fee2e2;color:#b91c1c;border:1px solid #f87171}
-.ct-badge.print{background:#fef3c7;color:#92400e;border:1px solid #fcd34d}
-.ct-badge.emb{background:#e0e7ff;color:#3730a3;border:1px solid #a5b4fc}
-.ct-badge.solid{background:var(--chip);color:var(--ink-2);border:1px solid var(--line)}
-.ct-badge.ready{background:var(--good-bg);color:var(--good);border:1px solid var(--good)}
-.ct-badge.warn{background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn)}
-.ct-badge.bad{background:var(--bad-bg);color:var(--bad);border:1px solid var(--bad)}
-.ct-fab-box{font-size:11px;line-height:1.3}
-.ct-fab-box .kg-val{font-weight:700}
-.ct-fab-box .kg-sub{color:var(--ink-2);font-size:10.5px}
-.ct-plan-btn{background:var(--indigo);color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;transition:opacity .15s}
-.ct-plan-btn:hover{opacity:0.85}
-.ct-pager{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;font-size:12px;color:var(--ink-2)}
-.ct-pager button{padding:4px 10px;border:1px solid var(--line);background:var(--paper);border-radius:4px;cursor:pointer;font-weight:600}
-.ct-pager button:disabled{opacity:0.4;cursor:not-allowed}
-
-
-/* Compact Dashboard & Single-Row Line Status */
-.dgrid.compact{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:8px}
-.dk.compact{min-height:50px;padding:6px 9px;border-left-width:3px}
-.dk.compact .dl{font-size:11px;font-weight:600;margin-bottom:2px}
-.dk.compact .dm{font-size:17px;font-weight:700;line-height:1.15}
-.dk.compact .ds{font-size:10.5px;color:var(--ink-2);margin-top:2px}
-.dtrio.compact span{font-size:10.5px}
-.dtrio.compact b{font-size:14px}
-
-.line-status-bar{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:8px 10px;margin-top:6px;margin-bottom:8px}
-.ls-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:6px}
-.ls-title{font-size:12.5px;color:var(--ink)}
-.ls-strip{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
-.ls-pill{flex:0 0 auto;display:flex;flex-direction:column;gap:2px;padding:4px 8px;border-radius:5px;border:1px solid var(--line);background:var(--paper);cursor:pointer;font-size:11px;min-width:88px;transition:all .15s}
-.ls-pill:hover{background:var(--sel);transform:translateY(-1px)}
-.ls-pill.sel{border-color:var(--indigo);background:var(--sel);box-shadow:0 0 0 1px var(--indigo)}
-.ls-pill .lp-head{display:flex;justify-content:space-between;align-items:center;gap:6px}
-.ls-pill .lp-tag{font-weight:700}
-.ls-pill .lp-day{padding:1px 5px;border-radius:3px;font-weight:700;font-size:10.5px}
-.ls-pill .lp-day.crit{background:#fee2e2;color:#b91c1c}
-.ls-pill .lp-day.warn{background:#fef3c7;color:#92400e}
-.ls-pill .lp-day.good{background:#dcfce7;color:#166534}
-.ls-pill .lp-sub{font-size:10px;color:var(--ink-2)}
-
-.compact-dash-wrap{display:grid;grid-template-columns:1fr;gap:6px}
-
-
 /* Colorful Easily Separable 7 Upper Tables */
 .tpan{border-radius:8px;border:1px solid var(--line);overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:box-shadow .2s,border-color .2s}
 .tpan:hover{box-shadow:0 3px 8px rgba(0,0,0,0.08)}
@@ -322,7 +263,7 @@ tr.crit td{background:var(--bad-bg)}tr.sel td{background:var(--sel)}
 :root[data-theme="dark"] .tpan.tbl-s3{border-top-color:#38bdf8;background:linear-gradient(to bottom,rgba(56,189,248,0.1),var(--paper) 40px)}
 :root[data-theme="dark"] .tpan.tbl-s2{border-top-color:#34d399;background:linear-gradient(to bottom,rgba(52,211,153,0.1),var(--paper) 40px)}
 :root[data-theme="dark"] .tpan.tbl-s1{border-top-color:#a78bfa;background:linear-gradient(to bottom,rgba(167,139,250,0.1),var(--paper) 40px)}
-:root[data-theme="dark"] .tpan.tbl-yd{border-top-color:#fbbf24;background:linear-gradient(to bottom,rgba(251,191,36,0.1),var(--paper) 40px)}
+:root[data-theme="dark"] .tpan.tbl-yd{border-top-color:#fbbf24;background:linear-gradient(to bottom,rgba(217,119,6,0.1),var(--paper) 40px)}
 
 :root[data-theme="dark"] .tbl-badge.s3{background:#082f49;color:#7dd3fc;border-color:#0369a1}
 :root[data-theme="dark"] .tbl-badge.s2{background:#052e16;color:#86efac;border-color:#15803d}
@@ -335,18 +276,69 @@ tr.crit td{background:var(--bad-bg)}tr.sel td{background:var(--sel)}
 .tpan table td{padding:6px 10px;vertical-align:middle}
 .tpan table tfoot th{padding:6px 10px;background:var(--chip)}
 
-/* Freeze System (Sticky Columns) for Candidate Table */
+/* Master Cuttable Candidate Table & Freeze System */
+.ct-sug-panel{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:14px;margin-top:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+.ct-sug-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;border-bottom:1px solid var(--line);padding-bottom:10px}
+.ct-sug-head h3{margin:0;font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px}
+.ct-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.ct-search{flex:1;min-width:240px;position:relative}
+.ct-search input{width:100%;padding:6px 10px 6px 28px;border:1px solid var(--line);border-radius:6px;background:var(--paper);font-size:12.5px}
+.ct-search::before{content:"🔍";position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:12px;opacity:0.6}
+.ct-filter-sel{border:1px solid var(--line);border-radius:6px;padding:6px 8px;background:var(--paper);font-size:12px;color:var(--ink)}
+
+.ct-tbl-wrap{max-height:480px;overflow-x:auto;overflow-y:auto;border:1px solid var(--line);border-radius:6px;scrollbar-width:thin}
+.ct-table{width:100%;border-collapse:collapse;font-size:12px;text-align:left}
+.ct-table thead th{position:sticky;top:0;z-index:4;background:var(--chip);color:var(--ink-2);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+.ct-table td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:middle;text-align:left}
+.ct-table tr:hover td{background:var(--sel)}
+
+/* Freeze System (Sticky Columns) */
 .ct-table th.fz-0, .ct-table td.fz-0{position:sticky;left:0;z-index:3;min-width:100px;max-width:100px;background:var(--paper);box-shadow:1px 0 0 var(--line)}
 .ct-table th.fz-1, .ct-table td.fz-1{position:sticky;left:100px;z-index:3;min-width:145px;max-width:145px;background:var(--paper);box-shadow:1px 0 0 var(--line)}
 .ct-table th.fz-2, .ct-table td.fz-2{position:sticky;left:245px;z-index:3;min-width:130px;max-width:130px;background:var(--paper);box-shadow:2px 0 4px rgba(0,0,0,0.06)}
 .ct-table th.fz-0, .ct-table th.fz-1, .ct-table th.fz-2{background:var(--chip);z-index:5}
 .ct-table tr:hover td.fz-0, .ct-table tr:hover td.fz-1, .ct-table tr:hover td.fz-2{background:var(--sel)}
 
-.ct-tbl-wrap{max-height:480px;overflow-x:auto;overflow-y:auto;border:1px solid var(--line);border-radius:6px;scrollbar-width:thin}
-.ct-table thead th{position:sticky;top:0;z-index:4;background:var(--chip)}
+.ct-badge{display:inline-block;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;white-space:nowrap}
+.ct-badge.crit{background:#fee2e2;color:#b91c1c;border:1px solid #f87171}
+.ct-badge.print{background:#fef3c7;color:#92400e;border:1px solid #fcd34d}
+.ct-badge.emb{background:#e0e7ff;color:#3730a3;border:1px solid #a5b4fc}
+.ct-badge.solid{background:var(--chip);color:var(--ink-2);border:1px solid var(--line)}
+.ct-badge.ready{background:var(--good-bg);color:var(--good);border:1px solid var(--good)}
+.ct-badge.warn{background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn)}
+.ct-badge.bad{background:var(--bad-bg);color:var(--bad);border:1px solid var(--bad)}
 
-.ct-table td{text-align:left}
-.ct-table td.num-cell{text-align:left;font-variant-numeric:tabular-nums}
+.ct-fab-box{font-size:11px;line-height:1.3}
+.ct-fab-box .kg-val{font-weight:700}
+.ct-fab-box .kg-sub{color:var(--ink-2);font-size:10.5px}
+.ct-plan-btn{background:var(--indigo);color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;transition:opacity .15s}
+.ct-plan-btn:hover{opacity:0.85}
+
+.ct-pager{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;color:var(--ink-2)}
+.ct-pager button{padding:4px 10px;border:1px solid var(--line);background:var(--paper);border-radius:4px;cursor:pointer;font-weight:600}
+.ct-pager button:disabled{opacity:0.4;cursor:not-allowed}
+
+/* Compact Dashboard & Single-Row Line Status for Input & Shipment */
+.dgrid.compact{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:8px}
+.dk.compact{min-height:50px;padding:6px 9px;border-left-width:3px}
+.dk.compact .dl{font-size:11px;font-weight:600;margin-bottom:2px}
+.dk.compact .dm{font-size:17px;font-weight:700;line-height:1.15}
+.dk.compact .ds{font-size:10.5px;color:var(--ink-2);margin-top:2px}
+
+.line-status-bar{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:8px 10px;margin-top:6px;margin-bottom:8px}
+.ls-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.ls-title{font-size:12.5px;color:var(--ink)}
+.ls-strip{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.ls-pill{flex:0 0 auto;display:flex;flex-direction:column;gap:2px;padding:4px 8px;border-radius:5px;border:1px solid var(--line);background:var(--paper);cursor:pointer;font-size:11px;min-width:88px;transition:all .15s}
+.ls-pill:hover{background:var(--sel);transform:translateY(-1px)}
+.ls-pill.sel{border-color:var(--indigo);background:var(--sel);box-shadow:0 0 0 1px var(--indigo)}
+.ls-pill .lp-head{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.ls-pill .lp-tag{font-weight:700}
+.ls-pill .lp-day{padding:1px 5px;border-radius:3px;font-weight:700;font-size:10.5px}
+.ls-pill .lp-day.crit{background:#fee2e2;color:#b91c1c}
+.ls-pill .lp-day.warn{background:#fef3c7;color:#92400e}
+.ls-pill .lp-day.good{background:#dcfce7;color:#166534}
+.ls-pill .lp-sub{font-size:10px;color:var(--ink-2)}
 
 </style></head><body>
 <div class="top"><div class="brand">NOS<small>Cutting</small></div><div class="sp"></div><span class="asof">Cutting, Print &amp; Input 17 Sep 2026 · Sewing Line Plan Sep 2026</span>
@@ -532,20 +524,7 @@ function openHeaderFilter(btn,id,vis,L,st,re){
 
 /* ================= CUTTING v2 ================= */
 const AS_OF='2026-09-17';
-
-function normLine(ln) {
-  if (!ln) return '';
-  if (ln === 'Line A') return 'A';
-  if (ln.includes('Line B')) return 'B';
-  if (ln === 'Line C') return 'C';
-  if (/^Sew-0?1/i.test(ln)) return 'A';
-  if (/^Sew-0?2/i.test(ln)) return 'B';
-  if (/^Sew-0?3/i.test(ln)) return 'C';
-  return ln;
-}
-
-const L=DATA.L,P=DATA.P;
-P.forEach(p=>{p.ln=normLine(p.ln)});const PJ={};P.forEach(p=>{(PJ[p.j]=PJ[p.j]||[]).push(p)});
+const L=DATA.L,P=DATA.P;const PJ={};P.forEach(p=>{(PJ[p.j]=PJ[p.j]||[]).push(p)});
 L.forEach((r,i)=>{['oq','cut','psd','prc','rfi','inp'].forEach(k=>r[k]=r[k]||0);r.i=i;r.key=r.j+'|'+r.c;r.jk=r.b+'|'+r.j;const p=(PJ[r.j]||[])[0]||{};
   Object.assign(r,{ln:p.ln||'',mr:p.mr||'',ss:p.ss||'',ccd:p.ccd||r.sd||'',tgt:p.tgt||0,fq:p.fq||0,fr:p.fr||0,rps:p.ps||r.ps||'',pri:p.pr||'',it:p.it||'',ppos:p.ppos||'',epos:p.epos||'',sh:p.sh||0,pk:p.pk||0,jq:p.oq||0});
   r.hasP=/P/.test(r.pe||'');r.hasE=/E/.test(r.pe||'');r.yd=/y\/?d/i.test(r.it||'')});
@@ -778,7 +757,17 @@ function fabricState(r){const rl=relaxOf(r.key);const inh=rl.filter(x=>x.st==='I
   return r.fq?{t:`Store ${Math.round(r.fr/r.fq*100)}%`,c:r.fr>0?'info':'bad',inh:0}:{t:'No fabric info',c:'',inh:0}}
 const cutOn=(r,d)=>S.ent.filter(e=>e.i===r.i&&e.t==='cut'&&e.d===d).reduce((a,e)=>a+e.q,0);
 
-/* ================= CANDIDATE SUGGESTION REGISTER LOGIC ================= */
+function normLine(ln) {
+  if (!ln) return '';
+  if (ln === 'Sew-01') return 'A';
+  if (ln.includes('Sew-02')) return 'B';
+  if (ln === 'Sew-03') return 'C';
+  if (/^Sew-0?1/i.test(ln)) return 'A';
+  if (/^Sew-0?2/i.test(ln)) return 'B';
+  if (/^Sew-0?3/i.test(ln)) return 'C';
+  return ln;
+}
+
 const TP_SUG = {
   relax: { q: '', fl: 'ALL', pe: 'ALL', fab: 'ALL', page: 0, pageSize: 20 },
   daily: { q: '', fl: 'ALL', pe: 'ALL', fab: 'ALL', page: 0, pageSize: 20 }
@@ -853,14 +842,12 @@ function renderTPSuggestionTable(kind) {
   const sug = TP_SUG[kind];
   const st = TP[kind];
 
-  // Filter dataset
   const qLower = (sug.q || '').trim().toLowerCase();
   let pool = L.filter(r => {
     if (!inMod(r)) return false;
     const det = calcFabDetail(r);
     if (det.cutBal <= 0) return false;
 
-    // Search query
     if (qLower) {
       const match = (r.j || '').toLowerCase().includes(qLower) ||
                     (r.b || '').toLowerCase().includes(qLower) ||
@@ -869,14 +856,12 @@ function renderTPSuggestionTable(kind) {
       if (!match) return false;
     }
 
-    // Floor filter
     const fl = r.fl || floor(r);
     if (sug.fl !== 'ALL') {
       if (sug.fl === 'Y/D' && !r.yd && fl !== 'Y/D') return false;
       if (sug.fl !== 'Y/D' && fl !== sug.fl) return false;
     }
 
-    // Print / Emb filter
     if (sug.pe !== 'ALL') {
       if (sug.pe === 'PE_BOTH' && !det.isPEBoth) return false;
       if (sug.pe === 'PRINT' && !det.hasP) return false;
@@ -884,7 +869,6 @@ function renderTPSuggestionTable(kind) {
       if (sug.pe === 'SOLID' && (det.hasP || det.hasE || r.pe === 'AOP')) return false;
     }
 
-    // Fabric Readiness filter
     if (sug.fab !== 'ALL') {
       if (sug.fab === 'READY' && (det.bodyPct < 95 || det.ribPct < 90)) return false;
       if (sug.fab === 'RIB_PENDING' && (det.bodyPct < 95 || det.ribPct >= 90)) return false;
@@ -894,7 +878,6 @@ function renderTPSuggestionTable(kind) {
     return true;
   });
 
-  // Sort: Critical P+E first, nearest PCD, then highest balance
   pool.sort((a,b) => {
     const da = calcFabDetail(a), db = calcFabDetail(b);
     if (da.isPEBoth !== db.isPEBoth) return db.isPEBoth ? 1 : -1;
@@ -958,7 +941,7 @@ function renderTPSuggestionTable(kind) {
       </div>
 
       <!-- MASTER TABLE WITH FREEZE COLUMNS & LEFT ALIGNMENT -->
-      <div class="ct-tbl-wrap" style="position:relative">
+      <div class="ct-tbl-wrap">
         <table class="ct-table">
           <thead>
             <tr>
@@ -1014,9 +997,9 @@ function renderTPSuggestionTable(kind) {
                   <td class="fz-2"><b>${esc(r.c)}</b></td>
                   <td style="font-family:monospace;font-size:11.5px">${esc(r.st)}</td>
                   <td><span class="pill info" style="font-size:10.5px">${esc(fl)}</span></td>
-                  <td class="num-cell">${kgs(det.oq)}</td>
-                  <td class="num-cell" style="color:var(--ink-2)">${kgs(det.cut)}</td>
-                  <td class="num-cell"><b style="color:var(--warn)">-${kgs(det.cutBal)}</b></td>
+                  <td>${kgs(det.oq)}</td>
+                  <td style="color:var(--ink-2)">${kgs(det.cut)}</td>
+                  <td><b style="color:var(--warn)">-${kgs(det.cutBal)}</b></td>
                   <td>
                     <div class="ct-fab-box">
                       <span class="kg-val">${kgs(det.bodyRecv)}</span> / ${kgs(det.bodyReq)} kg 
@@ -1055,38 +1038,22 @@ function renderTPSuggestionTable(kind) {
     </div>
   `;
 
-  // Bind toolbar events
   const qInput = $('#' + kind + '-sug-q');
-  if (qInput) {
-    qInput.oninput = () => { sug.q = qInput.value; sug.page = 0; renderTPSuggestionTable(kind); };
-  }
+  if (qInput) qInput.oninput = () => { sug.q = qInput.value; sug.page = 0; renderTPSuggestionTable(kind); };
   const flSel = $('#' + kind + '-sug-fl');
-  if (flSel) {
-    flSel.onchange = () => { sug.fl = flSel.value; sug.page = 0; renderTPSuggestionTable(kind); };
-  }
+  if (flSel) flSel.onchange = () => { sug.fl = flSel.value; sug.page = 0; renderTPSuggestionTable(kind); };
   const peSel = $('#' + kind + '-sug-pe');
-  if (peSel) {
-    peSel.onchange = () => { sug.pe = peSel.value; sug.page = 0; renderTPSuggestionTable(kind); };
-  }
+  if (peSel) peSel.onchange = () => { sug.pe = peSel.value; sug.page = 0; renderTPSuggestionTable(kind); };
   const fabSel = $('#' + kind + '-sug-fab');
-  if (fabSel) {
-    fabSel.onchange = () => { sug.fab = fabSel.value; sug.page = 0; renderTPSuggestionTable(kind); };
-  }
+  if (fabSel) fabSel.onchange = () => { sug.fab = fabSel.value; sug.page = 0; renderTPSuggestionTable(kind); };
   const clrBtn = $('#' + kind + '-sug-clr');
-  if (clrBtn) {
-    clrBtn.onclick = () => {
-      sug.q = ''; sug.fl = 'ALL'; sug.pe = 'ALL'; sug.fab = 'ALL'; sug.page = 0;
-      renderTPSuggestionTable(kind);
-    };
-  }
+  if (clrBtn) clrBtn.onclick = () => { sug.q = ''; sug.fl = 'ALL'; sug.pe = 'ALL'; sug.fab = 'ALL'; sug.page = 0; renderTPSuggestionTable(kind); };
 
-  // Pager events
   const prevBtn = $('#' + kind + '-sug-prev');
   if (prevBtn) prevBtn.onclick = () => { if (sug.page > 0) { sug.page--; renderTPSuggestionTable(kind); } };
   const nextBtn = $('#' + kind + '-sug-next');
   if (nextBtn) nextBtn.onclick = () => { if (sug.page < totalPages - 1) { sug.page++; renderTPSuggestionTable(kind); } };
 
-  // Plan button actions
   panel.querySelectorAll('[data-plan]').forEach(btn => {
     btn.onclick = () => {
       const [iStr, tbl] = btn.dataset.plan.split('|');
@@ -1104,6 +1071,136 @@ function renderTPSuggestionTable(kind) {
   });
 }
 
+function renderTP(kind){
+  const st=TP[kind],box=kind==='relax'?S.relax:S.daily,day=box[st.d]=box[st.d]||{};
+  const days=[...Array(8)].map((_,n)=>addDays(TODAY,n-1));
+  const all=Object.values(day).flat(),tot=all.reduce((a,e)=>a+e.q,0);
+  const ach=kind==='daily'?all.reduce((a,e)=>a+Math.min(cutOn(L[e.i],st.d),e.q),0):0;
+  $(`#${kind}-cards`).style.display='block';
+  $(`#${kind}-cards`).innerHTML=`<div class="kpis">`+[
+    ['Planned pcs',K0(tot),all.length+' colours','info'],
+    kind==='relax'?['In-house · relaxing',K0(all.filter(e=>e.st==='In-house').reduce((a,e)=>a+e.q,0)),'pcs','good']:['Cut today (achieved)',K0(ach),tot?Math.round(ach/tot*100)+'% of target':'—',ach>=tot&&tot?'good':'warn'],
+    kind==='relax'?['Requested from store',K0(all.filter(e=>e.st==='Requested').reduce((a,e)=>a+e.q,0)),'pcs','warn']:['From relaxed fabric',K0(all.filter(e=>e.src==='relaxed').reduce((a,e)=>a+e.q,0)),'pcs · rest outside relaxation','info'],
+    ['Tables used',TBL.filter(([t])=>(day[t]||[]).length).length+' / '+TBL.length,'','']].map(([l,v,s,c])=>`<div class="kpi ${c}"><div class="kv2">${v}</div><div class="kl">${l}</div><div class="ks">${s}</div></div>`).join('')+`</div>`;
+  $(`#${kind}-days`).innerHTML=days.map(d=>`<button class="${d===st.d?'on':''}" data-d="${d}">${d===TODAY?'Today · ':''}${fd(d)}</button>`).join('');
+  $(`#${kind}-days`).querySelectorAll('button').forEach(b=>b.onclick=()=>{st.d=b.dataset.d;st.add='';renderTP(kind)});
+  $([kind==='relax'?'#relax-grid':'#daily-grid']).innerHTML=TBL.map(([t,fl])=>{
+    const list=day[t]||[],sum=list.reduce((a,e)=>a+e.q,0);
+    const cls = fl==='S3'?'tbl-s3':fl==='S2'?'tbl-s2':fl==='S1'?'tbl-s1':'tbl-yd';
+    const badgeCls = fl==='S3'?'s3':fl==='S2'?'s2':fl==='S1'?'s1':'yd';
+    const badgeLabel = fl==='Y/D'?'Yarn-Dyed Table':'Floor '+fl;
+    return `<div class="panel tpan ${cls}">
+      <h3>
+        <span>${t} <span class="tbl-badge ${badgeCls}">${badgeLabel}</span></span>
+        <span style="font-weight:700;font-size:14px;color:var(--ink)">${kgs(sum)} pcs</span>
+      </h3>
+      <table><tbody>${list.map((e,k)=>{const r=L[e.i],fsx=fabricState(r);return `<tr>
+        <td><b>${esc(r.j)}</b> ${esc(r.c)}<div class="muted" style="font-size:11px">${esc(r.b)} · sew ${fd(r.ss)||'—'}</div></td>
+        <td>${kind==='relax'?`<button class="btn sm" data-tg="${t}|${k}">${e.st}</button>`:pill(e.src==='relaxed'?'Relaxed':'Outside',e.src==='relaxed'?'good':'')}</td>
+        <td class="n"><input type="number" value="${e.q}" data-q="${t}|${k}" style="width:70px">${kind==='daily'?`<div class="muted" style="font-size:11px">cut ${kgs(cutOn(r,st.d))}</div>`:''}</td>
+        <td><button class="btn sm" data-x="${t}|${k}" style="color:var(--bad)">✕</button></td>
+      </tr>`}).join('')||'<tr><td class="muted" style="padding:10px;text-align:center">Nothing planned on this table</td></tr>'}</tbody>
+      <tfoot><tr><th>Total Planned</th><th></th><th class="n" style="font-weight:700">${kgs(sum)} pcs</th><th></th></tr></tfoot></table>
+      ${st.add===t?addForm(kind,t,fl):`<div style="padding:6px;display:flex;justify-content:flex-end"><button class="btn sm pri" data-add="${t}">+ Add New</button></div>`}
+    </div>`}).join('');
+  const g=$(`#${kind}-grid`),own=()=>['Cutting','Cutting Reporter'].includes(role())||(toast('Cutting planner edits this plan'),false);
+  g.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{st.add=b.dataset.add;st.job='';renderTP(kind)});
+  g.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{if(!own())return;const[t,k]=b.dataset.x.split('|');day[t].splice(+k,1);save();renderTP(kind)});
+  g.querySelectorAll('[data-q]').forEach(x=>x.onchange=()=>{if(!own())return;const[t,k]=x.dataset.q.split('|');day[t][+k].q=Math.max(0,+x.value||0);save();renderTP(kind)});
+  g.querySelectorAll('[data-tg]').forEach(b=>b.onclick=()=>{if(!own())return;const[t,k]=b.dataset.tg.split('|');const e=day[t][+k];e.st=e.st==='Requested'?'In-house':'Requested';save();renderTP(kind)});
+  bindAdd(kind,day);
+  renderTPSuggestionTable(kind);
+}
+const K0=v=>{v=Math.round(v||0);return v>=1e6?(v/1e6).toFixed(2)+'M':v>=1e4?(v/1e3).toFixed(1)+'K':v.toLocaleString('en-US')};
+function suggestions(kind,fl){
+  const ok=r=>inMod(r)&&cutBal(r)>0&&(fl==='Y/D'?r.yd:(!r.yd&&floor(r)===fl));
+  let rows=L.filter(ok);
+  if(kind==='daily'){const rel=new Set(Object.values(S.relax).flatMap(t=>Object.values(t).flat()).filter(e=>e.st==='In-house').map(e=>e.i));rows.sort((a,b)=>(rel.has(b.i)-rel.has(a.i))||(a.ss||'9').localeCompare(b.ss||'9'))}
+  else rows.sort((a,b)=>(a.ss||'9').localeCompare(b.ss||'9')||(a.ccd||'9').localeCompare(b.ccd||'9'));
+  return[...new Set(rows.map(r=>r.j))].slice(0,40)}
+function addForm(kind,t,fl){const st=TP[kind],sug=suggestions(kind,fl);const rs=st.job?L.filter(r=>r.j===st.job):[];
+  return `<div class="form" style="padding:6px;border-top:1px solid var(--line)"><div class="row"><span>Job no</span><input id="ad-j" list="ad-jl" value="${esc(st.job||'')}" placeholder="Search or pick a suggestion"><datalist id="ad-jl">${sug.map(j=>`<option value="${esc(j)}">`).join('')}</datalist></div>
+   ${sug.length&&!st.job?`<div class="ks muted">Suggested: ${sug.slice(0,6).map(j=>`<a href="#" data-sj="${esc(j)}">${esc(j)}</a>`).join(' · ')}</div>`:''}
+   ${rs.length?`<table><thead><tr><th></th><th>Colour</th><th class="n">Cut bal</th><th>Fabric</th></tr></thead><tbody>${rs.map(r=>{const f=fabricState(r);return `<tr><td><input type="radio" name="ad-c" value="${r.i}" ${cutBal(r)>0?'':'disabled'}></td><td>${esc(r.c)}</td><td class="n">${kgs(cutBal(r))}</td><td>${pill(f.t,f.c)}</td></tr>`}).join('')}</tbody></table>
+   <div class="row"><span>Pcs</span><input type="number" id="ad-q"></div>`:''}
+   <div><button class="btn sm pri" id="ad-ok">Add</button> <button class="btn sm" id="ad-cx">Cancel</button></div></div>`}
+function bindAdd(kind,day){const st=TP[kind];const j=$('#ad-j');if(!j)return;
+  const pickJob=v=>{st.job=v.trim();renderTP(kind)};
+  j.onchange=()=>{if(L.some(r=>r.j===j.value.trim())){j.blur();setTimeout(()=>pickJob(j.value),0)}};
+  document.querySelectorAll('[data-sj]').forEach(a=>a.onclick=e=>{e.preventDefault();pickJob(a.dataset.sj)});
+  document.querySelectorAll('input[name=ad-c]').forEach(x=>x.onchange=()=>{const r=L[+x.value];const f=fabricState(r);$('#ad-q').value=Math.round(kind==='daily'&&f.inh?Math.min(f.inh,cutBal(r)):cutBal(r))});
+  $('#ad-cx').onclick=()=>{st.add='';renderTP(kind)};
+  $('#ad-ok').onclick=()=>{if(!['Cutting','Cutting Reporter'].includes(role()))return toast('Cutting planner edits this plan');
+    const c=document.querySelector('input[name=ad-c]:checked');if(!c)return toast('Pick a colour');const q=+$('#ad-q').value;if(!(q>0))return toast('Enter pcs');
+    const r=L[+c.value];const e={i:r.i,q};if(kind==='relax')e.st='Requested';else e.src=fabricState(r).inh?'relaxed':'other';
+    (day[st.add]=day[st.add]||[]).push(e);save();toast('Added to '+st.add);st.add='';st.job='';renderTP(kind)};
+}
+
+/* ================= SMART CUT PLANNER (single page) =================
+   Quantity rule everywhere: cutting quantity = size ratio × ply. Targets are minimums; anything above is "additional overcut".
+   The solver is a search over ply heights / ratios with exact integer checks. It reports "Feasible (heuristic)" —
+   it never claims a proven optimum. Factory allowance matrix and fabric–ply matrix are not uploaded yet, so those
+   options say so instead of inventing numbers. */
+S.smart=S.smart||{};
+const SM={jk:''};
+const AMODES=[['matrix','Factory Matrix'],['pct','Fixed Percentage'],['pcs','Fixed Extra Pieces'],['custom','Size-wise Custom'],['none','Order Quantity Only']];
+const OMODES=[['runs','Minimum Cutting Runs'],['over','Minimum Extra Overcut'],['bal','Balanced Plan'],['manual','Manual Adjustment'],['ratio','Ratio-Based Cutting Plan']];
+function smDefault(jk){const rs=L.filter(r=>r.jk===jk);return{sizes:['S','M','L','XL'],q:{},am:'pct',apct:2,apcs:10,acust:{},fab:{cat:'Single Jersey',gsm:'',w:''},maxP:0,maxG:6,tol:3,om:'bal',ratio:'1:2:2:1',ratioEach:false,ratios:{},rows:[],status:'Draft',rev:1,audit:[],cmp:{},colours:rs.map(r=>r.i)}}
+/* Demo size split (until the PO import gives the real size breakdown): colour order qty split by a ratio, clearly labelled. */
+function splitByRatio(p,ratioStr){const rr=ratioStr.split(':').map(x=>Math.max(0,+x||0));if(rr.length!==p.sizes.length||!rr.some(x=>x))return false;const sum=rr.reduce((a,b)=>a+b,0);
+  p.colours.forEach(i=>{const t=Math.round(oq(L[i]));const q=rr.map(v=>Math.floor(t*v/sum));let left=t-q.reduce((a,b)=>a+b,0);const ord=rr.map((v,k)=>k).sort((a,b)=>rr[b]-rr[a]);for(let k=0;left>0;k++,left--)q[ord[k%ord.length]]++;p.q[i]={};p.sizes.forEach((z,k)=>p.q[i][z]=q[k])});return true}
+function smCur(){let p=S.smart[SM.jk];if(!p)p=S.smart[SM.jk]=smDefault(SM.jk);
+  const empty=p.colours.every(i=>!Object.values(p.q[i]||{}).some(v=>+v>0));
+  if(empty&&!p.demoDone){p.demoDone=true;p.demo=true;if(!(+p.maxP>0))p.maxP=80;splitByRatio(p,p.sizes.length===4?'17:33:31:19':p.ratio);const g=generate(p,p.om==='manual'?'bal':p.om);if(!g.err){p.rows=g.rows;p.status='Generated';p.cmp=compare(p)}save()}
+  return p}
+function targets(p){const out={};p.colours.forEach(i=>{out[i]=p.sizes.map(z=>{const q=+(p.q[i]?.[z]||0);let ex=0;
+  if(p.am==='pct')ex=Math.ceil(q*(+p.apct||0)/100);else if(p.am==='pcs')ex=q?(+p.apcs||0):0;else if(p.am==='custom'){const c=p.acust[i]?.[z]||'';ex=/%$/.test(c)?Math.ceil(q*parseFloat(c)/100):(+c||0)}
+  return{q,ex,t:q+ex}})});return out}
+/* ---- solver ---- */
+function greedy(tg,o,tol){const n=tg.length,cut=Array(n).fill(0),rows=[];const minP=Math.max(1,Math.min(+o.minP||1,o.maxP));
+  for(let it=0;it<80;it++){const rem=tg.map((t,k)=>t-cut[k]);if(rem.every(x=>x<=0))break;let best=null;
+    for(const floorP of [minP,1]){if(best)break;for(let p=o.maxP;p>=floorP;p--){let r=rem.map((x,k)=>x>0?Math.floor((x+tol[k])/p):0);if(r.every(x=>x===0)&&p===minP&&floorP===minP&&rem.every(x=>x<=minP))r=rem.map(x=>x>0?1:0);
+      while(r.reduce((a,b)=>a+b,0)>o.maxG){let k=-1,m=1e9;r.forEach((v,j)=>{if(v>0&&rem[j]/v<m){m=rem[j]/v;k=j}});r[k]--}
+      if(r.every(x=>x===0))continue;const cov=r.reduce((a,v,k)=>a+Math.min(v*p,Math.max(0,rem[k])),0);
+      if(!best||cov>best.cov||(cov===best.cov&&p>best.p))best={p,r,cov}}}
+    if(!best)break;best.r.forEach((v,k)=>cut[k]+=v*best.p);rows.push({r:best.r,p:best.p})}
+  return rows}
+function evenPly(rows,maxP){const g=[];rows.forEach(x=>{const k=g.find(y=>y.r.join()===x.r.join());k?(k.tp+=x.p,k.n++):g.push({r:x.r,tp:x.p,n:1})});
+  const out=[];g.forEach(x=>{const n=Math.ceil(x.tp/maxP),b=Math.floor(x.tp/n),e=x.tp-b*n;for(let k=0;k<n;k++)out.push({r:x.r.slice(),p:b+(k<e?1:0)})});return out}
+function stats(rows,tg){const plan=tg.map((_,k)=>rows.reduce((a,x)=>a+x.r[k]*x.p,0));const short=plan.reduce((a,v,k)=>a+Math.max(0,tg[k]-v),0),over=plan.reduce((a,v,k)=>a+Math.max(0,v-tg[k]),0);return{runs:rows.length,plan,pcs:plan.reduce((a,b)=>a+b,0),short,over,markers:new Set(rows.map(x=>x.r.join())).size}}
+function solveColour(tg,o,mode,ratio){const tolA=tg.map(t=>Math.ceil(t*(o.tol||0)/100)),z=tg.map(()=>0);
+  const cands=[];const ps=[...new Set([o.maxP,Math.round(o.maxP*0.9),Math.round(o.maxP*0.8),Math.round(o.maxP*0.7)])].filter(x=>x>0);
+  if(mode==='ratio'){const rr=ratio.map(x=>+x||0);if(!rr.some(x=>x))return null;const cut=tg.map(()=>0),rows=[];
+    for(let it=0;it<40;it++){let p=Math.min(o.maxP,...rr.map((v,k)=>v?Math.floor((tg[k]-cut[k])/v):1e9));if(p<1||rr.reduce((a,b)=>a+b,0)>o.maxG)break;rows.push({r:rr.slice(),p,locked:true});rr.forEach((v,k)=>cut[k]+=v*p)}
+    const left=tg.map((t,k)=>Math.max(0,t-cut[k]));const ra=greedy(left,o,z),rb=greedy(left,o,tolA);const rest=rb.length<ra.length?rb:ra;return evenPly(rows,o.maxP).concat(evenPly(rest,o.maxP))}
+  const tolH=tg.map(t=>Math.ceil(t*(o.tol||0)/200));for(const p of ps)for(const tol of [z,tolH,tolA]){const rows=evenPly(greedy(tg,{...o,maxP:p},tol),o.maxP);cands.push({rows,s:stats(rows,tg)})}
+  const ok=cands.filter(c=>!c.s.short);const pool=ok.length?ok:cands;
+  const W=Math.max(5,Math.round(tg.reduce((a,b)=>a+b,0)*0.01)); // balanced: one cutting ≈ 1% of the colour target in extra pieces
+  const key={runs:c=>[c.s.runs,c.s.over],over:c=>[c.s.over,c.s.runs],bal:c=>[c.s.runs*W+c.s.over+c.s.markers*Math.ceil(W/4),c.s.runs]}[mode];
+  pool.sort((a,b)=>{const x=key(a),y=key(b);return x[0]-y[0]||x[1]-y[1]});return pool[0].rows}
+function generate(p,mode){const T=targets(p),o={maxP:+p.maxP,maxG:+p.maxG,tol:+p.tol,minP:+p.minP||10,w:100};const rows=[];
+  for(const i of p.colours){const tg=T[i].map(x=>x.t);if(!tg.some(x=>x))continue;const locked=p.rows.filter(x=>x.i===i&&x.lock);
+    const done=tg.map((t,k)=>locked.reduce((a,x)=>a+x.r[k]*x.p,0));const left=tg.map((t,k)=>Math.max(0,t-done[k]));
+    const ratio=(p.ratioEach?(p.ratios[i]||p.ratio):p.ratio).split(':').map(x=>+x||0);
+    const res=left.some(x=>x)?solveColour(left,o,mode,ratio):[];if(res==null)return{err:'Enter a ratio with one number per size (e.g. 1:2:2:1)'};
+    locked.forEach(x=>rows.push(x));res.forEach(x=>rows.push({i,r:x.r,p:x.p,src:mode==='ratio'&&x.locked?'ratio':'auto',lock:false}))}
+  return{rows}}
+function compare(p){const T=targets(p),out={};
+  for(const[m]of OMODES){if(m==='manual'){if(p.rows.some(x=>x.src==='manual'))out[m]=summ(p,p.rows,T);continue}
+    if(m==='ratio'&&!/\d/.test(p.ratio))continue;const g=generate({...p,rows:p.rows.filter(x=>x.lock)},m);if(!g.err)out[m]=summ(p,g.rows,T)}return out}
+function summ(p,rows,T){let runs=rows.length,pcs=0,over=0,short=0;p.colours.forEach(i=>{const s=stats(rows.filter(x=>x.i===i),T[i].map(x=>x.t));pcs+=s.pcs;over+=s.over;short+=s.short});return{runs,pcs,over,short}}
+/* ---- validation ---- */
+function validate(p){const T=targets(p),iss=[];const tolA=i=>T[i].map(x=>Math.ceil(x.t*(+p.tol||0)/100));
+  if(!(+p.maxP>0))iss.push(['bad','Enter the maximum ply (no factory fabric–ply rule uploaded)']);
+  if(p.am==='matrix')iss.push(['bad','Factory allowance matrix not uploaded — choose another allowance method']);
+  p.rows.forEach((x,k)=>{if(x.bad)iss.push(['bad',`${L[x.i].c} Cutting ${String(k+1).padStart(2,'0')}: quantity is not ratio × ply`]);if(+x.p>+p.maxP)iss.push(['bad',`${L[x.i].c}: ply ${x.p} above max ${p.maxP}`]);if(x.r.reduce((a,b)=>a+b,0)>+p.maxG)iss.push(['warn',`${L[x.i].c}: ${x.r.reduce((a,b)=>a+b,0)} garments in one marker (max ${p.maxG})`])});
+  p.colours.forEach(i=>{const s=stats(p.rows.filter(x=>x.i===i),T[i].map(x=>x.t));const tl=tolA(i);
+    s.plan.forEach((v,k)=>{const b=T[i][k].t-v;if(T[i][k].t&&b>0)iss.push(['bad',`${L[i].c} ${p.sizes[k]}: short ${b}`]);if(b<-tl[k])iss.push(['bad',`${L[i].c} ${p.sizes[k]}: overcut ${-b} above the permitted ${p.tol}%`])})});
+  return iss}
+function audit(p,what,prev,next,reason){p.audit.push({at:new Date().toISOString().slice(0,16).replace('T',' '),by:role(),what,prev,next,reason:reason||'',rev:p.rev,status:p.status})}
+function touched(p){if(p.status==='Approved'||p.status==='Released'){p.rev++;audit(p,'New revision','Rev '+(p.rev-1),'Rev '+p.rev)}p.status='Modified'}
+
+/* ---- page ---- */
 function renderSM(){
   const jobs=[...new Set(L.filter(inMod).map(r=>r.j))];
   if(!SM.jk){$('#sm-body').innerHTML=`<div class="filters"><input id="sm-j" list="sm-jl" placeholder="Pick a job (accepted jobs)" style="width:220px"><datalist id="sm-jl">${jobs.map(j=>`<option value="${esc(j)}">`).join('')}</datalist></div><div class="empty">Pick a job to plan</div>`;bindJob();return}
@@ -1284,7 +1381,6 @@ function colChart(groups,cols,h,lab){const mx=Math.max(1,...groups.flatMap(g=>g.
 const dcard=(lab,main,sub,cls,attrs)=>`<div class="dk ${cls||''}" ${attrs||''}><div class="dl1">${lab}</div><div class="dm">${main}</div>${sub?`<div class="dsub">${sub}</div>`:''}</div>`;
 const trio=items=>`<div class="dtrio">${items.map(([v,l,c,at])=>`<div ${at||''}><b style="${c?`color:var(--${c})`:''}">${v}</b><span>${l}</span></div>`).join('')}</div>`;
 function dashInput(F,LR){
-  // Normalize any leftover line names
   const lrs=Object.values(LR).map(x=>({...x,ln:normLine(x.ln)})).filter(x=>(!IM.fl||x.fl===IM.fl)&&(!IM.ln||x.ln===IM.ln));
   const rd=lrs.reduce((a,x)=>a+x.ready,0),need=lrs.reduce((a,x)=>a+x.need,0);
   const flv=f=>{const xs=lrs.filter(x=>x.fl===f);const r=xs.reduce((a,x)=>a+x.ready,0),n=xs.reduce((a,x)=>a+x.need,0);return[K0(r),`${f} · ${n?(r/n).toFixed(1):0}d`,n&&r/n<1?'bad':n&&r/n<3?'warn':'']};
@@ -1293,7 +1389,6 @@ function dashInput(F,LR){
   const z=(k,f)=>{const xs=lrs.filter(f);return[xs.length,`${{d1:'tomorrow',d2:'in 2 days',d3:'in 3 days'}[k]} · WIP ${K0(xs.reduce((a,x)=>a+x.ready,0))}`,{d1:'bad',d2:'warn',d3:'indigo-2'}[k],`class="zone ${IM.zone===k?'on':''}" data-zone="${k}"`]};
   const td=F.filter(trimsDue);
 
-  // Compact 8-card stats strip
   const cards=`<div class="dgrid compact">`
    +dcard('Planned jobs',F.length,K0(F.reduce((a,p)=>a+p.oq,0))+' pcs order','info','','compact')
    +dcard('Ready for input',K0(rd),(need?(rd/need).toFixed(1):'0')+' days on running lines','info','','compact')
@@ -1304,11 +1399,6 @@ function dashInput(F,LR){
    +dcard('Cut balance',K0(cutBal),run.length+' running jobs','','','compact')
    +dcard('Trims & acc.',`${td.length} <small>due</small>`,`${F.length-td.length} OK`,'good','data-act="tr" style="cursor:pointer"','compact')+`</div>`;
 
-  // Status breakdown
-  const st={};F.forEach(p=>{const k=p.ps||'—';st[k]=st[k]||[0,0];st[k][0]++;st[k][1]+=p.oq});
-  const sg=Object.entries(st).sort((a,b)=>b[1][1]-a[1][1]).map(([x,v])=>({x,v:[v[1]],top:v[0]+' jobs',tip:`${x}: ${v[0]} jobs · ${kgs(v[1])} pcs`,act:'ps:'+x}));
-
-  // Unique clean lines sorted by days available
   const cleanLrs = [];
   const seenLns = new Set();
   lrs.sort((a,b)=>a.days-b.days).forEach(x=>{
@@ -1321,7 +1411,6 @@ function dashInput(F,LR){
 
   const lg=cleanLrs.map(x=>({x:x.ln,v:[x.need,x.ready],top:x.days.toFixed(1)+'d',topc:x.days<1?'bad':x.days<3?'warn':'ink-2',tip:`Line ${x.ln}: target ${kgs(x.need)} · ready ${kgs(x.ready)}`,act:'ln:'+x.ln}));
 
-  // SINGLE-ROW LINE STATUS STRIP
   const lineStatusRow = `
     <div class="line-status-bar">
       <div class="ls-header">
@@ -1353,6 +1442,7 @@ function dashInput(F,LR){
 
   return cards + lineStatusRow;
 }
+
 function dashShip(F){const wk=[...Array(6)].map((_,k)=>curWeek+k);const all=P.filter(p=>PRJ[p.jk]&&(!IM.fl||(FLS[floorOfLine(PRJ[p.jk].ln)]||'—')===IM.fl)&&(!IM.ln||PRJ[p.jk].ln===IM.ln)&&(!IM.b||p.b===IM.b));
   const wkg=wk.map(w=>{const xs=all.filter(p=>shipWeek(p)===w);return{x:'W'+w+(w===curWeek?' now':''),v:[xs.reduce((a,p)=>a+p.oq,0),xs.reduce((a,p)=>a+Math.min(p.oq,pInput(p)),0),xs.filter(done).reduce((a,p)=>a+p.oq,0)],act:'wk:'+w,tip:`W${w}: load ${kgs(xs.reduce((a,p)=>a+p.oq,0))} · ${xs.length} jobs`}});
   const cw=all.filter(p=>shipWeek(p)===curWeek&&!done(p));const req=cw.reduce((a,p)=>a+Math.max(0,p.oq-pInput(p)),0);

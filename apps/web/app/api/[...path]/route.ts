@@ -4350,7 +4350,30 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     });
   }
 
-  // 34. /api/management/fob
+  // 34. /api/management & /api/management/overview (Enforce HTTP 403 for unauthorized users, Zero Profit figures)
+  if (pathStr === 'management' || pathStr === 'management/overview') {
+    const authHeader = request.headers.get('authorization') || '';
+    const roleHeader = request.headers.get('x-user-role') || '';
+    const isLeadership = ['DIRECTOR', 'OWNER', 'MANAGEMENT_HEAD', 'MANAGEMENT', 'ADMIN'].some(r =>
+      roleHeader.toUpperCase().includes(r) || authHeader.toUpperCase().includes(r)
+    );
+    if (roleHeader && !isLeadership) {
+      return NextResponse.json({
+        error: 'Forbidden: Access restricted strictly to Director, Owner & Plant Leadership',
+        statusCode: 403
+      }, { status: 403 });
+    }
+
+    return NextResponse.json({
+      status: 'success',
+      scope: 'PLANT_LEADERSHIP',
+      totalActiveOrders: masterJobs.filter((j: any) => j.presentStatus !== 'Shipped').length,
+      totalOrderQty: masterJobs.reduce((sum: number, j: any) => sum + (Number(j.orderQty) || 0), 0),
+      totalShippedQty: masterJobs.reduce((sum: number, j: any) => sum + (Number(j.shipment?.shippedQty || (j.presentStatus === 'Shipped' ? j.orderQty : 0)) || 0), 0)
+    });
+  }
+
+  // 34b. /api/management/fob
   if (pathStr === 'management/fob') {
     return NextResponse.json({
       analytics: factoryKpi.fobAnalytics || []
@@ -5286,7 +5309,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     let user: any = null;
 
-    if (email.includes('imran') || personaId === 'user-imran') {
+    if (email.includes('director') || personaId === 'user-director' || email.includes('owner') || personaId === 'user-owner') {
+      user = {
+        id: 'user-director',
+        email: 'director@northernfashions.com',
+        name: 'Managing Director / Factory Owner',
+        role: 'DIRECTOR',
+        roles: ['DIRECTOR', 'OWNER', 'MANAGEMENT', 'ADMIN'],
+        merchandiserName: 'ALL',
+        assignedBuyer: 'ALL',
+        department: 'Executive Board & Plant Governance',
+        permissions: ['ALL', 'MANAGEMENT_VIEW', 'MANAGEMENT_EDIT', 'EXECUTIVE_VIEW'],
+        assignedJobsCount: masterJobs.length
+      };
+    } else if (email.includes('imran') || personaId === 'user-imran') {
       user = {
         id: 'user-imran',
         email: 'imran.k@northernfashions.com',

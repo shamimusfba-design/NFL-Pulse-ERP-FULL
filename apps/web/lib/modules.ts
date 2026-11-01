@@ -16,14 +16,6 @@ export type ModuleGroup = {
 
 export const MODULE_GROUPS: ModuleGroup[] = [
   {
-    label: 'Management',
-    overviewSlug: 'management',
-    icon: 'factory',
-    items: [
-      { slug: 'management', name: 'Executive Dashboard', short: 'MG', icon: 'factory', status: 'Live', description: 'Factory KPIs, executive register, overall risk and operations overview.' },
-    ],
-  },
-  {
     label: 'Sales & Merchandising',
     overviewSlug: 'merchandising-overview',
     icon: 'hanger',
