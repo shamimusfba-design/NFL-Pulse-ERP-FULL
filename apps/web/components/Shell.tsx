@@ -45,7 +45,9 @@ const DEPARTMENT_NAVIGATION_ITEMS: SidebarItem[] = [
   { id: 'central-planning', name: 'Central Planning', href: '/modules/central-planning', matchPrefixes: ['/modules/central-planning', '/modules/ta', '/modules/planning-approvals', '/modules/capacity', '/modules/sewing-planning', '/modules/subcontract'] },
   { id: 'yarn-knitting', name: 'Yarn Store & Knitting', href: '/modules/yarn-knitting', matchPrefixes: ['/modules/yarn-knitting', '/modules/yarn', '/modules/yarn-store', '/modules/knitting'] },
   { id: 'greige-store', name: 'Greige Fabric Store', href: '/modules/greige-store', matchPrefixes: ['/modules/greige-store'] },
+  { id: 'dyeing-lab', name: 'Dyeing Lab', href: '/modules/dyeing-lab', matchPrefixes: ['/modules/dyeing-lab'] },
   { id: 'dyeing', name: 'Dyeing', href: '/modules/dyeing', matchPrefixes: ['/modules/dyeing', '/modules/dyeing-machine-loading', '/modules/fabric-finishing'] },
+  { id: 'testing-lab', name: 'Testing Lab', href: '/modules/testing-lab', matchPrefixes: ['/modules/testing-lab'] },
   { id: 'fabric-quality', name: 'Fabric Quality', href: '/modules/fabric-quality', matchPrefixes: ['/modules/fabric-quality'] },
   { id: 'finished-fabric', name: 'Finished Fabric Store', href: '/modules/finished-fabric', matchPrefixes: ['/modules/finished-fabric'] },
   { id: 'cad', name: 'CAD', href: '/modules/cad', matchPrefixes: ['/modules/cad'] },
@@ -57,6 +59,7 @@ const DEPARTMENT_NAVIGATION_ITEMS: SidebarItem[] = [
   { id: 'quality', name: 'Garments Quality', href: '/quality', matchPrefixes: ['/quality', '/modules/garment-quality', '/modules/quality-history'] },
   { id: 'ie', name: 'Industrial & Production Engineering', href: '/modules/ie-overview', matchPrefixes: ['/modules/ie-overview', '/modules/kpi-board', '/modules/ie-bulletin', '/modules/ie-daily-target', '/modules/ie-mis-import', '/modules/ie-npt', '/modules/ie-qco', '/modules/ie-line-performance', '/modules/ie-responsibility', '/modules/ie-skill-matrix', '/modules/ie-production-checkpoints', '/modules/ie-reports'] },
   { id: 'mis-it', name: 'MIS & IT', href: '/modules/mis-it', matchPrefixes: ['/modules/mis-it', '/floor-display', '/modules/reports', '/modules/data-import', '/modules/maintenance'] },
+  { id: 'admin-access', name: 'Admin Access Control', href: '/modules/admin-access', matchPrefixes: ['/modules/admin-access'] },
   { id: 'hr-compliance', name: 'HR Admin & Compliance', href: '/modules/hr-admin-compliance', matchPrefixes: ['/modules/hr-admin-compliance', '/modules/administration', '/modules/masters', '/modules/shipment'] },
 ];
 
@@ -97,6 +100,16 @@ const DEPARTMENT_TOP_NAVS: DepartmentNavConfig[] = [
     ]
   },
   {
+    deptId: 'dyeing-lab',
+    deptName: 'Dyeing Lab',
+    matchPrefixes: ['/modules/dyeing-lab'],
+    subItems: [
+      { name: 'Master Lab Dip Register', href: '/modules/dyeing-lab' },
+      { name: 'SMS & Planning Requisitions', href: '/modules/dyeing-lab?tab=REQUESTS' },
+      { name: 'Lab Dip Formulation & Spectro', href: '/modules/dyeing-lab?tab=ENTRY' },
+    ]
+  },
+  {
     deptId: 'dyeing',
     deptName: 'Dyeing',
     matchPrefixes: ['/modules/dyeing', '/modules/dyeing-machine-loading', '/modules/fabric-finishing'],
@@ -104,6 +117,16 @@ const DEPARTMENT_TOP_NAVS: DepartmentNavConfig[] = [
       { name: 'Dyeing Planning', href: '/modules/dyeing' },
       { name: 'Machine Loading Plan', href: '/modules/dyeing-machine-loading' },
       { name: 'Finish Fabric Plan', href: '/modules/fabric-finishing' },
+    ]
+  },
+  {
+    deptId: 'testing-lab',
+    deptName: 'Testing Lab',
+    matchPrefixes: ['/modules/testing-lab'],
+    subItems: [
+      { name: 'Master Test Report Register', href: '/modules/testing-lab' },
+      { name: 'Planning Requisitions', href: '/modules/testing-lab?tab=REQUESTS' },
+      { name: 'Test Entry & Certificate Upload', href: '/modules/testing-lab?tab=ENTRY' },
     ]
   },
   {
@@ -174,6 +197,16 @@ const DEPARTMENT_TOP_NAVS: DepartmentNavConfig[] = [
       { name: 'Reports & Analytics', href: '/modules/reports' },
       { name: 'Excel Import', href: '/modules/data-import' },
       { name: 'Machine Engineering', href: '/modules/maintenance' },
+    ]
+  },
+  {
+    deptId: 'admin-access',
+    deptName: 'Admin Access Control',
+    matchPrefixes: ['/modules/admin-access'],
+    subItems: [
+      { name: 'Access Overview', href: '/modules/admin-access' },
+      { name: 'Role & User Permissions', href: '/modules/admin-access' },
+      { name: 'Audit Logs', href: '/modules/admin-access' },
     ]
   },
   {
@@ -461,6 +494,47 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
                 </Link>
               );
             })}
+
+            {!query && (
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await api('/auth/logout').catch(() => {});
+                  } catch {}
+                  try {
+                    localStorage.removeItem('nfl_access_token');
+                    localStorage.removeItem('nfl_refresh_token');
+                    localStorage.removeItem('nfl_user');
+                    localStorage.removeItem('nos_active_persona');
+                    localStorage.removeItem('nos-active-persona-id');
+                    localStorage.removeItem('nos-user-role');
+                  } catch {}
+                  window.location.href = '/login';
+                }}
+                className="nav-link text-nav-link sidebar-logout-btn"
+                style={{
+                  marginTop: '16px',
+                  color: '#ef4444',
+                  background: 'rgba(239, 68, 68, 0.08)',
+                  border: '1px solid rgba(239, 68, 68, 0.2)',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: '7px 10px',
+                  fontSize: '13px',
+                  fontWeight: 600
+                }}
+                title="Sign out of ERP system"
+              >
+                <span style={{ fontSize: '15px' }}>🚪</span>
+                <span>Sign Out</span>
+              </button>
+            )}
           </div>
         </nav>
 
