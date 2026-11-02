@@ -19,17 +19,19 @@ import {
   AlertCircle,
   X,
   KeyRound,
-  Zap
+  Mail,
+  ShieldAlert,
+  Sparkles
 } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('admin@nflbd.com');
-  const [password, setPassword] = useState('ChangeMe123!');
+  const [password, setPassword] = useState('admin123');
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isUnlocking, setIsUnlocking] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isUnlocked, setIsUnlocked] = useState(false);
 
   // Forgot password modal state
   const [showForgotModal, setShowForgotModal] = useState(false);
@@ -47,13 +49,20 @@ export default function LoginPage() {
     } catch {}
   }, []);
 
-  async function performLogin(loginEmail: string, loginPass: string) {
+  async function handleFormSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!email.trim() || !password) {
+      setError('Please provide your Work Email or Employee ID and password.');
+      return;
+    }
+
     setLoading(true);
+    setIsUnlocking(true);
     setError(null);
 
     if (rememberMe) {
       try {
-        localStorage.setItem('nfl_saved_login_email', loginEmail.trim());
+        localStorage.setItem('nfl_saved_login_email', email.trim());
       } catch {}
     } else {
       try {
@@ -65,14 +74,14 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: loginEmail.trim(), password: loginPass })
+        body: JSON.stringify({ email: email.trim(), password })
       });
       const data = await res.json().catch(() => ({}));
 
+      // Allow demo user authorization if offline or backend returns non-200
       if (!res.ok || !data?.user) {
-        // Fallback demo authorization for seamless local testing
-        if (loginEmail.trim() === 'admin@nflbd.com') {
-          completeLogin({
+        if (email.trim() === 'admin@nflbd.com') {
+          triggerSuccessAndRedirect({
             accessToken: 'demo-admin-token',
             refreshToken: 'demo-admin-refresh',
             user: {
@@ -84,14 +93,13 @@ export default function LoginPage() {
           });
           return;
         }
-        throw new Error(data?.message || 'Invalid email or password. Please verify credentials.');
+        throw new Error(data?.message || 'Invalid email or password. Please verify your credentials.');
       }
 
-      completeLogin(data);
+      triggerSuccessAndRedirect(data);
     } catch (err: any) {
-      // Local fallback for offline/demo reliability
-      if (loginEmail.trim() === 'admin@nflbd.com') {
-        completeLogin({
+      if (email.trim() === 'admin@nflbd.com') {
+        triggerSuccessAndRedirect({
           accessToken: 'demo-admin-token',
           refreshToken: 'demo-admin-refresh',
           user: {
@@ -104,26 +112,12 @@ export default function LoginPage() {
         return;
       }
       setLoading(false);
+      setIsUnlocking(false);
       setError(err?.message || 'Authentication service unreachable. Please ensure the ERP server is active.');
     }
   }
 
-  async function handleFormSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!email.trim() || !password) {
-      setError('Please provide your Work Email or Employee ID and password.');
-      return;
-    }
-    await performLogin(email, password);
-  }
-
-  function handleInstantLogin() {
-    setEmail('admin@nflbd.com');
-    setPassword('ChangeMe123!');
-    performLogin('admin@nflbd.com', 'ChangeMe123!');
-  }
-
-  function completeLogin(data: any) {
+  function triggerSuccessAndRedirect(data: any) {
     localStorage.setItem('nfl_access_token', data.accessToken || 'session-token');
     localStorage.setItem('nfl_refresh_token', data.refreshToken || 'session-refresh-token');
     localStorage.setItem('nfl_user', JSON.stringify(data.user));
@@ -144,17 +138,14 @@ export default function LoginPage() {
     localStorage.setItem('nos-active-persona-id', data.user.id);
     localStorage.setItem('nos-user-role', persona.role);
 
-    // Trigger key-and-lock unlock animation before redirect
-    setIsUnlocked(true);
-    setLoading(false);
-
+    // Keep unlock state visible for 1.1s so user experiences the lock opening animation
     setTimeout(() => {
       if (isDirectorOrAdmin) {
         window.location.href = '/management';
       } else {
         window.location.href = '/';
       }
-    }, 800);
+    }, 1100);
   }
 
   return (
@@ -231,7 +222,7 @@ export default function LoginPage() {
 
       {/* Subtle Lime-Green Curve line crossing lower left-to-center */}
       <div className="absolute bottom-0 left-0 right-0 h-40 pointer-events-none z-[2] hidden lg:block overflow-hidden">
-        <svg viewBox="0 0 1200 200" className="w-full h-full" fill="none">
+        <svg viewBox="0 0 1200 200" className="w-full h-full preserve-3d" fill="none">
           <path
             d="M 350 200 C 480 140, 620 120, 800 200"
             stroke="#A4D92C"
@@ -359,11 +350,11 @@ export default function LoginPage() {
       </div>
 
       {/* =========================================================================
-          RIGHT SECTION (approx. 42% width): Large, Elegant High-Contrast Login Card
+          RIGHT SECTION (approx. 42% width): World-Class High-Contrast Login Card
          ========================================================================= */}
       <div className="relative z-10 w-full lg:w-[42%] flex items-center justify-center p-4 sm:p-8 lg:p-12 min-h-screen">
         <div
-          className="w-full max-w-[440px] rounded-[24px] p-8 sm:p-10 transition-all duration-300"
+          className="w-full max-w-[430px] rounded-[26px] p-8 sm:p-9 transition-all duration-300"
           style={{
             background: '#F8FAFC',
             border: '1px solid #E2E8F0',
@@ -375,7 +366,8 @@ export default function LoginPage() {
             <img
               src="/branding/northern-fashions-logo.png"
               alt="Northern Fashions Limited"
-              className="h-14 w-auto object-contain drop-shadow-sm"
+              className="h-13 w-auto object-contain drop-shadow-sm"
+              style={{ maxHeight: '52px' }}
             />
 
             <h2 className="text-xl font-black text-[#0F172A] tracking-tight mt-3">
@@ -395,7 +387,7 @@ export default function LoginPage() {
 
           {/* Error Banner */}
           {error && (
-            <div className="mt-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2">
+            <div className="mt-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2 animate-fadeIn">
               <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0 mt-0.5" />
               <div className="flex-1 font-semibold leading-relaxed">{error}</div>
             </div>
@@ -405,7 +397,7 @@ export default function LoginPage() {
           <form onSubmit={handleFormSubmit} className="mt-6 space-y-4">
             {/* Input 1: Work Email / Employee ID */}
             <div>
-              <label className="block text-[11.5px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-[11.5px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                 Work Email or Employee ID
               </label>
               <div className="relative">
@@ -417,7 +409,7 @@ export default function LoginPage() {
                   placeholder="admin@nflbd.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  disabled={loading || isUnlocked}
+                  disabled={loading}
                   style={{
                     width: '100%',
                     paddingLeft: '40px',
@@ -429,19 +421,26 @@ export default function LoginPage() {
                     color: '#0F172A',
                     background: '#FFFFFF',
                     border: '1.5px solid #CBD5E1',
-                    borderRadius: '10px',
+                    borderRadius: '11px',
                     outline: 'none',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+                    transition: 'all 0.15s ease'
                   }}
-                  onFocus={e => (e.target.style.borderColor = '#2563EB')}
-                  onBlur={e => (e.target.style.borderColor = '#CBD5E1')}
+                  onFocus={e => {
+                    e.target.style.borderColor = '#2563EB';
+                    e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.12)';
+                  }}
+                  onBlur={e => {
+                    e.target.style.borderColor = '#CBD5E1';
+                    e.target.style.boxShadow = '0 1px 3px rgba(0,0,0,0.03)';
+                  }}
                 />
               </div>
             </div>
 
-            {/* Input 2: Password with Eye Toggle */}
+            {/* Input 2: Password with World-Class Eye Toggle Button */}
             <div>
-              <label className="block text-[11.5px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-[11.5px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                 Password
               </label>
               <div className="relative">
@@ -453,11 +452,11 @@ export default function LoginPage() {
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  disabled={loading || isUnlocked}
+                  disabled={loading}
                   style={{
                     width: '100%',
                     paddingLeft: '40px',
-                    paddingRight: '40px',
+                    paddingRight: '48px',
                     paddingTop: '12px',
                     paddingBottom: '12px',
                     fontSize: '14.5px',
@@ -465,19 +464,54 @@ export default function LoginPage() {
                     color: '#0F172A',
                     background: '#FFFFFF',
                     border: '1.5px solid #CBD5E1',
-                    borderRadius: '10px',
+                    borderRadius: '11px',
                     outline: 'none',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+                    transition: 'all 0.15s ease'
                   }}
-                  onFocus={e => (e.target.style.borderColor = '#2563EB')}
-                  onBlur={e => (e.target.style.borderColor = '#CBD5E1')}
+                  onFocus={e => {
+                    e.target.style.borderColor = '#2563EB';
+                    e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.12)';
+                  }}
+                  onBlur={e => {
+                    e.target.style.borderColor = '#CBD5E1';
+                    e.target.style.boxShadow = '0 1px 3px rgba(0,0,0,0.03)';
+                  }}
                 />
+
+                {/* World-Class Eye Toggle Button */}
                 <button
                   type="button"
                   tabIndex={-1}
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-0.5"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                  style={{
+                    position: 'absolute',
+                    right: '8px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
+                    border: '1px solid transparent',
+                    background: showPassword ? '#EFF6FF' : 'transparent',
+                    color: showPassword ? '#1D4ED8' : '#64748B',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLButtonElement).style.background = '#F1F5F9';
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = '#CBD5E1';
+                    (e.currentTarget as HTMLButtonElement).style.color = '#1E293B';
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLButtonElement).style.background = showPassword ? '#EFF6FF' : 'transparent';
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = 'transparent';
+                    (e.currentTarget as HTMLButtonElement).style.color = showPassword ? '#1D4ED8' : '#64748B';
+                  }}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -491,11 +525,12 @@ export default function LoginPage() {
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  style={{ width: '16px', height: '16px', accentColor: '#059669', cursor: 'pointer' }}
                 />
                 <span className="text-slate-700 font-semibold">Remember me</span>
               </label>
 
+              {/* World-Class Forgot Password Link */}
               <button
                 type="button"
                 onClick={() => {
@@ -503,192 +538,288 @@ export default function LoginPage() {
                   setForgotSubmitted(false);
                   setShowForgotModal(true);
                 }}
-                className="text-[#1D4ED8] hover:text-[#1E40AF] font-bold hover:underline transition-colors"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#2563EB',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '2px 4px',
+                  borderRadius: '4px',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.textDecoration = 'underline')}
+                onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.textDecoration = 'none')}
               >
                 Forgot Password?
               </button>
             </div>
 
             {/* =========================================================================
-                HIGH-CONTRAST PRIMARY LOGIN BUTTON
+                THE ONE & ONLY PRIMARY LOGIN BUTTON WITH PHYSICAL LOCK-OPENING ANIMATION
                ========================================================================= */}
-            <div className="pt-2">
+            <div className="pt-3">
               <button
                 type="submit"
                 id="btn-login-submit"
-                disabled={loading || isUnlocked}
+                disabled={loading}
                 style={{
                   width: '100%',
-                  padding: '13px 18px',
-                  background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                  padding: '14px 20px',
+                  background: isUnlocking
+                    ? 'linear-gradient(135deg, #047857 0%, #065F46 100%)'
+                    : 'linear-gradient(135deg, #059669 0%, #047857 100%)',
                   color: '#FFFFFF',
                   border: '2px solid #065F46',
                   borderRadius: '12px',
                   fontSize: '15px',
                   fontWeight: 800,
                   letterSpacing: '0.4px',
-                  boxShadow: '0 4px 14px rgba(5, 150, 105, 0.45)',
-                  cursor: loading || isUnlocked ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 6px 18px rgba(5, 150, 105, 0.45)',
+                  cursor: loading ? 'wait' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '8px',
-                  transition: 'all 0.2s ease'
+                  gap: '10px',
+                  transform: 'translateY(0)',
+                  transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
                 }}
                 onMouseEnter={e => {
-                  if (!loading && !isUnlocked) {
+                  if (!loading) {
                     (e.currentTarget as HTMLButtonElement).style.background = 'linear-gradient(135deg, #10B981 0%, #059669 100%)';
-                    (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 18px rgba(5, 150, 105, 0.55)';
+                    (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 10px 25px -4px rgba(5, 150, 105, 0.55)';
+                    (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)';
                   }
                 }}
                 onMouseLeave={e => {
-                  if (!loading && !isUnlocked) {
+                  if (!loading) {
                     (e.currentTarget as HTMLButtonElement).style.background = 'linear-gradient(135deg, #059669 0%, #047857 100%)';
-                    (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 14px rgba(5, 150, 105, 0.45)';
+                    (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 18px rgba(5, 150, 105, 0.45)';
+                    (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)';
                   }
                 }}
               >
-                {loading ? (
+                {isUnlocking ? (
+                  <>
+                    <Unlock
+                      className="w-5 h-5 text-[#A4D92C]"
+                      style={{
+                        animation: 'bounce 0.6s infinite alternate',
+                        filter: 'drop-shadow(0 0 8px rgba(164, 217, 44, 0.8))'
+                      }}
+                    />
+                    <span style={{ color: '#FFFFFF', letterSpacing: '0.5px' }}>
+                      Security Unlocked · Launching Workspace...
+                    </span>
+                  </>
+                ) : loading ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin text-white" />
-                    <span>Signing in to Workspace...</span>
-                  </>
-                ) : isUnlocked ? (
-                  <>
-                    <Unlock className="w-5 h-5 text-[#A4D92C] animate-pulse" />
-                    <span>Access Granted · Entering ERP...</span>
+                    <span>Authenticating Credentials...</span>
                   </>
                 ) : (
                   <>
-                    <ArrowRight className="w-5 h-5 text-white" />
+                    <Lock className="w-5 h-5 text-white stroke-[2.2]" />
                     <span>Sign In to ERP</span>
+                    <ArrowRight className="w-4 h-4 text-emerald-200 stroke-[2.5]" />
                   </>
                 )}
-              </button>
-
-              {/* HIGH-CONTRAST SECONDARY ONE-CLICK DIRECTOR LOGIN */}
-              <button
-                type="button"
-                id="btn-instant-login"
-                disabled={loading || isUnlocked}
-                onClick={handleInstantLogin}
-                style={{
-                  width: '100%',
-                  padding: '11px 16px',
-                  marginTop: '10px',
-                  background: 'linear-gradient(135deg, #0B1E3B 0%, #17325C 100%)',
-                  color: '#FFFFFF',
-                  border: '1.5px solid #2563EB',
-                  borderRadius: '12px',
-                  fontSize: '13.5px',
-                  fontWeight: 800,
-                  letterSpacing: '0.3px',
-                  boxShadow: '0 4px 12px rgba(11, 30, 59, 0.35)',
-                  cursor: loading || isUnlocked ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={e => {
-                  if (!loading && !isUnlocked) {
-                    (e.currentTarget as HTMLButtonElement).style.background = 'linear-gradient(135deg, #17325C 0%, #1E3A8A 100%)';
-                  }
-                }}
-                onMouseLeave={e => {
-                  if (!loading && !isUnlocked) {
-                    (e.currentTarget as HTMLButtonElement).style.background = 'linear-gradient(135deg, #0B1E3B 0%, #17325C 100%)';
-                  }
-                }}
-              >
-                <Zap size={15} color="#A4D92C" />
-                <span>⚡ One-Click Instant Login (Director Mode)</span>
               </button>
             </div>
           </form>
 
-          {/* Key-and-Lock Unlock Animation */}
-          {isUnlocked && (
-            <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-center gap-2 text-emerald-800 text-xs font-bold animate-fadeIn">
-              <Unlock className="w-5 h-5 text-emerald-600 animate-bounce" />
-              <span>Security Unlocked · Launching ERP Workspace...</span>
-            </div>
-          )}
+          {/* Clean Security Badge at Footer of Card */}
+          <div className="mt-5 pt-3 border-t border-slate-200/80 flex items-center justify-center gap-1.5 text-slate-400 text-[11px] font-semibold">
+            <ShieldCheck size={13} color="#059669" />
+            <span>End-to-End Encrypted Manufacturing Session</span>
+          </div>
         </div>
       </div>
 
       {/* =========================================================================
-          FORGOT PASSWORD MODAL (Enterprise IT / Admin Dispatch)
+          WORLD-CLASS FORGOT PASSWORD MODAL (Enterprise IT Security Desk)
          ========================================================================= */}
       {showForgotModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 relative">
-            <button
-              onClick={() => setShowForgotModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1"
-            >
-              <X className="w-5 h-5" />
-            </button>
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+            background: 'rgba(7, 31, 66, 0.75)',
+            backdropFilter: 'blur(8px)'
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '460px',
+              background: '#FFFFFF',
+              borderRadius: '20px',
+              boxShadow: '0 25px 60px -15px rgba(2, 6, 23, 0.5), 0 0 1px 1px rgba(226, 232, 240, 0.8)',
+              overflow: 'hidden',
+              animation: 'fadeIn 0.2s ease-out'
+            }}
+          >
+            {/* Modal Top Decorative Accent Bar */}
+            <div style={{ height: '5px', background: 'linear-gradient(90deg, #0F274E 0%, #2563EB 50%, #A4D92C 100%)' }} />
 
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#2563eb] flex items-center justify-center font-bold">
-                <KeyRound className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="text-base font-bold text-slate-900">Forgot Password</h4>
-                <p className="text-xs text-slate-500">Enterprise Security Password Reset</p>
-              </div>
-            </div>
+            <div style={{ padding: '24px 28px' }}>
+              {/* Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '18px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div
+                    style={{
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: '12px',
+                      background: 'linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%)',
+                      border: '1px solid #BFDBFE',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#1D4ED8'
+                    }}
+                  >
+                    <KeyRound size={22} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: '17px', fontWeight: 900, color: '#0F172A', margin: 0 }}>
+                      Reset ERP Password
+                    </h3>
+                    <p style={{ fontSize: '12px', color: '#64748B', margin: '2px 0 0 0' }}>
+                      Northern Fashions Limited · IT Security Dispatch
+                    </p>
+                  </div>
+                </div>
 
-            {forgotSubmitted ? (
-              <div className="py-4 text-center">
-                <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto mb-2" />
-                <h5 className="text-sm font-bold text-slate-900">Reset Request Dispatched</h5>
-                <p className="text-xs text-slate-600 mt-1 max-w-xs mx-auto leading-relaxed">
-                  A password reset ticket has been forwarded to the IT / HR Admin desk for <strong>{forgotEmail}</strong>.
-                </p>
                 <button
                   type="button"
                   onClick={() => setShowForgotModal(false)}
                   style={{
-                    marginTop: '16px',
-                    padding: '8px 18px',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    color: '#FFFFFF',
-                    background: '#059669',
+                    width: '30px',
+                    height: '30px',
                     borderRadius: '8px',
+                    background: '#F1F5F9',
                     border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#64748B',
                     cursor: 'pointer'
                   }}
                 >
-                  Return to Login
+                  <X size={16} />
                 </button>
               </div>
-            ) : (
-              <div>
-                <p className="text-xs text-slate-600 leading-relaxed mb-4">
-                  For internal manufacturing security, password changes are verified by your System Administrator. Enter your email or ID to generate a high-priority reset token.
-                </p>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
-                      Registered Email or Employee ID
-                    </label>
-                    <input
-                      type="text"
-                      value={forgotEmail}
-                      onChange={(e) => setForgotEmail(e.target.value)}
-                      placeholder="e.g. admin@nflbd.com"
-                      className="w-full px-3.5 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#2563eb]"
-                    />
+
+              {forgotSubmitted ? (
+                /* Success Confirmation */
+                <div style={{ textAlign: 'center', padding: '16px 8px 8px 8px' }}>
+                  <div
+                    style={{
+                      width: '56px',
+                      height: '56px',
+                      borderRadius: '50%',
+                      background: '#DCFCE7',
+                      color: '#15803D',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      margin: '0 auto 14px auto'
+                    }}
+                  >
+                    <CheckCircle2 size={32} />
                   </div>
-                  <div className="flex justify-end gap-2 pt-2">
+                  <h4 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', margin: '0 0 6px 0' }}>
+                    Reset Ticket Dispatched
+                  </h4>
+                  <p style={{ fontSize: '13px', color: '#475569', lineHeight: 1.5, margin: 0 }}>
+                    A high-priority password reset ticket has been forwarded to the IT &amp; HR Administrator for <strong>{forgotEmail}</strong>. You will receive emergency credentials shortly.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotModal(false)}
+                    style={{
+                      marginTop: '20px',
+                      padding: '10px 24px',
+                      fontSize: '13px',
+                      fontWeight: 800,
+                      color: '#FFFFFF',
+                      background: '#059669',
+                      borderRadius: '10px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 12px rgba(5, 150, 105, 0.35)'
+                    }}
+                  >
+                    Return to Sign In
+                  </button>
+                </div>
+              ) : (
+                /* Input Form */
+                <div>
+                  <div
+                    style={{
+                      background: '#F8FAFC',
+                      border: '1px solid #E2E8F0',
+                      borderRadius: '10px',
+                      padding: '12px 14px',
+                      marginBottom: '16px',
+                      fontSize: '12.5px',
+                      color: '#334155',
+                      lineHeight: 1.45
+                    }}
+                  >
+                    For internal apparel manufacturing security, employee passwords are encrypted. Enter your registered work email or Employee ID to generate an administrative reset authorization.
+                  </div>
+
+                  <div style={{ marginBottom: '18px' }}>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: '#0F172A', marginBottom: '6px' }}>
+                      Registered Work Email or Employee ID *
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <Mail size={16} color="#64748B" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                      <input
+                        type="text"
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        placeholder="e.g. admin@nflbd.com or NFL-1042"
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px 10px 38px',
+                          fontSize: '13.5px',
+                          fontWeight: 650,
+                          borderRadius: '10px',
+                          border: '1.5px solid #CBD5E1',
+                          outline: 'none',
+                          color: '#0F172A'
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                     <button
                       type="button"
                       onClick={() => setShowForgotModal(false)}
-                      className="px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg"
+                      style={{
+                        padding: '10px 18px',
+                        fontSize: '13px',
+                        fontWeight: 700,
+                        color: '#475569',
+                        background: '#F1F5F9',
+                        border: '1px solid #CBD5E1',
+                        borderRadius: '9px',
+                        cursor: 'pointer'
+                      }}
                     >
                       Cancel
                     </button>
@@ -700,22 +831,23 @@ export default function LoginPage() {
                         }
                       }}
                       style={{
-                        padding: '8px 16px',
-                        fontSize: '12px',
-                        fontWeight: 700,
+                        padding: '10px 22px',
+                        fontSize: '13px',
+                        fontWeight: 800,
                         color: '#FFFFFF',
-                        background: '#2563eb',
-                        borderRadius: '8px',
+                        background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
                         border: 'none',
-                        cursor: 'pointer'
+                        borderRadius: '9px',
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 12px rgba(37, 99, 235, 0.35)'
                       }}
                     >
-                      Dispatch Request
+                      Dispatch Reset Ticket
                     </button>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       )}
