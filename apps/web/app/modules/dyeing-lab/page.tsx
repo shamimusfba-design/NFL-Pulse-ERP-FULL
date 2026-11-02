@@ -279,7 +279,25 @@ export default function DyeingLabPage() {
             Centralized shade matching starting from SMS (Sales Sample) stage through bulk order receipt. Formulates recipe options (A, B, C, D), checks spectrophotometer ΔE color tolerance, tracks buyer approvals, and fast-tracks revised strike-offs for pending bulk orders.
           </p>
         </div>
-        <div className="module-actions" style={{ display: 'flex', gap: 10 }}>
+        <div className="module-actions" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <Link
+            href="/modules/testing-lab"
+            style={{
+              fontSize: 13,
+              fontWeight: 750,
+              padding: '8px 14px',
+              background: '#F0FDF4',
+              color: '#15803D',
+              border: '1px solid #86EFAC',
+              borderRadius: 8,
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6
+            }}
+          >
+            🧪 Testing Lab &amp; Delivery Gate →
+          </Link>
           <button
             type="button"
             onClick={() => setShowAddModal(true)}
