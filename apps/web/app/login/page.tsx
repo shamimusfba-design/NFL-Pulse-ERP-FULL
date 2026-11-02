@@ -78,39 +78,12 @@ export default function LoginPage() {
       });
       const data = await res.json().catch(() => ({}));
 
-      // Allow demo user authorization if offline or backend returns non-200
-      if (!res.ok || !data?.user) {
-        if (email.trim() === 'admin@nflbd.com') {
-          triggerSuccessAndRedirect({
-            accessToken: 'demo-admin-token',
-            refreshToken: 'demo-admin-refresh',
-            user: {
-              id: 'usr-admin-01',
-              email: 'admin@nflbd.com',
-              name: 'Managing Director / Factory Owner',
-              roles: ['ADMIN', 'DIRECTOR']
-            }
-          });
-          return;
-        }
+      if (!res.ok || !data?.accessToken) {
         throw new Error(data?.message || 'Invalid email or password. Please verify your credentials.');
       }
 
       triggerSuccessAndRedirect(data);
     } catch (err: any) {
-      if (email.trim() === 'admin@nflbd.com') {
-        triggerSuccessAndRedirect({
-          accessToken: 'demo-admin-token',
-          refreshToken: 'demo-admin-refresh',
-          user: {
-            id: 'usr-admin-01',
-            email: 'admin@nflbd.com',
-            name: 'Managing Director / Factory Owner',
-            roles: ['ADMIN', 'DIRECTOR']
-          }
-        });
-        return;
-      }
       setLoading(false);
       setIsUnlocking(false);
       setError(err?.message || 'Authentication service unreachable. Please ensure the ERP server is active.');
