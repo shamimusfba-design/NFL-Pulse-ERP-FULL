@@ -1,4 +1,5 @@
 // ================= demo data (Reset entries restores it) =================
+function _mountYKRest(){
 function demoJobs(){const J=(id,job,buyer,merch,style,ship,appr,lines)=>({id,job,buyer,merch,style,ship,approved:appr,status:'Pending planning',lines});const L=(cols,parts)=>cols.flatMap(([c,q])=>parts.map(([part,fabric,gsm,dia,ctype,cons])=>({colour:c,part,fabric,gsm,dia,ctype,finish:Math.round(cons*q/12),mode:'In-house'})));
  return[J('FS-48903','BS-ONS 48903','BS-ONS','Mahamud','22040271 ONSKANE SWEAT HOODIE','2027-01-20','2026-09-22',L([['Castor Gray',3000],['Silver Lining',3040],['Black',3000]],[['Body','Fleece',340,'36X24','30/1 ORG C',9.37],['Cuff & bottom rib','Rib',440,'34X20','30/1 ORG C',1.41]])),
  J('FS-48906','UT 48906','UTG','Rokon','UTG-AF-5521 CREW SWEAT','2026-12-01','2026-09-24',L([['Charcoal',5000],['Ecru',5000]],[['Body','Fleece',300,'36X24','28/1 BCI C',7.2],['Rib','Rib',400,'34X20','28/1 BCI C',1.05]])),

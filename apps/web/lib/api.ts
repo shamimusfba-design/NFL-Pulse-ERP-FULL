@@ -14,6 +14,19 @@ export async function api(path: string, init: RequestInit = {}) {
   const token = getToken();
   if (token) headers.set('Authorization', `Bearer ${token}`);
   const res = await fetch(`${API}${path}`, { ...init, headers, cache: 'no-store' });
-  if (!res.ok) { const data = await res.json().catch(() => ({})); const details = Array.isArray(data.details) ? ` ${data.details.join(' ')}` : ''; throw new Error(`${data.message || data.error || `Request failed: ${res.status}`}${details}`); }
-  return res.json();
+  const rawText = await res.text().catch(() => '');
+  let data: any = {};
+  if (rawText && rawText.trim().length > 0) {
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      data = { message: rawText };
+    }
+  }
+  if (!res.ok) {
+    const details = Array.isArray(data?.details) ? ` ${data.details.join(' ')}` : '';
+    throw new Error(`${data?.message || data?.error || `Request failed: ${res.status}`}${details}`);
+  }
+  return data;
 }
+

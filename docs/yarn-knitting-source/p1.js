@@ -120,3 +120,4 @@ const resetTable=id=>{if(TS[id]){TS[id].f={};TS[id].p=0}};
 // Work queue: pending list on the left, form on the right
 function queue(items,sel,panel,empty){if(!items.length&&!panel)return `<div class="qnone">${esc(empty||'Nothing pending')}</div>`;return `<div class="qlay"><div class="qlist panel">${items.length?items.map(it=>`<button class="qi ${it.id===sel?'on':''}" data-qi="${esc(it.id)}"><b>${esc(it.title)}</b><span>${esc(it.sub||'')}</span>${it.tag?`<span class="qt">${it.tag}</span>`:''}</button>`).join(''):`<div class="muted sm" style="padding:10px">${esc(empty||'Nothing pending')}</div>`}</div><div class="qpanel">${panel||`<div class="panel pad muted sm">${items.length?'Select a job on the left.':'All done.'}</div>`}</div></div>`}
 let QUICK='';
+}
