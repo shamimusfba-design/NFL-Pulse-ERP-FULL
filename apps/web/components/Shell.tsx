@@ -76,6 +76,20 @@ const DEPARTMENT_TOP_NAVS: DepartmentNavConfig[] = [
     ]
   },
   {
+    deptId: 'trims',
+    deptName: 'Trims & Accessories Store',
+    matchPrefixes: ['/modules/trims'],
+    subItems: [
+      { name: 'Checklist Requests', href: '/modules/trims?tab=CHECKLIST' },
+      { name: 'Order Receive', href: '/modules/trims?tab=RECEIVE' },
+      { name: 'Present Stock', href: '/modules/trims?tab=STOCK' },
+      { name: 'Order Delivery', href: '/modules/trims?tab=DELIVERY' },
+      { name: 'Location Tracking', href: '/modules/trims?tab=LOCATION' },
+      { name: 'Stock for Reuse', href: '/modules/trims?tab=REUSE' },
+      { name: 'Store TV Display', href: '/modules/trims?tab=TV' },
+    ]
+  },
+  {
     deptId: 'central-planning',
     deptName: 'Central Planning',
     matchPrefixes: ['/modules/central-planning', '/modules/ta', '/modules/planning-approvals', '/modules/capacity', '/modules/sewing-planning', '/modules/subcontract'],
