@@ -577,16 +577,7 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
           </div>
 
           <div className="top-actions">
-            {/* Theme Day / Night Toggle */}
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={toggleTheme}
-              title="Toggle Day / Night mode"
-              style={{ padding: '6px 10px', fontSize: '13px' }}
-            >
-              {theme === 'dark' ? '☀️ Day' : '🌙 Night'}
-            </button>
+
 
             {/* Global Jump To Job Search Box */}
             <div ref={searchContainerRef} style={{ position: 'relative' }}>
@@ -710,15 +701,7 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
               )}
             </div>
 
-            <Link href="/jobs" className="btn btn-secondary">⚡ Stage Control</Link>
-            <Link href="/tasks" className="btn btn-secondary">
-              📋 Tasks
-              {pendingTasksCount > 0 && (
-                <span style={{ background: '#dc2626', color: '#fff', fontSize: '10px', fontWeight: 800, padding: '1px 5px', borderRadius: '8px', marginLeft: '5px' }}>
-                  {pendingTasksCount}
-                </span>
-              )}
-            </Link>
+
 
             {/* Persona Switcher Dropdown */}
             <div ref={personaRef} style={{ position: 'relative' }}>
@@ -823,6 +806,17 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
             >
               <span>🚪</span>
               <span>Sign Out</span>
+            </button>
+
+            {/* Theme Day / Night Toggle at Extreme Right Corner */}
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={toggleTheme}
+              title="Toggle Day / Night mode"
+              style={{ padding: '6px 12px', fontSize: '13px', fontWeight: 650, borderRadius: '6px' }}
+            >
+              {theme === 'dark' ? '☀️ Day' : '🌙 Night'}
             </button>
           </div>
         </header>

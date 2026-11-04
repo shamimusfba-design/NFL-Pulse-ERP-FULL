@@ -653,7 +653,7 @@ export default function DyeingLabPage() {
 
   return (
     <Shell
-      title="Dyeing Lab (ডাইং ল্যাব)"
+      title="Dyeing Lab (Dyeing Lab)"
       eyebrow="SMS / Sample Stage Shade Approvals, Lab Dip Formulations & 10-Day Machine Loading Gate"
     >
       {/* =========================================================================

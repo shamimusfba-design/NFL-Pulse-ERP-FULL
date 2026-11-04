@@ -949,7 +949,7 @@ export default function TestingLabModulePage() {
 
   return (
     <Shell
-      title="Testing Lab (টেস্টিং ল্যাব)"
+      title="Testing Lab (Testing Lab)"
       eyebrow="Physical & Chemical Fastness Testing · Mandatory Clearance Gate Prior to Fabric Delivery"
     >
       {/* =========================================================================

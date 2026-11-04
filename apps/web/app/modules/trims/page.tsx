@@ -31,6 +31,8 @@ import {
   RefreshCw,
   ExternalLink,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Eye,
   Info,
   SlidersHorizontal,
@@ -88,14 +90,14 @@ export interface TrimsItem {
 
 export interface TrimsChecklistRecord {
   id: string;
-  jobNo: string; // e.g. "48002" (numeric only)
+  jobNo: string; // clean numeric job number
   buyer: string;
   styleNo: string;
   itemDescription: string;
   orderQty: number;
   merchandiser: string;
   shipmentDate: string;
-  tnaSlot: string; // e.g. "Aug 2 '26"
+  tnaSlot: string;
   sewingLine: string;
   requestDate: string;
   checklistStatus: ChecklistStatus;
@@ -255,7 +257,7 @@ function generateDefaultRacks(): StoreRack[] {
 }
 
 // ============================================================================
-// INITIAL CHECKLIST JOBS MASTER (CLEAN NUMERIC JOB NUMBERS)
+// INITIAL CHECKLIST JOBS MASTER
 // ============================================================================
 
 const INITIAL_CHECKLISTS: TrimsChecklistRecord[] = [
@@ -893,7 +895,7 @@ export default function TrimsStorePage() {
   // Master State with LocalStorage Persistence
   const [checklists, setChecklists] = useState<TrimsChecklistRecord[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('nfl_trims_checklists_v3');
+      const saved = localStorage.getItem('nfl_trims_checklists_v4');
       if (saved) {
         try { return JSON.parse(saved); } catch {}
       }
@@ -903,7 +905,7 @@ export default function TrimsStorePage() {
 
   const [racks, setRacks] = useState<StoreRack[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('nfl_trims_racks_v3');
+      const saved = localStorage.getItem('nfl_trims_racks_v4');
       if (saved) {
         try { return JSON.parse(saved); } catch {}
       }
@@ -913,7 +915,7 @@ export default function TrimsStorePage() {
 
   const [surplusTrims, setSurplusTrims] = useState<SurplusTrimsRecord[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('nfl_trims_surplus_v3');
+      const saved = localStorage.getItem('nfl_trims_surplus_v4');
       if (saved) {
         try { return JSON.parse(saved); } catch {}
       }
@@ -924,7 +926,7 @@ export default function TrimsStorePage() {
   // Recent Searches state
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('nfl_trims_recent_searches_v2');
+      const saved = localStorage.getItem('nfl_trims_recent_searches_v3');
       if (saved) {
         try { return JSON.parse(saved); } catch {}
       }
@@ -938,7 +940,7 @@ export default function TrimsStorePage() {
     setRecentSearches(prev => {
       const next = [clean, ...prev.filter(j => j !== clean)].slice(0, 5);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('nfl_trims_recent_searches_v2', JSON.stringify(next));
+        localStorage.setItem('nfl_trims_recent_searches_v3', JSON.stringify(next));
       }
       return next;
     });
@@ -948,7 +950,7 @@ export default function TrimsStorePage() {
     setRecentSearches(prev => {
       const next = prev.filter(j => j !== jobNo);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('nfl_trims_recent_searches_v2', JSON.stringify(next));
+        localStorage.setItem('nfl_trims_recent_searches_v3', JSON.stringify(next));
       }
       return next;
     });
@@ -957,19 +959,19 @@ export default function TrimsStorePage() {
   // Save changes
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('nfl_trims_checklists_v3', JSON.stringify(checklists));
+      localStorage.setItem('nfl_trims_checklists_v4', JSON.stringify(checklists));
     }
   }, [checklists]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('nfl_trims_racks_v3', JSON.stringify(racks));
+      localStorage.setItem('nfl_trims_racks_v4', JSON.stringify(racks));
     }
   }, [racks]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('nfl_trims_surplus_v3', JSON.stringify(surplusTrims));
+      localStorage.setItem('nfl_trims_surplus_v4', JSON.stringify(surplusTrims));
     }
   }, [surplusTrims]);
 
@@ -984,9 +986,10 @@ export default function TrimsStorePage() {
     }
   }, []);
 
-  // Update URL on tab change without full reload
+  // Update URL on tab change without full reload and CLEAR POPUP
   const handleTabChange = (t: typeof activeTab) => {
     setActiveTab(t);
+    setDetailModalJob(null); // Never show popups when switching tabs!
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       url.searchParams.set('tab', t);
@@ -1003,11 +1006,19 @@ export default function TrimsStorePage() {
   };
 
   // ==========================================================================
-  // TAB 1: CHECKLIST REQUESTS STATE & ACTIONS
+  // TAB 1: CHECKLIST REQUESTS STATE & ACTIONS (WITH INLINE ACCORDION UNFOLD)
   // ==========================================================================
   const [checklistFilter, setChecklistFilter] = useState<'ALL' | 'PENDING' | 'ACCEPTED' | 'REVIEW_REQUESTED'>('ALL');
+  const [unfoldedJobIds, setUnfoldedJobIds] = useState<Record<string, boolean>>({});
   const [reviewModalJob, setReviewModalJob] = useState<TrimsChecklistRecord | null>(null);
   const [reviewNoteInput, setReviewNoteInput] = useState('');
+
+  const toggleUnfoldJob = (jobId: string) => {
+    setUnfoldedJobIds(prev => ({
+      ...prev,
+      [jobId]: !prev[jobId]
+    }));
+  };
 
   const filteredChecklistRequests = useMemo(() => {
     return checklists.filter(c => {
@@ -1036,7 +1047,7 @@ export default function TrimsStorePage() {
     }));
     const found = checklists.find(c => c.id === jobId);
     if (found) addRecentSearch(found.jobNo);
-    showNotification('success', `Checklist for Job ${found?.jobNo} accepted. Ready for physical receiving.`);
+    showNotification('success', `Checklist for Job ${found?.jobNo} accepted. Ready for physical order receiving.`);
   };
 
   const handleSendReviewRequest = () => {
@@ -1070,7 +1081,6 @@ export default function TrimsStorePage() {
     return checklists.find(c => c.jobNo === clean) || null;
   }, [checklists, receiveSearchJob]);
 
-  // Local draft of receiving quantities: { [itemId]: { receiveQty, qualityStatus, rackNo, shelfNo } }
   const [receiveFormState, setReceiveFormState] = useState<Record<string, { receiveQty: number; qualityStatus: QualityStatus; rackNo: string; shelfNo: string }>>({});
 
   useEffect(() => {
@@ -1148,7 +1158,7 @@ export default function TrimsStorePage() {
     }));
 
     if (hasFail) {
-      showNotification('danger', `⚠️ Inspection FAIL recorded for: ${failedItemsNames.join(', ')}. Automated rejection notification dispatched to Merchandiser ${selectedReceiveJob.merchandiser}.`);
+      showNotification('danger', `Inspection FAIL recorded for: ${failedItemsNames.join(', ')}. Automated rejection notification dispatched to Merchandiser ${selectedReceiveJob.merchandiser}.`);
     } else {
       showNotification('success', `Trims received successfully for Job ${selectedReceiveJob.jobNo}. Present stock updated.`);
     }
@@ -1174,7 +1184,6 @@ export default function TrimsStorePage() {
   const [modalQualityMode, setModalQualityMode] = useState(false);
   const [modalQualityDraft, setModalQualityDraft] = useState<Record<string, { status: QualityStatus; remarks: string }>>({});
 
-  // Sync draft when opening modal
   useEffect(() => {
     if (detailModalJob) {
       const draft: Record<string, { status: QualityStatus; remarks: string }> = {};
@@ -1191,7 +1200,6 @@ export default function TrimsStorePage() {
     }
   }, [detailModalJob]);
 
-  // Overall KPIs calculation
   const stockKpis = useMemo(() => {
     const totalJobs = checklists.length;
     const totalOrderQty = checklists.reduce((acc, j) => acc + j.orderQty, 0);
@@ -1229,10 +1237,8 @@ export default function TrimsStorePage() {
     };
   }, [checklists]);
 
-  // Filtered master stock list based on dropdowns AND active KPI card
   const filteredStockJobs = useMemo(() => {
     return checklists.filter(j => {
-      // 1. KPI Card Filter
       if (kpiCardFilter === 'HIGH_ORDER' && j.orderQty < 4000) return false;
       if (kpiCardFilter === 'RECEIVED') {
         const hasRecv = j.items.some(it => it.receivedQty > 0);
@@ -1258,7 +1264,6 @@ export default function TrimsStorePage() {
         if (j.checklistStatus === 'ACCEPTED') return false;
       }
 
-      // 2. Dropdown Filters
       if (stockBuyerFilter !== 'ALL' && j.buyer !== stockBuyerFilter) return false;
       if (stockMerchFilter !== 'ALL' && j.merchandiser !== stockMerchFilter) return false;
       if (stockTnaSlotFilter !== 'ALL' && j.tnaSlot !== stockTnaSlotFilter) return false;
@@ -1267,7 +1272,6 @@ export default function TrimsStorePage() {
       const dynStatus = computeJobStatus(j);
       if (stockStatusFilter !== 'ALL' && dynStatus !== stockStatusFilter) return false;
 
-      // 3. Search query
       if (stockSearchQuery.trim()) {
         const q = stockSearchQuery.replace(/#/g, '').toLowerCase();
         return j.jobNo.toLowerCase().includes(q) ||
@@ -1279,7 +1283,6 @@ export default function TrimsStorePage() {
     });
   }, [checklists, kpiCardFilter, stockBuyerFilter, stockMerchFilter, stockTnaSlotFilter, stockSewingFilter, stockStatusFilter, stockSearchQuery]);
 
-  // Handle saving Quality status from Modal
   const handleSaveModalQuality = () => {
     if (!detailModalJob) return;
 
@@ -1314,7 +1317,7 @@ export default function TrimsStorePage() {
     }));
 
     if (hasFail) {
-      showNotification('danger', `⚠️ Quality inspection FAIL recorded for Job ${detailModalJob.jobNo}: ${failedNames.join(', ')}. Dispatched supplier rejection alert.`);
+      showNotification('danger', `Quality inspection FAIL recorded for Job ${detailModalJob.jobNo}: ${failedNames.join(', ')}. Dispatched supplier rejection alert.`);
     } else {
       showNotification('success', `Quality audit saved for Job ${detailModalJob.jobNo}. All inspected items updated.`);
     }
@@ -1420,11 +1423,9 @@ export default function TrimsStorePage() {
     return job;
   }, [checklists, locationJobQuery]);
 
-  // Rack Customization State
   const [customRackBuyer, setCustomRackBuyer] = useState<string>(activeRack.dedicatedBuyer);
   const [customShelvesState, setCustomShelvesState] = useState<StoreShelf[]>(activeRack.shelves);
 
-  // Sync customizer when selected rack changes
   useEffect(() => {
     setCustomRackBuyer(activeRack.dedicatedBuyer);
     setCustomShelvesState(activeRack.shelves);
@@ -1506,7 +1507,6 @@ export default function TrimsStorePage() {
     return checklists.find(c => c.jobNo === clean) || null;
   }, [checklists, tvSearchJob]);
 
-  // Unique Filter Options
   const uniqueBuyers = useMemo(() => Array.from(new Set(checklists.map(c => c.buyer))), [checklists]);
   const uniqueMerchandisers = useMemo(() => Array.from(new Set(checklists.map(c => c.merchandiser))), [checklists]);
   const uniqueTnaSlots = useMemo(() => Array.from(new Set(checklists.map(c => c.tnaSlot))), [checklists]);
@@ -1544,7 +1544,7 @@ export default function TrimsStorePage() {
         </div>
       )}
 
-      {/* Main Sub-Navigation Bar (Numbered Buttons Kept as Requested) */}
+      {/* Main Sub-Navigation Bar (Numbered Buttons) */}
       <div
         style={{
           display: 'flex',
@@ -1720,7 +1720,7 @@ export default function TrimsStorePage() {
       </div>
 
       {/* ==================================================================== */}
-      {/* TAB 1: CHECKLIST REQUESTS                                            */}
+      {/* TAB 1: CHECKLIST REQUESTS WITH INLINE ACCORDION UNFOLD               */}
       {/* ==================================================================== */}
       {activeTab === 'CHECKLIST' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -1747,7 +1747,7 @@ export default function TrimsStorePage() {
               </h2>
               <p style={{ fontSize: '13px', color: '#CBD5E1', margin: 0 }}>
                 Store personnel inspects requirements against physical samples. Requirement numbers are read-only.
-                Store team can either <strong>Accept</strong> or request <strong>Need Review</strong> from Merchandiser.
+                Click <strong>View Items</strong> to unfold trims specification, then click <strong>Accept</strong> or request <strong>Need Review</strong>.
               </p>
             </div>
 
@@ -1803,103 +1803,264 @@ export default function TrimsStorePage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredChecklistRequests.map((job) => (
-                  <tr key={job.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                    <td style={{ padding: '10px 14px', fontWeight: 800, color: '#0F274E' }}>
-                      {job.jobNo}
-                    </td>
-                    <td style={{ padding: '10px 10px', fontWeight: 650, color: '#0284C7' }}>{job.buyer}</td>
-                    <td style={{ padding: '10px 10px', color: '#334155' }}>{job.styleNo}</td>
-                    <td style={{ padding: '10px 10px', color: '#475569', maxWidth: '240px' }}>{job.itemDescription}</td>
-                    <td style={{ padding: '10px 10px', fontWeight: 700 }}>{job.orderQty.toLocaleString()} pcs</td>
-                    <td style={{ padding: '10px 10px', color: '#475569' }}>{job.merchandiser}</td>
-                    <td style={{ padding: '10px 10px', fontWeight: 600, color: '#0284C7' }}>{job.tnaSlot}</td>
-                    <td style={{ padding: '10px 10px' }}>
-                      <span style={{ background: '#F1F5F9', padding: '2px 8px', borderRadius: '10px', fontWeight: 700, fontSize: '11px' }}>
-                        {job.items.length} Trims
-                      </span>
-                    </td>
-                    <td style={{ padding: '10px 10px' }}>
-                      <span
+                {filteredChecklistRequests.map((job) => {
+                  const isUnfolded = !!unfoldedJobIds[job.id];
+
+                  return (
+                    <React.Fragment key={job.id}>
+                      <tr
                         style={{
-                          fontSize: '11px',
-                          fontWeight: 700,
-                          padding: '3px 8px',
-                          borderRadius: '12px',
-                          background:
-                            job.checklistStatus === 'ACCEPTED' ? '#ECFDF5' :
-                            job.checklistStatus === 'REVIEW_REQUESTED' ? '#FEF2F2' : '#FFFBEB',
-                          color:
-                            job.checklistStatus === 'ACCEPTED' ? '#047857' :
-                            job.checklistStatus === 'REVIEW_REQUESTED' ? '#B91C1C' : '#B45309'
+                          borderBottom: isUnfolded ? 'none' : '1px solid #F1F5F9',
+                          background: isUnfolded ? '#F0F9FF' : 'transparent',
+                          transition: 'background 0.15s ease'
                         }}
                       >
-                        {job.checklistStatus === 'ACCEPTED' ? '✓ Accepted' :
-                         job.checklistStatus === 'REVIEW_REQUESTED' ? '⚠️ Review Needed' : '⏳ Pending Review'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '10px 14px', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                        <button
-                          type="button"
-                          onClick={() => setDetailModalJob(job)}
-                          style={{
-                            padding: '4px 8px',
-                            borderRadius: '4px',
-                            background: '#F1F5F9',
-                            border: '1px solid #CBD5E1',
-                            fontSize: '11px',
-                            fontWeight: 650,
-                            cursor: 'pointer'
-                          }}
-                        >
-                          View Items
-                        </button>
-
-                        {job.checklistStatus !== 'ACCEPTED' && (
-                          <>
+                        <td style={{ padding: '10px 14px', fontWeight: 800, color: '#0F274E' }}>
+                          {job.jobNo}
+                        </td>
+                        <td style={{ padding: '10px 10px', fontWeight: 650, color: '#0284C7' }}>{job.buyer}</td>
+                        <td style={{ padding: '10px 10px', color: '#334155' }}>{job.styleNo}</td>
+                        <td style={{ padding: '10px 10px', color: '#475569', maxWidth: '240px' }}>{job.itemDescription}</td>
+                        <td style={{ padding: '10px 10px', fontWeight: 700 }}>{job.orderQty.toLocaleString()} pcs</td>
+                        <td style={{ padding: '10px 10px', color: '#475569' }}>{job.merchandiser}</td>
+                        <td style={{ padding: '10px 10px', fontWeight: 600, color: '#0284C7' }}>{job.tnaSlot}</td>
+                        <td style={{ padding: '10px 10px' }}>
+                          <span style={{ background: '#F1F5F9', padding: '2px 8px', borderRadius: '10px', fontWeight: 700, fontSize: '11px' }}>
+                            {job.items.length} Trims
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px 10px' }}>
+                          <span
+                            style={{
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              padding: '3px 8px',
+                              borderRadius: '12px',
+                              background:
+                                job.checklistStatus === 'ACCEPTED' ? '#ECFDF5' :
+                                job.checklistStatus === 'REVIEW_REQUESTED' ? '#FEF2F2' : '#FFFBEB',
+                              color:
+                                job.checklistStatus === 'ACCEPTED' ? '#047857' :
+                                job.checklistStatus === 'REVIEW_REQUESTED' ? '#B91C1C' : '#B45309'
+                            }}
+                          >
+                            {job.checklistStatus === 'ACCEPTED' ? '✓ Accepted' :
+                             job.checklistStatus === 'REVIEW_REQUESTED' ? '⚠️ Review Needed' : '⏳ Pending Review'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                            {/* UNFOLD TOGGLE BUTTON */}
                             <button
                               type="button"
-                              onClick={() => {
-                                setReviewModalJob(job);
-                                setReviewNoteInput(job.storeReviewNote || '');
-                              }}
+                              onClick={() => toggleUnfoldJob(job.id)}
                               style={{
-                                padding: '4px 8px',
-                                borderRadius: '4px',
-                                background: '#FEF2F2',
-                                border: '1px solid #FECACA',
-                                color: '#DC2626',
-                                fontSize: '11px',
-                                fontWeight: 700,
-                                cursor: 'pointer'
-                              }}
-                            >
-                              Need Review
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleAcceptChecklist(job.id)}
-                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
                                 padding: '4px 10px',
                                 borderRadius: '4px',
-                                background: '#059669',
-                                border: 'none',
-                                color: '#FFFFFF',
+                                background: isUnfolded ? '#0F274E' : '#F1F5F9',
+                                color: isUnfolded ? '#FFFFFF' : '#0F274E',
+                                border: '1px solid #CBD5E1',
                                 fontSize: '11px',
-                                fontWeight: 700,
-                                cursor: 'pointer'
+                                fontWeight: 750,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease'
                               }}
                             >
-                              Accept
+                              {isUnfolded ? (
+                                <>
+                                  <span>Hide Items</span>
+                                  <ChevronUp size={13} />
+                                </>
+                              ) : (
+                                <>
+                                  <span>View Items</span>
+                                  <ChevronDown size={13} />
+                                </>
+                              )}
                             </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+
+                            {job.checklistStatus !== 'ACCEPTED' && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setReviewModalJob(job);
+                                    setReviewNoteInput(job.storeReviewNote || '');
+                                  }}
+                                  style={{
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                    background: '#FEF2F2',
+                                    border: '1px solid #FECACA',
+                                    color: '#DC2626',
+                                    fontSize: '11px',
+                                    fontWeight: 700,
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  Need Review
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleAcceptChecklist(job.id)}
+                                  style={{
+                                    padding: '4px 10px',
+                                    borderRadius: '4px',
+                                    background: '#059669',
+                                    border: 'none',
+                                    color: '#FFFFFF',
+                                    fontSize: '11px',
+                                    fontWeight: 700,
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  Accept
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+
+                      {/* INLINE ACCORDION UNFOLD SECTION */}
+                      {isUnfolded && (
+                        <tr style={{ background: '#F8FAFC', borderBottom: '2px solid #BAE6FD' }}>
+                          <td colSpan={10} style={{ padding: '16px 20px' }}>
+                            <div
+                              style={{
+                                background: '#FFFFFF',
+                                border: '1.5px solid #BAE6FD',
+                                borderRadius: '8px',
+                                padding: '16px',
+                                boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)'
+                              }}
+                            >
+                              {/* Unfold Header Strip */}
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  flexWrap: 'wrap',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  borderBottom: '1px solid #E2E8F0',
+                                  paddingBottom: '12px',
+                                  marginBottom: '12px'
+                                }}
+                              >
+                                <div>
+                                  <div style={{ fontSize: '11px', color: '#0284C7', fontWeight: 800, textTransform: 'uppercase' }}>
+                                    Trims Specification & Physical Swatch Checklist
+                                  </div>
+                                  <div style={{ fontSize: '16px', fontWeight: 800, color: '#0F274E', marginTop: '2px' }}>
+                                    Job {job.jobNo} ({job.buyer} - {job.styleNo}) • {job.items.length} Items Listed
+                                  </div>
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  {job.checklistStatus === 'ACCEPTED' ? (
+                                    <span style={{ fontSize: '12px', background: '#ECFDF5', color: '#047857', padding: '4px 12px', borderRadius: '12px', fontWeight: 750 }}>
+                                      ✓ Checklist Accepted on {job.acceptedAt} by {job.acceptedBy}
+                                    </span>
+                                  ) : (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setReviewModalJob(job);
+                                          setReviewNoteInput(job.storeReviewNote || '');
+                                        }}
+                                        style={{
+                                          padding: '6px 14px',
+                                          borderRadius: '6px',
+                                          background: '#FEF2F2',
+                                          border: '1px solid #DC2626',
+                                          color: '#DC2626',
+                                          fontSize: '12px',
+                                          fontWeight: 700,
+                                          cursor: 'pointer'
+                                        }}
+                                      >
+                                        Need Review by Merchandiser
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => handleAcceptChecklist(job.id)}
+                                        style={{
+                                          padding: '6px 18px',
+                                          borderRadius: '6px',
+                                          background: '#059669',
+                                          border: 'none',
+                                          color: '#FFFFFF',
+                                          fontSize: '12px',
+                                          fontWeight: 750,
+                                          cursor: 'pointer',
+                                          boxShadow: '0 2px 4px rgba(5,150,105,0.3)'
+                                        }}
+                                      >
+                                        Accept Checklist
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Unfolded Items Table */}
+                              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
+                                <thead>
+                                  <tr style={{ background: '#F1F5F9', color: '#334155', fontSize: '11px', textTransform: 'uppercase', borderBottom: '1.5px solid #CBD5E1' }}>
+                                    <th style={{ padding: '8px 10px' }}>Trims Item</th>
+                                    <th style={{ padding: '8px 8px' }}>Category</th>
+                                    <th style={{ padding: '8px 8px' }}>Unit</th>
+                                    <th style={{ padding: '8px 8px' }}>Consumption</th>
+                                    <th style={{ padding: '8px 8px' }}>Source</th>
+                                    <th style={{ padding: '8px 8px' }}>Required Qty</th>
+                                    <th style={{ padding: '8px 8px' }}>Extra %</th>
+                                    <th style={{ padding: '8px 8px' }}>Total Order Qty</th>
+                                    <th style={{ padding: '8px 8px' }}>Assigned Storage</th>
+                                    <th style={{ padding: '8px 10px' }}>Supplier</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {job.items.map((it) => (
+                                    <tr key={it.id} style={{ borderBottom: '1px solid #E2E8F0' }}>
+                                      <td style={{ padding: '8px 10px', fontWeight: 700, color: '#0F274E' }}>{it.itemName}</td>
+                                      <td style={{ padding: '8px 8px' }}>
+                                        <span style={{ fontSize: '10.5px', background: '#F1F5F9', padding: '2px 6px', borderRadius: '4px', fontWeight: 650 }}>
+                                          {it.category}
+                                        </span>
+                                      </td>
+                                      <td style={{ padding: '8px 8px', fontWeight: 650, color: '#0284C7' }}>{it.unit}</td>
+                                      <td style={{ padding: '8px 8px' }}>
+                                        <strong>{it.consumption}</strong> <span style={{ color: '#64748B', fontSize: '11px' }}>{it.consumptionUnit}</span>
+                                      </td>
+                                      <td style={{ padding: '8px 8px', fontSize: '11px', color: '#64748B' }}>
+                                        {it.consumptionSource === 'SAMPLE_IE' ? 'IE Team' : it.consumptionSource === 'TECHNICAL' ? 'Technical' : 'Merchandiser'}
+                                      </td>
+                                      <td style={{ padding: '8px 8px', color: '#475569' }}>{it.requiredQty.toLocaleString()}</td>
+                                      <td style={{ padding: '8px 8px', color: '#059669', fontWeight: 600 }}>+{it.wastagePct}%</td>
+                                      <td style={{ padding: '8px 8px', fontWeight: 750, color: '#0F274E' }}>{it.totalOrderQty.toLocaleString()}</td>
+                                      <td style={{ padding: '8px 8px' }}>
+                                        <span style={{ background: '#EFF6FF', color: '#1D4ED8', padding: '2px 6px', borderRadius: '4px', fontWeight: 700, fontSize: '11px' }}>
+                                          {it.rackNo} | {it.shelfNo}
+                                        </span>
+                                      </td>
+                                      <td style={{ padding: '8px 10px', color: '#475569' }}>{it.supplierName}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -2015,7 +2176,7 @@ export default function TrimsStorePage() {
                 />
               </div>
 
-              {/* Recent Searches (Clickable, No Hashtags) */}
+              {/* Recent Searches */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '12px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <History size={13} />
@@ -2341,7 +2502,7 @@ export default function TrimsStorePage() {
           >
             {/* Card 1: Total Jobs Tracked */}
             <div
-              onClick={() => setKpiCardFilter(prev => prev === 'ALL' ? 'ALL' : 'ALL')}
+              onClick={() => setKpiCardFilter('ALL')}
               style={{
                 background: kpiCardFilter === 'ALL' ? '#F0F9FF' : '#FFFFFF',
                 padding: '12px 14px',
@@ -2641,7 +2802,7 @@ export default function TrimsStorePage() {
                   <th style={{ padding: '9px 10px' }}>Style No</th>
                   <th style={{ padding: '9px 10px' }}>Order Qty</th>
                   <th style={{ padding: '9px 10px' }}>Present Status</th>
-                  <th style={{ padding: '9px 10px', background: '#78350F' }}>Item Due (আইটেম ডিউ)</th>
+                  <th style={{ padding: '9px 10px', background: '#78350F' }}>Items Due</th>
                   <th style={{ padding: '9px 10px' }}>Quality Audit</th>
                   <th style={{ padding: '9px 10px' }}>Merchandiser</th>
                   <th style={{ padding: '9px 10px' }}>T&A Slot</th>
@@ -2659,10 +2820,7 @@ export default function TrimsStorePage() {
                   const delivPct = totalRecv > 0 ? Math.round((totalDeliv / totalRecv) * 100) : 0;
                   const uniqueRacks = Array.from(new Set(j.items.map(it => it.rackNo))).filter(Boolean);
 
-                  // Calculate Due Items (receivedQty < totalOrderQty)
                   const dueItems = j.items.filter(it => it.receivedQty < it.totalOrderQty);
-                  
-                  // Quality count
                   const passCount = j.items.filter(it => it.qualityStatus === 'PASS').length;
                   const failCount = j.items.filter(it => it.qualityStatus === 'FAIL').length;
                   const pendingCount = j.items.filter(it => it.qualityStatus === 'PENDING').length;
@@ -2670,8 +2828,7 @@ export default function TrimsStorePage() {
                   return (
                     <tr
                       key={j.id}
-                      style={{ borderBottom: '1px solid #F1F5F9', cursor: 'pointer' }}
-                      onClick={() => setDetailModalJob(j)}
+                      style={{ borderBottom: '1px solid #F1F5F9' }}
                     >
                       <td style={{ padding: '9px 12px', fontWeight: 700, color: '#0284C7' }}>{j.buyer}</td>
                       <td style={{ padding: '9px 10px' }}>
@@ -2702,7 +2859,7 @@ export default function TrimsStorePage() {
                         </span>
                       </td>
 
-                      {/* NEW ITEM DUE COLUMN */}
+                      {/* ITEMS DUE COLUMN */}
                       <td style={{ padding: '9px 10px', maxWidth: '240px' }}>
                         {dueItems.length === 0 ? (
                           <span style={{ fontSize: '11px', background: '#ECFDF5', color: '#047857', padding: '2px 8px', borderRadius: '10px', fontWeight: 700 }}>
@@ -2763,10 +2920,7 @@ export default function TrimsStorePage() {
                       <td style={{ padding: '9px 12px' }}>
                         <button
                           type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDetailModalJob(j);
-                          }}
+                          onClick={() => setDetailModalJob(j)}
                           style={{
                             padding: '4px 10px',
                             borderRadius: '4px',
@@ -2788,7 +2942,7 @@ export default function TrimsStorePage() {
             </table>
           </div>
 
-          {/* Detailed Job Checklist & Quality Inspection Modal */}
+          {/* Detailed Job Checklist & Quality Inspection Modal (Only opened on explicit button click) */}
           {detailModalJob && (
             <div
               style={{
@@ -2854,7 +3008,7 @@ export default function TrimsStorePage() {
                         cursor: 'pointer'
                       }}
                     >
-                      {modalQualityMode ? 'Exit Quality Mode' : '✏️ Quality Inspection Mode'}
+                      {modalQualityMode ? 'Exit Quality Mode' : 'Quality Inspection Mode'}
                     </button>
 
                     <button
@@ -3358,7 +3512,7 @@ export default function TrimsStorePage() {
               <span>2. Job-wise Location Search</span>
             </button>
 
-            {/* 3RD SUB-TAB AS REQUESTED */}
+            {/* 3RD SUB-TAB: CUSTOMIZE RACK LAYOUT */}
             <button
               type="button"
               onClick={() => setLocationSubTab('CUSTOMIZE')}
@@ -3377,7 +3531,7 @@ export default function TrimsStorePage() {
               }}
             >
               <Sliders size={16} />
-              <span>3. Customize Rack Layout (র্যাক ও শেলফ কাস্টমাইজ)</span>
+              <span>3. Customize Rack Layout</span>
             </button>
           </div>
 
@@ -3722,7 +3876,6 @@ export default function TrimsStorePage() {
                           Shelf {shelf.shelfNo.toString().padStart(2, '0')}
                         </span>
                         
-                        {/* Dedicated Category Selector (e.g. switch from Label to Poly) */}
                         <select
                           value={shelf.assignedCategory}
                           onChange={e => {
@@ -3744,7 +3897,6 @@ export default function TrimsStorePage() {
                         </select>
                       </div>
 
-                      {/* Custom Description Input */}
                       <input
                         type="text"
                         value={shelf.itemSummary}
