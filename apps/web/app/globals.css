@@ -1189,3 +1189,124 @@ html[data-theme="dark"] .btn-ghost:hover {
   background: #1f304c !important;
   color: #ffffff !important;
 }
+
+
+/* ==========================================================================
+   ENTERPRISE ULTRA-SMOOTH DYNAMIC DASHBOARD ENTRANCE ANIMATION SUITE
+   - High-performance GPU accelerated (translate3d, scale3d, opacity)
+   - Staggered child reveals (0.04s - 0.65s settling within 1 second)
+   - Apple / Linear precision easing: cubic-bezier(0.16, 1, 0.3, 1)
+   ========================================================================== */
+
+@keyframes erpSlideUp {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0);
+  }
+  60% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes erpFadeScale {
+  0% {
+    opacity: 0;
+    transform: scale3d(0.96, 0.96, 1) translate3d(0, 12px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale3d(1, 1, 1) translate3d(0, 0, 0);
+  }
+}
+
+@keyframes erpSlideRight {
+  0% {
+    opacity: 0;
+    transform: translate3d(-20px, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes erpProgressFill {
+  0% {
+    width: 0%;
+  }
+  100% {
+    width: var(--target-width, 100%);
+  }
+}
+
+@keyframes erpPulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+  }
+  50% {
+    box-shadow: 0 0 16px 2px rgba(37, 99, 235, 0.18);
+  }
+}
+
+/* Base Page & Container Entrance */
+.erp-page-entrance {
+  animation: erpSlideUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+/* Sequential Staggering for Universal Child Elements */
+.erp-stagger-container > *:nth-child(1) { animation: erpSlideUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.03s both; }
+.erp-stagger-container > *:nth-child(2) { animation: erpSlideUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both; }
+.erp-stagger-container > *:nth-child(3) { animation: erpSlideUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.14s both; }
+.erp-stagger-container > *:nth-child(4) { animation: erpSlideUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both; }
+.erp-stagger-container > *:nth-child(5) { animation: erpSlideUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.26s both; }
+.erp-stagger-container > *:nth-child(6) { animation: erpSlideUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both; }
+.erp-stagger-container > *:nth-child(7) { animation: erpSlideUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both; }
+.erp-stagger-container > *:nth-child(8) { animation: erpSlideUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.44s both; }
+.erp-stagger-container > *:nth-child(9) { animation: erpSlideUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both; }
+.erp-stagger-container > *:nth-child(10) { animation: erpSlideUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.56s both; }
+.erp-stagger-container > *:nth-child(n+11) { animation: erpSlideUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.62s both; }
+
+/* Dashboard Grids, KPI Cards, and Panels across all 26 departments */
+.page-stack > *,
+.kpi-grid > *,
+.dashboard-hero,
+.metric-card,
+.compact-kpi-card,
+.erp-card-animated,
+.erp-chart-card {
+  animation: erpSlideUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+.kpi-grid > *:nth-child(1) { animation-delay: 0.04s; }
+.kpi-grid > *:nth-child(2) { animation-delay: 0.09s; }
+.kpi-grid > *:nth-child(3) { animation-delay: 0.14s; }
+.kpi-grid > *:nth-child(4) { animation-delay: 0.19s; }
+.kpi-grid > *:nth-child(5) { animation-delay: 0.24s; }
+.kpi-grid > *:nth-child(6) { animation-delay: 0.29s; }
+.kpi-grid > *:nth-child(7) { animation-delay: 0.34s; }
+.kpi-grid > *:nth-child(8) { animation-delay: 0.39s; }
+
+/* Micro-elevation on hover for dashboard cards and charts */
+.card, .panel, .metric-card, .erp-card-animated, .erp-chart-card {
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.card:hover, .panel:hover, .metric-card:hover, .erp-card-animated:hover, .erp-chart-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.07);
+}
+
+/* Smooth Table Row Transitions */
+tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+/* Interactive Chart Container Smooth Reveal */
+.recharts-responsive-container {
+  animation: erpFadeScale 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}

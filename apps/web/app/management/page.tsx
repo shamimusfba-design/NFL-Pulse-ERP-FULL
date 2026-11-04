@@ -11,6 +11,10 @@ import {
   Bar,
   LineChart,
   Line,
+  AreaChart,
+  Area,
+  ComposedChart,
+  ReferenceLine,
   XAxis,
   YAxis,
   Tooltip,
@@ -669,6 +673,103 @@ export default function ManagementDashboardPage() {
     return masterSubcontractFactories.filter(f => f.section === subcontractSectionTab);
   }, [masterSubcontractFactories, subcontractSectionTab]);
 
+  // Section 02/03 Dynamic Charts Data
+  const topBuyerQuotaChartData = useMemo(() => {
+    return teamQuotas.slice(0, 6).map(t => ({
+      brand: t.brand.length > 9 ? t.brand.slice(0, 8) + '..' : t.brand,
+      quotaK: Math.round((t.monthlySalesQuotaPcs || 0) / 1000),
+      confirmedK: Math.round((t.actualReceivedPcs || 0) / 1000),
+      achievePct: t.achievePct
+    }));
+  }, [teamQuotas]);
+
+  const topBuyerDeliveryChartData = useMemo(() => {
+    return buyerPerformance.slice(0, 6).map(b => ({
+      buyer: b.buyer.length > 9 ? b.buyer.slice(0, 8) + '..' : b.buyer,
+      onTimePct: b.onTimePct,
+      shippedK: Math.round((b.shippedQty || 0) / 1000),
+      pendingK: Math.round((b.pendingQty || 0) / 1000)
+    }));
+  }, [buyerPerformance]);
+
+  // Section 04 Category Cost Structure Stacked Chart Data
+  const categoryCostChartData = useMemo(() => {
+    return categoryCosting.slice(0, 5).map(c => {
+      const fabric = Number(c.fabricCostPc.toFixed(2));
+      const cm = Number(c.cmPc.toFixed(2));
+      const trims = Number(((c.trimsCostPc || 0.45) + (c.printCostPc || 0) + (c.embCostPc || 0)).toFixed(2));
+      const overhead = Number((c.avgFob * 0.08).toFixed(2));
+      const margin = Number(Math.max(0.20, c.avgFob - (fabric + cm + trims + overhead)).toFixed(2));
+      return {
+        category: c.category,
+        avgFob: c.avgFob,
+        fabricCostPc: fabric,
+        cmPc: cm,
+        trimsCostPc: trims,
+        overheadPc: overhead,
+        marginPc: margin
+      };
+    });
+  }, [categoryCosting]);
+
+  // Section 05 & 06 Material & Fabric Pipeline Flow
+  const materialPipelineChartData = useMemo(() => {
+    return [
+      { stage: 'Yarn Stock', volume: materialData.yarn.physical, fill: COLORS.teal },
+      { stage: 'Yarn Req', volume: materialData.yarn.requisition, fill: COLORS.amber },
+      { stage: 'Greige Stock', volume: materialData.greige.physical, fill: COLORS.blue },
+      { stage: 'Dye Allocated', volume: materialData.greige.allocated, fill: COLORS.purple },
+      { stage: 'Finish Stock', volume: materialData.finished.physical, fill: COLORS.cyan },
+      { stage: 'Daily Issue', volume: Number((materialData.finished.perDayDelivery * 5).toFixed(1)), fill: COLORS.green }
+    ];
+  }, [materialData]);
+
+  // Section 07 Department Output Run-Rate
+  const departmentRunRateChartData = useMemo(() => {
+    return [
+      { dept: 'Knitting', plan: 100, actual: 96.4 },
+      { dept: 'Dyeing', plan: 100, actual: 95.8 },
+      { dept: 'Cutting', plan: 100, actual: 96.6 },
+      { dept: 'Printing', plan: 100, actual: 96.0 },
+      { dept: 'Sewing', plan: 100, actual: 94.7 },
+      { dept: 'Finishing', plan: 100, actual: 95.8 }
+    ];
+  }, []);
+
+  // Section 07B Quality Checkpoints & DHU Curve
+  const qualityDhuChartData = useMemo(() => {
+    return [
+      { checkpoint: 'Sewing In-Line', dhuRate: 9.12, passRate: 90.88 },
+      { checkpoint: 'End-Line DHU', dhuRate: 3.41, passRate: 96.59 },
+      { checkpoint: 'End-Line OQL', dhuRate: 7.88, passRate: 92.12 },
+      { checkpoint: 'Pre-Final', dhuRate: 5.61, passRate: 94.39 },
+      { checkpoint: 'Final Audit', dhuRate: 6.63, passRate: 98.60 }
+    ];
+  }, []);
+
+  // Section 08A Dyeing RFT & Reprocess Pie Data
+  const dyeingRftPieData = useMemo(() => {
+    return [
+      { name: 'RFT First Pass', value: dyeingReprocessData.rftPct, color: COLORS.green },
+      { name: '1st Topping', value: dyeingReprocessData.toppingPct, color: COLORS.amber },
+      { name: 'Redyeing', value: dyeingReprocessData.redyeingPct, color: COLORS.red }
+    ];
+  }, [dyeingReprocessData]);
+
+  // Section 08B Subcontract Volume by Section
+  const subcontractSectionChartData = useMemo(() => {
+    const map = new Map<string, { section: string; planned: number; received: number }>();
+    ['Knitting', 'Dyeing', 'Printing', 'Embroidery'].forEach(s => map.set(s, { section: s, planned: 0, received: 0 }));
+    masterSubcontractFactories.forEach(f => {
+      const cur = map.get(f.section);
+      if (cur) {
+        cur.planned += Math.round(f.planned / 1000);
+        cur.received += Math.round(f.received / 1000);
+      }
+    });
+    return Array.from(map.values());
+  }, [masterSubcontractFactories]);
+
   // List of unique merchandisers
   const allMerchandisers = useMemo(() => Array.from(new Set(jobs.map(j => j.merchandiser).filter(Boolean))).sort(), [jobs]);
 
@@ -1114,6 +1215,45 @@ export default function ManagementDashboardPage() {
 
         </div>
 
+        {/* Section 02 & 03 Visual Performance Charts */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '8px', marginBottom: '16px' }}>
+          {/* Chart 2A: Quota vs Confirmed */}
+          <div className="erp-chart-card" style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', padding: '8px 10px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 800, color: COLORS.navy, marginBottom: '6px' }}>
+              Top Brands Sales Quota vs Confirmed Orders (1,000 pcs)
+            </div>
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={topBuyerQuotaChartData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                <XAxis dataKey="brand" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} unit="K" />
+                <Tooltip formatter={(val: any) => [`${val}K pcs`, '']} />
+                <Legend wrapperStyle={{ fontSize: '11.5px' }} />
+                <Bar dataKey="quotaK" fill="#94A3B8" name="Monthly Quota" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="confirmedK" fill={COLORS.blue} name="Confirmed Received" radius={[2, 2, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Chart 2B: Buyer On-Time Reliability */}
+          <div className="erp-chart-card" style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', padding: '8px 10px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 800, color: COLORS.navy, marginBottom: '6px' }}>
+              Buyer Delivery Reliability &amp; On-Time Performance (%)
+            </div>
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={topBuyerDeliveryChartData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                <XAxis dataKey="buyer" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} domain={[70, 100]} unit="%" />
+                <Tooltip formatter={(val: any) => [`${val}%`, 'On-Time Rate']} />
+                <Legend wrapperStyle={{ fontSize: '11.5px' }} />
+                <ReferenceLine y={95} stroke={COLORS.green} strokeDasharray="4 4" label={{ value: 'Target 95%', position: 'top', fill: COLORS.green, fontSize: 10 }} />
+                <Bar dataKey="onTimePct" fill={COLORS.green} name="On-Time Delivery %" radius={[2, 2, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
         {/* ========================================================================= */}
         {/* ROW 3: SIDE-BY-SIDE — Section 04 (Category Costing) & Cost Structure Visual */}
         {/* ========================================================================= */}
@@ -1167,41 +1307,26 @@ export default function ManagementDashboardPage() {
             </div>
           </div>
 
-          {/* RIGHT: Cost Breakdown Visual */}
-          <div style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', padding: '7px 9px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: COLORS.navy, marginBottom: '5px', display: 'flex', justifyContent: 'space-between' }}>
-                <span>Cost Component Share by Category</span>
-                <span style={{ fontSize: '12px', color: '#64748B' }}>FOB % Share</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                {categoryCosting.slice(0, 4).map((c, i) => {
-                  const fabPct = Math.round((c.fabricCostPc / c.avgFob) * 100);
-                  const cmPct = Math.round((c.cmPc / c.avgFob) * 100);
-                  const embPct = Math.round(((c.printCostPc + c.embCostPc + c.trimsCostPc) / c.avgFob) * 100);
-
-                  return (
-                    <div key={i} style={{ fontSize: '9px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-                        <span style={{ fontWeight: 700, color: COLORS.navy }}>{c.category} ({money(c.avgFob)})</span>
-                        <span style={{ color: COLORS.grey }}>Fabric {fabPct}% | CM {cmPct}% | Trims {embPct}%</span>
-                      </div>
-                      <div style={{ height: '6px', width: '100%', background: '#F1F5F9', borderRadius: '2px', overflow: 'hidden', display: 'flex' }}>
-                        <div style={{ width: `${fabPct}%`, background: COLORS.cyan }} title={`Fabric: ${fabPct}%`} />
-                        <div style={{ width: `${cmPct}%`, background: COLORS.green }} title={`CM: ${cmPct}%`} />
-                        <div style={{ width: `${embPct}%`, background: COLORS.amber }} title={`Embellishment/Trims: ${embPct}%`} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+          {/* RIGHT: Dynamic Cost Structure Stacked Chart */}
+          <div className="erp-chart-card" style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', padding: '7px 9px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 800, color: COLORS.navy, marginBottom: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>FOB Cost Component Structure ($/pc)</span>
+              <span style={{ fontSize: '11px', color: '#64748B' }}>By Category</span>
             </div>
-
-            <div style={{ marginTop: '6px', display: 'flex', gap: '8px', fontSize: '12px', color: '#64748B' }}>
-              <span><strong style={{ color: COLORS.cyan }}>■</strong> Fabric Cost</span>
-              <span><strong style={{ color: COLORS.green }}>■</strong> CM Earning</span>
-              <span><strong style={{ color: COLORS.amber }}>■</strong> Trims &amp; Print/Emb</span>
-            </div>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={categoryCostChartData} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" />
+                <XAxis type="number" tick={{ fontSize: 10 }} unit="$" />
+                <YAxis dataKey="category" type="category" tick={{ fontSize: 11, fontWeight: 700 }} width={70} />
+                <Tooltip formatter={(val: any) => [`${Number(val).toFixed(2)}`, '']} />
+                <Legend wrapperStyle={{ fontSize: '10.5px' }} />
+                <Bar dataKey="fabricCostPc" stackId="a" fill={COLORS.cyan} name="Fabric" />
+                <Bar dataKey="cmPc" stackId="a" fill={COLORS.green} name="CM Earning" />
+                <Bar dataKey="trimsCostPc" stackId="a" fill={COLORS.amber} name="Trims/Print/Emb" />
+                <Bar dataKey="overheadPc" stackId="a" fill="#64748B" name="Overhead" />
+                <Bar dataKey="marginPc" stackId="a" fill={COLORS.purple} name="Margin" radius={[0, 2, 2, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
 
         </div>
@@ -1301,6 +1426,23 @@ export default function ManagementDashboardPage() {
             </div>
           </div>
 
+        </div>
+
+        {/* Section 05 & 06 Visual Material Pipeline Flow */}
+        <div className="erp-chart-card" style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', padding: '8px 10px', marginBottom: '16px' }}>
+          <div style={{ fontSize: '13px', fontWeight: 800, color: COLORS.navy, marginBottom: '6px' }}>
+            Plant Material &amp; Fabric Inventory Pipeline Flow (Tons)
+          </div>
+          <ResponsiveContainer width="100%" height={230}>
+            <BarChart data={materialPipelineChartData}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+              <XAxis dataKey="stage" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }} unit="T" />
+              <Tooltip formatter={(val: any) => [`${val} Tons`, 'Volume']} />
+              <Legend wrapperStyle={{ fontSize: '11.5px' }} />
+              <Bar dataKey="volume" fill={COLORS.teal} name="Inventory & Flow Volume (Tons)" radius={[2, 2, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
 
         {/* ========================================================================= */}
@@ -1453,6 +1595,45 @@ export default function ManagementDashboardPage() {
 
         </div>
 
+        {/* Section 07 & 07B Visual Production Run-Rate & Quality Audit Charts */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '8px', marginBottom: '16px' }}>
+          {/* Chart 7A: Run-Rate */}
+          <div className="erp-chart-card" style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', padding: '8px 10px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 800, color: COLORS.navy, marginBottom: '6px' }}>
+              Department Production Run-Rate (% of Daily Target)
+            </div>
+            <ResponsiveContainer width="100%" height={230}>
+              <BarChart data={departmentRunRateChartData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                <XAxis dataKey="dept" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} domain={[80, 105]} unit="%" />
+                <Tooltip formatter={(val: any) => [`${val}%`, 'Achievement']} />
+                <Legend wrapperStyle={{ fontSize: '11.5px' }} />
+                <ReferenceLine y={100} stroke="#64748B" strokeDasharray="3 3" label={{ value: '100% Target', position: 'top', fill: '#64748B', fontSize: 10 }} />
+                <Bar dataKey="actual" fill={COLORS.blue} name="Daily Output Achieved %" radius={[2, 2, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Chart 7B: Quality Curve */}
+          <div className="erp-chart-card" style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', padding: '8px 10px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 800, color: COLORS.navy, marginBottom: '6px' }}>
+              Garment Floor Quality DHU Rate &amp; AQL Pass Curve (%)
+            </div>
+            <ResponsiveContainer width="100%" height={230}>
+              <ComposedChart data={qualityDhuChartData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                <XAxis dataKey="checkpoint" tick={{ fontSize: 10 }} />
+                <YAxis tick={{ fontSize: 11 }} unit="%" />
+                <Tooltip formatter={(val: any) => [`${val}%`, '']} />
+                <Legend wrapperStyle={{ fontSize: '11.5px' }} />
+                <Bar dataKey="dhuRate" fill={COLORS.amber} name="Defect / DHU %" radius={[2, 2, 0, 0]} />
+                <Line type="monotone" dataKey="passRate" stroke={COLORS.green} strokeWidth={2.5} name="Quality Pass %" />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
         {/* ========================================================================= */}
         {/* ROW 6: SIDE-BY-SIDE — Section 08A (Dyeing Reprocess) & Section 08B (Multi-Factory Subcontracts) */}
         {/* ========================================================================= */}
@@ -1491,7 +1672,32 @@ export default function ManagementDashboardPage() {
               </div>
             </div>
 
-            <div style={{ fontSize: '9px', color: '#475569', background: '#F8FAFC', padding: '4px 6px', borderRadius: '4px', display: 'flex', justifyContent: 'space-between' }}>
+            <div style={{ marginTop: '8px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 800, color: COLORS.navy, marginBottom: '4px' }}>
+                Right-First-Time (RFT) vs Reprocess Distribution
+              </div>
+              <ResponsiveContainer width="100%" height={170}>
+                <PieChart>
+                  <Pie
+                    data={dyeingRftPieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={36}
+                    outerRadius={58}
+                    paddingAngle={2}
+                    dataKey="value"
+                  >
+                    {dyeingRftPieData.map((entry, index) => (
+                      <Cell key={`cell-rft-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(val: any) => [`${val}%`, 'Share']} />
+                  <Legend wrapperStyle={{ fontSize: '10.5px' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div style={{ fontSize: '11px', color: '#475569', background: '#F8FAFC', padding: '4px 6px', borderRadius: '4px', display: 'flex', justifyContent: 'space-between' }}>
               <span>Average Vessel Load: <strong>{dyeingReprocessData.loadPct}%</strong></span>
               <span>Dyeing On-Time: <strong>72.5%</strong></span>
             </div>

@@ -839,7 +839,9 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
           </nav>
         )}
 
-        {children}
+        <div key={pathname} className="erp-page-entrance erp-stagger-container">
+          {children}
+        </div>
       </main>
     </div>
   );
