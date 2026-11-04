@@ -559,7 +559,7 @@ export default function PreOrderCostingWorkspace() {
                 Item-Wise Garment Cost Determination &amp; Quotation
               </h1>
               <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px', fontWeight: 500 }}>
-                আমাদের প্রত্যেকটি জিনিসের আলাদা নির্ধারিত কস্ট রেট, কনজাম্পশন ও অপচয় শতাংশ অনুযায়ী নিখুঁত FOB নির্ণয়
+                Precise FOB calculation based on itemized cost rates, consumption formulas, and allowable wastage percentages
               </div>
             </div>
           </div>
@@ -692,7 +692,7 @@ export default function PreOrderCostingWorkspace() {
                 boxShadow: '0 2px 4px rgba(37,99,235,0.25)'
               }}
             >
-              <span>✏️</span> Edit Costing (এডিট করুন)
+              <span>✏️</span> Edit Costing
             </button>
           )}
 
@@ -892,8 +892,8 @@ export default function PreOrderCostingWorkspace() {
               </span>
               <span style={{ fontSize: '11px', color: isEditing ? '#b45309' : '#64748b', fontWeight: 600 }}>
                 {isEditing
-                  ? 'মাউস স্ক্রলিংয়ে সংখ্যা পরিবর্তন বন্ধ রাখা হয়েছে। প্রয়োজন অনুযায়ী সংখ্যা টাইপ করে পরিবর্তন করুন।'
-                  : 'সংখ্যা ও কোয়ান্টিটি সম্পূর্ণ সুরক্ষিত। পরিবর্তন করতে চাইলে "✏️ Edit Costing" বাটনে চাপ দিন।'}
+                  ? 'Mouse scroll quantity changes are disabled. Type numbers directly to edit.'
+                  : 'Quantities and rates are securely locked. Click "✏️ Edit Costing" to make changes.'}
               </span>
             </div>
 
@@ -950,7 +950,7 @@ export default function PreOrderCostingWorkspace() {
                   gap: '4px'
                 }}
               >
-                <span>✏️</span> Edit Costing (এডিট করুন)
+                <span>✏️</span> Edit Costing
               </button>
             )}
           </div>
@@ -1219,7 +1219,7 @@ export default function PreOrderCostingWorkspace() {
             gap: '6px'
           }}
         >
-          <span>📋</span> Itemized Cost Breakdown (প্রত্যেক জিনিসের আলাদা কস্ট শিট)
+          <span>📋</span> Itemized Cost Breakdown (Item Cost Sheets)
           <span style={{ background: '#2563eb', color: '#ffffff', fontSize: '10px', padding: '1px 6px', borderRadius: '10px', fontWeight: 800 }}>
             {selectedSheet?.itemizedCosts?.length || 0}
           </span>
@@ -1373,7 +1373,7 @@ export default function PreOrderCostingWorkspace() {
                     boxShadow: '0 2px 4px rgba(37,99,235,0.25)'
                   }}
                 >
-                  <span>✏️</span> Edit Sheet (এডিট মোড চালু করুন)
+                  <span>✏️</span> Edit Sheet
                 </button>
               ) : (
                 <>
@@ -1448,7 +1448,7 @@ export default function PreOrderCostingWorkspace() {
                       cursor: 'pointer'
                     }}
                   >
-                    🔒 Lock View (সম্পন্ন)
+                    🔒 Lock View (Completed)
                   </button>
                 </>
               )}
@@ -1722,7 +1722,7 @@ export default function PreOrderCostingWorkspace() {
                               <button
                                 type="button"
                                 onClick={() => handleDuplicateItem(originalIndex)}
-                                title="Duplicate this item (রো কপি করুন)"
+                                title="Duplicate this item row"
                                 style={{
                                   background: '#eff6ff',
                                   color: '#1d4ed8',
@@ -1739,7 +1739,7 @@ export default function PreOrderCostingWorkspace() {
                               <button
                                 type="button"
                                 onClick={() => handleDeleteItem(originalIndex)}
-                                title="Remove this item (বাদ দিন)"
+                                title="Remove this item row"
                                 style={{
                                   background: '#fee2e2',
                                   color: '#dc2626',
@@ -1755,7 +1755,7 @@ export default function PreOrderCostingWorkspace() {
                               </button>
                             </div>
                           ) : (
-                            <span style={{ color: '#94a3b8', fontSize: '11px' }} title="এডিট মোড চালু থাকলে রো ডুপ্লিকেট বা ডিলিট করা যাবে">
+                            <span style={{ color: '#94a3b8', fontSize: '11px' }} title="Rows can be duplicated or deleted in Edit Mode">
                               🔒
                             </span>
                           )}
@@ -1802,7 +1802,7 @@ export default function PreOrderCostingWorkspace() {
                     cursor: 'pointer'
                   }}
                 >
-                  + Add Empty Row (সরাসরি টেবিলে নতুন আইটেম যোগ করুন)
+                  + Add Empty Row (Insert New Item Directly)
                 </button>
 
                 <button
@@ -1826,7 +1826,7 @@ export default function PreOrderCostingWorkspace() {
               {hasUnsavedChanges && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '11.5px', color: '#c2410c', fontWeight: 700 }}>
-                    ⚠️ Unsaved changes (লাইভ হিসাব আপডেট হচ্ছে)
+                    ⚠️ Unsaved changes (Live calculation updating)
                   </span>
                   <button
                     type="button"
@@ -1861,12 +1861,12 @@ export default function PreOrderCostingWorkspace() {
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                 <span style={{ fontSize: '12px', fontWeight: 800, color: '#0f172a', textTransform: 'uppercase' }}>
-                  ⚙️ Factory Overheads, Profit Margin &amp; Commission Rates {isEditing ? '(এডিটেবল মোড)' : '(সুরক্ষিত মোড)'}
+                  ⚙️ Factory Overheads, Profit Margin &amp; Commission Rates {isEditing ? '(Edit Mode)' : '(Protected Mode)'}
                 </span>
                 <span style={{ fontSize: '11px', color: isEditing ? '#b45309' : '#64748b', fontWeight: 600 }}>
                   {isEditing
-                    ? '✏️ স্ক্রলে অটো কোয়ান্টিটি চেঞ্জ বন্ধ রাখা হয়েছে। মান পরিবর্তন করলে FOB প্রাইজ রিক্যালকুলেট হবে।'
-                    : '🔒 মান লকড আছে। পরিবর্তন করতে চাইলে "Edit Costing" বাটনে চাপ দিন।'}
+                    ? '✏️ Mouse scroll auto-increment disabled. Modifying values recalculates FOB price.'
+                    : '🔒 Values are locked. Click "Edit Costing" to modify.'}
                 </span>
               </div>
 
@@ -2185,7 +2185,7 @@ export default function PreOrderCostingWorkspace() {
         }}>
           <div style={{ padding: '14px 20px', background: '#0f172a', color: '#ffffff', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
             <div>
-              <div style={{ fontSize: '15px', fontWeight: 900 }}>Northern Fashions Master Item Rates Catalog (স্ট্যান্ডার্ড আইটেম রেট কার্ড)</div>
+              <div style={{ fontSize: '15px', fontWeight: 900 }}>Northern Fashions Master Item Rates Catalog (Standard Item Rate Card)</div>
               <div style={{ fontSize: '11px', color: '#94a3b8' }}>
                 Official predefined standard unit rates for all yarn, fabrics, trims, embellishments, labor (CM), and packaging.
               </div>

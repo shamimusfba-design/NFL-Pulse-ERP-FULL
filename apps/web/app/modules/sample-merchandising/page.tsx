@@ -185,7 +185,7 @@ export default function SampleMerchandisingPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
             <div>
               <div className="panel-title">Sample Dashboard</div>
-              <div className="panel-sub">Sample Report থেকে Style, Colour, Sample Qty এবং বর্তমান Status-এর সারসংক্ষেপ।</div>
+              <div className="panel-sub">Executive summary of Style, Colour, Sample Qty, and current Status from Sample Report.</div>
             </div>
             <span className="status-pill neutral">Always visible</span>
           </div>
@@ -218,7 +218,7 @@ export default function SampleMerchandisingPage() {
         {activeView === 'ENTRY' ? (
           <section className="panel" style={{ padding: 18 }}>
             <div className="panel-head">
-              <div><div className="panel-title">Sample Order Entry & Sample Report</div><div className="panel-sub">একটি Row = একটি Style + Colour + Sample Type। এক Style-এর একাধিক Colour আলাদা Record হিসেবে Entry করুন।</div></div>
+              <div><div className="panel-title">Sample Order Entry & Sample Report</div><div className="panel-sub">One Row = One Style + Colour + Sample Type. Enter multiple colours of the same style as separate records.</div></div>
             </div>
             <form onSubmit={saveRecord} style={{ display: 'grid', gap: 14 }}>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -261,7 +261,7 @@ export default function SampleMerchandisingPage() {
           </section>
         ) : (
           <section className="panel" style={{ padding: 18 }}>
-            <div className="panel-head"><div><div className="panel-title">Sample Follow-up Register</div><div className="panel-sub">মূল Sample Report থেকে তৈরি; Date ও T&A তথ্য এখানে নেই।</div></div><span className="status-pill neutral">{filtered.length} records</span></div>
+            <div className="panel-head"><div><div className="panel-title">Sample Follow-up Register</div><div className="panel-sub">Compiled from master Sample Report; tracking sample records and approvals.</div></div><span className="status-pill neutral">{filtered.length} records</span></div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10, margin: '12px 0 16px' }}>
               <div className="form-field"><label>Search</label><input className="form-control" value={query} onChange={e => setQuery(e.target.value)} placeholder="Style / Buyer / Colour / Fabric" /></div>
               <div className="form-field"><label>Sample Type</label><select className="form-control" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}><option value="ALL">All Sample Types</option>{SAMPLE_TYPES.map(t => <option key={t}>{t}</option>)}</select></div>
