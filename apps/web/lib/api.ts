@@ -20,11 +20,20 @@ export async function api(path: string, init: RequestInit = {}) {
     }
   }
 
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    const details = Array.isArray(data.details) ? ` ${data.details.join(' ')}` : '';
-    throw new Error(`${data.message || data.error || `Request failed: ${res.status}`}${details}`);
+  const rawText = await res.text().catch(() => '');
+  let data: any = {};
+  if (rawText && rawText.trim().length > 0) {
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      data = { message: rawText };
+    }
   }
 
-  return res.json();
+  if (!res.ok) {
+    const details = Array.isArray(data?.details) ? ` ${data.details.join(' ')}` : '';
+    throw new Error(`${data?.message || data?.error || `Request failed: ${res.status}`}${details}`);
+  }
+
+  return data;
 }
