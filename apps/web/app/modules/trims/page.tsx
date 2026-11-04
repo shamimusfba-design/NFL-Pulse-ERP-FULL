@@ -35,14 +35,18 @@ import {
   Info,
   SlidersHorizontal,
   Tag,
-  Warehouse
+  Warehouse,
+  Edit3,
+  Sliders,
+  History,
+  X
 } from 'lucide-react';
 
 // ============================================================================
 // DATA STRUCTURES & TYPES
 // ============================================================================
 
-export type TrimsCategory = 'LABEL' | 'THREAD' | 'ELASTIC' | 'ZIPPER' | 'BUTTON' | 'TAPE' | 'PACKAGING' | 'OTHER';
+export type TrimsCategory = 'LABEL' | 'THREAD' | 'ELASTIC' | 'ZIPPER' | 'BUTTON' | 'TAPE' | 'PACKAGING' | 'POLY' | 'CARTON' | 'HANGTAG' | 'OTHER';
 export type TrimsUnit = 'PCS' | 'METER' | 'YARDS' | 'CM' | 'CONES' | 'GROSS' | 'ROLL';
 export type QualityStatus = 'PASS' | 'FAIL' | 'PENDING';
 export type ChecklistStatus = 'PENDING_REVIEW' | 'REVIEW_REQUESTED' | 'ACCEPTED';
@@ -84,14 +88,14 @@ export interface TrimsItem {
 
 export interface TrimsChecklistRecord {
   id: string;
-  jobNo: string;
+  jobNo: string; // e.g. "48002" (numeric only)
   buyer: string;
   styleNo: string;
   itemDescription: string;
   orderQty: number;
   merchandiser: string;
   shipmentDate: string;
-  tnaSlot: string; // e.g. "Jan 1 '26", "Jan 2 '26", "Feb 1 '26"
+  tnaSlot: string; // e.g. "Aug 2 '26"
   sewingLine: string;
   requestDate: string;
   checklistStatus: ChecklistStatus;
@@ -114,7 +118,7 @@ export interface StoreShelf {
 export interface StoreRack {
   rackId: string; // e.g. "R-01" to "R-40"
   rackNo: number; // 1 to 40
-  dedicatedBuyer: string; // ONLY, OVS, BS-ONS, BS-NMT, UTG, GENERAL
+  dedicatedBuyer: string; // ONLY, OVS, BS-ONS, BS-NMT, UTG, GENERAL, etc.
   zone: string;
   shelves: StoreShelf[];
 }
@@ -135,6 +139,36 @@ export interface SurplusTrimsRecord {
 }
 
 // ============================================================================
+// AUTOMATIC STATUS COMPUTER
+// ============================================================================
+
+export function computeJobStatus(job: TrimsChecklistRecord): PresentJobStatus {
+  if (job.checklistStatus !== 'ACCEPTED') return 'Checklist Due';
+  
+  const hasFail = job.items.some(it => it.qualityStatus === 'FAIL');
+  if (hasFail) return 'Inspection Fail';
+
+  const totalRecv = job.items.reduce((s, it) => s + (it.receivedQty || 0), 0);
+  const totalOrder = job.items.reduce((s, it) => s + (it.totalOrderQty || 0), 0);
+  const totalDeliv = job.items.reduce((s, it) => s + (it.deliveredQty || 0), 0);
+
+  if (totalRecv === 0) return 'Ordering Due';
+
+  const allItemsFullyReceived = job.items.every(it => it.receivedQty >= it.totalOrderQty);
+
+  if (allItemsFullyReceived && totalDeliv >= totalRecv && totalRecv > 0) {
+    return 'Delivery Done';
+  }
+  if (totalDeliv > 0) {
+    return 'Delivery Running';
+  }
+  if (allItemsFullyReceived) {
+    return 'Receive OK';
+  }
+  return 'Partial Received Due';
+}
+
+// ============================================================================
 // DEFAULT INITIAL RACKS (40 RACKS × 12 SHELVES)
 // ============================================================================
 
@@ -152,10 +186,10 @@ function generateDefaultRacks(): StoreRack[] {
   for (let i = 25; i <= 30; i++) buyerMap[i] = 'BS-NMT';
   // R-31 to R-36: UTG
   for (let i = 31; i <= 36; i++) buyerMap[i] = 'UTG';
-  // R-37 to R-40: GENERAL / REUSE
+  // R-37 to R-40: GENERAL
   for (let i = 37; i <= 40; i++) buyerMap[i] = 'GENERAL';
 
-  const catList: TrimsCategory[] = ['LABEL', 'THREAD', 'ELASTIC', 'ZIPPER', 'BUTTON', 'TAPE', 'PACKAGING', 'OTHER'];
+  const catList: TrimsCategory[] = ['LABEL', 'THREAD', 'ELASTIC', 'ZIPPER', 'BUTTON', 'TAPE', 'PACKAGING', 'POLY'];
 
   for (let r = 1; r <= 40; r++) {
     const rackId = `R-${r.toString().padStart(2, '0')}`;
@@ -221,7 +255,7 @@ function generateDefaultRacks(): StoreRack[] {
 }
 
 // ============================================================================
-// INITIAL CHECKLIST JOBS MASTER
+// INITIAL CHECKLIST JOBS MASTER (CLEAN NUMERIC JOB NUMBERS)
 // ============================================================================
 
 const INITIAL_CHECKLISTS: TrimsChecklistRecord[] = [
@@ -292,7 +326,7 @@ const INITIAL_CHECKLISTS: TrimsChecklistRecord[] = [
         consumption: 140.0,
         consumptionUnit: 'm/garment',
         consumptionSource: 'SAMPLE_IE',
-        requiredQty: 70, // 350,000m / 5,000m cone
+        requiredQty: 70,
         wastagePct: 5.0,
         totalOrderQty: 74,
         receivedQty: 74,
@@ -457,7 +491,7 @@ const INITIAL_CHECKLISTS: TrimsChecklistRecord[] = [
         consumption: 120.0,
         consumptionUnit: 'm/garment',
         consumptionSource: 'SAMPLE_IE',
-        requiredQty: 156, // 780,120m / 5000
+        requiredQty: 156,
         wastagePct: 5.0,
         totalOrderQty: 164,
         receivedQty: 164,
@@ -624,7 +658,7 @@ const INITIAL_CHECKLISTS: TrimsChecklistRecord[] = [
     sewingLine: 'Line 11',
     requestDate: '2026-09-22',
     checklistStatus: 'REVIEW_REQUESTED',
-    presentStatus: 'Checklist Due',
+    presentStatus: 'Inspection Fail',
     storeReviewNote: 'Zipper teeth color mismatch: Approved swatch shows Gunmetal tooth finish, but supplier sent Shiny Silver sample. Merchandiser please confirm.',
     reviewRequestedAt: '2026-09-24',
     items: [
@@ -859,7 +893,7 @@ export default function TrimsStorePage() {
   // Master State with LocalStorage Persistence
   const [checklists, setChecklists] = useState<TrimsChecklistRecord[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('nfl_trims_checklists_v2');
+      const saved = localStorage.getItem('nfl_trims_checklists_v3');
       if (saved) {
         try { return JSON.parse(saved); } catch {}
       }
@@ -869,7 +903,7 @@ export default function TrimsStorePage() {
 
   const [racks, setRacks] = useState<StoreRack[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('nfl_trims_racks_v2');
+      const saved = localStorage.getItem('nfl_trims_racks_v3');
       if (saved) {
         try { return JSON.parse(saved); } catch {}
       }
@@ -879,7 +913,7 @@ export default function TrimsStorePage() {
 
   const [surplusTrims, setSurplusTrims] = useState<SurplusTrimsRecord[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('nfl_trims_surplus_v2');
+      const saved = localStorage.getItem('nfl_trims_surplus_v3');
       if (saved) {
         try { return JSON.parse(saved); } catch {}
       }
@@ -887,22 +921,55 @@ export default function TrimsStorePage() {
     return INITIAL_SURPLUS_TRIMS;
   });
 
+  // Recent Searches state
+  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('nfl_trims_recent_searches_v2');
+      if (saved) {
+        try { return JSON.parse(saved); } catch {}
+      }
+    }
+    return ['48002', '46755', '48085'];
+  });
+
+  const addRecentSearch = (jobNo: string) => {
+    const clean = jobNo.replace(/#/g, '').trim();
+    if (!clean) return;
+    setRecentSearches(prev => {
+      const next = [clean, ...prev.filter(j => j !== clean)].slice(0, 5);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('nfl_trims_recent_searches_v2', JSON.stringify(next));
+      }
+      return next;
+    });
+  };
+
+  const removeRecentSearch = (jobNo: string) => {
+    setRecentSearches(prev => {
+      const next = prev.filter(j => j !== jobNo);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('nfl_trims_recent_searches_v2', JSON.stringify(next));
+      }
+      return next;
+    });
+  };
+
   // Save changes
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('nfl_trims_checklists_v2', JSON.stringify(checklists));
+      localStorage.setItem('nfl_trims_checklists_v3', JSON.stringify(checklists));
     }
   }, [checklists]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('nfl_trims_racks_v2', JSON.stringify(racks));
+      localStorage.setItem('nfl_trims_racks_v3', JSON.stringify(racks));
     }
   }, [racks]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('nfl_trims_surplus_v2', JSON.stringify(surplusTrims));
+      localStorage.setItem('nfl_trims_surplus_v3', JSON.stringify(surplusTrims));
     }
   }, [surplusTrims]);
 
@@ -954,33 +1021,42 @@ export default function TrimsStorePage() {
   const handleAcceptChecklist = (jobId: string) => {
     setChecklists(prev => prev.map(c => {
       if (c.id === jobId) {
-        return {
+        const updated = {
           ...c,
-          checklistStatus: 'ACCEPTED',
-          presentStatus: c.presentStatus === 'Checklist Due' ? 'Ordering Due' : c.presentStatus,
+          checklistStatus: 'ACCEPTED' as ChecklistStatus,
           acceptedAt: new Date().toISOString().split('T')[0],
           acceptedBy: 'Trims Store In-charge'
+        };
+        return {
+          ...updated,
+          presentStatus: computeJobStatus(updated)
         };
       }
       return c;
     }));
-    showNotification('success', `Checklist for Job #${checklists.find(c => c.id === jobId)?.jobNo} accepted. Ready for physical receiving.`);
+    const found = checklists.find(c => c.id === jobId);
+    if (found) addRecentSearch(found.jobNo);
+    showNotification('success', `Checklist for Job ${found?.jobNo} accepted. Ready for physical receiving.`);
   };
 
   const handleSendReviewRequest = () => {
     if (!reviewModalJob || !reviewNoteInput.trim()) return;
     setChecklists(prev => prev.map(c => {
       if (c.id === reviewModalJob.id) {
-        return {
+        const updated = {
           ...c,
-          checklistStatus: 'REVIEW_REQUESTED',
+          checklistStatus: 'REVIEW_REQUESTED' as ChecklistStatus,
           storeReviewNote: reviewNoteInput.trim(),
           reviewRequestedAt: new Date().toISOString().split('T')[0]
+        };
+        return {
+          ...updated,
+          presentStatus: computeJobStatus(updated)
         };
       }
       return c;
     }));
-    showNotification('danger', `Need Review sent to Merchandiser ${reviewModalJob.merchandiser} for Job #${reviewModalJob.jobNo}.`);
+    showNotification('danger', `Need Review sent to Merchandiser ${reviewModalJob.merchandiser} for Job ${reviewModalJob.jobNo}.`);
     setReviewModalJob(null);
     setReviewNoteInput('');
   };
@@ -990,15 +1066,16 @@ export default function TrimsStorePage() {
   // ==========================================================================
   const [receiveSearchJob, setReceiveSearchJob] = useState('48002');
   const selectedReceiveJob = useMemo(() => {
-    return checklists.find(c => c.jobNo === receiveSearchJob.trim()) || null;
+    const clean = receiveSearchJob.replace(/#/g, '').trim();
+    return checklists.find(c => c.jobNo === clean) || null;
   }, [checklists, receiveSearchJob]);
 
   // Local draft of receiving quantities: { [itemId]: { receiveQty, qualityStatus, rackNo, shelfNo } }
   const [receiveFormState, setReceiveFormState] = useState<Record<string, { receiveQty: number; qualityStatus: QualityStatus; rackNo: string; shelfNo: string }>>({});
 
-  // Sync draft whenever selectedReceiveJob changes
   useEffect(() => {
     if (selectedReceiveJob) {
+      addRecentSearch(selectedReceiveJob.jobNo);
       const initialMap: Record<string, any> = {};
       selectedReceiveJob.items.forEach(it => {
         initialMap[it.id] = {
@@ -1060,25 +1137,12 @@ export default function TrimsStorePage() {
           };
         });
 
-        // Determine new presentStatus
-        const allReceived = updatedItems.every(i => i.balanceQty === 0);
-        const anyReceived = updatedItems.some(i => i.receivedQty > 0);
-        const hasFailedStatus = updatedItems.some(i => i.qualityStatus === 'FAIL');
-
-        let nextStatus: PresentJobStatus = c.presentStatus;
-        if (hasFailedStatus) {
-          nextStatus = 'Inspection Fail';
-        } else if (allReceived) {
-          nextStatus = 'Receive OK';
-        } else if (anyReceived) {
-          nextStatus = 'Partial Received Due';
-        }
-
-        return {
+        const updatedJob: TrimsChecklistRecord = {
           ...c,
-          presentStatus: nextStatus,
-          items: updatedItems
+          items: updatedItems,
+          presentStatus: computeJobStatus({ ...c, items: updatedItems })
         };
+        return updatedJob;
       }
       return c;
     }));
@@ -1086,12 +1150,12 @@ export default function TrimsStorePage() {
     if (hasFail) {
       showNotification('danger', `⚠️ Inspection FAIL recorded for: ${failedItemsNames.join(', ')}. Automated rejection notification dispatched to Merchandiser ${selectedReceiveJob.merchandiser}.`);
     } else {
-      showNotification('success', `Trims received successfully for Job #${selectedReceiveJob.jobNo}. Present stock updated.`);
+      showNotification('success', `Trims received successfully for Job ${selectedReceiveJob.jobNo}. Present stock updated.`);
     }
   };
 
   // ==========================================================================
-  // TAB 3: PRESENT STOCK STATE, FILTERS & DETAIL MODAL
+  // TAB 3: PRESENT STOCK STATE, KPI CARD FILTERS & QUALITY INSPECTION MODAL
   // ==========================================================================
   const [stockBuyerFilter, setStockBuyerFilter] = useState('ALL');
   const [stockMerchFilter, setStockMerchFilter] = useState('ALL');
@@ -1099,29 +1163,35 @@ export default function TrimsStorePage() {
   const [stockSewingFilter, setStockSewingFilter] = useState('ALL');
   const [stockStatusFilter, setStockStatusFilter] = useState<string>('ALL');
   const [stockSearchQuery, setStockSearchQuery] = useState('');
+  
+  // Interactive KPI Card Filter State
+  const [kpiCardFilter, setKpiCardFilter] = useState<
+    'ALL' | 'HIGH_ORDER' | 'RECEIVED' | 'QUALITY_PASS' | 'QUALITY_FAIL' | 'DELIVERED' | 'PARTIAL' | 'CHECKLIST_PENDING'
+  >('ALL');
+
   const [detailModalJob, setDetailModalJob] = useState<TrimsChecklistRecord | null>(null);
   const [detailModalFullscreen, setDetailModalFullscreen] = useState(false);
+  const [modalQualityMode, setModalQualityMode] = useState(false);
+  const [modalQualityDraft, setModalQualityDraft] = useState<Record<string, { status: QualityStatus; remarks: string }>>({});
 
-  // Filtered master stock list
-  const filteredStockJobs = useMemo(() => {
-    return checklists.filter(j => {
-      if (stockBuyerFilter !== 'ALL' && j.buyer !== stockBuyerFilter) return false;
-      if (stockMerchFilter !== 'ALL' && j.merchandiser !== stockMerchFilter) return false;
-      if (stockTnaSlotFilter !== 'ALL' && j.tnaSlot !== stockTnaSlotFilter) return false;
-      if (stockSewingFilter !== 'ALL' && !j.sewingLine.includes(stockSewingFilter)) return false;
-      if (stockStatusFilter !== 'ALL' && j.presentStatus !== stockStatusFilter) return false;
-      if (stockSearchQuery.trim()) {
-        const q = stockSearchQuery.toLowerCase();
-        return j.jobNo.toLowerCase().includes(q) ||
-               j.styleNo.toLowerCase().includes(q) ||
-               j.buyer.toLowerCase().includes(q) ||
-               j.merchandiser.toLowerCase().includes(q);
-      }
-      return true;
-    });
-  }, [checklists, stockBuyerFilter, stockMerchFilter, stockTnaSlotFilter, stockSewingFilter, stockStatusFilter, stockSearchQuery]);
+  // Sync draft when opening modal
+  useEffect(() => {
+    if (detailModalJob) {
+      const draft: Record<string, { status: QualityStatus; remarks: string }> = {};
+      detailModalJob.items.forEach(it => {
+        draft[it.id] = {
+          status: it.qualityStatus || 'PENDING',
+          remarks: it.failRemarks || ''
+        };
+      });
+      setModalQualityDraft(draft);
+    } else {
+      setModalQualityDraft({});
+      setModalQualityMode(false);
+    }
+  }, [detailModalJob]);
 
-  // Overall KPIs
+  // Overall KPIs calculation
   const stockKpis = useMemo(() => {
     const totalJobs = checklists.length;
     const totalOrderQty = checklists.reduce((acc, j) => acc + j.orderQty, 0);
@@ -1134,7 +1204,8 @@ export default function TrimsStorePage() {
     let partialReceivedJobsCount = 0;
 
     checklists.forEach(j => {
-      if (j.presentStatus === 'Partial Received Due') partialReceivedJobsCount++;
+      const status = computeJobStatus(j);
+      if (status === 'Partial Received Due') partialReceivedJobsCount++;
       j.items.forEach(it => {
         totalRequiredItems += it.totalOrderQty;
         totalReceivedItems += it.receivedQty;
@@ -1158,22 +1229,114 @@ export default function TrimsStorePage() {
     };
   }, [checklists]);
 
+  // Filtered master stock list based on dropdowns AND active KPI card
+  const filteredStockJobs = useMemo(() => {
+    return checklists.filter(j => {
+      // 1. KPI Card Filter
+      if (kpiCardFilter === 'HIGH_ORDER' && j.orderQty < 4000) return false;
+      if (kpiCardFilter === 'RECEIVED') {
+        const hasRecv = j.items.some(it => it.receivedQty > 0);
+        if (!hasRecv) return false;
+      }
+      if (kpiCardFilter === 'QUALITY_PASS') {
+        const allPass = j.items.every(it => it.qualityStatus === 'PASS');
+        if (!allPass) return false;
+      }
+      if (kpiCardFilter === 'QUALITY_FAIL') {
+        const hasFail = j.items.some(it => it.qualityStatus === 'FAIL');
+        if (!hasFail) return false;
+      }
+      if (kpiCardFilter === 'DELIVERED') {
+        const hasDeliv = j.items.some(it => it.deliveredQty > 0);
+        if (!hasDeliv) return false;
+      }
+      if (kpiCardFilter === 'PARTIAL') {
+        const st = computeJobStatus(j);
+        if (st !== 'Partial Received Due') return false;
+      }
+      if (kpiCardFilter === 'CHECKLIST_PENDING') {
+        if (j.checklistStatus === 'ACCEPTED') return false;
+      }
+
+      // 2. Dropdown Filters
+      if (stockBuyerFilter !== 'ALL' && j.buyer !== stockBuyerFilter) return false;
+      if (stockMerchFilter !== 'ALL' && j.merchandiser !== stockMerchFilter) return false;
+      if (stockTnaSlotFilter !== 'ALL' && j.tnaSlot !== stockTnaSlotFilter) return false;
+      if (stockSewingFilter !== 'ALL' && !j.sewingLine.includes(stockSewingFilter)) return false;
+      
+      const dynStatus = computeJobStatus(j);
+      if (stockStatusFilter !== 'ALL' && dynStatus !== stockStatusFilter) return false;
+
+      // 3. Search query
+      if (stockSearchQuery.trim()) {
+        const q = stockSearchQuery.replace(/#/g, '').toLowerCase();
+        return j.jobNo.toLowerCase().includes(q) ||
+               j.styleNo.toLowerCase().includes(q) ||
+               j.buyer.toLowerCase().includes(q) ||
+               j.merchandiser.toLowerCase().includes(q);
+      }
+      return true;
+    });
+  }, [checklists, kpiCardFilter, stockBuyerFilter, stockMerchFilter, stockTnaSlotFilter, stockSewingFilter, stockStatusFilter, stockSearchQuery]);
+
+  // Handle saving Quality status from Modal
+  const handleSaveModalQuality = () => {
+    if (!detailModalJob) return;
+
+    let hasFail = false;
+    let failedNames: string[] = [];
+
+    setChecklists(prev => prev.map(c => {
+      if (c.id === detailModalJob.id) {
+        const updatedItems = c.items.map(it => {
+          const entry = modalQualityDraft[it.id];
+          if (!entry) return it;
+          if (entry.status === 'FAIL') {
+            hasFail = true;
+            failedNames.push(it.itemName);
+          }
+          return {
+            ...it,
+            qualityStatus: entry.status,
+            failRemarks: entry.remarks
+          };
+        });
+
+        const updatedJob: TrimsChecklistRecord = {
+          ...c,
+          items: updatedItems,
+          presentStatus: computeJobStatus({ ...c, items: updatedItems })
+        };
+        setDetailModalJob(updatedJob);
+        return updatedJob;
+      }
+      return c;
+    }));
+
+    if (hasFail) {
+      showNotification('danger', `⚠️ Quality inspection FAIL recorded for Job ${detailModalJob.jobNo}: ${failedNames.join(', ')}. Dispatched supplier rejection alert.`);
+    } else {
+      showNotification('success', `Quality audit saved for Job ${detailModalJob.jobNo}. All inspected items updated.`);
+    }
+    setModalQualityMode(false);
+  };
+
   // ==========================================================================
   // TAB 4: ORDER DELIVERY STATE & ACTIONS
   // ==========================================================================
   const [deliverySearchJob, setDeliverySearchJob] = useState('48002');
   const selectedDeliveryJob = useMemo(() => {
-    return checklists.find(c => c.jobNo === deliverySearchJob.trim()) || null;
+    const clean = deliverySearchJob.replace(/#/g, '').trim();
+    return checklists.find(c => c.jobNo === clean) || null;
   }, [checklists, deliverySearchJob]);
 
-  // Selected items checkboxes and issue qty
   const [deliveryCheckedMap, setDeliveryCheckedMap] = useState<Record<string, boolean>>({});
   const [deliveryQtyMap, setDeliveryQtyMap] = useState<Record<string, number>>({});
   const [deliveryGatePassIssued, setDeliveryGatePassIssued] = useState<string | null>(null);
 
-  // Sync delivery maps when selected delivery job changes
   useEffect(() => {
     if (selectedDeliveryJob) {
+      addRecentSearch(selectedDeliveryJob.jobNo);
       const checked: Record<string, boolean> = {};
       const qtys: Record<string, number> = {};
       selectedDeliveryJob.items.forEach(it => {
@@ -1224,34 +1387,25 @@ export default function TrimsStorePage() {
           };
         });
 
-        const allDelivered = updatedItems.every(i => i.receivedQty > 0 && i.deliveredQty >= i.receivedQty);
-        const anyDelivered = updatedItems.some(i => i.deliveredQty > 0);
-
-        let nextStatus: PresentJobStatus = c.presentStatus;
-        if (allDelivered) {
-          nextStatus = 'Delivery Done';
-        } else if (anyDelivered) {
-          nextStatus = 'Delivery Running';
-        }
-
-        return {
+        const updatedJob: TrimsChecklistRecord = {
           ...c,
-          presentStatus: nextStatus,
-          items: updatedItems
+          items: updatedItems,
+          presentStatus: computeJobStatus({ ...c, items: updatedItems })
         };
+        return updatedJob;
       }
       return c;
     }));
 
     const gpNumber = `GP-TRIM-${selectedDeliveryJob.jobNo}-${Math.floor(1000 + Math.random() * 9000)}`;
     setDeliveryGatePassIssued(gpNumber);
-    showNotification('success', `Issued Gate Pass ${gpNumber} for Job #${selectedDeliveryJob.jobNo} (${itemsIssuedCount} items dispatched to ${selectedDeliveryJob.sewingLine}).`);
+    showNotification('success', `Issued Gate Pass ${gpNumber} for Job ${selectedDeliveryJob.jobNo} (${itemsIssuedCount} items dispatched to ${selectedDeliveryJob.sewingLine}).`);
   };
 
   // ==========================================================================
-  // TAB 5: LOCATION TRACKING STATE & ACTIONS
+  // TAB 5: LOCATION TRACKING STATE (3 SUB-TABS: LAYOUT, JOB_SEARCH, CUSTOMIZE)
   // ==========================================================================
-  const [locationSubTab, setLocationSubTab] = useState<'LAYOUT' | 'JOB_SEARCH'>('LAYOUT');
+  const [locationSubTab, setLocationSubTab] = useState<'LAYOUT' | 'JOB_SEARCH' | 'CUSTOMIZE'>('LAYOUT');
   const [selectedRackId, setSelectedRackId] = useState<string>('R-01');
   const [locationJobQuery, setLocationJobQuery] = useState('48002');
 
@@ -1260,10 +1414,46 @@ export default function TrimsStorePage() {
   }, [racks, selectedRackId]);
 
   const searchedJobLocations = useMemo(() => {
-    const job = checklists.find(c => c.jobNo === locationJobQuery.trim());
+    const clean = locationJobQuery.replace(/#/g, '').trim();
+    const job = checklists.find(c => c.jobNo === clean);
     if (!job) return null;
     return job;
   }, [checklists, locationJobQuery]);
+
+  // Rack Customization State
+  const [customRackBuyer, setCustomRackBuyer] = useState<string>(activeRack.dedicatedBuyer);
+  const [customShelvesState, setCustomShelvesState] = useState<StoreShelf[]>(activeRack.shelves);
+
+  // Sync customizer when selected rack changes
+  useEffect(() => {
+    setCustomRackBuyer(activeRack.dedicatedBuyer);
+    setCustomShelvesState(activeRack.shelves);
+  }, [activeRack]);
+
+  const handleSaveRackLayout = () => {
+    setRacks(prev => prev.map(r => {
+      if (r.rackId === activeRack.rackId) {
+        return {
+          ...r,
+          dedicatedBuyer: customRackBuyer,
+          shelves: customShelvesState
+        };
+      }
+      return r;
+    }));
+    showNotification('success', `Layout configuration for ${activeRack.rackId} saved successfully. Buyer: ${customRackBuyer}.`);
+  };
+
+  const handleResetRackToDefault = () => {
+    const defaults = generateDefaultRacks();
+    const match = defaults.find(d => d.rackId === activeRack.rackId);
+    if (match) {
+      setCustomRackBuyer(match.dedicatedBuyer);
+      setCustomShelvesState(match.shelves);
+      setRacks(prev => prev.map(r => r.rackId === match.rackId ? match : r));
+      showNotification('info', `Reset ${activeRack.rackId} to default layout.`);
+    }
+  };
 
   // ==========================================================================
   // TAB 6: SURPLUS TRIMS FOR REUSE ACTIONS
@@ -1298,7 +1488,7 @@ export default function TrimsStorePage() {
       return s;
     }).filter(s => s.availableQty > 0));
 
-    showNotification('success', `Successfully allocated ${allocateQty} ${allocateModalItem.unit} of ${allocateModalItem.itemName} to Job #${allocateTargetJob.trim()} from surplus stock.`);
+    showNotification('success', `Successfully allocated ${allocateQty} ${allocateModalItem.unit} of ${allocateModalItem.itemName} to Job ${allocateTargetJob.replace(/#/g,'').trim()} from surplus stock.`);
     setAllocateModalItem(null);
     setAllocateTargetJob('');
     setAllocateQty(0);
@@ -1307,11 +1497,13 @@ export default function TrimsStorePage() {
   // ==========================================================================
   // TAB 7: STORE TV DISPLAY STATE
   // ==========================================================================
-  const [tvSearchJob, setTvSearchJob] = useState('48002');
+  const [tvSearchJob, setTvSearchJob] = useState('');
   const [tvViewMode, setTvViewMode] = useState<'JOB_FINDER' | 'LAYOUT_MAP'>('JOB_FINDER');
 
   const tvSelectedJob = useMemo(() => {
-    return checklists.find(c => c.jobNo === tvSearchJob.trim()) || null;
+    const clean = tvSearchJob.replace(/#/g, '').trim();
+    if (!clean) return null;
+    return checklists.find(c => c.jobNo === clean) || null;
   }, [checklists, tvSearchJob]);
 
   // Unique Filter Options
@@ -1334,12 +1526,12 @@ export default function TrimsStorePage() {
             zIndex: 9999,
             padding: '12px 20px',
             borderRadius: '8px',
-            boxShadow: '0 10px 25px -5px rgba(0,0,0,0.2)',
+            boxShadow: '0 10px 25px -5px rgba(0,0,0,0.25)',
             display: 'flex',
             alignItems: 'center',
             gap: '10px',
             fontSize: '13px',
-            fontWeight: 600,
+            fontWeight: 650,
             background: notification.type === 'success' ? '#065F46' : notification.type === 'danger' ? '#991B1B' : '#1E40AF',
             color: '#FFFFFF',
             border: '1px solid rgba(255,255,255,0.2)'
@@ -1352,7 +1544,7 @@ export default function TrimsStorePage() {
         </div>
       )}
 
-      {/* Main Sub-Navigation Bar */}
+      {/* Main Sub-Navigation Bar (Numbered Buttons Kept as Requested) */}
       <div
         style={{
           display: 'flex',
@@ -1523,7 +1715,7 @@ export default function TrimsStorePage() {
           }}
         >
           <Tv size={16} color={activeTab === 'TV' ? '#071F42' : '#FFFFFF'} />
-          <span>📺 Store TV Display</span>
+          <span>Store TV Display</span>
         </button>
       </div>
 
@@ -1548,208 +1740,171 @@ export default function TrimsStorePage() {
           >
             <div>
               <div style={{ fontSize: '12px', color: '#93C5FD', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Merchandising & Planning Integration Desk
+                Merchandising Handover Verification
               </div>
               <h2 style={{ fontSize: '20px', fontWeight: 800, margin: '4px 0', color: '#FFFFFF' }}>
-                Trims Checklist Requests & Verification
+                Trims Checklist Requests & Physical Matching
               </h2>
-              <p style={{ fontSize: '13px', color: '#CBD5E1', margin: 0, maxWidth: '800px' }}>
-                Verify incoming trims requisitions against physical garment samples. Store cannot alter requirement numbers;
-                discrepancies trigger <strong>Need Review by Merchandiser</strong>, or <strong>Accept</strong> to release to Order Receive.
+              <p style={{ fontSize: '13px', color: '#CBD5E1', margin: 0 }}>
+                Store personnel inspects requirements against physical samples. Requirement numbers are read-only.
+                Store team can either <strong>Accept</strong> or request <strong>Need Review</strong> from Merchandiser.
               </p>
             </div>
 
-            {/* Filter Pills */}
-            <div style={{ display: 'flex', gap: '6px' }}>
-              {(['ALL', 'PENDING', 'ACCEPTED', 'REVIEW_REQUESTED'] as const).map(f => (
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {(['ALL', 'PENDING', 'ACCEPTED', 'REVIEW_REQUESTED'] as const).map(tabKey => (
                 <button
-                  key={f}
+                  key={tabKey}
                   type="button"
-                  onClick={() => setChecklistFilter(f)}
+                  onClick={() => setChecklistFilter(tabKey)}
                   style={{
                     padding: '6px 12px',
                     borderRadius: '6px',
                     fontSize: '12px',
                     fontWeight: 700,
                     cursor: 'pointer',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    background: checklistFilter === f ? '#38BDF8' : 'rgba(255,255,255,0.1)',
-                    color: checklistFilter === f ? '#0F274E' : '#FFFFFF'
+                    border: checklistFilter === tabKey ? '1px solid #38BDF8' : '1px solid rgba(255,255,255,0.2)',
+                    background: checklistFilter === tabKey ? '#38BDF8' : 'rgba(255,255,255,0.1)',
+                    color: checklistFilter === tabKey ? '#0F274E' : '#FFFFFF'
                   }}
                 >
-                  {f === 'ALL' && 'All Requests'}
-                  {f === 'PENDING' && 'Pending Verification'}
-                  {f === 'ACCEPTED' && 'Accepted'}
-                  {f === 'REVIEW_REQUESTED' && 'Review Flagged'}
+                  {tabKey === 'ALL' && 'All Checklists'}
+                  {tabKey === 'PENDING' && 'Pending Review'}
+                  {tabKey === 'ACCEPTED' && 'Accepted'}
+                  {tabKey === 'REVIEW_REQUESTED' && 'Review Requested'}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Checklist Cards List */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {filteredChecklistRequests.map(chk => (
-              <div
-                key={chk.id}
-                style={{
-                  background: 'var(--card-bg, #ffffff)',
-                  border: chk.checklistStatus === 'REVIEW_REQUESTED' ? '1.5px solid #EF4444' : '1px solid var(--border, #E2E8F0)',
-                  borderRadius: '8px',
-                  padding: '16px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-                }}
-              >
-                <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 800, padding: '2px 8px', borderRadius: '4px', background: '#0F274E', color: '#FFFFFF' }}>
-                        JOB #{chk.jobNo}
+          {/* Checklist Requests Master Table */}
+          <div
+            style={{
+              background: 'var(--card-bg, #ffffff)',
+              border: '1px solid var(--border, #E2E8F0)',
+              borderRadius: '8px',
+              overflowX: 'auto',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+            }}
+          >
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ background: '#0F274E', color: '#FFFFFF', fontSize: '11px', textTransform: 'uppercase' }}>
+                  <th style={{ padding: '10px 14px' }}>Job No</th>
+                  <th style={{ padding: '10px 10px' }}>Buyer</th>
+                  <th style={{ padding: '10px 10px' }}>Style No</th>
+                  <th style={{ padding: '10px 10px' }}>Item Description</th>
+                  <th style={{ padding: '10px 10px' }}>Order Qty</th>
+                  <th style={{ padding: '10px 10px' }}>Merchandiser</th>
+                  <th style={{ padding: '10px 10px' }}>T&A Slot</th>
+                  <th style={{ padding: '10px 10px' }}>Items Count</th>
+                  <th style={{ padding: '10px 10px' }}>Checklist Status</th>
+                  <th style={{ padding: '10px 14px', textAlign: 'center' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredChecklistRequests.map((job) => (
+                  <tr key={job.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                    <td style={{ padding: '10px 14px', fontWeight: 800, color: '#0F274E' }}>
+                      {job.jobNo}
+                    </td>
+                    <td style={{ padding: '10px 10px', fontWeight: 650, color: '#0284C7' }}>{job.buyer}</td>
+                    <td style={{ padding: '10px 10px', color: '#334155' }}>{job.styleNo}</td>
+                    <td style={{ padding: '10px 10px', color: '#475569', maxWidth: '240px' }}>{job.itemDescription}</td>
+                    <td style={{ padding: '10px 10px', fontWeight: 700 }}>{job.orderQty.toLocaleString()} pcs</td>
+                    <td style={{ padding: '10px 10px', color: '#475569' }}>{job.merchandiser}</td>
+                    <td style={{ padding: '10px 10px', fontWeight: 600, color: '#0284C7' }}>{job.tnaSlot}</td>
+                    <td style={{ padding: '10px 10px' }}>
+                      <span style={{ background: '#F1F5F9', padding: '2px 8px', borderRadius: '10px', fontWeight: 700, fontSize: '11px' }}>
+                        {job.items.length} Trims
                       </span>
-                      <span style={{ fontSize: '12px', fontWeight: 700, color: '#0284C7' }}>
-                        {chk.buyer}
-                      </span>
-                      <span style={{ fontSize: '12px', color: '#64748B' }}>• Style: <strong>{chk.styleNo}</strong></span>
-                      <span style={{ fontSize: '11px', background: '#F1F5F9', padding: '2px 6px', borderRadius: '4px', color: '#475569', fontWeight: 600 }}>
-                        Slot: {chk.tnaSlot}
-                      </span>
-                      <span style={{ fontSize: '11px', background: '#F1F5F9', padding: '2px 6px', borderRadius: '4px', color: '#475569', fontWeight: 600 }}>
-                        Sewing: {chk.sewingLine}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: '14px', fontWeight: 700, color: '#1E293B' }}>
-                      {chk.itemDescription} (Order: {chk.orderQty.toLocaleString()} pcs)
-                    </div>
-                    <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
-                      Merchandiser: <strong>{chk.merchandiser}</strong> • Requested Date: {chk.requestDate}
-                    </div>
-                  </div>
-
-                  {/* Actions & Status */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    {chk.checklistStatus === 'ACCEPTED' ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#ECFDF5', color: '#047857', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 700 }}>
-                        <CheckCircle2 size={15} />
-                        <span>Accepted ({chk.acceptedAt})</span>
-                      </div>
-                    ) : chk.checklistStatus === 'REVIEW_REQUESTED' ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#FEF2F2', color: '#B91C1C', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 700 }}>
-                        <AlertTriangle size={15} />
-                        <span>Review Requested ({chk.reviewRequestedAt})</span>
-                      </div>
-                    ) : (
-                      <span style={{ background: '#FFFBEB', color: '#B45309', padding: '6px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 700 }}>
-                        Awaiting Store Review
-                      </span>
-                    )}
-
-                    {chk.checklistStatus !== 'ACCEPTED' && (
-                      <button
-                        type="button"
-                        onClick={() => handleAcceptChecklist(chk.id)}
+                    </td>
+                    <td style={{ padding: '10px 10px' }}>
+                      <span
                         style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          background: '#047857',
-                          color: '#FFFFFF',
-                          border: 'none',
-                          borderRadius: '6px',
-                          padding: '6px 14px',
-                          fontSize: '12px',
+                          fontSize: '11px',
                           fontWeight: 700,
-                          cursor: 'pointer'
+                          padding: '3px 8px',
+                          borderRadius: '12px',
+                          background:
+                            job.checklistStatus === 'ACCEPTED' ? '#ECFDF5' :
+                            job.checklistStatus === 'REVIEW_REQUESTED' ? '#FEF2F2' : '#FFFBEB',
+                          color:
+                            job.checklistStatus === 'ACCEPTED' ? '#047857' :
+                            job.checklistStatus === 'REVIEW_REQUESTED' ? '#B91C1C' : '#B45309'
                         }}
                       >
-                        <CheckCircle2 size={14} />
-                        <span>Accept Checklist</span>
-                      </button>
-                    )}
+                        {job.checklistStatus === 'ACCEPTED' ? '✓ Accepted' :
+                         job.checklistStatus === 'REVIEW_REQUESTED' ? '⚠️ Review Needed' : '⏳ Pending Review'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => setDetailModalJob(job)}
+                          style={{
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            background: '#F1F5F9',
+                            border: '1px solid #CBD5E1',
+                            fontSize: '11px',
+                            fontWeight: 650,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          View Items
+                        </button>
 
-                    {chk.checklistStatus !== 'REVIEW_REQUESTED' && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setReviewModalJob(chk);
-                          setReviewNoteInput(chk.storeReviewNote || '');
-                        }}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          background: '#DC2626',
-                          color: '#FFFFFF',
-                          border: 'none',
-                          borderRadius: '6px',
-                          padding: '6px 12px',
-                          fontSize: '12px',
-                          fontWeight: 700,
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <AlertTriangle size={14} />
-                        <span>Need Review</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
+                        {job.checklistStatus !== 'ACCEPTED' && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setReviewModalJob(job);
+                                setReviewNoteInput(job.storeReviewNote || '');
+                              }}
+                              style={{
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                background: '#FEF2F2',
+                                border: '1px solid #FECACA',
+                                color: '#DC2626',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Need Review
+                            </button>
 
-                {/* Review Note Display if flagged */}
-                {chk.storeReviewNote && (
-                  <div style={{ marginTop: '10px', padding: '8px 12px', background: '#FEF2F2', borderLeft: '3px solid #DC2626', borderRadius: '4px', fontSize: '12.5px', color: '#991B1B' }}>
-                    <strong>Discrepancy Note to Merchandiser:</strong> {chk.storeReviewNote}
-                  </div>
-                )}
-
-                {/* Itemized Table */}
-                <div style={{ marginTop: '12px', overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px', textAlign: 'left' }}>
-                    <thead>
-                      <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', color: '#475569', fontSize: '11px', textTransform: 'uppercase' }}>
-                        <th style={{ padding: '6px 10px' }}>Trims / Accessories Name</th>
-                        <th style={{ padding: '6px 8px' }}>Category</th>
-                        <th style={{ padding: '6px 8px' }}>Unit</th>
-                        <th style={{ padding: '6px 8px' }}>Consumption</th>
-                        <th style={{ padding: '6px 8px' }}>Source</th>
-                        <th style={{ padding: '6px 8px' }}>Required Qty</th>
-                        <th style={{ padding: '6px 8px' }}>Extra %</th>
-                        <th style={{ padding: '6px 8px' }}>Total Order Qty</th>
-                        <th style={{ padding: '6px 8px' }}>Assigned Storage</th>
-                        <th style={{ padding: '6px 8px' }}>Supplier</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {chk.items.map(it => (
-                        <tr key={it.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                          <td style={{ padding: '7px 10px', fontWeight: 650, color: '#1E293B' }}>{it.itemName}</td>
-                          <td style={{ padding: '7px 8px' }}>
-                            <span style={{ fontSize: '10.5px', padding: '1px 6px', borderRadius: '4px', background: '#E2E8F0', color: '#334155', fontWeight: 600 }}>
-                              {it.category}
-                            </span>
-                          </td>
-                          <td style={{ padding: '7px 8px', fontWeight: 600, color: '#0284C7' }}>{it.unit}</td>
-                          <td style={{ padding: '7px 8px' }}>
-                            <strong>{it.consumption}</strong> <span style={{ fontSize: '11px', color: '#64748B' }}>{it.consumptionUnit}</span>
-                          </td>
-                          <td style={{ padding: '7px 8px', fontSize: '11px', color: '#64748B' }}>{it.consumptionSource}</td>
-                          <td style={{ padding: '7px 8px', color: '#334155' }}>{it.requiredQty.toLocaleString()}</td>
-                          <td style={{ padding: '7px 8px', color: '#64748B' }}>{it.wastagePct}%</td>
-                          <td style={{ padding: '7px 8px', fontWeight: 700, color: '#0F274E' }}>{it.totalOrderQty.toLocaleString()}</td>
-                          <td style={{ padding: '7px 8px' }}>
-                            <span style={{ fontSize: '11px', background: '#EFF6FF', color: '#1D4ED8', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
-                              {it.rackNo} | {it.shelfNo}
-                            </span>
-                          </td>
-                          <td style={{ padding: '7px 8px', fontSize: '11.5px', color: '#475569' }}>{it.supplierName}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ))}
+                            <button
+                              type="button"
+                              onClick={() => handleAcceptChecklist(job.id)}
+                              style={{
+                                padding: '4px 10px',
+                                borderRadius: '4px',
+                                background: '#059669',
+                                border: 'none',
+                                color: '#FFFFFF',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Accept
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
-          {/* Need Review Discrepancy Modal */}
+          {/* Review Request Modal */}
           {reviewModalJob && (
             <div
               style={{
@@ -1768,70 +1923,55 @@ export default function TrimsStorePage() {
                   background: '#FFFFFF',
                   borderRadius: '10px',
                   width: '100%',
-                  maxWidth: '550px',
+                  maxWidth: '520px',
                   padding: '24px',
                   boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#DC2626', marginBottom: '12px' }}>
-                  <AlertTriangle size={24} />
-                  <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#1E293B' }}>
-                    Need Review by Merchandiser
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#DC2626', marginBottom: '8px' }}>
+                  <ShieldAlert size={22} />
+                  <h3 style={{ fontSize: '17px', fontWeight: 800, margin: 0 }}>
+                    Request Merchandiser Review (Job {reviewModalJob.jobNo})
                   </h3>
                 </div>
-                <p style={{ fontSize: '13px', color: '#475569', marginBottom: '14px' }}>
-                  Job <strong>#{reviewModalJob.jobNo}</strong> ({reviewModalJob.buyer} - {reviewModalJob.styleNo}).<br />
-                  Specify the mismatch found on the physical trims sample or requirements. Merchandiser <strong>{reviewModalJob.merchandiser}</strong> will be alerted immediately.
+                <p style={{ fontSize: '13px', color: '#475569', marginBottom: '16px' }}>
+                  Store personnel cannot modify required trims quantities. If there is a mismatch with garments or physical sample, please record the discrepancy remarks below.
                 </p>
 
-                <textarea
-                  rows={4}
-                  value={reviewNoteInput}
-                  onChange={e => setReviewNoteInput(e.target.value)}
-                  placeholder="e.g. Zipper length on physical sample is 20cm instead of 18cm. Care label font size is smaller than buyer master standard. Please clarify..."
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    borderRadius: '6px',
-                    border: '1px solid #CBD5E1',
-                    fontSize: '13px',
-                    fontFamily: 'inherit',
-                    marginBottom: '16px'
-                  }}
-                />
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 700, color: '#0F274E', display: 'block', marginBottom: '6px' }}>
+                    Discrepancy / Sample Mismatch Remark:
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={reviewNoteInput}
+                    onChange={e => setReviewNoteInput(e.target.value)}
+                    placeholder="e.g. Approved spec sheet calls for Antique Brass metal zipper, but supplier sample has Silver shiny teeth. Please re-check with buyer."
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      borderRadius: '6px',
+                      border: '1.5px solid #CBD5E1',
+                      fontSize: '13px',
+                      outline: 'none'
+                    }}
+                  />
+                </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
                   <button
                     type="button"
                     onClick={() => setReviewModalJob(null)}
-                    style={{
-                      padding: '8px 16px',
-                      borderRadius: '6px',
-                      background: '#F1F5F9',
-                      border: '1px solid #CBD5E1',
-                      fontSize: '13px',
-                      fontWeight: 600,
-                      cursor: 'pointer'
-                    }}
+                    style={{ padding: '8px 14px', borderRadius: '6px', background: '#F1F5F9', border: '1px solid #CBD5E1', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
                     onClick={handleSendReviewRequest}
-                    disabled={!reviewNoteInput.trim()}
-                    style={{
-                      padding: '8px 16px',
-                      borderRadius: '6px',
-                      background: reviewNoteInput.trim() ? '#DC2626' : '#94A3B8',
-                      color: '#FFFFFF',
-                      border: 'none',
-                      fontSize: '13px',
-                      fontWeight: 700,
-                      cursor: reviewNoteInput.trim() ? 'pointer' : 'not-allowed'
-                    }}
+                    style={{ padding: '8px 16px', borderRadius: '6px', background: '#DC2626', color: '#FFFFFF', border: 'none', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
                   >
-                    Submit Review Request
+                    Send to Merchandiser
                   </button>
                 </div>
               </div>
@@ -1845,185 +1985,174 @@ export default function TrimsStorePage() {
       {/* ==================================================================== */}
       {activeTab === 'RECEIVE' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Top Job Search Bar */}
+          {/* Job Search Bar with Recent Searches */}
           <div
             style={{
               background: 'var(--card-bg, #ffffff)',
               border: '1px solid var(--border, #E2E8F0)',
               borderRadius: '8px',
-              padding: '16px',
-              display: 'flex',
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '12px'
+              padding: '16px 20px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: '300px' }}>
-              <div style={{ position: 'relative', flex: 1 }}>
-                <Search size={16} color="#64748B" style={{ position: 'absolute', left: '10px', top: '10px' }} />
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: '280px' }}>
+                <Search size={20} color="#0284C7" />
                 <input
                   type="text"
-                  placeholder="Type or select Job # (e.g. 48002, 46755, 48085, 48903, 48906)..."
+                  placeholder="Enter Job No to Receive (e.g. 48002, 46755)..."
                   value={receiveSearchJob}
                   onChange={e => setReceiveSearchJob(e.target.value)}
                   style={{
-                    width: '100%',
-                    padding: '8px 10px 8px 34px',
+                    flex: 1,
+                    padding: '8px 12px',
                     borderRadius: '6px',
                     border: '1.5px solid #0284C7',
-                    fontSize: '13px',
-                    fontWeight: 600
+                    fontSize: '14px',
+                    fontWeight: 700,
+                    outline: 'none'
                   }}
                 />
               </div>
 
-              {/* Quick Job Selector Chips */}
-              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                {checklists.map(c => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => setReceiveSearchJob(c.jobNo)}
+              {/* Recent Searches (Clickable, No Hashtags) */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '12px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <History size={13} />
+                  <span>Recent:</span>
+                </span>
+                {recentSearches.map(jobNo => (
+                  <div
+                    key={jobNo}
                     style={{
-                      padding: '4px 8px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      background: receiveSearchJob.replace(/#/g, '').trim() === jobNo ? '#0F274E' : '#F1F5F9',
+                      color: receiveSearchJob.replace(/#/g, '').trim() === jobNo ? '#FFFFFF' : '#334155',
                       borderRadius: '4px',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      border: receiveSearchJob === c.jobNo ? '1px solid #0F274E' : '1px solid #CBD5E1',
-                      background: receiveSearchJob === c.jobNo ? '#0F274E' : '#F8FAFC',
-                      color: receiveSearchJob === c.jobNo ? '#FFFFFF' : '#334155'
+                      padding: '2px 6px',
+                      fontSize: '11.5px',
+                      fontWeight: 700
                     }}
                   >
-                    #{c.jobNo} ({c.buyer})
-                  </button>
+                    <span
+                      onClick={() => setReceiveSearchJob(jobNo)}
+                      style={{ cursor: 'pointer', marginRight: '4px' }}
+                    >
+                      {jobNo}
+                    </span>
+                    <X
+                      size={11}
+                      onClick={() => removeRecentSearch(jobNo)}
+                      style={{ cursor: 'pointer', opacity: 0.7 }}
+                    />
+                  </div>
                 ))}
               </div>
+
+              {selectedReceiveJob && (
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={handlePassAllReceive}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '8px 14px',
+                      borderRadius: '6px',
+                      background: '#ECFDF5',
+                      border: '1.5px solid #059669',
+                      color: '#065F46',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <CheckCircle2 size={16} />
+                    <span>Pass All Items</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleSaveReceive}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '8px 18px',
+                      borderRadius: '6px',
+                      background: '#059669',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      fontSize: '13px',
+                      fontWeight: 750,
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 4px rgba(5,150,105,0.3)'
+                    }}
+                  >
+                    <Save size={16} />
+                    <span>Save Receive</span>
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* Quick Batch Actions */}
-            {selectedReceiveJob && (
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  type="button"
-                  onClick={handlePassAllReceive}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '8px 14px',
-                    borderRadius: '6px',
-                    background: '#059669',
-                    color: '#FFFFFF',
-                    border: 'none',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    cursor: 'pointer'
-                  }}
-                >
-                  <CheckCircle2 size={15} />
-                  <span>Pass All Quality</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleSaveReceive}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '8px 18px',
-                    borderRadius: '6px',
-                    background: '#0F274E',
-                    color: '#FFFFFF',
-                    border: 'none',
-                    fontSize: '13px',
-                    fontWeight: 750,
-                    cursor: 'pointer'
-                  }}
-                >
-                  <Save size={15} />
-                  <span>Save Received Trims</span>
-                </button>
+            {/* Selected Job Metadata Strip */}
+            {selectedReceiveJob ? (
+              <div
+                style={{
+                  marginTop: '14px',
+                  paddingTop: '12px',
+                  borderTop: '1px solid #E2E8F0',
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                  gap: '10px',
+                  fontSize: '12px'
+                }}
+              >
+                <div>
+                  <span style={{ color: '#64748B', display: 'block' }}>Job No:</span>
+                  <strong style={{ color: '#0F274E', fontSize: '14px' }}>{selectedReceiveJob.jobNo}</strong>
+                </div>
+                <div>
+                  <span style={{ color: '#64748B', display: 'block' }}>Buyer:</span>
+                  <strong style={{ color: '#0284C7' }}>{selectedReceiveJob.buyer}</strong>
+                </div>
+                <div>
+                  <span style={{ color: '#64748B', display: 'block' }}>Style No:</span>
+                  <strong>{selectedReceiveJob.styleNo}</strong>
+                </div>
+                <div>
+                  <span style={{ color: '#64748B', display: 'block' }}>Merchandiser:</span>
+                  <strong>{selectedReceiveJob.merchandiser}</strong>
+                </div>
+                <div>
+                  <span style={{ color: '#64748B', display: 'block' }}>Order Qty:</span>
+                  <strong>{selectedReceiveJob.orderQty.toLocaleString()} pcs</strong>
+                </div>
+                <div>
+                  <span style={{ color: '#64748B', display: 'block' }}>T&A Slot:</span>
+                  <strong style={{ color: '#059669' }}>{selectedReceiveJob.tnaSlot}</strong>
+                </div>
+                <div>
+                  <span style={{ color: '#64748B', display: 'block' }}>Shipment Date:</span>
+                  <strong>{selectedReceiveJob.shipmentDate}</strong>
+                </div>
+                <div>
+                  <span style={{ color: '#64748B', display: 'block' }}>Present Status:</span>
+                  <span style={{ fontWeight: 700, color: '#0284C7' }}>{computeJobStatus(selectedReceiveJob)}</span>
+                </div>
+              </div>
+            ) : (
+              <div style={{ marginTop: '14px', color: '#64748B', fontSize: '13px', fontStyle: 'italic' }}>
+                Please enter a Job No above to populate trims order sheet.
               </div>
             )}
           </div>
 
-          {/* Job Facts Header */}
+          {/* Trims Receiving Table */}
           {selectedReceiveJob ? (
-            <div
-              style={{
-                background: 'linear-gradient(90deg, #F0F9FF 0%, #E0F2FE 100%)',
-                border: '1px solid #BAE6FD',
-                borderRadius: '8px',
-                padding: '14px 18px',
-                display: 'flex',
-                flexWrap: 'wrap',
-                justifyContent: 'space-between',
-                gap: '12px'
-              }}
-            >
-              <div>
-                <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#0369A1', fontWeight: 800 }}>
-                  Active Receiving Job Details
-                </div>
-                <div style={{ fontSize: '17px', fontWeight: 800, color: '#0C4A6E' }}>
-                  Job #{selectedReceiveJob.jobNo} — {selectedReceiveJob.buyer} ({selectedReceiveJob.styleNo})
-                </div>
-                <div style={{ fontSize: '13px', color: '#0369A1', marginTop: '2px' }}>
-                  {selectedReceiveJob.itemDescription}
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontSize: '11px', color: '#64748B' }}>Order Qty</div>
-                  <div style={{ fontSize: '16px', fontWeight: 800, color: '#0F274E' }}>
-                    {selectedReceiveJob.orderQty.toLocaleString()} pcs
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontSize: '11px', color: '#64748B' }}>T&A Slot</div>
-                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#0284C7' }}>
-                    {selectedReceiveJob.tnaSlot}
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontSize: '11px', color: '#64748B' }}>Shipment Date</div>
-                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#1E293B' }}>
-                    {selectedReceiveJob.shipmentDate}
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontSize: '11px', color: '#64748B' }}>Merchandiser</div>
-                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#1E293B' }}>
-                    {selectedReceiveJob.merchandiser}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div
-              style={{
-                background: '#F8FAFC',
-                border: '1px dashed #CBD5E1',
-                borderRadius: '8px',
-                padding: '24px',
-                textAlign: 'center',
-                color: '#64748B'
-              }}
-            >
-              <Package size={32} color="#94A3B8" style={{ margin: '0 auto 8px' }} />
-              <div style={{ fontSize: '14px', fontWeight: 650, color: '#334155' }}>No Job Selected for Receiving</div>
-              <p style={{ fontSize: '12.5px', margin: '4px 0 0' }}>
-                Type a Job # above or click on one of the quick chips to begin entry.
-              </p>
-            </div>
-          )}
-
-          {/* Receiving Table */}
-          {selectedReceiveJob && (
             <div
               style={{
                 background: 'var(--card-bg, #ffffff)',
@@ -2036,133 +2165,140 @@ export default function TrimsStorePage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px', textAlign: 'left' }}>
                 <thead>
                   <tr style={{ background: '#0F274E', color: '#FFFFFF', fontSize: '11px', textTransform: 'uppercase' }}>
-                    <th style={{ padding: '9px 12px' }}>Trims / Accessories Item</th>
-                    <th style={{ padding: '9px 8px' }}>Unit</th>
-                    <th style={{ padding: '9px 8px' }}>Consumption</th>
-                    <th style={{ padding: '9px 8px' }}>Required Qty</th>
-                    <th style={{ padding: '9px 8px' }}>Extra %</th>
-                    <th style={{ padding: '9px 8px' }}>Total Order</th>
-                    <th style={{ padding: '9px 8px', background: '#1E3A8A' }}>Already Recv</th>
-                    <th style={{ padding: '9px 8px', background: '#0284C7' }}>Now Receiving Qty</th>
-                    <th style={{ padding: '9px 8px', background: '#1E3A8A' }}>Remaining Bal</th>
-                    <th style={{ padding: '9px 8px' }}>Rack & Shelf Location</th>
-                    <th style={{ padding: '9px 12px' }}>Quality Inspection</th>
+                    <th style={{ padding: '10px 12px' }}>Trims / Accessories Item</th>
+                    <th style={{ padding: '10px 8px' }}>Category</th>
+                    <th style={{ padding: '10px 8px' }}>Unit</th>
+                    <th style={{ padding: '10px 8px' }}>Consumption</th>
+                    <th style={{ padding: '10px 8px' }}>Source</th>
+                    <th style={{ padding: '10px 8px' }}>Required</th>
+                    <th style={{ padding: '10px 8px' }}>Extra %</th>
+                    <th style={{ padding: '10px 8px' }}>Total Order</th>
+                    <th style={{ padding: '10px 8px', background: '#0284C7' }}>Receive Qty (Now)</th>
+                    <th style={{ padding: '10px 8px' }}>Balance Qty</th>
+                    <th style={{ padding: '10px 8px' }}>Storage Rack</th>
+                    <th style={{ padding: '10px 8px' }}>Storage Shelf</th>
+                    <th style={{ padding: '10px 10px', textAlign: 'center' }}>Quality Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {selectedReceiveJob.items.map(it => {
-                    const entry = receiveFormState[it.id] || { receiveQty: 0, qualityStatus: 'PASS', rackNo: it.rackNo, shelfNo: it.shelfNo };
-                    const currentRecvInput = Number(entry.receiveQty) || 0;
-                    const prospectiveRemaining = Math.max(0, it.balanceQty - currentRecvInput);
+                    const formEntry = receiveFormState[it.id] || { receiveQty: 0, qualityStatus: 'PASS', rackNo: it.rackNo, shelfNo: it.shelfNo };
+                    const addedNow = Number(formEntry.receiveQty) || 0;
+                    const calculatedBalance = Math.max(0, it.totalOrderQty - (it.receivedQty + addedNow));
 
                     return (
-                      <tr key={it.id} style={{ borderBottom: '1px solid #F1F5F9', background: entry.qualityStatus === 'FAIL' ? '#FEF2F2' : 'transparent' }}>
-                        <td style={{ padding: '8px 12px' }}>
-                          <div style={{ fontWeight: 700, color: '#0F274E' }}>{it.itemName}</div>
-                          <div style={{ fontSize: '11px', color: '#64748B' }}>Supplier: {it.supplierName}</div>
+                      <tr key={it.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                        <td style={{ padding: '9px 12px', fontWeight: 700, color: '#0F274E' }}>{it.itemName}</td>
+                        <td style={{ padding: '9px 8px' }}>
+                          <span style={{ fontSize: '10.5px', background: '#F1F5F9', color: '#475569', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                            {it.category}
+                          </span>
                         </td>
-                        <td style={{ padding: '8px 8px', fontWeight: 650, color: '#0284C7' }}>{it.unit}</td>
-                        <td style={{ padding: '8px 8px' }}>
-                          <strong>{it.consumption}</strong> <span style={{ fontSize: '11px', color: '#64748B' }}>{it.consumptionUnit}</span>
+                        <td style={{ padding: '9px 8px', fontWeight: 650, color: '#0284C7' }}>{it.unit}</td>
+                        <td style={{ padding: '9px 8px' }}>
+                          <strong>{it.consumption}</strong> <span style={{ color: '#64748B', fontSize: '11px' }}>{it.consumptionUnit}</span>
                         </td>
-                        <td style={{ padding: '8px 8px', color: '#475569' }}>{it.requiredQty.toLocaleString()}</td>
-                        <td style={{ padding: '8px 8px', color: '#64748B' }}>{it.wastagePct}%</td>
-                        <td style={{ padding: '8px 8px', fontWeight: 700, color: '#1E293B' }}>{it.totalOrderQty.toLocaleString()}</td>
-                        <td style={{ padding: '8px 8px', fontWeight: 600, color: '#059669' }}>{it.receivedQty.toLocaleString()}</td>
+                        <td style={{ padding: '9px 8px', fontSize: '10.5px', color: '#64748B', fontWeight: 600 }}>
+                          {it.consumptionSource === 'SAMPLE_IE' ? 'IE Team' : it.consumptionSource === 'TECHNICAL' ? 'Technical' : 'Merchandiser'}
+                        </td>
+                        <td style={{ padding: '9px 8px', color: '#475569' }}>{it.requiredQty.toLocaleString()}</td>
+                        <td style={{ padding: '9px 8px', color: '#059669', fontWeight: 600 }}>+{it.wastagePct}%</td>
+                        <td style={{ padding: '9px 8px', fontWeight: 700, color: '#0F274E' }}>{it.totalOrderQty.toLocaleString()}</td>
 
-                        {/* Input Receive Qty */}
-                        <td style={{ padding: '8px 8px', background: '#F0F9FF' }}>
+                        {/* Editable Receive Qty */}
+                        <td style={{ padding: '9px 8px', background: '#F0F9FF' }}>
                           <input
                             type="number"
                             min="0"
-                            max={it.totalOrderQty}
-                            value={entry.receiveQty}
+                            max={it.totalOrderQty - it.receivedQty}
+                            value={formEntry.receiveQty}
                             onChange={e => {
                               const val = Math.max(0, Number(e.target.value));
                               setReceiveFormState(prev => ({
                                 ...prev,
-                                [it.id]: { ...entry, receiveQty: val }
+                                [it.id]: { ...prev[it.id], receiveQty: val }
                               }));
                             }}
                             style={{
-                              width: '100px',
+                              width: '90px',
                               padding: '5px 8px',
                               borderRadius: '4px',
                               border: '1.5px solid #0284C7',
-                              fontWeight: 700,
+                              fontWeight: 750,
                               fontSize: '13px',
-                              textAlign: 'right'
+                              textAlign: 'right',
+                              background: '#FFFFFF'
                             }}
                           />
                         </td>
 
-                        {/* Remaining Balance */}
-                        <td style={{ padding: '8px 8px', fontWeight: 700, color: prospectiveRemaining === 0 ? '#059669' : '#D97706' }}>
-                          {prospectiveRemaining.toLocaleString()} {it.unit}
-                          {prospectiveRemaining === 0 && <span style={{ marginLeft: '4px', fontSize: '11px' }}>✓</span>}
+                        {/* Balance Qty */}
+                        <td style={{ padding: '9px 8px', fontWeight: 700, color: calculatedBalance === 0 ? '#059669' : '#D97706' }}>
+                          {calculatedBalance.toLocaleString()}
                         </td>
 
-                        {/* Rack / Shelf Selector */}
-                        <td style={{ padding: '8px 8px' }}>
-                          <div style={{ display: 'flex', gap: '4px' }}>
-                            <select
-                              value={entry.rackNo}
-                              onChange={e => {
-                                const val = e.target.value;
-                                setReceiveFormState(prev => ({
-                                  ...prev,
-                                  [it.id]: { ...entry, rackNo: val }
-                                }));
-                              }}
-                              style={{ padding: '4px', borderRadius: '4px', border: '1px solid #CBD5E1', fontSize: '11.5px', fontWeight: 600 }}
-                            >
-                              {racks.map(r => (
-                                <option key={r.rackId} value={r.rackId}>{r.rackId} ({r.dedicatedBuyer})</option>
-                              ))}
-                            </select>
-
-                            <select
-                              value={entry.shelfNo}
-                              onChange={e => {
-                                const val = e.target.value;
-                                setReceiveFormState(prev => ({
-                                  ...prev,
-                                  [it.id]: { ...entry, shelfNo: val }
-                                }));
-                              }}
-                              style={{ padding: '4px', borderRadius: '4px', border: '1px solid #CBD5E1', fontSize: '11.5px', fontWeight: 600 }}
-                            >
-                              {Array.from({ length: 12 }, (_, i) => `S-${(i + 1).toString().padStart(2, '0')}`).map(s => (
-                                <option key={s} value={s}>{s}</option>
-                              ))}
-                            </select>
-                          </div>
-                        </td>
-
-                        {/* Quality Inspection Status */}
-                        <td style={{ padding: '8px 12px' }}>
+                        {/* Rack Selector */}
+                        <td style={{ padding: '9px 8px' }}>
                           <select
-                            value={entry.qualityStatus}
+                            value={formEntry.rackNo}
+                            onChange={e => {
+                              const val = e.target.value;
+                              setReceiveFormState(prev => ({
+                                ...prev,
+                                [it.id]: { ...prev[it.id], rackNo: val }
+                              }));
+                            }}
+                            style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid #CBD5E1', fontSize: '11px', fontWeight: 700 }}
+                          >
+                            {racks.map(r => (
+                              <option key={r.rackId} value={r.rackId}>{r.rackId} ({r.dedicatedBuyer})</option>
+                            ))}
+                          </select>
+                        </td>
+
+                        {/* Shelf Selector */}
+                        <td style={{ padding: '9px 8px' }}>
+                          <select
+                            value={formEntry.shelfNo}
+                            onChange={e => {
+                              const val = e.target.value;
+                              setReceiveFormState(prev => ({
+                                ...prev,
+                                [it.id]: { ...prev[it.id], shelfNo: val }
+                              }));
+                            }}
+                            style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid #CBD5E1', fontSize: '11px', fontWeight: 700 }}
+                          >
+                            {[1,2,3,4,5,6,7,8,9,10,11,12].map(s => (
+                              <option key={s} value={`S-${s.toString().padStart(2, '0')}`}>Shelf ${s.toString().padStart(2, '0')}</option>
+                            ))}
+                          </select>
+                        </td>
+
+                        {/* Quality Status Dropdown */}
+                        <td style={{ padding: '9px 10px', textAlign: 'center' }}>
+                          <select
+                            value={formEntry.qualityStatus}
                             onChange={e => {
                               const val = e.target.value as QualityStatus;
                               setReceiveFormState(prev => ({
                                 ...prev,
-                                [it.id]: { ...entry, qualityStatus: val }
+                                [it.id]: { ...prev[it.id], qualityStatus: val }
                               }));
                             }}
                             style={{
-                              padding: '5px 8px',
+                              padding: '4px 8px',
                               borderRadius: '4px',
-                              fontWeight: 700,
-                              fontSize: '12px',
-                              border: entry.qualityStatus === 'PASS' ? '1px solid #059669' : '1.5px solid #DC2626',
-                              background: entry.qualityStatus === 'PASS' ? '#ECFDF5' : '#FEF2F2',
-                              color: entry.qualityStatus === 'PASS' ? '#047857' : '#B91C1C'
+                              fontWeight: 750,
+                              fontSize: '11.5px',
+                              border: formEntry.qualityStatus === 'PASS' ? '1.5px solid #059669' : '1.5px solid #DC2626',
+                              background: formEntry.qualityStatus === 'PASS' ? '#ECFDF5' : '#FEF2F2',
+                              color: formEntry.qualityStatus === 'PASS' ? '#065F46' : '#991B1B'
                             }}
                           >
-                            <option value="PASS">✅ PASS</option>
-                            <option value="FAIL">❌ FAIL</option>
-                            <option value="PENDING">⏳ PENDING</option>
+                            <option value="PASS">PASS</option>
+                            <option value="FAIL">FAIL (Reject)</option>
+                            <option value="PENDING">PENDING</option>
                           </select>
                         </td>
                       </tr>
@@ -2171,16 +2307,31 @@ export default function TrimsStorePage() {
                 </tbody>
               </table>
             </div>
+          ) : (
+            <div
+              style={{
+                background: 'var(--card-bg, #ffffff)',
+                border: '1px dashed var(--border, #CBD5E1)',
+                borderRadius: '8px',
+                padding: '48px 20px',
+                textAlign: 'center',
+                color: '#64748B'
+              }}
+            >
+              <Package size={48} color="#94A3B8" style={{ margin: '0 auto 12px' }} />
+              <div style={{ fontSize: '16px', fontWeight: 700, color: '#1E293B' }}>No Job Selected for Receiving</div>
+              <p style={{ fontSize: '13px', margin: '6px 0 0' }}>Search a Job No in the bar above to inspect checklist and receive trims into warehouse bins.</p>
+            </div>
           )}
         </div>
       )}
 
       {/* ==================================================================== */}
-      {/* TAB 3: PRESENT STOCK (DASHBOARD & MASTER TABLE)                     */}
+      {/* TAB 3: PRESENT STOCK (DASHBOARD & MASTER TABLE)                      */}
       {/* ==================================================================== */}
       {activeTab === 'STOCK' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Top KPI Cards Grid */}
+          {/* Top KPI Cards Grid - All 8 Cards are Fully Interactive Filters */}
           <div
             style={{
               display: 'grid',
@@ -2188,68 +2339,145 @@ export default function TrimsStorePage() {
               gap: '10px'
             }}
           >
-            {/* Total Jobs */}
-            <div style={{ background: '#FFFFFF', padding: '12px 14px', borderRadius: '8px', border: '1px solid #E2E8F0', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
+            {/* Card 1: Total Jobs Tracked */}
+            <div
+              onClick={() => setKpiCardFilter(prev => prev === 'ALL' ? 'ALL' : 'ALL')}
+              style={{
+                background: kpiCardFilter === 'ALL' ? '#F0F9FF' : '#FFFFFF',
+                padding: '12px 14px',
+                borderRadius: '8px',
+                border: kpiCardFilter === 'ALL' ? '2px solid #0284C7' : '1px solid #E2E8F0',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                cursor: 'pointer'
+              }}
+              title="Click to view all jobs"
+            >
               <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 650, textTransform: 'uppercase' }}>Total Jobs Tracked</div>
               <div style={{ fontSize: '22px', fontWeight: 900, color: '#0F274E', margin: '2px 0' }}>{stockKpis.totalJobs} Jobs</div>
               <div style={{ fontSize: '11.5px', color: '#0284C7', fontWeight: 600 }}>Active production runway</div>
             </div>
 
-            {/* Total Order Qty */}
-            <div style={{ background: '#FFFFFF', padding: '12px 14px', borderRadius: '8px', border: '1px solid #E2E8F0', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
+            {/* Card 2: Garments Order Qty */}
+            <div
+              onClick={() => setKpiCardFilter(prev => prev === 'HIGH_ORDER' ? 'ALL' : 'HIGH_ORDER')}
+              style={{
+                background: kpiCardFilter === 'HIGH_ORDER' ? '#F0F9FF' : '#FFFFFF',
+                padding: '12px 14px',
+                borderRadius: '8px',
+                border: kpiCardFilter === 'HIGH_ORDER' ? '2px solid #0284C7' : '1px solid #E2E8F0',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                cursor: 'pointer'
+              }}
+              title="Click to filter high-volume orders (>4,000 pcs)"
+            >
               <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 650, textTransform: 'uppercase' }}>Garments Order Qty</div>
               <div style={{ fontSize: '22px', fontWeight: 900, color: '#0F274E', margin: '2px 0' }}>{stockKpis.totalOrderQty.toLocaleString()} pcs</div>
               <div style={{ fontSize: '11.5px', color: '#64748B' }}>Confirmed orders</div>
             </div>
 
-            {/* Total Received Trims */}
-            <div style={{ background: '#FFFFFF', padding: '12px 14px', borderRadius: '8px', border: '1px solid #E2E8F0', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
+            {/* Card 3: Total Received Trims */}
+            <div
+              onClick={() => setKpiCardFilter(prev => prev === 'RECEIVED' ? 'ALL' : 'RECEIVED')}
+              style={{
+                background: kpiCardFilter === 'RECEIVED' ? '#ECFDF5' : '#FFFFFF',
+                padding: '12px 14px',
+                borderRadius: '8px',
+                border: kpiCardFilter === 'RECEIVED' ? '2px solid #059669' : '1px solid #E2E8F0',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                cursor: 'pointer'
+              }}
+              title="Click to filter jobs with received inventory"
+            >
               <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 650, textTransform: 'uppercase' }}>Total Received Trims</div>
               <div style={{ fontSize: '22px', fontWeight: 900, color: '#059669', margin: '2px 0' }}>{stockKpis.totalReceivedItems.toLocaleString()}</div>
               <div style={{ fontSize: '11.5px', color: '#059669', fontWeight: 600 }}>In warehouse inventory</div>
             </div>
 
-            {/* Total Inspection Pass */}
-            <div style={{ background: '#FFFFFF', padding: '12px 14px', borderRadius: '8px', border: '1px solid #E2E8F0', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
+            {/* Card 4: Quality Pass Items */}
+            <div
+              onClick={() => setKpiCardFilter(prev => prev === 'QUALITY_PASS' ? 'ALL' : 'QUALITY_PASS')}
+              style={{
+                background: kpiCardFilter === 'QUALITY_PASS' ? '#ECFDF5' : '#FFFFFF',
+                padding: '12px 14px',
+                borderRadius: '8px',
+                border: kpiCardFilter === 'QUALITY_PASS' ? '2px solid #047857' : '1px solid #E2E8F0',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                cursor: 'pointer'
+              }}
+              title="Click to filter jobs with 100% quality passed trims"
+            >
               <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 650, textTransform: 'uppercase' }}>Quality Pass Items</div>
               <div style={{ fontSize: '22px', fontWeight: 900, color: '#047857', margin: '2px 0' }}>{stockKpis.totalInspectionPass} Items</div>
               <div style={{ fontSize: '11.5px', color: '#047857' }}>Ready for floor issue</div>
             </div>
 
-            {/* Total Inspection Fail (Clickable filter) */}
+            {/* Card 5: Quality Fail (Clickable filter) */}
             <div
-              onClick={() => setStockStatusFilter(prev => prev === 'Inspection Fail' ? 'ALL' : 'Inspection Fail')}
+              onClick={() => setKpiCardFilter(prev => prev === 'QUALITY_FAIL' ? 'ALL' : 'QUALITY_FAIL')}
               style={{
-                background: stockStatusFilter === 'Inspection Fail' ? '#FEF2F2' : '#FFFFFF',
+                background: kpiCardFilter === 'QUALITY_FAIL' ? '#FEF2F2' : '#FFFFFF',
                 padding: '12px 14px',
                 borderRadius: '8px',
-                border: stockStatusFilter === 'Inspection Fail' ? '2px solid #DC2626' : '1px solid #FECACA',
+                border: kpiCardFilter === 'QUALITY_FAIL' ? '2px solid #DC2626' : '1px solid #FECACA',
                 cursor: 'pointer',
                 boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
               }}
-              title="Click to filter table to failed jobs"
+              title="Click to filter table to failed/rejected jobs"
             >
               <div style={{ fontSize: '11px', color: '#DC2626', fontWeight: 700, textTransform: 'uppercase' }}>Quality Fail (Click Filter)</div>
               <div style={{ fontSize: '22px', fontWeight: 900, color: '#DC2626', margin: '2px 0' }}>{stockKpis.totalInspectionFail} Items</div>
               <div style={{ fontSize: '11.5px', color: '#991B1B', fontWeight: 600 }}>Supplier reject follow-up</div>
             </div>
 
-            {/* Total Delivered to Sewing */}
-            <div style={{ background: '#FFFFFF', padding: '12px 14px', borderRadius: '8px', border: '1px solid #E2E8F0', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
+            {/* Card 6: Total Delivered to Sewing */}
+            <div
+              onClick={() => setKpiCardFilter(prev => prev === 'DELIVERED' ? 'ALL' : 'DELIVERED')}
+              style={{
+                background: kpiCardFilter === 'DELIVERED' ? '#EFF6FF' : '#FFFFFF',
+                padding: '12px 14px',
+                borderRadius: '8px',
+                border: kpiCardFilter === 'DELIVERED' ? '2px solid #0284C7' : '1px solid #E2E8F0',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                cursor: 'pointer'
+              }}
+              title="Click to filter jobs with floor deliveries"
+            >
               <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 650, textTransform: 'uppercase' }}>Total Delivered</div>
               <div style={{ fontSize: '22px', fontWeight: 900, color: '#0284C7', margin: '2px 0' }}>{stockKpis.totalDeliveredUnits.toLocaleString()}</div>
               <div style={{ fontSize: '11.5px', color: '#0284C7', fontWeight: 600 }}>Dispatched to floor</div>
             </div>
 
-            {/* Partial Received */}
-            <div style={{ background: '#FFFFFF', padding: '12px 14px', borderRadius: '8px', border: '1px solid #E2E8F0', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
+            {/* Card 7: Partial Received */}
+            <div
+              onClick={() => setKpiCardFilter(prev => prev === 'PARTIAL' ? 'ALL' : 'PARTIAL')}
+              style={{
+                background: kpiCardFilter === 'PARTIAL' ? '#FFFBEB' : '#FFFFFF',
+                padding: '12px 14px',
+                borderRadius: '8px',
+                border: kpiCardFilter === 'PARTIAL' ? '2px solid #D97706' : '1px solid #E2E8F0',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                cursor: 'pointer'
+              }}
+              title="Click to filter partially received jobs"
+            >
               <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 650, textTransform: 'uppercase' }}>Partial Received</div>
               <div style={{ fontSize: '22px', fontWeight: 900, color: '#D97706', margin: '2px 0' }}>{stockKpis.partialReceivedJobsCount} Jobs</div>
               <div style={{ fontSize: '11.5px', color: '#D97706', fontWeight: 600 }}>Supplier delivery pending</div>
             </div>
 
-            {/* Order Confirmed vs Checklist Received */}
-            <div style={{ background: '#FFFFFF', padding: '12px 14px', borderRadius: '8px', border: '1px solid #E2E8F0', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
+            {/* Card 8: Order Confirmed vs Checklist Received */}
+            <div
+              onClick={() => setKpiCardFilter(prev => prev === 'CHECKLIST_PENDING' ? 'ALL' : 'CHECKLIST_PENDING')}
+              style={{
+                background: kpiCardFilter === 'CHECKLIST_PENDING' ? '#F0FDF4' : '#FFFFFF',
+                padding: '12px 14px',
+                borderRadius: '8px',
+                border: kpiCardFilter === 'CHECKLIST_PENDING' ? '2px solid #16A34A' : '1px solid #E2E8F0',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                cursor: 'pointer'
+              }}
+              title="Click to filter jobs pending checklist acceptance"
+            >
               <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 650, textTransform: 'uppercase' }}>Confirmed vs Checklist</div>
               <div style={{ fontSize: '18px', fontWeight: 900, color: '#0F274E', margin: '3px 0' }}>
                 {stockKpis.totalJobs} / {stockKpis.acceptedChecklistsCount} Accepted
@@ -2260,7 +2488,7 @@ export default function TrimsStorePage() {
             </div>
           </div>
 
-          {/* Compact Filter Toolbar */}
+          {/* Compact Filter Toolbar with Active Filter Indicator */}
           <div
             style={{
               background: 'var(--card-bg, #ffffff)',
@@ -2277,6 +2505,26 @@ export default function TrimsStorePage() {
               <Filter size={15} color="#0284C7" />
               <span>Filters:</span>
             </div>
+
+            {/* Active KPI Card Filter Badge */}
+            {kpiCardFilter !== 'ALL' && (
+              <span
+                style={{
+                  background: '#0F274E',
+                  color: '#FFFFFF',
+                  padding: '3px 8px',
+                  borderRadius: '12px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                <span>KPI: {kpiCardFilter}</span>
+                <X size={12} style={{ cursor: 'pointer' }} onClick={() => setKpiCardFilter('ALL')} />
+              </span>
+            )}
 
             {/* Search Job */}
             <input
@@ -2356,7 +2604,7 @@ export default function TrimsStorePage() {
             </select>
 
             {/* Reset Filters */}
-            {(stockBuyerFilter !== 'ALL' || stockMerchFilter !== 'ALL' || stockStatusFilter !== 'ALL' || stockSearchQuery) && (
+            {(stockBuyerFilter !== 'ALL' || stockMerchFilter !== 'ALL' || stockStatusFilter !== 'ALL' || stockSearchQuery || kpiCardFilter !== 'ALL') && (
               <button
                 type="button"
                 onClick={() => {
@@ -2366,6 +2614,7 @@ export default function TrimsStorePage() {
                   setStockSewingFilter('ALL');
                   setStockStatusFilter('ALL');
                   setStockSearchQuery('');
+                  setKpiCardFilter('ALL');
                 }}
                 style={{ padding: '5px 10px', borderRadius: '4px', background: '#F1F5F9', border: '1px solid #CBD5E1', fontSize: '11.5px', cursor: 'pointer' }}
               >
@@ -2374,7 +2623,7 @@ export default function TrimsStorePage() {
             )}
           </div>
 
-          {/* Master Stock Table */}
+          {/* Master Stock Table with ITEM DUE & QUALITY STATUS Columns */}
           <div
             style={{
               background: 'var(--card-bg, #ffffff)',
@@ -2388,13 +2637,14 @@ export default function TrimsStorePage() {
               <thead>
                 <tr style={{ background: '#0F274E', color: '#FFFFFF', fontSize: '11px', textTransform: 'uppercase' }}>
                   <th style={{ padding: '9px 12px' }}>Buyer</th>
-                  <th style={{ padding: '9px 10px' }}>Job #</th>
-                  <th style={{ padding: '9px 10px' }}>Style #</th>
+                  <th style={{ padding: '9px 10px' }}>Job No</th>
+                  <th style={{ padding: '9px 10px' }}>Style No</th>
                   <th style={{ padding: '9px 10px' }}>Order Qty</th>
                   <th style={{ padding: '9px 10px' }}>Present Status</th>
+                  <th style={{ padding: '9px 10px', background: '#78350F' }}>Item Due (আইটেম ডিউ)</th>
+                  <th style={{ padding: '9px 10px' }}>Quality Audit</th>
                   <th style={{ padding: '9px 10px' }}>Merchandiser</th>
                   <th style={{ padding: '9px 10px' }}>T&A Slot</th>
-                  <th style={{ padding: '9px 10px' }}>Shipment Date</th>
                   <th style={{ padding: '9px 10px' }}>Racks Stored</th>
                   <th style={{ padding: '9px 10px' }}>Delivery Progress</th>
                   <th style={{ padding: '9px 12px' }}>Action</th>
@@ -2402,11 +2652,20 @@ export default function TrimsStorePage() {
               </thead>
               <tbody>
                 {filteredStockJobs.map(j => {
+                  const dynamicStatus = computeJobStatus(j);
                   const totalReq = j.items.reduce((acc, it) => acc + it.totalOrderQty, 0);
                   const totalRecv = j.items.reduce((acc, it) => acc + it.receivedQty, 0);
                   const totalDeliv = j.items.reduce((acc, it) => acc + it.deliveredQty, 0);
                   const delivPct = totalRecv > 0 ? Math.round((totalDeliv / totalRecv) * 100) : 0;
                   const uniqueRacks = Array.from(new Set(j.items.map(it => it.rackNo))).filter(Boolean);
+
+                  // Calculate Due Items (receivedQty < totalOrderQty)
+                  const dueItems = j.items.filter(it => it.receivedQty < it.totalOrderQty);
+                  
+                  // Quality count
+                  const passCount = j.items.filter(it => it.qualityStatus === 'PASS').length;
+                  const failCount = j.items.filter(it => it.qualityStatus === 'FAIL').length;
+                  const pendingCount = j.items.filter(it => it.qualityStatus === 'PENDING').length;
 
                   return (
                     <tr
@@ -2416,8 +2675,8 @@ export default function TrimsStorePage() {
                     >
                       <td style={{ padding: '9px 12px', fontWeight: 700, color: '#0284C7' }}>{j.buyer}</td>
                       <td style={{ padding: '9px 10px' }}>
-                        <span style={{ fontWeight: 800, color: '#0F274E', textDecoration: 'underline' }}>
-                          #{j.jobNo}
+                        <span style={{ fontWeight: 800, color: '#0F274E' }}>
+                          {j.jobNo}
                         </span>
                       </td>
                       <td style={{ padding: '9px 10px', color: '#334155', fontWeight: 600 }}>{j.styleNo}</td>
@@ -2430,21 +2689,60 @@ export default function TrimsStorePage() {
                             padding: '3px 8px',
                             borderRadius: '12px',
                             background:
-                              j.presentStatus === 'Receive OK' || j.presentStatus === 'Delivery Done' ? '#ECFDF5' :
-                              j.presentStatus === 'Inspection Fail' ? '#FEF2F2' :
-                              j.presentStatus === 'Partial Received Due' ? '#FFFBEB' : '#F1F5F9',
+                              dynamicStatus === 'Receive OK' || dynamicStatus === 'Delivery Done' ? '#ECFDF5' :
+                              dynamicStatus === 'Inspection Fail' ? '#FEF2F2' :
+                              dynamicStatus === 'Partial Received Due' ? '#FFFBEB' : '#F1F5F9',
                             color:
-                              j.presentStatus === 'Receive OK' || j.presentStatus === 'Delivery Done' ? '#047857' :
-                              j.presentStatus === 'Inspection Fail' ? '#B91C1C' :
-                              j.presentStatus === 'Partial Received Due' ? '#B45309' : '#334155'
+                              dynamicStatus === 'Receive OK' || dynamicStatus === 'Delivery Done' ? '#047857' :
+                              dynamicStatus === 'Inspection Fail' ? '#B91C1C' :
+                              dynamicStatus === 'Partial Received Due' ? '#B45309' : '#334155'
                           }}
                         >
-                          {j.presentStatus}
+                          {dynamicStatus}
                         </span>
                       </td>
+
+                      {/* NEW ITEM DUE COLUMN */}
+                      <td style={{ padding: '9px 10px', maxWidth: '240px' }}>
+                        {dueItems.length === 0 ? (
+                          <span style={{ fontSize: '11px', background: '#ECFDF5', color: '#047857', padding: '2px 8px', borderRadius: '10px', fontWeight: 700 }}>
+                            ✓ None (All In)
+                          </span>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                            <span style={{ fontSize: '11px', color: '#B45309', fontWeight: 750 }}>
+                              {dueItems.length} items due:
+                            </span>
+                            <div style={{ fontSize: '11px', color: '#475569', lineHeight: 1.3 }}>
+                              {dueItems.map((it, idx) => (
+                                <span key={it.id}>
+                                  <strong>{it.itemName}</strong> ({it.balanceQty.toLocaleString()} {it.unit}){idx < dueItems.length - 1 ? ', ' : ''}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </td>
+
+                      {/* QUALITY AUDIT STATUS */}
+                      <td style={{ padding: '9px 10px' }}>
+                        {failCount > 0 ? (
+                          <span style={{ fontSize: '11px', background: '#FEF2F2', color: '#DC2626', padding: '3px 8px', borderRadius: '12px', fontWeight: 800 }}>
+                            ⚠️ {failCount} Failed (Reject)
+                          </span>
+                        ) : pendingCount > 0 ? (
+                          <span style={{ fontSize: '11px', background: '#FFFBEB', color: '#B45309', padding: '3px 8px', borderRadius: '12px', fontWeight: 700 }}>
+                            ⏳ {passCount}/{j.items.length} Passed
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '11px', background: '#ECFDF5', color: '#059669', padding: '3px 8px', borderRadius: '12px', fontWeight: 750 }}>
+                            ✓ {passCount}/{j.items.length} Passed
+                          </span>
+                        )}
+                      </td>
+
                       <td style={{ padding: '9px 10px', color: '#475569' }}>{j.merchandiser}</td>
                       <td style={{ padding: '9px 10px', color: '#0284C7', fontWeight: 600 }}>{j.tnaSlot}</td>
-                      <td style={{ padding: '9px 10px', color: '#475569' }}>{j.shipmentDate}</td>
                       <td style={{ padding: '9px 10px' }}>
                         <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap' }}>
                           {uniqueRacks.map(r => (
@@ -2480,7 +2778,7 @@ export default function TrimsStorePage() {
                             cursor: 'pointer'
                           }}
                         >
-                          Inspect Checklist
+                          Inspect & Quality
                         </button>
                       </td>
                     </tr>
@@ -2490,7 +2788,7 @@ export default function TrimsStorePage() {
             </table>
           </div>
 
-          {/* Detailed Job Checklist Popup / Modal */}
+          {/* Detailed Job Checklist & Quality Inspection Modal */}
           {detailModalJob && (
             <div
               style={{
@@ -2521,22 +2819,22 @@ export default function TrimsStorePage() {
                 {/* Modal Header */}
                 <div
                   style={{
+                    padding: '16px 20px',
                     background: '#0F274E',
                     color: '#FFFFFF',
-                    padding: '16px 20px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Package size={20} color="#38BDF8" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <Boxes size={22} color="#38BDF8" />
                     <div>
-                      <div style={{ fontSize: '11px', color: '#93C5FD', textTransform: 'uppercase', fontWeight: 700 }}>
-                        Trims Checklist & Inventory Dossier
-                      </div>
-                      <div style={{ fontSize: '18px', fontWeight: 800 }}>
-                        Job #{detailModalJob.jobNo} — {detailModalJob.buyer} ({detailModalJob.styleNo})
+                      <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800 }}>
+                        Job {detailModalJob.jobNo} — Complete Trims Specification & Quality Audit
+                      </h3>
+                      <div style={{ fontSize: '12px', color: '#93C5FD', marginTop: '2px' }}>
+                        {detailModalJob.buyer} • Style {detailModalJob.styleNo} • Order {detailModalJob.orderQty.toLocaleString()} pcs • Merchandiser: {detailModalJob.merchandiser}
                       </div>
                     </div>
                   </div>
@@ -2544,113 +2842,196 @@ export default function TrimsStorePage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <button
                       type="button"
-                      onClick={() => setDetailModalFullscreen(!detailModalFullscreen)}
-                      style={{ background: 'rgba(255,255,255,0.1)', color: '#FFFFFF', border: 'none', padding: '6px', borderRadius: '4px', cursor: 'pointer' }}
-                      title="Toggle Fullscreen"
+                      onClick={() => setModalQualityMode(prev => !prev)}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        background: modalQualityMode ? '#A4D92C' : 'rgba(255,255,255,0.15)',
+                        color: modalQualityMode ? '#071F42' : '#FFFFFF',
+                        border: 'none',
+                        fontSize: '12px',
+                        fontWeight: 750,
+                        cursor: 'pointer'
+                      }}
                     >
-                      {detailModalFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                      {modalQualityMode ? 'Exit Quality Mode' : '✏️ Quality Inspection Mode'}
                     </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setDetailModalFullscreen(prev => !prev)}
+                      style={{ background: 'transparent', border: 'none', color: '#FFFFFF', cursor: 'pointer', padding: '4px' }}
+                      title={detailModalFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+                    >
+                      {detailModalFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => setDetailModalJob(null)}
-                      style={{ background: 'rgba(255,255,255,0.1)', color: '#FFFFFF', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 700 }}
+                      style={{ background: 'transparent', border: 'none', color: '#FFFFFF', cursor: 'pointer', padding: '4px', fontSize: '18px', fontWeight: 700 }}
                     >
                       ✕
                     </button>
                   </div>
                 </div>
 
-                {/* Modal Subheader Facts */}
-                <div style={{ background: '#F8FAFC', padding: '12px 20px', borderBottom: '1px solid #E2E8F0', display: 'flex', flexWrap: 'wrap', gap: '24px', fontSize: '12.5px' }}>
-                  <div><strong>Description:</strong> {detailModalJob.itemDescription}</div>
-                  <div><strong>Order Qty:</strong> {detailModalJob.orderQty.toLocaleString()} pcs</div>
-                  <div><strong>Merchandiser:</strong> {detailModalJob.merchandiser}</div>
-                  <div><strong>T&A Slot:</strong> {detailModalJob.tnaSlot}</div>
-                  <div><strong>Sewing Line:</strong> {detailModalJob.sewingLine}</div>
-                  <div><strong>Shipment:</strong> {detailModalJob.shipmentDate}</div>
-                  <div><strong>Status:</strong> <span style={{ fontWeight: 700, color: '#0284C7' }}>{detailModalJob.presentStatus}</span></div>
-                </div>
+                {/* Modal Quality Inspection Actions Bar */}
+                {modalQualityMode && (
+                  <div
+                    style={{
+                      background: '#FFFBEB',
+                      borderBottom: '1px solid #FDE68A',
+                      padding: '10px 20px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between'
+                    }}
+                  >
+                    <div style={{ fontSize: '12.5px', color: '#92400E', fontWeight: 600 }}>
+                      Quality Inspection Entry: Toggle Pass/Fail for each item. Failing an item dispatches notification to Merchandiser.
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const allPassed: Record<string, any> = {};
+                          detailModalJob.items.forEach(it => {
+                            allPassed[it.id] = { status: 'PASS', remarks: '' };
+                          });
+                          setModalQualityDraft(allPassed);
+                        }}
+                        style={{ padding: '5px 12px', borderRadius: '4px', background: '#ECFDF5', border: '1px solid #059669', color: '#065F46', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        ✓ Mark All Pass
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveModalQuality}
+                        style={{ padding: '5px 16px', borderRadius: '4px', background: '#059669', color: '#FFFFFF', border: 'none', fontSize: '12px', fontWeight: 750, cursor: 'pointer' }}
+                      >
+                        Save Quality Status
+                      </button>
+                    </div>
+                  </div>
+                )}
 
-                {/* Modal Items Table */}
-                <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
+                {/* Modal Body / Items Table */}
+                <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px', textAlign: 'left' }}>
                     <thead>
-                      <tr style={{ background: '#F1F5F9', borderBottom: '2px solid #CBD5E1', fontSize: '11px', textTransform: 'uppercase', color: '#475569' }}>
+                      <tr style={{ background: '#F8FAFC', color: '#475569', fontSize: '11px', textTransform: 'uppercase', borderBottom: '2px solid #E2E8F0' }}>
                         <th style={{ padding: '8px 10px' }}>Item Name</th>
-                        <th style={{ padding: '8px' }}>Unit</th>
-                        <th style={{ padding: '8px' }}>Consumption</th>
-                        <th style={{ padding: '8px' }}>Required Qty</th>
-                        <th style={{ padding: '8px' }}>Extra %</th>
-                        <th style={{ padding: '8px' }}>Total Order</th>
-                        <th style={{ padding: '8px' }}>Received Qty</th>
-                        <th style={{ padding: '8px' }}>Balance Qty</th>
-                        <th style={{ padding: '8px' }}>Delivered</th>
-                        <th style={{ padding: '8px' }}>Storage Location</th>
-                        <th style={{ padding: '8px' }}>Quality Inspection</th>
+                        <th style={{ padding: '8px 8px' }}>Category</th>
+                        <th style={{ padding: '8px 8px' }}>Unit</th>
+                        <th style={{ padding: '8px 8px' }}>Consumption</th>
+                        <th style={{ padding: '8px 8px' }}>Source</th>
+                        <th style={{ padding: '8px 8px' }}>Order Qty</th>
+                        <th style={{ padding: '8px 8px' }}>Received</th>
+                        <th style={{ padding: '8px 8px' }}>Balance</th>
+                        <th style={{ padding: '8px 8px' }}>Location</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'center' }}>Quality Status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {detailModalJob.items.map(it => (
-                        <tr key={it.id} style={{ borderBottom: '1px solid #E2E8F0' }}>
-                          <td style={{ padding: '9px 10px', fontWeight: 700, color: '#0F274E' }}>{it.itemName}</td>
-                          <td style={{ padding: '9px 8px', fontWeight: 650, color: '#0284C7' }}>{it.unit}</td>
-                          <td style={{ padding: '9px 8px' }}>
-                            <strong>{it.consumption}</strong> <span style={{ color: '#64748B' }}>{it.consumptionUnit}</span>
-                          </td>
-                          <td style={{ padding: '9px 8px' }}>{it.requiredQty.toLocaleString()}</td>
-                          <td style={{ padding: '9px 8px', color: '#64748B' }}>{it.wastagePct}%</td>
-                          <td style={{ padding: '9px 8px', fontWeight: 700 }}>{it.totalOrderQty.toLocaleString()}</td>
-                          <td style={{ padding: '9px 8px', fontWeight: 700, color: '#059669' }}>{it.receivedQty.toLocaleString()}</td>
-                          <td style={{ padding: '9px 8px', fontWeight: 700, color: it.balanceQty === 0 ? '#059669' : '#D97706' }}>
-                            {it.balanceQty.toLocaleString()}
-                          </td>
-                          <td style={{ padding: '9px 8px', fontWeight: 700, color: '#0284C7' }}>{it.deliveredQty.toLocaleString()}</td>
-                          <td style={{ padding: '9px 8px' }}>
-                            <span style={{ background: '#EFF6FF', color: '#1D4ED8', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
-                              {it.rackNo} | {it.shelfNo}
-                            </span>
-                          </td>
-                          <td style={{ padding: '9px 8px' }}>
-                            <span style={{
-                              padding: '2px 8px',
-                              borderRadius: '10px',
-                              fontSize: '11px',
-                              fontWeight: 750,
-                              background: it.qualityStatus === 'PASS' ? '#ECFDF5' : it.qualityStatus === 'FAIL' ? '#FEF2F2' : '#F8FAFC',
-                              color: it.qualityStatus === 'PASS' ? '#047857' : it.qualityStatus === 'FAIL' ? '#B91C1C' : '#64748B'
-                            }}>
-                              {it.qualityStatus}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
+                      {detailModalJob.items.map(it => {
+                        const draft = modalQualityDraft[it.id] || { status: it.qualityStatus, remarks: it.failRemarks || '' };
+
+                        return (
+                          <tr key={it.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                            <td style={{ padding: '8px 10px', fontWeight: 700, color: '#0F274E' }}>{it.itemName}</td>
+                            <td style={{ padding: '8px 8px' }}>
+                              <span style={{ fontSize: '10.5px', background: '#F1F5F9', padding: '2px 6px', borderRadius: '4px', fontWeight: 650 }}>
+                                {it.category}
+                              </span>
+                            </td>
+                            <td style={{ padding: '8px 8px', fontWeight: 650, color: '#0284C7' }}>{it.unit}</td>
+                            <td style={{ padding: '8px 8px' }}>
+                              {it.consumption} {it.consumptionUnit}
+                            </td>
+                            <td style={{ padding: '8px 8px', fontSize: '11px', color: '#64748B' }}>{it.consumptionSource}</td>
+                            <td style={{ padding: '8px 8px', fontWeight: 700 }}>{it.totalOrderQty.toLocaleString()}</td>
+                            <td style={{ padding: '8px 8px', color: '#059669', fontWeight: 700 }}>{it.receivedQty.toLocaleString()}</td>
+                            <td style={{ padding: '8px 8px', color: it.balanceQty > 0 ? '#D97706' : '#64748B', fontWeight: 700 }}>
+                              {it.balanceQty.toLocaleString()}
+                            </td>
+                            <td style={{ padding: '8px 8px' }}>
+                              <span style={{ background: '#EFF6FF', color: '#1D4ED8', padding: '2px 6px', borderRadius: '4px', fontWeight: 700, fontSize: '11px' }}>
+                                {it.rackNo} | {it.shelfNo}
+                              </span>
+                            </td>
+                            <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                              {modalQualityMode ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  <select
+                                    value={draft.status}
+                                    onChange={e => {
+                                      const val = e.target.value as QualityStatus;
+                                      setModalQualityDraft(prev => ({
+                                        ...prev,
+                                        [it.id]: { ...prev[it.id], status: val }
+                                      }));
+                                    }}
+                                    style={{
+                                      padding: '4px 6px',
+                                      borderRadius: '4px',
+                                      fontSize: '11.5px',
+                                      fontWeight: 750,
+                                      border: draft.status === 'PASS' ? '1.5px solid #059669' : '1.5px solid #DC2626',
+                                      background: draft.status === 'PASS' ? '#ECFDF5' : '#FEF2F2',
+                                      color: draft.status === 'PASS' ? '#065F46' : '#991B1B'
+                                    }}
+                                  >
+                                    <option value="PASS">PASS</option>
+                                    <option value="FAIL">FAIL (Reject)</option>
+                                    <option value="PENDING">PENDING</option>
+                                  </select>
+                                  {draft.status === 'FAIL' && (
+                                    <input
+                                      type="text"
+                                      placeholder="Reason for failure..."
+                                      value={draft.remarks}
+                                      onChange={e => {
+                                        const r = e.target.value;
+                                        setModalQualityDraft(prev => ({
+                                          ...prev,
+                                          [it.id]: { ...prev[it.id], remarks: r }
+                                        }));
+                                      }}
+                                      style={{ padding: '3px 6px', borderRadius: '4px', border: '1px solid #DC2626', fontSize: '11px' }}
+                                    />
+                                  )}
+                                </div>
+                              ) : (
+                                <span
+                                  style={{
+                                    fontSize: '11px',
+                                    fontWeight: 750,
+                                    padding: '2px 8px',
+                                    borderRadius: '10px',
+                                    background: it.qualityStatus === 'PASS' ? '#ECFDF5' : it.qualityStatus === 'FAIL' ? '#FEF2F2' : '#FFFBEB',
+                                    color: it.qualityStatus === 'PASS' ? '#059669' : it.qualityStatus === 'FAIL' ? '#DC2626' : '#B45309'
+                                  }}
+                                >
+                                  {it.qualityStatus === 'PASS' ? '✓ Passed' : it.qualityStatus === 'FAIL' ? '⚠️ Failed' : '⏳ Pending'}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
 
                 {/* Modal Footer */}
-                <div style={{ background: '#F8FAFC', padding: '12px 20px', borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                <div style={{ padding: '12px 20px', background: '#F8FAFC', borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
                   <button
                     type="button"
-                    onClick={() => {
-                      setReceiveSearchJob(detailModalJob.jobNo);
-                      setDetailModalJob(null);
-                      setActiveTab('RECEIVE');
-                    }}
-                    style={{ padding: '6px 14px', borderRadius: '6px', background: '#0284C7', color: '#FFFFFF', border: 'none', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
-                  >
-                    Open in Order Receive
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDeliverySearchJob(detailModalJob.jobNo);
-                      setDetailModalJob(null);
-                      setActiveTab('DELIVERY');
-                    }}
+                    onClick={() => setDetailModalJob(null)}
                     style={{ padding: '6px 14px', borderRadius: '6px', background: '#0F274E', color: '#FFFFFF', border: 'none', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
                   >
-                    Open in Order Delivery
+                    Close
                   </button>
                 </div>
               </div>
@@ -2664,13 +3045,13 @@ export default function TrimsStorePage() {
       {/* ==================================================================== */}
       {activeTab === 'DELIVERY' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Top Job Search Bar */}
+          {/* Header & Job Search */}
           <div
             style={{
               background: 'var(--card-bg, #ffffff)',
               border: '1px solid var(--border, #E2E8F0)',
               borderRadius: '8px',
-              padding: '16px',
+              padding: '16px 20px',
               display: 'flex',
               flexWrap: 'wrap',
               alignItems: 'center',
@@ -2678,50 +3059,50 @@ export default function TrimsStorePage() {
               gap: '12px'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: '300px' }}>
-              <div style={{ position: 'relative', flex: 1 }}>
-                <Search size={16} color="#64748B" style={{ position: 'absolute', left: '10px', top: '10px' }} />
-                <input
-                  type="text"
-                  placeholder="Select Job # for Floor Issue & Gate Pass..."
-                  value={deliverySearchJob}
-                  onChange={e => setDeliverySearchJob(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '8px 10px 8px 34px',
-                    borderRadius: '6px',
-                    border: '1.5px solid #0284C7',
-                    fontSize: '13px',
-                    fontWeight: 600
-                  }}
-                />
-              </div>
-
-              {/* Quick Job Chips */}
-              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                {checklists.map(c => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => setDeliverySearchJob(c.jobNo)}
-                    style={{
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      border: deliverySearchJob === c.jobNo ? '1px solid #0F274E' : '1px solid #CBD5E1',
-                      background: deliverySearchJob === c.jobNo ? '#0F274E' : '#F8FAFC',
-                      color: deliverySearchJob === c.jobNo ? '#FFFFFF' : '#334155'
-                    }}
-                  >
-                    #{c.jobNo}
-                  </button>
-                ))}
-              </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: '280px' }}>
+              <Truck size={22} color="#0284C7" />
+              <input
+                type="text"
+                placeholder="Search Job No for Floor Issue (e.g. 48002)..."
+                value={deliverySearchJob}
+                onChange={e => setDeliverySearchJob(e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  border: '1.5px solid #0284C7',
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  outline: 'none'
+                }}
+              />
             </div>
 
-            {/* Delivered All & Issue Gate Pass Buttons */}
+            {/* Recent Searches */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '12px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <History size={13} />
+                <span>Recent:</span>
+              </span>
+              {recentSearches.map(jobNo => (
+                <div
+                  key={jobNo}
+                  onClick={() => setDeliverySearchJob(jobNo)}
+                  style={{
+                    background: deliverySearchJob.replace(/#/g, '').trim() === jobNo ? '#0F274E' : '#F1F5F9',
+                    color: deliverySearchJob.replace(/#/g, '').trim() === jobNo ? '#FFFFFF' : '#334155',
+                    borderRadius: '4px',
+                    padding: '2px 8px',
+                    fontSize: '11.5px',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  {jobNo}
+                </div>
+              ))}
+            </div>
+
             {selectedDeliveryJob && (
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button
@@ -2733,17 +3114,16 @@ export default function TrimsStorePage() {
                     gap: '6px',
                     padding: '8px 14px',
                     borderRadius: '6px',
-                    background: '#0284C7',
-                    color: '#FFFFFF',
-                    border: 'none',
+                    background: '#ECFDF5',
+                    border: '1.5px solid #059669',
+                    color: '#065F46',
                     fontSize: '12px',
                     fontWeight: 700,
                     cursor: 'pointer'
                   }}
-                  title="Deliver 100% full quantity of all received items"
                 >
-                  <CheckSquare size={15} />
-                  <span>Delivered All (Full Issue)</span>
+                  <Sparkles size={15} />
+                  <span>Delivered All</span>
                 </button>
 
                 <button
@@ -2930,12 +3310,12 @@ export default function TrimsStorePage() {
       )}
 
       {/* ==================================================================== */}
-      {/* TAB 5: LOCATION TRACKING (40 RACKS & JOB SEARCH)                     */}
+      {/* TAB 5: LOCATION TRACKING (3 SUB-TABS: 1. LAYOUT, 2. SEARCH, 3. CUSTOMIZE) */}
       {/* ==================================================================== */}
       {activeTab === 'LOCATION' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Sub-Tabs: Present Layout vs Job Location Search */}
-          <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid #E2E8F0', paddingBottom: '8px' }}>
+          {/* Sub-Tabs: 1. Present Store Layout, 2. Job Location Search, 3. Customize Rack Layout */}
+          <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid #E2E8F0', paddingBottom: '8px', flexWrap: 'wrap' }}>
             <button
               type="button"
               onClick={() => setLocationSubTab('LAYOUT')}
@@ -2976,6 +3356,28 @@ export default function TrimsStorePage() {
             >
               <Search size={16} />
               <span>2. Job-wise Location Search</span>
+            </button>
+
+            {/* 3RD SUB-TAB AS REQUESTED */}
+            <button
+              type="button"
+              onClick={() => setLocationSubTab('CUSTOMIZE')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 14px',
+                borderRadius: '6px',
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                border: locationSubTab === 'CUSTOMIZE' ? '1px solid #0F274E' : '1px solid #CBD5E1',
+                background: locationSubTab === 'CUSTOMIZE' ? '#0F274E' : '#FFFFFF',
+                color: locationSubTab === 'CUSTOMIZE' ? '#FFFFFF' : '#334155'
+              }}
+            >
+              <Sliders size={16} />
+              <span>3. Customize Rack Layout (র্যাক ও শেলফ কাস্টমাইজ)</span>
             </button>
           </div>
 
@@ -3119,14 +3521,14 @@ export default function TrimsStorePage() {
             >
               <div style={{ maxWidth: '400px', marginBottom: '16px' }}>
                 <label style={{ fontSize: '12px', fontWeight: 700, color: '#0F274E', display: 'block', marginBottom: '6px' }}>
-                  Search Job # to Locate Trims:
+                  Search Job No to Locate Trims:
                 </label>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <input
                     type="text"
                     value={locationJobQuery}
                     onChange={e => setLocationJobQuery(e.target.value)}
-                    placeholder="Enter Job # (e.g. 48002, 46755)..."
+                    placeholder="Enter Job No (e.g. 48002, 46755)..."
                     style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', border: '1.5px solid #0284C7', fontSize: '13px', fontWeight: 600 }}
                   />
                 </div>
@@ -3135,7 +3537,7 @@ export default function TrimsStorePage() {
               {searchedJobLocations ? (
                 <div>
                   <div style={{ background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '6px', padding: '10px 14px', marginBottom: '12px', fontSize: '13px' }}>
-                    <strong>Job #{searchedJobLocations.jobNo}</strong> ({searchedJobLocations.buyer} - {searchedJobLocations.styleNo}) — {searchedJobLocations.itemDescription}
+                    <strong>Job {searchedJobLocations.jobNo}</strong> ({searchedJobLocations.buyer} - {searchedJobLocations.styleNo}) — {searchedJobLocations.itemDescription}
                   </div>
 
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
@@ -3171,9 +3573,192 @@ export default function TrimsStorePage() {
                 </div>
               ) : (
                 <div style={{ padding: '30px', textAlign: 'center', color: '#64748B' }}>
-                  No trims found for Job #{locationJobQuery}. Please enter a valid Job #.
+                  No trims found for Job {locationJobQuery}. Please enter a valid Job No.
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Sub-view 3: CUSTOMIZE RACK & SHELF LAYOUT */}
+          {locationSubTab === 'CUSTOMIZE' && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 420px', gap: '16px' }}>
+              {/* Rack Selector Grid on Left */}
+              <div
+                style={{
+                  background: 'var(--card-bg, #ffffff)',
+                  border: '1px solid var(--border, #E2E8F0)',
+                  borderRadius: '8px',
+                  padding: '16px'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <div>
+                    <h3 style={{ fontSize: '15px', fontWeight: 800, margin: 0, color: '#0F274E' }}>
+                      Select a Rack to Configure (R-01 to R-40)
+                    </h3>
+                    <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
+                      Click any rack box to re-assign buyer or re-dedicate individual shelves.
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(8, 1fr)',
+                    gap: '8px'
+                  }}
+                >
+                  {racks.map(r => {
+                    const isSelected = r.rackId === selectedRackId;
+                    const buyerColor =
+                      r.dedicatedBuyer === 'ONLY' ? '#3B82F6' :
+                      r.dedicatedBuyer === 'OVS' ? '#8B5CF6' :
+                      r.dedicatedBuyer === 'BS-ONS' ? '#F59E0B' :
+                      r.dedicatedBuyer === 'BS-NMT' ? '#EC4899' :
+                      r.dedicatedBuyer === 'UTG' ? '#10B981' : '#64748B';
+
+                    return (
+                      <div
+                        key={r.rackId}
+                        onClick={() => setSelectedRackId(r.rackId)}
+                        style={{
+                          background: isSelected ? '#0F274E' : '#F8FAFC',
+                          color: isSelected ? '#FFFFFF' : '#1E293B',
+                          border: isSelected ? '2px solid #38BDF8' : '1px solid #E2E8F0',
+                          borderTop: `4px solid ${buyerColor}`,
+                          borderRadius: '6px',
+                          padding: '10px 6px',
+                          cursor: 'pointer',
+                          textAlign: 'center'
+                        }}
+                      >
+                        <div style={{ fontSize: '13px', fontWeight: 800 }}>{r.rackId}</div>
+                        <div style={{ fontSize: '10px', fontWeight: 700, color: isSelected ? '#93C5FD' : buyerColor, marginTop: '2px' }}>
+                          {r.dedicatedBuyer}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Shelf Customizer Editor on Right */}
+              <div
+                style={{
+                  background: 'var(--card-bg, #ffffff)',
+                  border: '1px solid var(--border, #E2E8F0)',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  display: 'flex',
+                  flexDirection: 'column'
+                }}
+              >
+                <div style={{ borderBottom: '1px solid #E2E8F0', paddingBottom: '10px', marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontSize: '11px', color: '#64748B', textTransform: 'uppercase', fontWeight: 700 }}>
+                        Configure Rack Matrix
+                      </div>
+                      <div style={{ fontSize: '18px', fontWeight: 800, color: '#0F274E' }}>
+                        {activeRack.rackId}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button
+                        type="button"
+                        onClick={handleResetRackToDefault}
+                        style={{ padding: '5px 10px', borderRadius: '4px', background: '#F1F5F9', border: '1px solid #CBD5E1', fontSize: '11px', fontWeight: 650, cursor: 'pointer' }}
+                      >
+                        Reset Default
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveRackLayout}
+                        style={{ padding: '5px 14px', borderRadius: '4px', background: '#059669', color: '#FFFFFF', border: 'none', fontSize: '11.5px', fontWeight: 750, cursor: 'pointer' }}
+                      >
+                        Save Configuration
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Re-assign Rack Buyer */}
+                  <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 700, color: '#0F274E' }}>Dedicated Buyer:</label>
+                    <select
+                      value={customRackBuyer}
+                      onChange={e => setCustomRackBuyer(e.target.value)}
+                      style={{ padding: '4px 8px', borderRadius: '4px', border: '1.5px solid #0284C7', fontWeight: 700, fontSize: '12px' }}
+                    >
+                      <option value="ONLY">ONLY</option>
+                      <option value="OVS">OVS</option>
+                      <option value="BS-ONS">BS-ONS</option>
+                      <option value="BS-NMT">BS-NMT</option>
+                      <option value="UTG">UTG</option>
+                      <option value="GENERAL">GENERAL</option>
+                      <option value="FAST_REACT">FAST_REACT</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* 12 Shelves Dedicated Item / Category Customization */}
+                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {customShelvesState.map((shelf, idx) => (
+                    <div
+                      key={shelf.shelfNo}
+                      style={{
+                        padding: '8px 10px',
+                        borderRadius: '6px',
+                        background: '#F8FAFC',
+                        border: '1px solid #E2E8F0',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '4px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 800, color: '#0F274E' }}>
+                          Shelf {shelf.shelfNo.toString().padStart(2, '0')}
+                        </span>
+                        
+                        {/* Dedicated Category Selector (e.g. switch from Label to Poly) */}
+                        <select
+                          value={shelf.assignedCategory}
+                          onChange={e => {
+                            const val = e.target.value as TrimsCategory;
+                            setCustomShelvesState(prev => prev.map((s, i) => i === idx ? { ...s, assignedCategory: val } : s));
+                          }}
+                          style={{ padding: '2px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, border: '1px solid #CBD5E1' }}
+                        >
+                          <option value="LABEL">LABEL (Main / Care)</option>
+                          <option value="POLY">POLY (Poly Bag)</option>
+                          <option value="PACKAGING">PACKAGING (Hangtag / Card)</option>
+                          <option value="THREAD">THREAD (Sewing Thread)</option>
+                          <option value="ELASTIC">ELASTIC (Waist / Leg)</option>
+                          <option value="ZIPPER">ZIPPER (Metal / Nylon)</option>
+                          <option value="BUTTON">BUTTON (Eyelet / Rivet)</option>
+                          <option value="TAPE">TAPE (Twill / Drawcord)</option>
+                          <option value="CARTON">CARTON (Shipping Box)</option>
+                          <option value="OTHER">OTHER (Lace / Badges)</option>
+                        </select>
+                      </div>
+
+                      {/* Custom Description Input */}
+                      <input
+                        type="text"
+                        value={shelf.itemSummary}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setCustomShelvesState(prev => prev.map((s, i) => i === idx ? { ...s, itemSummary: val } : s));
+                        }}
+                        placeholder="Dedicated description or items..."
+                        style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #CBD5E1', fontSize: '11.5px', background: '#FFFFFF' }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -3248,9 +3833,9 @@ export default function TrimsStorePage() {
                     fontSize: '11.5px',
                     fontWeight: 700,
                     cursor: 'pointer',
-                    border: reuseCategoryFilter === cat ? '1px solid #78350F' : '1px solid #CBD5E1',
-                    background: reuseCategoryFilter === cat ? '#78350F' : '#FFFFFF',
-                    color: reuseCategoryFilter === cat ? '#FFFFFF' : '#475569'
+                    border: reuseCategoryFilter === cat ? '1px solid #B45309' : '1px solid #CBD5E1',
+                    background: reuseCategoryFilter === cat ? '#B45309' : '#FFFFFF',
+                    color: reuseCategoryFilter === cat ? '#FFFFFF' : '#334155'
                   }}
                 >
                   {cat}
@@ -3272,34 +3857,31 @@ export default function TrimsStorePage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px', textAlign: 'left' }}>
               <thead>
                 <tr style={{ background: '#78350F', color: '#FFFFFF', fontSize: '11px', textTransform: 'uppercase' }}>
-                  <th style={{ padding: '9px 12px' }}>Surplus Item Name</th>
+                  <th style={{ padding: '9px 12px' }}>Surplus Item</th>
                   <th style={{ padding: '9px 10px' }}>Category</th>
                   <th style={{ padding: '9px 10px' }}>Available Qty</th>
                   <th style={{ padding: '9px 10px' }}>Unit</th>
-                  <th style={{ padding: '9px 10px' }}>Origin Job #</th>
+                  <th style={{ padding: '9px 10px' }}>Origin Job</th>
                   <th style={{ padding: '9px 10px' }}>Buyer</th>
-                  <th style={{ padding: '9px 10px' }}>Shelf Location</th>
-                  <th style={{ padding: '9px 10px' }}>Physical Condition</th>
+                  <th style={{ padding: '9px 10px' }}>Current Location</th>
+                  <th style={{ padding: '9px 10px' }}>Condition</th>
                   <th style={{ padding: '9px 12px' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredSurplusTrims.map(s => (
                   <tr key={s.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                    <td style={{ padding: '9px 12px' }}>
-                      <div style={{ fontWeight: 700, color: '#1E293B' }}>{s.itemName}</div>
-                      <div style={{ fontSize: '11px', color: '#64748B' }}>{s.remarks}</div>
-                    </td>
+                    <td style={{ padding: '9px 12px', fontWeight: 700, color: '#0F274E' }}>{s.itemName}</td>
                     <td style={{ padding: '9px 10px' }}>
-                      <span style={{ fontSize: '11px', background: '#FEF3C7', color: '#92400E', padding: '2px 6px', borderRadius: '4px', fontWeight: 650 }}>
+                      <span style={{ fontSize: '11px', background: '#FEF3C7', color: '#92400E', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
                         {s.category}
                       </span>
                     </td>
-                    <td style={{ padding: '9px 10px', fontSize: '14px', fontWeight: 800, color: '#047857' }}>
+                    <td style={{ padding: '9px 10px', fontWeight: 800, color: '#059669', fontSize: '13px' }}>
                       {s.availableQty.toLocaleString()}
                     </td>
                     <td style={{ padding: '9px 10px', fontWeight: 600, color: '#0284C7' }}>{s.unit}</td>
-                    <td style={{ padding: '9px 10px', fontWeight: 700, color: '#0F274E' }}>#{s.originJobNo}</td>
+                    <td style={{ padding: '9px 10px', fontWeight: 700, color: '#0F274E' }}>{s.originJobNo}</td>
                     <td style={{ padding: '9px 10px', color: '#475569' }}>{s.buyer}</td>
                     <td style={{ padding: '9px 10px' }}>
                       <span style={{ fontSize: '11px', background: '#EFF6FF', color: '#1D4ED8', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
@@ -3371,7 +3953,7 @@ export default function TrimsStorePage() {
                 </div>
 
                 <div style={{ marginBottom: '12px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: 700, display: 'block', marginBottom: '4px' }}>Target Job #:</label>
+                  <label style={{ fontSize: '12px', fontWeight: 700, display: 'block', marginBottom: '4px' }}>Target Job No:</label>
                   <input
                     type="text"
                     placeholder="e.g. 48085"
@@ -3486,12 +4068,12 @@ export default function TrimsStorePage() {
           {/* Mode A: Quick Job Location Finder */}
           {tvViewMode === 'JOB_FINDER' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {/* Massive TV Search Bar */}
+              {/* Massive TV Search Bar with Recent Searches */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(255,255,255,0.06)', padding: '12px 18px', borderRadius: '10px' }}>
                 <Search size={24} color="#A4D92C" />
                 <input
                   type="text"
-                  placeholder="SCAN BARCODE OR ENTER JOB # (e.g. 48002, 46755, 48085)..."
+                  placeholder="SCAN BARCODE OR ENTER JOB NO (e.g. 48002, 46755, 48085)..."
                   value={tvSearchJob}
                   onChange={e => setTvSearchJob(e.target.value)}
                   style={{
@@ -3504,32 +4086,54 @@ export default function TrimsStorePage() {
                     outline: 'none'
                   }}
                 />
-                {checklists.map(c => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => setTvSearchJob(c.jobNo)}
-                    style={{
-                      padding: '6px 12px',
-                      borderRadius: '6px',
-                      fontSize: '12px',
-                      fontWeight: 800,
-                      cursor: 'pointer',
-                      border: tvSearchJob === c.jobNo ? '1px solid #A4D92C' : '1px solid rgba(255,255,255,0.2)',
-                      background: tvSearchJob === c.jobNo ? '#A4D92C' : 'rgba(255,255,255,0.1)',
-                      color: tvSearchJob === c.jobNo ? '#071F42' : '#FFFFFF'
-                    }}
-                  >
-                    #{c.jobNo}
-                  </button>
-                ))}
+
+                {/* Recent Searches on TV bar */}
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  <span style={{ fontSize: '11px', color: '#94A3B8' }}>Recent:</span>
+                  {recentSearches.map(jobNo => (
+                    <button
+                      key={jobNo}
+                      type="button"
+                      onClick={() => setTvSearchJob(jobNo)}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        border: tvSearchJob.replace(/#/g, '').trim() === jobNo ? '1px solid #A4D92C' : '1px solid rgba(255,255,255,0.2)',
+                        background: tvSearchJob.replace(/#/g, '').trim() === jobNo ? '#A4D92C' : 'rgba(255,255,255,0.1)',
+                        color: tvSearchJob.replace(/#/g, '').trim() === jobNo ? '#071F42' : '#FFFFFF'
+                      }}
+                    >
+                      {jobNo}
+                    </button>
+                  ))}
+                  {tvSearchJob && (
+                    <button
+                      type="button"
+                      onClick={() => setTvSearchJob('')}
+                      style={{
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        background: 'rgba(255,255,255,0.15)',
+                        border: 'none',
+                        color: '#FFFFFF',
+                        cursor: 'pointer',
+                        fontSize: '11px'
+                      }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
               </div>
 
               {tvSelectedJob ? (
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.3)', padding: '12px 16px', borderRadius: '8px', marginBottom: '14px' }}>
                     <div>
-                      <span style={{ fontSize: '13px', color: '#93C5FD' }}>JOB #{tvSelectedJob.jobNo} • {tvSelectedJob.buyer}</span>
+                      <span style={{ fontSize: '13px', color: '#93C5FD' }}>JOB {tvSelectedJob.jobNo} • {tvSelectedJob.buyer}</span>
                       <div style={{ fontSize: '18px', fontWeight: 800, color: '#FFFFFF' }}>{tvSelectedJob.styleNo} — {tvSelectedJob.itemDescription}</div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
@@ -3559,7 +4163,7 @@ export default function TrimsStorePage() {
                               {it.category}
                             </span>
                             <span style={{ fontSize: '11px', fontWeight: 800, color: it.qualityStatus === 'PASS' ? '#34D399' : '#F87171' }}>
-                              {it.qualityStatus === 'PASS' ? '✅ QUALITY PASSED' : '⚠️ ' + it.qualityStatus}
+                              {it.qualityStatus === 'PASS' ? '✓ QUALITY PASSED' : '⚠️ ' + it.qualityStatus}
                             </span>
                           </div>
                           <div style={{ fontSize: '15px', fontWeight: 800, color: '#FFFFFF', marginTop: '8px' }}>
@@ -3593,9 +4197,65 @@ export default function TrimsStorePage() {
                   </div>
                 </div>
               ) : (
-                <div style={{ padding: '60px 20px', textAlign: 'center', color: '#94A3B8' }}>
-                  <Search size={48} color="#64748B" style={{ margin: '0 auto 12px' }} />
-                  <div style={{ fontSize: '18px', fontWeight: 700 }}>Enter a Job # or scan barcode to view location cards</div>
+                /* Rich Floor & Active Items Overview When No Job Searched */
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+                    <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '16px' }}>
+                      <div style={{ fontSize: '12px', color: '#38BDF8', fontWeight: 700 }}>ZONE A: WEST WING</div>
+                      <div style={{ fontSize: '18px', fontWeight: 800, marginTop: '4px' }}>R-01 to R-16</div>
+                      <div style={{ fontSize: '12px', color: '#CBD5E1', marginTop: '2px' }}>Dedicated to: ONLY & OVS Orders</div>
+                    </div>
+
+                    <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '16px' }}>
+                      <div style={{ fontSize: '12px', color: '#F59E0B', fontWeight: 700 }}>ZONE B: CENTER BAY</div>
+                      <div style={{ fontSize: '18px', fontWeight: 800, marginTop: '4px' }}>R-17 to R-30</div>
+                      <div style={{ fontSize: '12px', color: '#CBD5E1', marginTop: '2px' }}>Dedicated to: BS-ONS & BS-NMT Orders</div>
+                    </div>
+
+                    <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '16px' }}>
+                      <div style={{ fontSize: '12px', color: '#10B981', fontWeight: 700 }}>ZONE C: EAST DECK</div>
+                      <div style={{ fontSize: '18px', fontWeight: 800, marginTop: '4px' }}>R-31 to R-40</div>
+                      <div style={{ fontSize: '12px', color: '#CBD5E1', marginTop: '2px' }}>Dedicated to: UTG & General Surplus</div>
+                    </div>
+
+                    <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '16px' }}>
+                      <div style={{ fontSize: '12px', color: '#A4D92C', fontWeight: 700 }}>ACTIVE STORAGE CAPACITY</div>
+                      <div style={{ fontSize: '18px', fontWeight: 800, marginTop: '4px' }}>480 Total Shelves</div>
+                      <div style={{ fontSize: '12px', color: '#CBD5E1', marginTop: '2px' }}>Scan barcode or pick a recent Job above</div>
+                    </div>
+                  </div>
+
+                  {/* Active Fast-Moving Trims Directory */}
+                  <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '16px' }}>
+                    <div style={{ fontSize: '14px', fontWeight: 800, color: '#A4D92C', marginBottom: '10px' }}>
+                      FAST-MOVING TRIMS ACTIVE STORAGE LOCATIONS:
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px' }}>
+                      <div style={{ background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '6px' }}>
+                        <div style={{ fontSize: '11px', color: '#93C5FD' }}>JOB 48002 (ONLY)</div>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF' }}>Main Label & Care Label</div>
+                        <div style={{ fontSize: '14px', fontWeight: 800, color: '#A4D92C', marginTop: '4px' }}>📍 R-01 | S-01, S-02</div>
+                      </div>
+
+                      <div style={{ background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '6px' }}>
+                        <div style={{ fontSize: '11px', color: '#93C5FD' }}>JOB 48002 (ONLY)</div>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF' }}>Waist Elastic 3.5cm</div>
+                        <div style={{ fontSize: '14px', fontWeight: 800, color: '#A4D92C', marginTop: '4px' }}>📍 R-02 | S-03</div>
+                      </div>
+
+                      <div style={{ background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '6px' }}>
+                        <div style={{ fontSize: '11px', color: '#93C5FD' }}>JOB 46755 (OVS)</div>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF' }}>Care Label & Sewing Thread 40/2</div>
+                        <div style={{ fontSize: '14px', fontWeight: 800, color: '#A4D92C', marginTop: '4px' }}>📍 R-09 | S-01, S-04</div>
+                      </div>
+
+                      <div style={{ background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '6px' }}>
+                        <div style={{ fontSize: '11px', color: '#93C5FD' }}>JOB 48906 (UTG)</div>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF' }}>UTG Active Main & Care Labels</div>
+                        <div style={{ fontSize: '14px', fontWeight: 800, color: '#A4D92C', marginTop: '4px' }}>📍 R-31 | S-01, S-02</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

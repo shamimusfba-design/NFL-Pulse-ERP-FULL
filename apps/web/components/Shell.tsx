@@ -79,15 +79,7 @@ const DEPARTMENT_TOP_NAVS: DepartmentNavConfig[] = [
     deptId: 'trims',
     deptName: 'Trims & Accessories Store',
     matchPrefixes: ['/modules/trims'],
-    subItems: [
-      { name: 'Checklist Requests', href: '/modules/trims?tab=CHECKLIST' },
-      { name: 'Order Receive', href: '/modules/trims?tab=RECEIVE' },
-      { name: 'Present Stock', href: '/modules/trims?tab=STOCK' },
-      { name: 'Order Delivery', href: '/modules/trims?tab=DELIVERY' },
-      { name: 'Location Tracking', href: '/modules/trims?tab=LOCATION' },
-      { name: 'Stock for Reuse', href: '/modules/trims?tab=REUSE' },
-      { name: 'Store TV Display', href: '/modules/trims?tab=TV' },
-    ]
+    subItems: []
   },
   {
     deptId: 'central-planning',
@@ -836,7 +828,7 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
         </header>
 
         {/* Standardized Global Department Top Sub-Navigation Bar */}
-        {activeTopNavConfig && (
+        {activeTopNavConfig && activeTopNavConfig.subItems && activeTopNavConfig.subItems.length > 0 && (
           <nav className="global-dept-subnav" aria-label={`${activeTopNavConfig.deptName} sub-navigation`}>
             {activeTopNavConfig.subItems.map((sub) => {
               const isActiveSub = pathname === sub.href;
