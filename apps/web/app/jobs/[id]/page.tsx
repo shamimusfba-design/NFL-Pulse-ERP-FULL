@@ -7,7 +7,6 @@ import Shell from '../../../components/Shell';
 import demo2000DataRaw from '../../../data/demo-2000-master.json';
 import { displayJobNo } from '../../../lib/display';
 import {
-  ResponsiveContainer,
   BarChart,
   Bar,
   PieChart,
@@ -17,8 +16,9 @@ import {
   YAxis,
   Tooltip,
   Legend,
-  CartesianGrid,
+  CartesianGrid
 } from 'recharts';
+import { FX_SERIES, FxResponsiveContainer as ResponsiveContainer } from '../../../components/fx';
 import {
   Search,
   ArrowLeft,
@@ -768,7 +768,7 @@ export default function MasterJob360Page() {
                 <div style={{ width: '100%', height: '190px' }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie
+                      <Pie {...FX_SERIES}
                         data={wipDonutData}
                         dataKey="value"
                         nameKey="name"
@@ -816,8 +816,8 @@ export default function MasterJob360Page() {
                         formatter={(value: any, name: any) => [fmt(value), name === 'actual' ? 'Completed / Produced' : 'Balance Remaining']}
                         contentStyle={{ background: '#0F274E', color: '#fff', borderRadius: '6px', fontSize: '11px', border: 'none' }}
                       />
-                      <Bar dataKey="actual" fill="#0284C7" radius={[4, 4, 0, 0]} maxBarSize={36} />
-                      <Bar dataKey="balance" fill="#CBD5E1" radius={[4, 4, 0, 0]} maxBarSize={36} />
+                      <Bar {...FX_SERIES} dataKey="actual" fill="#0284C7" radius={[4, 4, 0, 0]} maxBarSize={36} />
+                      <Bar {...FX_SERIES} dataKey="balance" fill="#CBD5E1" radius={[4, 4, 0, 0]} maxBarSize={36} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
