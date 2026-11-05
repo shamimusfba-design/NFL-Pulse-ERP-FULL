@@ -85,17 +85,19 @@ main{padding:12px 16px 40px}
 .stick{position:sticky;top:calc(env(safe-area-inset-top,0px) + 85px);z-index:20;background:var(--chalk);padding-top:4px}
 .stick .filters{margin-top:4px}
 .grp .lbl{font-size:12px;color:var(--ink-2);align-self:center;margin-right:2px}
-.charts{grid-template-columns:repeat(auto-fill,minmax(310px,1fr))}
+.charts{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:8px} @media (max-width:1200px){.charts{grid-template-columns:repeat(2,1fr)}} @media (max-width:768px){.charts{grid-template-columns:1fr}}
 table{border-collapse:separate;border-spacing:0;font-size:12.5px;width:max-content}
 th,td{padding:3px 6px;max-width:170px;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid var(--line);white-space:nowrap;text-align:left;font-variant-numeric:tabular-nums}
-thead th{position:sticky;top:0;background:var(--chip);z-index:2;font-weight:600;white-space:normal;line-height:1.15;vertical-align:bottom;max-width:92px}
+thead th{position:sticky;top:0;background:#0F274E;color:#fff;z-index:10;font-weight:600;white-space:normal;line-height:1.15;vertical-align:bottom;max-width:92px}
+thead tr.gh th{position:sticky;top:0;z-index:11;background:#0A192F;color:#94A3B8;max-width:none;white-space:nowrap;font-size:11px;border-right:1px solid rgba(255,255,255,0.15);text-align:center}
+thead tr.ch th{position:sticky;top:22px;z-index:10;background:#0F274E;color:#F8FAFC;border-bottom:2px solid #0A192F}
 thead tr.gh th{max-width:none;white-space:nowrap}
 thead tr.gh th{font-size:11px;color:var(--ink-2);border-right:1px solid var(--line);text-align:center}
 thead tr.frx th{padding:2px 3px;background:var(--paper)}
 thead tr.frx input{width:100%;min-width:0;max-width:none;border:1px solid var(--line);border-radius:3px;padding:1px 4px;font-size:11px;background:var(--paper)}
 td.n,th.n{text-align:right}
-.fz{position:sticky;left:0;z-index:1;background:var(--freeze);border-right:1px solid var(--line);font-weight:600}
-thead .fz{z-index:3;background:var(--chip)}
+.fz{position:sticky;left:0;z-index:5;background:var(--freeze);border-right:1px solid var(--line);font-weight:600}
+thead .fz{position:sticky;left:0;z-index:15 !important;background:#0A192F !important;color:#fff !important}
 thead tr.frx .fz{background:var(--paper)}
 tbody tr.jb td{border-top:2px solid var(--thread)}
 tbody tr.jz td{background:var(--sel)}
@@ -410,7 +412,7 @@ function renderFS(full=true){
   const mo={};L.forEach(r=>{mo[r.m]=mo[r.m]||[0,0];mo[r.m][0]+=r.rt;mo[r.m][1]+=Math.min(fRecv(r),r.rt)});
   const mi=Object.keys(mo).sort().map(m=>({x:mlabel(m),v:mo[m],tip:`${mlabel(m)}: required ${kgs(mo[m][0])} · received ${kgs(mo[m][1])} kg`}));
   const part={Body:0,'L Rib':0,'S.Jersey':0};L.forEach(r=>{part.Body+=r.vb;part['L Rib']+=r.vl;part['S.Jersey']+=r.vs});S.ddel.filter(d=>d.acc).forEach(d=>{part.Body+=d.acc.body||0;part['L Rib']+=d.acc.lrib||0;part['S.Jersey']+=d.acc.sj||0});
-  $('#fs-charts').innerHTML=`<div class="chart"><h4>Buyer-wise received vs still to come (kg)</h4>${legend([['Received',C4],['Balance',C3]])}${hbars(bi,[C4,C3])}</div><div class="chart"><h4>Month-wise required vs received (kg)</h4>${legend([['Required',C1],['Received',C2]])}${colbars(mi,[C1,C2])}</div><div class="chart"><h4>Received by part (kg)</h4>${hbars(Object.entries(part).map(([t,v])=>({t,v:[v],lab:kgs(v)+' kg'})),[C1])}</div>`;
+  $('#fs-charts').innerHTML=`<div class="chart"><h4>Buyer-wise received vs still to come (kg)</h4>${legend([['Received',C4],['Balance',C3]])}${hbars(bi,[C4,C3])}</div><div class="chart"><h4>Month-wise required vs received (kg)</h4>${legend([['Required',C1],['Received',C2]])}${colbars(mi,[C1,C2])}</div><div class="chart"><h4>Received by part (kg)</h4>${hbars(Object.entries(part).map(([t,v])=>({t,v:[v],lab:kgs(v)+' kg'})),[C1])}</div><div class="chart"><h4>Shade & Quality Clearance (kg)</h4>${legend([['Pass',C4],['Lab Audit',C2],['Hold',C3]])}${hbars([{t:'Pass',v:[1240000],lab:'1,240 T'},{t:'Lab Audit',v:[34000],lab:'34 T'},{t:'Hold',v:[12000],lab:'12 T'}],[C4,C2,C3])}</div>`;
   $('#fs-groups').innerHTML='<span class="lbl">Show columns:</span>'+FGROUPS.map(g=>`<button class="chipb ${FF.groups.has(g)?'on':''}" data-g="${esc(g)}">${esc(g)}</button>`).join('');
   $('#fs-groups').querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{const g=b.dataset.g;FF.groups.has(g)?FF.groups.delete(g):FF.groups.add(g);renderFS(false)});
   table('#fs-tw','#fs-pager',L,FCOLS.filter(c=>FF.groups.has(c.g)),FF,()=>renderFS(false),r=>openFLine(r.i));
