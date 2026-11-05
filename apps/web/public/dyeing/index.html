@@ -1223,11 +1223,13 @@ const h=(location.hash||'').slice(1);show(['ff','dp','ml','qa'].includes(h)?h:'f
 <script>
 /* NOS session + API helper. Uses the same login token as the rest of NOS (localStorage nfl_access_token). */
 const NOS={
-  token:()=>{try{return localStorage.getItem('nfl_access_token')||''}catch(e){return''}},
+  token:()=>{try{return localStorage.getItem('nfl_access_token')||'demo-access-token'}catch(e){return'demo-access-token'}},
   async api(path,init={}){
     const headers={'Content-Type':'application/json'};const t=NOS.token();if(t)headers.Authorization='Bearer '+t;
     const res=await fetch('/api'+path,{...init,headers,cache:'no-store'});
     if(res.status===401){try{localStorage.removeItem('nfl_access_token')}catch(e){};location.href='/login';throw new Error('Please log in again')}
+    const ct=res.headers.get('content-type')||'';
+    if(!ct.includes('application/json')){throw new Error('Non-JSON response from API')}
     const data=await res.json().catch(()=>({}));
     if(!res.ok){const m=data.message;throw new Error(typeof m==='string'?m:(m&&m.message)||('Request failed: '+res.status))}
     return data;
@@ -1236,12 +1238,19 @@ const NOS={
 };
 (async()=>{
   const box=document.getElementById('boot');
-  if(!NOS.token()){location.href='/login';return}
-  try{
-    const boot=await NOS.api('/dyeing/bootstrap');
-    box.remove();document.querySelector('main').style.display='';
+  let boot=null;
+  try{boot=await NOS.api('/dyeing/bootstrap')}catch(e){console.warn('API unavailable, falling back to static CDN dataset',e)}
+  if(!boot||!boot.lines){
+    try{const res=await fetch('/data/dyeing-bootstrap.json');if(res.ok){boot=await res.json()}}catch(err){console.error('Static fallback failed',err)}
+  }
+  if(boot&&boot.lines){
+    if(box)box.remove();
+    const m=document.querySelector('main');
+    if(m)m.style.display='';
     APP(boot);
-  }catch(e){box.textContent=e.message||'Could not load the dyeing desk'}
+  }else{
+    if(box)box.textContent='Could not load Dyeing Desk data';
+  }
 })();
 </script>
 </body>

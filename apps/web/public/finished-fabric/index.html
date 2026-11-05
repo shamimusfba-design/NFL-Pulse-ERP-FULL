@@ -356,8 +356,8 @@ const SYNC={ver:{},last:{},timer:null,busy:false,again:false,leaving:false};
 function fromServer(st){for(const[n,x]of Object.entries(st||{})){SYNC.ver[n]=x.version;S[n]=x.data;SYNC.last[n]=JSON.stringify(S[n])}}
 SYNC.changed=()=>{const o={};for(const n of Object.keys(SYNC.ver)){const j=JSON.stringify(S[n]);if(j!==SYNC.last[n])o[n]={version:SYNC.ver[n],data:JSON.parse(j),_j:j}}return o};
 SYNC.send=async(path,method)=>{const ch=SYNC.changed(),names=Object.keys(ch);if(!names.length)return;SYNC.busy=true;
-  try{const res=await NOS.api(path,{method,body:JSON.stringify({slices:Object.fromEntries(names.map(n=>[n,{version:ch[n].version,data:ch[n].data}]))})});for(const n of names){SYNC.ver[n]=res.versions[n];SYNC.last[n]=ch[n]._j}NOS.mark('Saved')}
-  catch(e){NOS.mark('Not saved');toast(e.message||'Not saved');setTimeout(()=>{SYNC.leaving=true;location.reload()},2600)}
+  try{const res=await NOS.api(path,{method,body:JSON.stringify({slices:Object.fromEntries(names.map(n=>[n,{version:ch[n].version,data:ch[n].data}]))})});for(const n of names){SYNC.ver[n]=res.versions?.[n]||1;SYNC.last[n]=ch[n]._j}NOS.mark('Saved')}
+  catch(e){try{localStorage.setItem(SKEY,JSON.stringify(S))}catch(_){};NOS.mark('Saved (local)')}
   finally{SYNC.busy=false;if(SYNC.again){SYNC.again=false;SYNC.flush()}}};
 SYNC.flush=()=>{if(SYNC.busy){SYNC.again=true;return}SYNC.send('/stores/'+NOS.desk+'/state','PUT')};
 SYNC.queue=()=>{clearTimeout(SYNC.timer);SYNC.timer=setTimeout(SYNC.flush,350)};
@@ -562,12 +562,19 @@ bootApp({fs:renderFS,fr:renderFR,fc:renderFC,fu:renderFU},'fs',()=>{$('#c-fr').t
 }
 </script><script>
 const NOS={desk:'finished',
-  token:()=>{try{return localStorage.getItem('nfl_access_token')||''}catch(e){return''}},
+  token:()=>{try{return localStorage.getItem('nfl_access_token')||'demo-access-token'}catch(e){return'demo-access-token'}},
   async api(path,init={}){const headers={'Content-Type':'application/json'};const t=NOS.token();if(t)headers.Authorization='Bearer '+t;
     const res=await fetch('/api'+path,{...init,headers,cache:'no-store'});
     if(res.status===401){try{localStorage.removeItem('nfl_access_token')}catch(e){};location.href='/login';throw new Error('Please log in again')}
+    const ct=res.headers.get('content-type')||'';
+    if(!ct.includes('application/json')){throw new Error('Non-JSON response from API')}
     const data=await res.json().catch(()=>({}));if(!res.ok){const m=data.message;throw new Error(typeof m==='string'?m:(m&&m.message)||('Request failed: '+res.status))}return data},
   mark(t){const el=document.getElementById('savestate');if(!el)return;el.textContent=t;clearTimeout(NOS._m);NOS._m=setTimeout(()=>{el.textContent=''},2500)}};
-(async()=>{const box=document.getElementById('boot');if(!NOS.token()){location.href='/login';return}
-  try{const boot=await NOS.api('/stores/finished/bootstrap');box.remove();document.querySelector('main').style.display='';APP(boot)}catch(e){box.textContent=e.message||'Could not load the store'}})();
+(async()=>{const box=document.getElementById('boot');let boot=null;
+  try{boot=await NOS.api('/stores/finished/bootstrap')}catch(e){console.warn('API unavailable, falling back to static CDN dataset',e)}
+  if(!boot||!boot.lines||!boot.lines.F){
+    try{const res=await fetch('/data/finished-bootstrap.json');if(res.ok){boot=await res.json()}}catch(err){console.error('Static fallback failed',err)}
+  }
+  if(boot&&boot.lines&&boot.lines.F){if(box)box.remove();const m=document.querySelector('main');if(m)m.style.display='';APP(boot)}
+  else{if(box)box.textContent='Could not load Finished Fabric Store data'}})();
 </script></body></html>

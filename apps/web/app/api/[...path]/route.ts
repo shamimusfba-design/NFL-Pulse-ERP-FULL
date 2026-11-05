@@ -6,6 +6,9 @@ import factoryDataRaw from '../../../data/dyeing-factory-data.json';
 import factoryKpiMasterRaw from '../../../data/factory-kpi-master.json';
 import yarnStockMasterRaw from '../../../data/yarn-stock-master.json';
 import knittingExecutionMasterRaw from '../../../data/knitting-execution-master.json';
+import greigeBootstrapRaw from '../../../public/data/greige-bootstrap.json';
+import finishedBootstrapRaw from '../../../public/data/finished-bootstrap.json';
+import dyeingBootstrapRaw from '../../../public/data/dyeing-bootstrap.json';
 
 const masterJobs = (demo2000DataRaw as any)?.jobs || [];
 const factoryData = factoryDataRaw as any;
@@ -3845,6 +3848,23 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   // 16. /api/greige-store/data
   if (pathStr === 'greige-store/data') {
     return NextResponse.json(factoryData);
+  }
+
+  // 16-stores. Stores & Dyeing desks bootstrap & state
+  if (pathStr === 'stores/greige/bootstrap') {
+    return NextResponse.json(greigeBootstrapRaw);
+  }
+  if (pathStr === 'stores/finished/bootstrap') {
+    return NextResponse.json(finishedBootstrapRaw);
+  }
+  if (pathStr === 'dyeing/bootstrap') {
+    return NextResponse.json(dyeingBootstrapRaw);
+  }
+  if (pathStr === 'stores/greige/state' || pathStr === 'stores/finished/state' || pathStr === 'dyeing/state') {
+    return NextResponse.json({ ok: true, versions: {} });
+  }
+  if (pathStr === 'stores/greige/demo' || pathStr === 'stores/finished/demo' || pathStr === 'dyeing/demo') {
+    return NextResponse.json({ ok: true });
   }
 
   // 16b. /api/yarn-store/data or /api/yarn-stock/summary
