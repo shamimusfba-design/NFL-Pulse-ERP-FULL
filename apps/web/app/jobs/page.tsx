@@ -7,7 +7,6 @@ import Shell from '../../components/Shell';
 import demo2000DataRaw from '../../data/demo-2000-master.json';
 import { displayJobNo } from '../../lib/display';
 import {
-  ResponsiveContainer,
   BarChart,
   Bar,
   PieChart,
@@ -18,6 +17,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts';
+import { FX_SERIES, FxResponsiveContainer as ResponsiveContainer } from '../../components/fx';
 import {
   Search,
   Printer,
@@ -1490,7 +1490,7 @@ function Job360Content() {
                     formatter={(val: any, name: any) => [`${val} pcs`, name === 'actual' ? 'Actual Output' : 'Hourly Target']}
                     contentStyle={{ background: '#0F274E', color: '#fff', borderRadius: '6px', fontSize: '11px', border: 'none' }}
                   />
-                  <Bar dataKey="actual" fill="#0284C7" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                  <Bar {...FX_SERIES} dataKey="actual" fill="#0284C7" radius={[4, 4, 0, 0]} maxBarSize={32} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
