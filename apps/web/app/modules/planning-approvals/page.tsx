@@ -4,6 +4,33 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import Shell from '../../../components/Shell';
 import { api } from '../../../lib/api';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Cell,
+  CartesianGrid,
+} from 'recharts';
+import {
+  CheckCircle2,
+  Clock,
+  FileCheck2,
+  RotateCcw,
+  Send,
+  Search,
+  Filter,
+  FileText,
+  AlertCircle,
+  TrendingUp,
+  Boxes,
+  Eye,
+  Plus,
+  X,
+  Sparkles,
+} from 'lucide-react';
 
 function fmt(n: any) {
   return Number(n || 0).toLocaleString();
@@ -12,15 +39,40 @@ function fmt(n: any) {
 function statusBadge(status: string) {
   switch (status) {
     case 'RELEASED_TO_KNITTING':
-      return 'border-emerald-500/40 bg-emerald-500/15 text-emerald-200';
+      return {
+        bg: '#ECFDF5',
+        border: '#A7F3D0',
+        text: '#065F46',
+        label: 'Released to Knitting',
+      };
     case 'APPROVED':
-      return 'border-cyan-500/40 bg-cyan-500/15 text-cyan-200';
+      return {
+        bg: '#EFF6FF',
+        border: '#BFDBFE',
+        text: '#1E40AF',
+        label: 'Planning Approved',
+      };
     case 'SIGNED_COPY_RECORDED':
-      return 'border-indigo-500/40 bg-indigo-500/15 text-indigo-200';
+      return {
+        bg: '#EEF2FF',
+        border: '#C7D2FE',
+        text: '#3730A3',
+        label: 'Signed Copy Verified',
+      };
     case 'RETURNED':
-      return 'border-rose-500/40 bg-rose-500/15 text-rose-200';
+      return {
+        bg: '#FEF2F2',
+        border: '#FECACA',
+        text: '#991B1B',
+        label: 'Returned to Merch',
+      };
     default:
-      return 'border-amber-500/40 bg-amber-500/15 text-amber-200';
+      return {
+        bg: '#FFFBEB',
+        border: '#FDE68A',
+        text: '#92400E',
+        label: 'Pending Review',
+      };
   }
 }
 
@@ -30,6 +82,7 @@ export default function PlanningApprovalsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [search, setSearch] = useState<string>('');
   const [selectedJob, setSelectedJob] = useState<any>(null);
+  const [activeChartBar, setActiveChartBar] = useState<number | null>(null);
 
   // Modals / Drawers
   const [signedModalJob, setSignedModalJob] = useState<any>(null);
@@ -101,6 +154,7 @@ export default function PlanningApprovalsPage() {
   }, [queue, statusFilter, search]);
 
   const kpiCounts = useMemo(() => {
+    const totalFinishKg = queue.reduce((s, x) => s + Number(x.totalFinishKg || 0), 0);
     return {
       total: queue.length,
       pending: queue.filter((x) => x.status === 'PENDING_REVIEW').length,
@@ -108,8 +162,55 @@ export default function PlanningApprovalsPage() {
       approved: queue.filter((x) => x.status === 'APPROVED').length,
       returned: queue.filter((x) => x.status === 'RETURNED').length,
       released: queue.filter((x) => x.status === 'RELEASED_TO_KNITTING').length,
+      totalFinishKg,
     };
   }, [queue]);
+
+  // Chart data for status distribution
+  const chartData = useMemo(() => {
+    return [
+      {
+        name: 'Pending Review',
+        count: kpiCounts.pending,
+        key: 'PENDING_REVIEW',
+        color: '#F59E0B',
+        fill: '#FDE68A',
+        finishKg: queue.filter((x) => x.status === 'PENDING_REVIEW').reduce((s, x) => s + Number(x.totalFinishKg || 0), 0),
+      },
+      {
+        name: 'Signed Verified',
+        count: kpiCounts.signed,
+        key: 'SIGNED_COPY_RECORDED',
+        color: '#6366F1',
+        fill: '#C7D2FE',
+        finishKg: queue.filter((x) => x.status === 'SIGNED_COPY_RECORDED').reduce((s, x) => s + Number(x.totalFinishKg || 0), 0),
+      },
+      {
+        name: 'Approved',
+        count: kpiCounts.approved,
+        key: 'APPROVED',
+        color: '#0284C7',
+        fill: '#BAE6FD',
+        finishKg: queue.filter((x) => x.status === 'APPROVED').reduce((s, x) => s + Number(x.totalFinishKg || 0), 0),
+      },
+      {
+        name: 'Returned',
+        count: kpiCounts.returned,
+        key: 'RETURNED',
+        color: '#EF4444',
+        fill: '#FECACA',
+        finishKg: queue.filter((x) => x.status === 'RETURNED').reduce((s, x) => s + Number(x.totalFinishKg || 0), 0),
+      },
+      {
+        name: 'Released',
+        count: kpiCounts.released,
+        key: 'RELEASED_TO_KNITTING',
+        color: '#10B981',
+        fill: '#A7F3D0',
+        finishKg: queue.filter((x) => x.status === 'RELEASED_TO_KNITTING').reduce((s, x) => s + Number(x.totalFinishKg || 0), 0),
+      },
+    ];
+  }, [kpiCounts, queue]);
 
   function openSignedCopyModal(job: any) {
     setSignedModalJob(job);
@@ -285,731 +386,1692 @@ export default function PlanningApprovalsPage() {
   const expectedFinishKg = Number(releaseDraft?.fabricSheetTotalFinishKg || releaseModalJob?.totalFinishKg || 0);
   const finishDiffKg = Math.round((draftSumFinishKg - expectedFinishKg) * 10) / 10;
 
+  // Custom Interactive Tooltip for Recharts
+  const CustomChartTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const d = payload[0].payload;
+      const pct = kpiCounts.total > 0 ? Math.round((d.count / kpiCounts.total) * 100) : 0;
+      return (
+        <div
+          style={{
+            background: '#0F172A',
+            color: '#FFFFFF',
+            padding: '10px 14px',
+            borderRadius: '8px',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3)',
+            border: '1px solid #334155',
+            fontSize: '12px',
+            lineHeight: 1.4,
+            minWidth: '170px',
+            pointerEvents: 'none',
+          }}
+        >
+          <div style={{ fontWeight: 700, color: d.color, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: d.color }}></span>
+            {d.name}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', margin: '2px 0' }}>
+            <span style={{ color: '#94A3B8' }}>Submissions:</span>
+            <span style={{ fontWeight: 700 }}>{d.count} Jobs ({pct}%)</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', margin: '2px 0' }}>
+            <span style={{ color: '#94A3B8' }}>Finish Fabric:</span>
+            <span style={{ fontWeight: 700, color: '#38BDF8' }}>{fmt(d.finishKg)} Kg</span>
+          </div>
+          <div style={{ marginTop: '6px', paddingTop: '4px', borderTop: '1px solid #1E293B', fontSize: '10.5px', color: '#CBD5E1' }}>
+            Click card below to filter queue
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <Shell
-      title="Central Planning Approval Desk & Knitting Release"
+      title="1. Central Planning Approval & Release Desk"
       eyebrow="Central Planning • Signed Copy Verification & Colour × Part Release"
     >
-      {/* Top Flow Navigation */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-3 text-xs">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-semibold uppercase tracking-wider text-slate-400">Central Planning Flow:</span>
-          <Link href="/modules/ta" className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-slate-200 hover:border-cyan-400">
-            1. Time & Action (T&A)
-          </Link>
-          <span className="text-slate-600">→</span>
-          <span className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 font-semibold text-cyan-200">
-            2. Approval Desk & Release
-          </span>
-          <span className="text-slate-600">→</span>
-          <Link href="/modules/capacity" className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-slate-200 hover:border-cyan-400">
-            3. Capacity & Holiday Calendar
-          </Link>
-          <span className="text-slate-600">→</span>
-          <Link href="/modules/sewing-planning" className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-slate-200 hover:border-cyan-400">
-            4. Sewing Line Gantt
-          </Link>
-          <span className="text-slate-600">→</span>
-          <Link href="/modules/subcontract" className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-slate-200 hover:border-cyan-400">
-            5. Subcontract Follow-up
-          </Link>
+      <div className="erp-page-entrance" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {/* Top Action & View Switcher Bar */}
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            background: '#FFFFFF',
+            padding: '12px 18px',
+            borderRadius: '10px',
+            border: '1px solid #E2E8F0',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                background: 'linear-gradient(135deg, #0284C7, #0369A1)',
+                display: 'grid',
+                placeItems: 'center',
+                color: '#FFFFFF',
+                boxShadow: '0 2px 6px rgba(2, 132, 199, 0.3)',
+              }}
+            >
+              <FileCheck2 size={18} />
+            </div>
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F274E', letterSpacing: '-0.01em' }}>
+                Central Planning Approval &amp; Release Control
+              </div>
+              <div style={{ fontSize: '11.5px', color: '#64748B' }}>
+                Gateway from Merchandising T&amp;A to Knitting, Dyeing and Cutting Execution
+              </div>
+            </div>
+          </div>
+
+          {/* Tab Pill Switcher */}
+          <div style={{ display: 'flex', gap: '6px', background: '#F1F5F9', padding: '3px', borderRadius: '8px' }}>
+            <button
+              onClick={() => setActiveTab('BULK_DESK')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 14px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: activeTab === 'BULK_DESK' ? 700 : 550,
+                border: 'none',
+                cursor: 'pointer',
+                background: activeTab === 'BULK_DESK' ? '#FFFFFF' : 'transparent',
+                color: activeTab === 'BULK_DESK' ? '#0284C7' : '#64748B',
+                boxShadow: activeTab === 'BULK_DESK' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <Boxes size={14} />
+              Bulk Approval &amp; Release ({queue.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('SAMPLE_QUOTA')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 14px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: activeTab === 'SAMPLE_QUOTA' ? 700 : 550,
+                border: 'none',
+                cursor: 'pointer',
+                background: activeTab === 'SAMPLE_QUOTA' ? '#FFFFFF' : 'transparent',
+                color: activeTab === 'SAMPLE_QUOTA' ? '#0284C7' : '#64748B',
+                boxShadow: activeTab === 'SAMPLE_QUOTA' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <TrendingUp size={14} />
+              Sample Order TNA &amp; Quota ({sampleOrders.length})
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setActiveTab('BULK_DESK')}
-            className={`rounded-xl px-3.5 py-1.5 font-semibold transition ${
-              activeTab === 'BULK_DESK'
-                ? 'bg-cyan-500 text-slate-950'
-                : 'border border-slate-700 bg-slate-950 text-slate-300 hover:border-slate-500'
-            }`}
+
+        {/* Notification Banners */}
+        {message && (
+          <div
+            style={{
+              padding: '10px 16px',
+              borderRadius: '8px',
+              background: '#ECFDF5',
+              border: '1px solid #A7F3D0',
+              color: '#065F46',
+              fontSize: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
           >
-            Bulk Approval & Knitting Release ({queue.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('SAMPLE_QUOTA')}
-            className={`rounded-xl px-3.5 py-1.5 font-semibold transition ${
-              activeTab === 'SAMPLE_QUOTA'
-                ? 'bg-cyan-500 text-slate-950'
-                : 'border border-slate-700 bg-slate-950 text-slate-300 hover:border-slate-500'
-            }`}
+            <CheckCircle2 size={16} />
+            {message}
+          </div>
+        )}
+        {error && (
+          <div
+            style={{
+              padding: '10px 16px',
+              borderRadius: '8px',
+              background: '#FEF2F2',
+              border: '1px solid #FECACA',
+              color: '#991B1B',
+              fontSize: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
           >
-            Sample Order TNA & Buyer Quota ({sampleOrders.length})
-          </button>
-        </div>
-      </div>
+            <AlertCircle size={16} />
+            {error}
+          </div>
+        )}
 
-      {message && (
-        <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-200">{message}</div>
-      )}
-      {error && (
-        <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-200">{error}</div>
-      )}
-
-      {activeTab === 'BULK_DESK' && (
-        <>
-          {/* KPI Summary Strip */}
-          <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-6">
-            {[
-              { key: 'ALL', label: 'All Submissions', count: kpiCounts.total, color: 'text-white' },
-              { key: 'PENDING_REVIEW', label: 'Pending Signed Copy', count: kpiCounts.pending, color: 'text-amber-300' },
-              { key: 'SIGNED_COPY_RECORDED', label: 'Signed Copy Verified', count: kpiCounts.signed, color: 'text-indigo-300' },
-              { key: 'APPROVED', label: 'Planning Approved', count: kpiCounts.approved, color: 'text-cyan-300' },
-              { key: 'RETURNED', label: 'Returned to Merch', count: kpiCounts.returned, color: 'text-rose-300' },
-              { key: 'RELEASED_TO_KNITTING', label: 'Released to Knitting', count: kpiCounts.released, color: 'text-emerald-300' },
-            ].map((card) => (
-              <button
-                key={card.key}
-                onClick={() => setStatusFilter(card.key)}
-                className={`rounded-2xl border p-3 text-left transition ${
-                  statusFilter === card.key
-                    ? 'border-cyan-400 bg-cyan-500/10'
-                    : 'border-slate-800 bg-slate-900 hover:border-slate-700'
-                }`}
+        {activeTab === 'BULK_DESK' && (
+          <>
+            {/* Standard Trims & Accessories KPI Cards Grid */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                gap: '10px',
+              }}
+            >
+              {/* Card 1: All Submissions */}
+              <div
+                onClick={() => setStatusFilter('ALL')}
+                style={{
+                  background: statusFilter === 'ALL' ? '#F0F9FF' : '#FFFFFF',
+                  padding: '12px 14px',
+                  borderRadius: '8px',
+                  border: statusFilter === 'ALL' ? '2px solid #0284C7' : '1px solid #E2E8F0',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease-in-out',
+                }}
+                title="Click to view all submissions in queue"
               >
-                <div className="text-[11px] text-slate-400">{card.label}</div>
-                <div className={`mt-1 text-xl font-bold ${card.color}`}>{card.count}</div>
-              </button>
-            ))}
-          </div>
-
-          {/* Search & Queue Table */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <h2 className="text-sm font-semibold text-white">Fabric Order Sheet & T&A Approval Queue</h2>
-                <p className="text-xs text-slate-400">
-                  Review & Release: record the signed copy, approve or return to the merchandiser, then release colour × part finish fabric to knitting.
-                </p>
-              </div>
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search Job #, Style, Buyer, Merchandiser..."
-                className="w-72 rounded-xl border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs text-white"
-              />
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1050px] text-left text-xs">
-                <thead className="border-b border-slate-800 text-slate-400">
-                  <tr>
-                    <th className="py-2.5 pr-3">Job / Style</th>
-                    <th className="py-2.5 px-2">Buyer / Merchandiser</th>
-                    <th className="py-2.5 px-2">Order Qty / CCD</th>
-                    <th className="py-2.5 px-2">Fabric Sheet / Req Kg</th>
-                    <th className="py-2.5 px-2">Signed Copy Gate</th>
-                    <th className="py-2.5 px-2">Desk Status</th>
-                    <th className="py-2.5 pl-3 text-right">Approval Desk Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/70">
-                  {filteredQueue.map((item) => (
-                    <tr key={item.styleId} className="hover:bg-slate-950/50">
-                      <td className="py-3 pr-3">
-                        <div className="font-semibold text-cyan-300">
-                          Job #{item.jobNo} · {item.styleNo}
-                        </div>
-                        <div className="text-[11px] text-slate-400">{item.itemDescription}</div>
-                      </td>
-                      <td className="py-3 px-2">
-                        <div className="font-medium text-white">{item.buyer}</div>
-                        <div className="text-[11px] text-slate-400">Merch: {item.merchandiser}</div>
-                      </td>
-                      <td className="py-3 px-2">
-                        <div className="font-mono text-white">{fmt(item.orderQty)} pcs</div>
-                        <div className="text-[11px] text-cyan-300">CCD: {item.ccd}</div>
-                      </td>
-                      <td className="py-3 px-2">
-                        <div className="font-mono text-slate-200">
-                          {item.fabricSheetNo} (Rev {item.fabricSheetRevision})
-                        </div>
-                        <div className="text-[11px] text-emerald-300">
-                          Finish: {fmt(item.totalFinishKg)} Kg
-                        </div>
-                      </td>
-                      <td className="py-3 px-2">
-                        <div className="flex flex-col gap-0.5 text-[11px]">
-                          <span className={item.signedCopy?.fabricSheet ? 'text-emerald-300' : 'text-amber-300'}>
-                            {item.signedCopy?.fabricSheet ? '✓ Fabric Sheet Signed' : '○ Fabric Sheet Unsigned'}
-                          </span>
-                          <span className={item.signedCopy?.tna ? 'text-emerald-300' : 'text-amber-300'}>
-                            {item.signedCopy?.tna ? '✓ T&A Copy Signed' : '○ T&A Copy Unsigned'}
-                          </span>
-                          {item.signedCopy?.referenceNo && (
-                            <span className="font-mono text-[10px] text-slate-400">Ref: {item.signedCopy.referenceNo}</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-3 px-2">
-                        <span className={`inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${statusBadge(item.status)}`}>
-                          {item.status.replace(/_/g, ' ')}
-                        </span>
-                        {item.returnReason && (
-                          <div className="mt-1 max-w-[200px] text-[10px] text-rose-300">Reason: {item.returnReason}</div>
-                        )}
-                      </td>
-                      <td className="py-3 pl-3 text-right">
-                        <button
-                          onClick={() => setReviewJob(item)}
-                          className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-emerald-500"
-                        >
-                          Review &amp; Release
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </>
-      )}
-
-      {activeTab === 'SAMPLE_QUOTA' && (
-        <div className="grid gap-4 lg:grid-cols-12">
-          {/* Buyer Monthly Quota Board */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4 lg:col-span-5">
-            <h3 className="text-sm font-semibold text-white">Monthly Buyer Sample & Bulk Line Quota ({quotaData?.month || '2026-10'})</h3>
-            <p className="mt-0.5 text-xs text-slate-400">
-              Tracks Order Development (OD) samples, Salesman Samples (SMS), and Bulk Sewing Line allocation against monthly buyer quotas.
-            </p>
-            <div className="mt-3 overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="border-b border-slate-800 text-slate-400">
-                  <tr>
-                    <th className="py-2">Buyer</th>
-                    <th className="py-2">OD Sample Quota</th>
-                    <th className="py-2">SMS Quota</th>
-                    <th className="py-2">Bulk Lines</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/70">
-                  {(quotaData?.buyerQuota || []).map((bq: any) => {
-                    const odPct = bq.odQuota > 0 ? Math.round((bq.odUsed / bq.odQuota) * 100) : 0;
-                    const smsPct = bq.smsQuota > 0 ? Math.round((bq.smsUsed / bq.smsQuota) * 100) : 0;
-                    return (
-                      <tr key={bq.buyer}>
-                        <td className="py-2.5 font-semibold text-white">{bq.buyer}</td>
-                        <td className="py-2.5">
-                          <span className="font-mono text-cyan-200">
-                            {bq.odUsed}/{bq.odQuota}
-                          </span>{' '}
-                          <span className="text-[10px] text-slate-400">({odPct}%)</span>
-                        </td>
-                        <td className="py-2.5">
-                          <span className="font-mono text-emerald-200">
-                            {bq.smsUsed}/{bq.smsQuota}
-                          </span>{' '}
-                          <span className="text-[10px] text-slate-400">({smsPct}%)</span>
-                        </td>
-                        <td className="py-2.5 font-mono text-slate-200">
-                          {bq.bulkLinesUsed}/{bq.bulkLineQuota} Lines
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Sample Order Sheet TNA Table */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4 lg:col-span-7">
-            <h3 className="text-sm font-semibold text-white">Sample Fabric & Garment Order Sheet — Planning TNA & Dispatch</h3>
-            <p className="mt-0.5 text-xs text-slate-400">
-              Central Planning fills Yarn, Knitting, Dyeing, Sewing and Target Dispatch dates on Merchandising Sample Order Sheets.
-            </p>
-            <div className="mt-3 overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="border-b border-slate-800 text-slate-400">
-                  <tr>
-                    <th className="py-2">Form / Job</th>
-                    <th className="py-2">Sample Type / Qty</th>
-                    <th className="py-2">Knit / Dye / Sew</th>
-                    <th className="py-2">Target / Actual Dispatch</th>
-                    <th className="py-2">Status</th>
-                    <th className="py-2 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/70">
-                  {sampleOrders.map((so) => (
-                    <tr key={so.id}>
-                      <td className="py-2.5">
-                        <div className="font-semibold text-cyan-300">{so.formNo}</div>
-                        <div className="text-[11px] text-slate-400">
-                          Job #{so.jobNo} · {so.buyer}
-                        </div>
-                      </td>
-                      <td className="py-2.5">
-                        <div className="text-white">{so.sampleType}</div>
-                        <div className="text-[11px] text-slate-400">{so.sampleQty} pcs</div>
-                      </td>
-                      <td className="py-2.5 font-mono text-[11px] text-slate-300">
-                        <div>Knit: {so.tna?.knittingDate || '—'}</div>
-                        <div>Dye: {so.tna?.dyeingDate || '—'}</div>
-                        <div>Sew: {so.tna?.sewingDate || '—'}</div>
-                      </td>
-                      <td className="py-2.5 font-mono text-[11px]">
-                        <div className="text-cyan-200">Plan: {so.tna?.dispatchDate || '—'}</div>
-                        <div className="text-emerald-300">Act: {so.tna?.actualDispatchDate || 'Pending'}</div>
-                        {so.tna?.awbNo && <div className="text-[10px] text-slate-400">AWB: {so.tna.awbNo}</div>}
-                      </td>
-                      <td className="py-2.5">
-                        <span className="rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200">
-                          {so.tna?.status || 'IN_PROGRESS'}
-                        </span>
-                      </td>
-                      <td className="py-2.5 text-right">
-                        <button
-                          onClick={() => setEditingSampleForm(JSON.parse(JSON.stringify(so)))}
-                          className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-1 text-[11px] text-cyan-200 hover:bg-cyan-500/20"
-                        >
-                          Edit Sample TNA
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal 1: Record Physical Signed Copy */}
-      {reviewJob && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/70 p-4" onClick={() => setReviewJob(null)}>
-          <div className="w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 p-5 text-xs" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-3 flex items-start justify-between gap-3">
-              <div>
-                <div className="text-sm font-bold text-white">Job #{reviewJob.jobNo} · {reviewJob.styleNo}</div>
-                <div className="text-slate-400">{reviewJob.buyer} · Merch: {reviewJob.merchandiser} · {fmt(reviewJob.orderQty)} pcs · CCD {reviewJob.ccd}</div>
-              </div>
-              <button onClick={() => setReviewJob(null)} className="rounded border border-slate-700 px-2 py-1 text-slate-300">Close</button>
-            </div>
-            <div className="mb-3 rounded-lg border border-slate-700 p-3">
-              <div>Finish fabric: <b>{fmt(reviewJob.totalFinishKg)} Kg</b></div>
-              <div>Signed copy: {reviewJob.signedCopy?.fabricSheet && reviewJob.signedCopy?.tna ? '✓ Fabric sheet and T&A signed' : '○ Not recorded yet'}</div>
-              <div>Status: <b>{String(reviewJob.status || '').replace(/_/g, ' ')}</b></div>
-            </div>
-            <div className="grid gap-2">
-              <button onClick={() => { const j = reviewJob; setReviewJob(null); openSignedCopyModal(j); }} className="rounded-lg border border-slate-600 px-3 py-2 text-left font-semibold text-white hover:bg-slate-800">1 · Record signed copy</button>
-              <button onClick={() => { const j = reviewJob; setReviewJob(null); openReleaseModal(j); }} className="rounded-lg bg-emerald-600 px-3 py-2 text-left font-semibold text-white hover:bg-emerald-500">2 · Review fabric and release to knitting</button>
-              <button onClick={() => { const j = reviewJob; setReviewJob(null); setReturnModalJob(j); setReturnForm({ target: 'BOTH', reason: j.returnReason || '' }); }} className="rounded-lg border border-rose-500/50 px-3 py-2 text-left font-semibold text-rose-300 hover:bg-rose-500/10">Return to merchandiser</button>
-              <button onClick={() => { const j = reviewJob; setReviewJob(null); openHistoryDrawer(j); }} className="rounded-lg border border-slate-700 px-3 py-2 text-left text-slate-300 hover:bg-slate-800">History</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {signedModalJob && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4">
-          <div className="w-full max-w-md rounded-2xl border border-indigo-500/40 bg-slate-900 p-5 text-xs">
-            <h3 className="text-sm font-semibold text-white">
-              Record Physical Signed Copy — Job #{signedModalJob.jobNo} ({signedModalJob.styleNo})
-            </h3>
-            <p className="mt-1 text-slate-400">
-              Confirm physical hand-signed copies of the Fabric Order Sheet and T&A before releasing to Knitting.
-            </p>
-            <div className="mt-4 space-y-3">
-              <label className="flex items-center gap-2 text-slate-200">
-                <input
-                  type="checkbox"
-                  checked={signedForm.fabricSheet}
-                  onChange={(e) => setSignedForm({ ...signedForm, fabricSheet: e.target.checked })}
-                />
-                Physical Signed Fabric Order Sheet Received ({signedModalJob.fabricSheetNo})
-              </label>
-              <label className="flex items-center gap-2 text-slate-200">
-                <input
-                  type="checkbox"
-                  checked={signedForm.tna}
-                  onChange={(e) => setSignedForm({ ...signedForm, tna: e.target.checked })}
-                />
-                Physical Signed Bulk T&A Sheet Received
-              </label>
-              <div>
-                <label className="block text-slate-400">Physical Register / File Reference No.</label>
-                <input
-                  type="text"
-                  value={signedForm.referenceNo}
-                  onChange={(e) => setSignedForm({ ...signedForm, referenceNo: e.target.value })}
-                  className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-slate-400">Verified By</label>
-                <input
-                  type="text"
-                  value={signedForm.receivedBy}
-                  onChange={(e) => setSignedForm({ ...signedForm, receivedBy: e.target.value })}
-                  className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-slate-400">Remarks</label>
-                <input
-                  type="text"
-                  value={signedForm.remarks}
-                  onChange={(e) => setSignedForm({ ...signedForm, remarks: e.target.value })}
-                  className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-white"
-                />
-              </div>
-            </div>
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                onClick={() => setSignedModalJob(null)}
-                className="rounded-lg border border-slate-700 px-3 py-1.5 text-slate-300"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={submitSignedCopy}
-                disabled={saving}
-                className="rounded-lg bg-indigo-500 px-4 py-1.5 font-semibold text-white hover:bg-indigo-400 disabled:opacity-50"
-              >
-                {saving ? 'Saving...' : 'Save Signed Copy Record'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal 2: Return to Merchandiser */}
-      {returnModalJob && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4">
-          <div className="w-full max-w-md rounded-2xl border border-rose-500/40 bg-slate-900 p-5 text-xs">
-            <h3 className="text-sm font-semibold text-white">
-              Return to Merchandiser — Job #{returnModalJob.jobNo} ({returnModalJob.styleNo})
-            </h3>
-            <p className="mt-1 text-slate-400">
-              Returning re-opens the Merchandiser&apos;s task with your discrepancy note and blocks Knitting release until corrected.
-            </p>
-            <div className="mt-4 space-y-3">
-              <div>
-                <label className="block text-slate-400">Document to Return</label>
-                <select
-                  value={returnForm.target}
-                  onChange={(e) => setReturnForm({ ...returnForm, target: e.target.value })}
-                  className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-white"
-                >
-                  <option value="BOTH">Both Fabric Order Sheet & T&A</option>
-                  <option value="FABRIC_SHEET">Fabric Order Sheet Only</option>
-                  <option value="TNA">T&A Plan Only</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-slate-400">Mandatory Return / Discrepancy Reason</label>
-                <textarea
-                  rows={3}
-                  value={returnForm.reason}
-                  onChange={(e) => setReturnForm({ ...returnForm, reason: e.target.value })}
-                  placeholder="e.g., Collar rib consumption & wastage % mismatch with CAD marker..."
-                  className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2.5 text-white"
-                />
-              </div>
-            </div>
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                onClick={() => setReturnModalJob(null)}
-                className="rounded-lg border border-slate-700 px-3 py-1.5 text-slate-300"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={submitReturn}
-                disabled={saving}
-                className="rounded-lg bg-rose-500 px-4 py-1.5 font-semibold text-white hover:bg-rose-400 disabled:opacity-50"
-              >
-                {saving ? 'Returning...' : 'Return to Merchandiser'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal 3: Approve & Release to Knitting (Colour × Part Breakdown) */}
-      {releaseModalJob && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4">
-          <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-2xl border border-emerald-500/40 bg-slate-900 p-5 text-xs">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
-              <div>
-                <h3 className="text-base font-semibold text-white">
-                  Approve & Release to Knitting — Job #{releaseModalJob.jobNo} · Style {releaseModalJob.styleNo} ({releaseModalJob.buyer})
-                </h3>
-                <p className="text-slate-400">
-                  Review Colour × Part finish fabric (Kg) and CAD consumption. Tick parts such as lace that must be dyed to match. Greige for knitting is worked out from the finish Kg.
-                </p>
-              </div>
-              <button
-                onClick={addReleaseRow}
-                className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 font-semibold text-cyan-200 hover:bg-cyan-500/20"
-              >
-                + Add Colour × Part Row
-              </button>
-            </div>
-
-            <div className="my-3 grid gap-3 rounded-xl border border-slate-800 bg-slate-950 p-3 md:grid-cols-4">
-              <div>
-                <div className="text-slate-400">Fabric Sheet Target Finish Kg</div>
-                <div className="text-sm font-bold text-white">{fmt(expectedFinishKg)} Kg</div>
-              </div>
-              <div>
-                <div className="text-slate-400">Release Rows Total Finish Kg</div>
-                <div className={`text-sm font-bold ${Math.abs(finishDiffKg) <= 1 ? 'text-emerald-300' : 'text-amber-300'}`}>
-                  {fmt(draftSumFinishKg)} Kg ({finishDiffKg >= 0 ? `+${finishDiffKg}` : finishDiffKg} Kg)
+                <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 650, textTransform: 'uppercase' }}>
+                  All Submissions
+                </div>
+                <div style={{ fontSize: '22px', fontWeight: 900, color: '#0F274E', margin: '2px 0' }}>
+                  {kpiCounts.total} Jobs
+                </div>
+                <div style={{ fontSize: '11.5px', color: '#0284C7', fontWeight: 600 }}>
+                  {fmt(kpiCounts.totalFinishKg)} Kg Finish Fabric
                 </div>
               </div>
-              <div>
-                <div className="text-slate-400">Parts to dye to match</div>
-                <div className="text-sm font-bold text-cyan-300">{releaseRows.filter((r) => r.dyeToMatch).length}</div>
+
+              {/* Card 2: Pending Signed Copy */}
+              <div
+                onClick={() => setStatusFilter((p) => (p === 'PENDING_REVIEW' ? 'ALL' : 'PENDING_REVIEW'))}
+                style={{
+                  background: statusFilter === 'PENDING_REVIEW' ? '#FFFBEB' : '#FFFFFF',
+                  padding: '12px 14px',
+                  borderRadius: '8px',
+                  border: statusFilter === 'PENDING_REVIEW' ? '2px solid #D97706' : '1px solid #E2E8F0',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease-in-out',
+                }}
+                title="Click to filter jobs waiting for signed physical documents"
+              >
+                <div style={{ fontSize: '11px', color: '#D97706', fontWeight: 650, textTransform: 'uppercase' }}>
+                  Pending Signed Copy
+                </div>
+                <div style={{ fontSize: '22px', fontWeight: 900, color: '#B45309', margin: '2px 0' }}>
+                  {kpiCounts.pending} Jobs
+                </div>
+                <div style={{ fontSize: '11.5px', color: '#B45309', fontWeight: 600 }}>
+                  Awaiting register entry
+                </div>
               </div>
-              <div className="flex items-center">
-                {Math.abs(finishDiffKg) > 1 ? (
-                  <label className="flex items-center gap-2 text-amber-300">
-                    <input
-                      type="checkbox"
-                      checked={overrideMismatch}
-                      onChange={(e) => setOverrideMismatch(e.target.checked)}
+
+              {/* Card 3: Signed Copy Verified */}
+              <div
+                onClick={() => setStatusFilter((p) => (p === 'SIGNED_COPY_RECORDED' ? 'ALL' : 'SIGNED_COPY_RECORDED'))}
+                style={{
+                  background: statusFilter === 'SIGNED_COPY_RECORDED' ? '#EEF2FF' : '#FFFFFF',
+                  padding: '12px 14px',
+                  borderRadius: '8px',
+                  border: statusFilter === 'SIGNED_COPY_RECORDED' ? '2px solid #6366F1' : '1px solid #E2E8F0',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease-in-out',
+                }}
+                title="Click to filter jobs with signed physical copies recorded"
+              >
+                <div style={{ fontSize: '11px', color: '#6366F1', fontWeight: 650, textTransform: 'uppercase' }}>
+                  Signed Copy Verified
+                </div>
+                <div style={{ fontSize: '22px', fontWeight: 900, color: '#4338CA', margin: '2px 0' }}>
+                  {kpiCounts.signed} Jobs
+                </div>
+                <div style={{ fontSize: '11.5px', color: '#4338CA', fontWeight: 600 }}>
+                  Ready for planning review
+                </div>
+              </div>
+
+              {/* Card 4: Planning Approved */}
+              <div
+                onClick={() => setStatusFilter((p) => (p === 'APPROVED' ? 'ALL' : 'APPROVED'))}
+                style={{
+                  background: statusFilter === 'APPROVED' ? '#F0F9FF' : '#FFFFFF',
+                  padding: '12px 14px',
+                  borderRadius: '8px',
+                  border: statusFilter === 'APPROVED' ? '2px solid #0284C7' : '1px solid #E2E8F0',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease-in-out',
+                }}
+                title="Click to filter planning approved jobs"
+              >
+                <div style={{ fontSize: '11px', color: '#0284C7', fontWeight: 650, textTransform: 'uppercase' }}>
+                  Planning Approved
+                </div>
+                <div style={{ fontSize: '22px', fontWeight: 900, color: '#0369A1', margin: '2px 0' }}>
+                  {kpiCounts.approved} Jobs
+                </div>
+                <div style={{ fontSize: '11.5px', color: '#0284C7', fontWeight: 600 }}>
+                  Ready for Colour x Part release
+                </div>
+              </div>
+
+              {/* Card 5: Returned to Merch */}
+              <div
+                onClick={() => setStatusFilter((p) => (p === 'RETURNED' ? 'ALL' : 'RETURNED'))}
+                style={{
+                  background: statusFilter === 'RETURNED' ? '#FEF2F2' : '#FFFFFF',
+                  padding: '12px 14px',
+                  borderRadius: '8px',
+                  border: statusFilter === 'RETURNED' ? '2px solid #DC2626' : '1px solid #FECACA',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease-in-out',
+                }}
+                title="Click to filter jobs returned for discrepancy resolution"
+              >
+                <div style={{ fontSize: '11px', color: '#DC2626', fontWeight: 700, textTransform: 'uppercase' }}>
+                  Returned to Merch
+                </div>
+                <div style={{ fontSize: '22px', fontWeight: 900, color: '#DC2626', margin: '2px 0' }}>
+                  {kpiCounts.returned} Jobs
+                </div>
+                <div style={{ fontSize: '11.5px', color: '#991B1B', fontWeight: 600 }}>
+                  Discrepancy rework
+                </div>
+              </div>
+
+              {/* Card 6: Released to Knitting */}
+              <div
+                onClick={() => setStatusFilter((p) => (p === 'RELEASED_TO_KNITTING' ? 'ALL' : 'RELEASED_TO_KNITTING'))}
+                style={{
+                  background: statusFilter === 'RELEASED_TO_KNITTING' ? '#ECFDF5' : '#FFFFFF',
+                  padding: '12px 14px',
+                  borderRadius: '8px',
+                  border: statusFilter === 'RELEASED_TO_KNITTING' ? '2px solid #059669' : '1px solid #E2E8F0',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease-in-out',
+                }}
+                title="Click to filter jobs released to factory execution"
+              >
+                <div style={{ fontSize: '11px', color: '#059669', fontWeight: 650, textTransform: 'uppercase' }}>
+                  Released to Knitting
+                </div>
+                <div style={{ fontSize: '22px', fontWeight: 900, color: '#047857', margin: '2px 0' }}>
+                  {kpiCounts.released} Jobs
+                </div>
+                <div style={{ fontSize: '11.5px', color: '#047857', fontWeight: 600 }}>
+                  Active floor execution
+                </div>
+              </div>
+            </div>
+
+            {/* Compact Interactive Chart: Approval & Release Velocity Breakdown */}
+            <div
+              style={{
+                background: '#FFFFFF',
+                borderRadius: '10px',
+                border: '1px solid #E2E8F0',
+                padding: '14px 18px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: 750, color: '#0F274E' }}>
+                    Approval Pipeline Velocity &amp; Fabric Allocation Distribution
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#64748B' }}>
+                    Hover over bars to inspect status volumes and live fabric demand; click card to filter table
+                  </div>
+                </div>
+                <span
+                  style={{
+                    background: '#F0F9FF',
+                    color: '#0284C7',
+                    border: '1px solid #BAE6FD',
+                    padding: '3px 9px',
+                    borderRadius: '12px',
+                    fontSize: '11px',
+                    fontWeight: 650,
+                  }}
+                >
+                  Interactive Analytics
+                </span>
+              </div>
+
+              <div style={{ width: '100%', height: '160px' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={chartData}
+                    margin={{ top: 10, right: 15, left: -20, bottom: 0 }}
+                    onClick={(e: any) => {
+                      if (e && (e as any).activePayload && (e as any).activePayload[0]) {
+                        const targetKey = (e as any).activePayload[0].payload.key;
+                        setStatusFilter((prev) => (prev === targetKey ? 'ALL' : targetKey));
+                      }
+                    }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                    <XAxis
+                      dataKey="name"
+                      tick={{ fill: '#64748B', fontSize: 11, fontWeight: 550 }}
+                      axisLine={{ stroke: '#E2E8F0' }}
+                      tickLine={false}
                     />
-                    Override ±1.0 Kg tolerance check
-                  </label>
-                ) : (
-                  <span className="text-emerald-300">✓ Matches Fabric Sheet within ±1.0 Kg</span>
-                )}
+                    <YAxis
+                      tick={{ fill: '#64748B', fontSize: 10 }}
+                      axisLine={false}
+                      tickLine={false}
+                      allowDecimals={false}
+                    />
+                    <Tooltip content={<CustomChartTooltip />} cursor={{ fill: 'rgba(2, 132, 199, 0.06)' }} />
+                    <Bar
+                      dataKey="count"
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={55}
+                      onMouseEnter={(_, index) => setActiveChartBar(index)}
+                      onMouseLeave={() => setActiveChartBar(null)}
+                    >
+                      {chartData.map((entry: any, index: number) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={statusFilter === entry.key ? entry.color : activeChartBar === index ? entry.color : entry.fill}
+                          stroke={entry.color}
+                          strokeWidth={statusFilter === entry.key ? 2 : 1}
+                          style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[900px] text-left text-xs">
-                <thead className="border-b border-slate-800 text-slate-400">
-                  <tr>
-                    <th className="py-2 pr-2">Colour</th>
-                    <th className="py-2 px-1">Garment Part</th>
-                    <th className="py-2 px-1">Fabric Type & Composition</th>
-                    <th className="py-2 px-1">GSM / Dia</th>
-                    <th className="py-2 px-1">CAD cons. (kg/dz)</th>
-                    <th className="py-2 px-1">Finish Kg</th>
-                    <th className="py-2 px-1">Dye to match</th>
-                    <th className="py-2 pl-1"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {releaseRows.map((r, idx) => (
-                    <tr key={r.id || idx}>
-                      <td className="py-2 pr-2">
-                        <input
-                          type="text"
-                          value={r.colour || ''}
-                          onChange={(e) => updateReleaseRow(idx, 'colour', e.target.value)}
-                          className="w-28 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-white"
-                        />
-                      </td>
-                      <td className="py-2 px-1">
-                        <input
-                          type="text"
-                          value={r.part || ''}
-                          onChange={(e) => updateReleaseRow(idx, 'part', e.target.value)}
-                          className="w-24 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-white"
-                        />
-                      </td>
-                      <td className="py-2 px-1">
-                        <input
-                          type="text"
-                          value={r.fabricType || ''}
-                          onChange={(e) => updateReleaseRow(idx, 'fabricType', e.target.value)}
-                          className="w-40 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-white"
-                        />
-                      </td>
-                      <td className="py-2 px-1">
-                        <div className="flex gap-1">
-                          <input
-                            type="number"
-                            value={r.gsm || 180}
-                            onWheel={(e) => e.currentTarget.blur()}
-                            onChange={(e) => updateReleaseRow(idx, 'gsm', Number(e.target.value))}
-                            className="w-14 rounded border border-slate-700 bg-slate-950 px-1.5 py-1 text-white"
-                          />
-                          <input
-                            type="text"
-                            value={r.dia || ''}
-                            onChange={(e) => updateReleaseRow(idx, 'dia', e.target.value)}
-                            className="w-20 rounded border border-slate-700 bg-slate-950 px-1.5 py-1 text-white"
-                          />
-                        </div>
-                      </td>
-                      <td className="py-2 px-1">
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={r.cadConsKgDz ?? ''}
-                          placeholder="from CAD"
-                          onWheel={(e) => e.currentTarget.blur()}
-                          onChange={(e) => updateReleaseRow(idx, 'cadConsKgDz', e.target.value === '' ? null : Number(e.target.value))}
-                          className="w-20 rounded border border-slate-700 bg-slate-950 px-1.5 py-1 text-white"
-                        />
-                      </td>
-                      <td className="py-2 px-1">
-                        <input
-                          type="number"
-                          value={r.finishKg ?? 0}
-                          onWheel={(e) => e.currentTarget.blur()}
-                          onChange={(e) => updateReleaseRow(idx, 'finishKg', Number(e.target.value))}
-                          className="w-20 rounded border border-emerald-500/50 bg-slate-950 px-2 py-1 font-mono text-emerald-200"
-                        />
-                      </td>
-                      <td className="py-2 px-1 text-center">
-                        <input
-                          type="checkbox"
-                          checked={!!r.dyeToMatch}
-                          onChange={(e) => updateReleaseRow(idx, 'dyeToMatch', e.target.checked)}
-                          title="Part bought in (e.g. lace) that must be dyed to match the body colour"
-                        />
-                      </td>
-                      <td className="py-2 pl-1">
-                        <button
-                          onClick={() => removeReleaseRow(idx)}
-                          className="rounded border border-rose-500/30 px-2 py-1 text-rose-300 hover:bg-rose-500/10"
-                        >
-                          ✕
-                        </button>
-                      </td>
+            {/* Queue Table with Search and Action Triggers */}
+            <div
+              style={{
+                background: '#FFFFFF',
+                borderRadius: '10px',
+                border: '1px solid #E2E8F0',
+                padding: '16px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px',
+                  marginBottom: '14px',
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F274E' }}>
+                    Fabric Order Sheet &amp; T&amp;A Approval Queue
+                  </div>
+                  <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '1px' }}>
+                    Verify signed hard-copies, validate CAD marker cons., and trigger Colour × Part knitting release
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ position: 'relative' }}>
+                    <Search
+                      size={14}
+                      style={{
+                        position: 'absolute',
+                        left: '10px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        color: '#94A3B8',
+                      }}
+                    />
+                    <input
+                      type="text"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Search Job #, Style, Buyer..."
+                      style={{
+                        height: '32px',
+                        padding: '0 10px 0 30px',
+                        fontSize: '12px',
+                        borderRadius: '6px',
+                        border: '1px solid #CBD5E1',
+                        outline: 'none',
+                        width: '240px',
+                        background: '#FFFFFF',
+                        color: '#0F172A',
+                      }}
+                    />
+                  </div>
+                  {statusFilter !== 'ALL' && (
+                    <button
+                      onClick={() => setStatusFilter('ALL')}
+                      style={{
+                        height: '32px',
+                        padding: '0 10px',
+                        fontSize: '11.5px',
+                        borderRadius: '6px',
+                        border: '1px solid #E2E8F0',
+                        background: '#F8FAFC',
+                        color: '#475569',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                      }}
+                    >
+                      <X size={13} /> Reset Filter
+                    </button>
+                  )}
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      color: '#0284C7',
+                      background: '#F0F9FF',
+                      border: '1px solid #BAE6FD',
+                      borderRadius: '12px',
+                      padding: '4px 10px',
+                    }}
+                  >
+                    Showing {filteredQueue.length} of {queue.length}
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', minWidth: '950px', borderCollapse: 'collapse', fontSize: '12px' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid #E2E8F0', textAlign: 'left', color: '#64748B' }}>
+                      <th style={{ padding: '8px 10px', fontWeight: 700 }}>Job / Style No.</th>
+                      <th style={{ padding: '8px 10px', fontWeight: 700 }}>Buyer &amp; Merchandiser</th>
+                      <th style={{ padding: '8px 10px', fontWeight: 700 }}>Order Qty / CCD</th>
+                      <th style={{ padding: '8px 10px', fontWeight: 700 }}>Fabric Order Sheet</th>
+                      <th style={{ padding: '8px 10px', fontWeight: 700 }}>Signed Hard-Copy Gate</th>
+                      <th style={{ padding: '8px 10px', fontWeight: 700 }}>Current Status</th>
+                      <th style={{ padding: '8px 10px', fontWeight: 700, textAlign: 'right' }}>Action</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {filteredQueue.map((item, idx) => {
+                      const badge = statusBadge(item.status);
+                      const isSigned = item.signedCopy?.fabricSheet && item.signedCopy?.tna;
+                      return (
+                        <tr
+                          key={item.styleId || idx}
+                          style={{
+                            borderBottom: '1px solid #F1F5F9',
+                            background: idx % 2 === 0 ? '#FFFFFF' : '#FAFAFC',
+                          }}
+                        >
+                          <td style={{ padding: '10px' }}>
+                            <div style={{ fontWeight: 800, color: '#0284C7', fontSize: '12.5px' }}>
+                              Job #{item.jobNo}
+                            </div>
+                            <div style={{ fontWeight: 600, color: '#0F274E', fontSize: '11.5px' }}>
+                              {item.styleNo}
+                            </div>
+                            <div style={{ color: '#64748B', fontSize: '10.5px' }}>{item.itemDescription}</div>
+                          </td>
+
+                          <td style={{ padding: '10px' }}>
+                            <div style={{ fontWeight: 700, color: '#1E293B' }}>{item.buyer}</div>
+                            <div style={{ color: '#64748B', fontSize: '11px' }}>Merch: {item.merchandiser}</div>
+                          </td>
+
+                          <td style={{ padding: '10px' }}>
+                            <div style={{ fontWeight: 800, color: '#0F274E', fontFamily: 'monospace' }}>
+                              {fmt(item.orderQty)} pcs
+                            </div>
+                            <div style={{ color: '#0284C7', fontSize: '11px', fontWeight: 600 }}>
+                              CCD: {item.ccd || 'TBD'}
+                            </div>
+                          </td>
+
+                          <td style={{ padding: '10px' }}>
+                            <div style={{ fontWeight: 700, color: '#334155' }}>
+                              {item.fabricSheetNo} <span style={{ color: '#94A3B8' }}>(Rev {item.fabricSheetRevision})</span>
+                            </div>
+                            <div style={{ color: '#059669', fontSize: '11.5px', fontWeight: 700 }}>
+                              Req Finish: {fmt(item.totalFinishKg)} Kg
+                            </div>
+                          </td>
+
+                          <td style={{ padding: '10px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '11px' }}>
+                              <span style={{ color: item.signedCopy?.fabricSheet ? '#059669' : '#D97706', fontWeight: 600 }}>
+                                {item.signedCopy?.fabricSheet ? '✓ Fabric Sheet Signed' : '○ Fabric Sheet Missing'}
+                              </span>
+                              <span style={{ color: item.signedCopy?.tna ? '#059669' : '#D97706', fontWeight: 600 }}>
+                                {item.signedCopy?.tna ? '✓ T&A Copy Signed' : '○ T&A Copy Missing'}
+                              </span>
+                              {item.signedCopy?.referenceNo && (
+                                <span style={{ color: '#64748B', fontSize: '10px', fontFamily: 'monospace' }}>
+                                  Ref: {item.signedCopy.referenceNo}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          <td style={{ padding: '10px' }}>
+                            <span
+                              style={{
+                                display: 'inline-block',
+                                padding: '3px 8px',
+                                borderRadius: '12px',
+                                fontSize: '10.5px',
+                                fontWeight: 700,
+                                background: badge.bg,
+                                border: `1px solid ${badge.border}`,
+                                color: badge.text,
+                              }}
+                            >
+                              {badge.label}
+                            </span>
+                            {item.returnReason && (
+                              <div
+                                style={{
+                                  marginTop: '4px',
+                                  maxWidth: '180px',
+                                  fontSize: '10.5px',
+                                  color: '#DC2626',
+                                  lineHeight: 1.2,
+                                }}
+                              >
+                                Note: {item.returnReason}
+                              </div>
+                            )}
+                          </td>
+
+                          <td style={{ padding: '10px', textAlign: 'right' }}>
+                            <button
+                              onClick={() => setReviewJob(item)}
+                              style={{
+                                padding: '6px 12px',
+                                borderRadius: '6px',
+                                fontSize: '11.5px',
+                                fontWeight: 700,
+                                border: '1px solid #0284C7',
+                                background: '#F0F9FF',
+                                color: '#0284C7',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#0284C7';
+                                e.currentTarget.style.color = '#FFFFFF';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = '#F0F9FF';
+                                e.currentTarget.style.color = '#0284C7';
+                              }}
+                            >
+                              Review &amp; Release
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* TAB 2: SAMPLE ORDER TNA & BUYER MONTHLY QUOTA */}
+        {activeTab === 'SAMPLE_QUOTA' && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '16px' }}>
+            {/* Buyer Monthly Quota Board */}
+            <div
+              style={{
+                background: '#FFFFFF',
+                borderRadius: '10px',
+                border: '1px solid #E2E8F0',
+                padding: '16px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+              }}
+            >
+              <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#0F274E', marginBottom: '4px' }}>
+                Monthly Buyer Sample &amp; Bulk Line Quota ({quotaData?.month || '2026-10'})
+              </div>
+              <div style={{ fontSize: '11.5px', color: '#64748B', marginBottom: '12px' }}>
+                Tracks Order Development (OD) samples, Salesman Samples (SMS), and Bulk Sewing Line allocation against monthly buyer quotas.
+              </div>
+
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid #E2E8F0', color: '#64748B', textAlign: 'left' }}>
+                      <th style={{ padding: '8px' }}>Buyer</th>
+                      <th style={{ padding: '8px' }}>OD Sample Quota</th>
+                      <th style={{ padding: '8px' }}>SMS Quota</th>
+                      <th style={{ padding: '8px' }}>Bulk Lines</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(quotaData?.buyerQuota || []).map((bq: any, i: number) => {
+                      const odPct = bq.odQuota > 0 ? Math.round((bq.odUsed / bq.odQuota) * 100) : 0;
+                      const smsPct = bq.smsQuota > 0 ? Math.round((bq.smsUsed / bq.smsQuota) * 100) : 0;
+                      return (
+                        <tr key={bq.buyer || i} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '8px', fontWeight: 700, color: '#0F274E' }}>{bq.buyer}</td>
+                          <td style={{ padding: '8px' }}>
+                            <span style={{ fontWeight: 700, color: '#0284C7' }}>
+                              {bq.odUsed}/{bq.odQuota}
+                            </span>{' '}
+                            <span style={{ color: '#64748B', fontSize: '10.5px' }}>({odPct}%)</span>
+                          </td>
+                          <td style={{ padding: '8px' }}>
+                            <span style={{ fontWeight: 700, color: '#059669' }}>
+                              {bq.smsUsed}/{bq.smsQuota}
+                            </span>{' '}
+                            <span style={{ color: '#64748B', fontSize: '10.5px' }}>({smsPct}%)</span>
+                          </td>
+                          <td style={{ padding: '8px', fontWeight: 650, color: '#334155' }}>
+                            {bq.bulkLinesUsed}/{bq.bulkLineQuota} Lines
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
-            <div className="mt-3">
-              <label className="block text-slate-400">Release Remarks / Knitting Instruction</label>
-              <input
-                type="text"
-                value={releaseRemarks}
-                onChange={(e) => setReleaseRemarks(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-white"
-              />
-            </div>
+            {/* Sample Order Sheet TNA Table */}
+            <div
+              style={{
+                background: '#FFFFFF',
+                borderRadius: '10px',
+                border: '1px solid #E2E8F0',
+                padding: '16px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+              }}
+            >
+              <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#0F274E', marginBottom: '4px' }}>
+                Sample Fabric &amp; Garment Order Sheet — Planning TNA &amp; Dispatch
+              </div>
+              <div style={{ fontSize: '11.5px', color: '#64748B', marginBottom: '12px' }}>
+                Central Planning assigns Yarn, Knitting, Dyeing, Sewing and Dispatch deadlines for Merchandising sample requisitions.
+              </div>
 
-            <div className="mt-4 flex flex-wrap justify-end gap-2">
-              <button
-                onClick={() => setReleaseModalJob(null)}
-                className="rounded-lg border border-slate-700 px-3 py-1.5 text-slate-300"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => submitRelease(true)}
-                disabled={saving}
-                className="rounded-lg border border-cyan-500/40 bg-cyan-500/15 px-4 py-1.5 font-semibold text-cyan-200 hover:bg-cyan-500/25 disabled:opacity-50"
-              >
-                Approve Only (Hold Release)
-              </button>
-              <button
-                onClick={() => submitRelease(false)}
-                disabled={saving}
-                className="rounded-lg bg-emerald-500 px-4 py-1.5 font-semibold text-slate-950 hover:bg-emerald-400 disabled:opacity-50"
-              >
-                {saving ? 'Releasing...' : 'Approve & Release to Knitting & Dyeing'}
-              </button>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid #E2E8F0', color: '#64748B', textAlign: 'left' }}>
+                      <th style={{ padding: '8px' }}>Form / Job</th>
+                      <th style={{ padding: '8px' }}>Sample Type</th>
+                      <th style={{ padding: '8px' }}>Knit / Dye / Sew</th>
+                      <th style={{ padding: '8px' }}>Target Dispatch</th>
+                      <th style={{ padding: '8px', textAlign: 'right' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sampleOrders.map((so) => (
+                      <tr key={so.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                        <td style={{ padding: '8px' }}>
+                          <div style={{ fontWeight: 700, color: '#0284C7' }}>{so.formNo}</div>
+                          <div style={{ fontSize: '10.5px', color: '#64748B' }}>Job #{so.jobNo} · {so.buyer}</div>
+                        </td>
+                        <td style={{ padding: '8px' }}>
+                          <div style={{ fontWeight: 600, color: '#0F274E' }}>{so.sampleType}</div>
+                          <div style={{ fontSize: '10.5px', color: '#64748B' }}>{so.sampleQty} pcs</div>
+                        </td>
+                        <td style={{ padding: '8px', fontSize: '10.5px', fontFamily: 'monospace', color: '#475569' }}>
+                          <div>Knit: {so.tna?.knittingDate || '—'}</div>
+                          <div>Dye: {so.tna?.dyeingDate || '—'}</div>
+                          <div>Sew: {so.tna?.sewingDate || '—'}</div>
+                        </td>
+                        <td style={{ padding: '8px', fontSize: '11px' }}>
+                          <div style={{ fontWeight: 700, color: '#0284C7' }}>Plan: {so.tna?.dispatchDate || '—'}</div>
+                          <div style={{ color: so.tna?.actualDispatchDate ? '#059669' : '#D97706', fontSize: '10px' }}>
+                            Act: {so.tna?.actualDispatchDate || 'Pending'}
+                          </div>
+                        </td>
+                        <td style={{ padding: '8px', textAlign: 'right' }}>
+                          <button
+                            onClick={() => setEditingSampleForm(JSON.parse(JSON.stringify(so)))}
+                            style={{
+                              padding: '5px 10px',
+                              borderRadius: '6px',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              border: '1px solid #0284C7',
+                              background: '#F0F9FF',
+                              color: '#0284C7',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Edit TNA
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Modal 4: Edit Sample Order TNA */}
-      {editingSampleForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-cyan-500/40 bg-slate-900 p-5 text-xs">
-            <h3 className="text-sm font-semibold text-white">
-              Sample Order Sheet TNA — {editingSampleForm.formNo} (Job #{editingSampleForm.jobNo})
-            </h3>
-            <div className="mt-3 grid grid-cols-2 gap-3">
-              {[
-                { key: 'yarnDate', label: 'Sample Yarn Ready Date' },
-                { key: 'knittingDate', label: 'Sample Knitting Date' },
-                { key: 'dyeingDate', label: 'Sample Dyeing Date' },
-                { key: 'printingDate', label: 'Sample Print/Emb Date' },
-                { key: 'sewingDate', label: 'Sample Making / Sewing Date' },
-                { key: 'dispatchDate', label: 'Planned Dispatch Date' },
-                { key: 'actualDispatchDate', label: 'Actual Dispatch Date' },
-              ].map((f) => (
-                <div key={f.key}>
-                  <label className="block text-slate-400">{f.label}</label>
+        {/* MODAL: Review & Action Selector */}
+        {reviewJob && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 50,
+              background: 'rgba(15, 23, 42, 0.45)',
+              backdropFilter: 'blur(3px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px',
+            }}
+            onClick={() => setReviewJob(null)}
+          >
+            <div
+              style={{
+                width: '100%',
+                maxWidth: '520px',
+                background: '#FFFFFF',
+                borderRadius: '12px',
+                border: '1px solid #E2E8F0',
+                padding: '20px',
+                boxShadow: '0 20px 45px rgba(0,0,0,0.18)',
+                fontSize: '12px',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '14px' }}>
+                <div>
+                  <div style={{ fontSize: '15px', fontWeight: 800, color: '#0F274E' }}>
+                    Job #{reviewJob.jobNo} · {reviewJob.styleNo}
+                  </div>
+                  <div style={{ fontSize: '11.5px', color: '#64748B' }}>
+                    {reviewJob.buyer} · Merchandiser: {reviewJob.merchandiser} · {fmt(reviewJob.orderQty)} pcs · CCD: {reviewJob.ccd}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setReviewJob(null)}
+                  style={{
+                    border: 'none',
+                    background: '#F1F5F9',
+                    borderRadius: '6px',
+                    width: '28px',
+                    height: '28px',
+                    cursor: 'pointer',
+                    display: 'grid',
+                    placeItems: 'center',
+                    color: '#64748B',
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div
+                style={{
+                  background: '#F8FAFC',
+                  borderRadius: '8px',
+                  border: '1px solid #E2E8F0',
+                  padding: '12px 14px',
+                  marginBottom: '14px',
+                  lineHeight: 1.6,
+                }}
+              >
+                <div>Finish Fabric Required: <b>{fmt(reviewJob.totalFinishKg)} Kg</b></div>
+                <div>
+                  Signed Hard-Copy Gate:{' '}
+                  {reviewJob.signedCopy?.fabricSheet && reviewJob.signedCopy?.tna ? (
+                    <span style={{ color: '#059669', fontWeight: 700 }}>✓ Fabric Sheet &amp; T&amp;A Hard Copies Signed</span>
+                  ) : (
+                    <span style={{ color: '#D97706', fontWeight: 700 }}>○ Physical Signed Copies Pending</span>
+                  )}
+                </div>
+                <div>Current Desk Status: <b style={{ color: '#0284C7' }}>{String(reviewJob.status || '').replace(/_/g, ' ')}</b></div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <button
+                  onClick={() => {
+                    const j = reviewJob;
+                    setReviewJob(null);
+                    openSignedCopyModal(j);
+                  }}
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    border: '1px solid #CBD5E1',
+                    background: '#FFFFFF',
+                    color: '#0F274E',
+                    fontWeight: 700,
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <span>1. Record Physical Signed Copy Gate</span>
+                  <span style={{ color: '#0284C7', fontSize: '11px' }}>Open Form →</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    const j = reviewJob;
+                    setReviewJob(null);
+                    openReleaseModal(j);
+                  }}
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    border: '1px solid #059669',
+                    background: '#ECFDF5',
+                    color: '#065F46',
+                    fontWeight: 700,
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <span>2. Review Fabric &amp; Release to Knitting (Colour × Part)</span>
+                  <span style={{ color: '#059669', fontSize: '11px' }}>Verify Breakdown →</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    const j = reviewJob;
+                    setReviewJob(null);
+                    setReturnModalJob(j);
+                    setReturnForm({ target: 'BOTH', reason: j.returnReason || '' });
+                  }}
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    border: '1px solid #FECACA',
+                    background: '#FEF2F2',
+                    color: '#991B1B',
+                    fontWeight: 700,
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <span>Return to Merchandiser with Discrepancy Note</span>
+                  <span style={{ color: '#DC2626', fontSize: '11px' }}>Re-open Task →</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    const j = reviewJob;
+                    setReviewJob(null);
+                    openHistoryDrawer(j);
+                  }}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: '8px',
+                    border: '1px solid #E2E8F0',
+                    background: '#F8FAFC',
+                    color: '#64748B',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                  }}
+                >
+                  View Approval Audit Trail &amp; History
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL 1: Record Physical Signed Copy */}
+        {signedModalJob && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 50,
+              background: 'rgba(15, 23, 42, 0.45)',
+              backdropFilter: 'blur(3px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px',
+            }}
+          >
+            <div
+              style={{
+                width: '100%',
+                maxWidth: '480px',
+                background: '#FFFFFF',
+                borderRadius: '12px',
+                border: '1px solid #E2E8F0',
+                padding: '20px',
+                boxShadow: '0 20px 45px rgba(0,0,0,0.18)',
+                fontSize: '12px',
+              }}
+            >
+              <div style={{ fontSize: '14.5px', fontWeight: 800, color: '#0F274E', marginBottom: '4px' }}>
+                Record Physical Signed Copy — Job #{signedModalJob.jobNo} ({signedModalJob.styleNo})
+              </div>
+              <p style={{ color: '#64748B', fontSize: '11.5px', marginBottom: '14px' }}>
+                Confirm physical hand-signed copies of the Fabric Order Sheet and T&amp;A before releasing to Knitting.
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1E293B', fontWeight: 600 }}>
                   <input
-                    type="date"
-                    value={editingSampleForm.tna?.[f.key] || ''}
+                    type="checkbox"
+                    checked={signedForm.fabricSheet}
+                    onChange={(e) => setSignedForm({ ...signedForm, fabricSheet: e.target.checked })}
+                  />
+                  Physical Signed Fabric Order Sheet Received ({signedModalJob.fabricSheetNo})
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1E293B', fontWeight: 600 }}>
+                  <input
+                    type="checkbox"
+                    checked={signedForm.tna}
+                    onChange={(e) => setSignedForm({ ...signedForm, tna: e.target.checked })}
+                  />
+                  Physical Signed Bulk T&amp;A Sheet Received
+                </label>
+                <div>
+                  <label style={{ display: 'block', color: '#64748B', marginBottom: '4px' }}>Physical File / Register Reference No.</label>
+                  <input
+                    type="text"
+                    value={signedForm.referenceNo}
+                    onChange={(e) => setSignedForm({ ...signedForm, referenceNo: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid #CBD5E1',
+                      fontSize: '12px',
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', color: '#64748B', marginBottom: '4px' }}>Verified By</label>
+                  <input
+                    type="text"
+                    value={signedForm.receivedBy}
+                    onChange={(e) => setSignedForm({ ...signedForm, receivedBy: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid #CBD5E1',
+                      fontSize: '12px',
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', color: '#64748B', marginBottom: '4px' }}>Verification Remarks</label>
+                  <input
+                    type="text"
+                    value={signedForm.remarks}
+                    onChange={(e) => setSignedForm({ ...signedForm, remarks: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid #CBD5E1',
+                      fontSize: '12px',
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '18px' }}>
+                <button
+                  onClick={() => setSignedModalJob(null)}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: '6px',
+                    border: '1px solid #CBD5E1',
+                    background: '#FFFFFF',
+                    color: '#475569',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitSignedCopy}
+                  disabled={saving}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: '#0284C7',
+                    color: '#FFFFFF',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {saving ? 'Saving...' : 'Save Signed Copy Record'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL 2: Return to Merchandiser */}
+        {returnModalJob && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 50,
+              background: 'rgba(15, 23, 42, 0.45)',
+              backdropFilter: 'blur(3px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px',
+            }}
+          >
+            <div
+              style={{
+                width: '100%',
+                maxWidth: '480px',
+                background: '#FFFFFF',
+                borderRadius: '12px',
+                border: '1px solid #FECACA',
+                padding: '20px',
+                boxShadow: '0 20px 45px rgba(0,0,0,0.18)',
+                fontSize: '12px',
+              }}
+            >
+              <div style={{ fontSize: '14.5px', fontWeight: 800, color: '#DC2626', marginBottom: '4px' }}>
+                Return to Merchandiser — Job #{returnModalJob.jobNo} ({returnModalJob.styleNo})
+              </div>
+              <p style={{ color: '#64748B', fontSize: '11.5px', marginBottom: '14px' }}>
+                Returning re-opens the Merchandiser&apos;s task with your discrepancy note and blocks Knitting release until corrected.
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', color: '#64748B', marginBottom: '4px' }}>Document to Return</label>
+                  <select
+                    value={returnForm.target}
+                    onChange={(e) => setReturnForm({ ...returnForm, target: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid #CBD5E1',
+                      fontSize: '12px',
+                    }}
+                  >
+                    <option value="BOTH">Both Fabric Order Sheet &amp; T&amp;A</option>
+                    <option value="FABRIC_SHEET">Fabric Order Sheet Only</option>
+                    <option value="TNA">T&amp;A Plan Only</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', color: '#64748B', marginBottom: '4px' }}>
+                    Mandatory Discrepancy Reason / Note
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={returnForm.reason}
+                    onChange={(e) => setReturnForm({ ...returnForm, reason: e.target.value })}
+                    placeholder="e.g., Collar rib consumption &amp; wastage % mismatch with CAD marker..."
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid #CBD5E1',
+                      fontSize: '12px',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '18px' }}>
+                <button
+                  onClick={() => setReturnModalJob(null)}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: '6px',
+                    border: '1px solid #CBD5E1',
+                    background: '#FFFFFF',
+                    color: '#475569',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitReturn}
+                  disabled={saving}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: '#DC2626',
+                    color: '#FFFFFF',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {saving ? 'Returning...' : 'Return to Merchandiser'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL 3: Approve & Release to Knitting (Colour × Part Breakdown) */}
+        {releaseModalJob && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 50,
+              background: 'rgba(15, 23, 42, 0.45)',
+              backdropFilter: 'blur(3px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px',
+            }}
+          >
+            <div
+              style={{
+                width: '100%',
+                maxWidth: '920px',
+                maxHeight: '90vh',
+                overflowY: 'auto',
+                background: '#FFFFFF',
+                borderRadius: '12px',
+                border: '1px solid #E2E8F0',
+                padding: '22px',
+                boxShadow: '0 20px 45px rgba(0,0,0,0.18)',
+                fontSize: '12px',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px',
+                  borderBottom: '1px solid #E2E8F0',
+                  paddingBottom: '12px',
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '15px', fontWeight: 800, color: '#0F274E' }}>
+                    Approve &amp; Release to Knitting — Job #{releaseModalJob.jobNo} · Style {releaseModalJob.styleNo} ({releaseModalJob.buyer})
+                  </div>
+                  <div style={{ fontSize: '11.5px', color: '#64748B' }}>
+                    Review Colour × Part finish fabric (Kg) and CAD consumption. Greige for knitting is calculated automatically.
+                  </div>
+                </div>
+                <button
+                  onClick={addReleaseRow}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid #0284C7',
+                    background: '#F0F9FF',
+                    color: '#0284C7',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  + Add Colour × Part Row
+                </button>
+              </div>
+
+              {/* Tolerance & Balance Strip */}
+              <div
+                style={{
+                  margin: '14px 0',
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                  gap: '10px',
+                  background: '#F8FAFC',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: '1px solid #E2E8F0',
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '10.5px', color: '#64748B', fontWeight: 600 }}>Target Finish Kg</div>
+                  <div style={{ fontSize: '16px', fontWeight: 800, color: '#0F274E' }}>{fmt(expectedFinishKg)} Kg</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '10.5px', color: '#64748B', fontWeight: 600 }}>Breakdown Sum Finish Kg</div>
+                  <div
+                    style={{
+                      fontSize: '16px',
+                      fontWeight: 800,
+                      color: Math.abs(finishDiffKg) <= 1 ? '#059669' : '#D97706',
+                    }}
+                  >
+                    {fmt(draftSumFinishKg)} Kg ({finishDiffKg >= 0 ? `+${finishDiffKg}` : finishDiffKg} Kg)
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '10.5px', color: '#64748B', fontWeight: 600 }}>Greige Yarn Needed</div>
+                  <div style={{ fontSize: '16px', fontWeight: 800, color: '#0284C7' }}>{fmt(draftSumGreyKg)} Kg</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  {Math.abs(finishDiffKg) > 1 ? (
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#D97706', fontWeight: 600 }}>
+                      <input
+                        type="checkbox"
+                        checked={overrideMismatch}
+                        onChange={(e) => setOverrideMismatch(e.target.checked)}
+                      />
+                      Override ±1.0 Kg mismatch
+                    </label>
+                  ) : (
+                    <span style={{ color: '#059669', fontWeight: 700 }}>✓ Within ±1.0 Kg tolerance</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Rows Table */}
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', minWidth: '850px', borderCollapse: 'collapse', fontSize: '11.5px' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #E2E8F0', color: '#64748B', textAlign: 'left' }}>
+                      <th style={{ padding: '6px' }}>Colour</th>
+                      <th style={{ padding: '6px' }}>Part</th>
+                      <th style={{ padding: '6px' }}>Fabric Type &amp; Composition</th>
+                      <th style={{ padding: '6px' }}>GSM / Dia</th>
+                      <th style={{ padding: '6px' }}>CAD cons.</th>
+                      <th style={{ padding: '6px' }}>Finish Kg</th>
+                      <th style={{ padding: '6px' }}>Dye to Match</th>
+                      <th style={{ padding: '6px', textAlign: 'right' }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {releaseRows.map((r, idx) => (
+                      <tr key={r.id || idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                        <td style={{ padding: '6px' }}>
+                          <input
+                            type="text"
+                            value={r.colour || ''}
+                            onChange={(e) => updateReleaseRow(idx, 'colour', e.target.value)}
+                            style={{ width: '100px', padding: '4px 6px', border: '1px solid #CBD5E1', borderRadius: '4px' }}
+                          />
+                        </td>
+                        <td style={{ padding: '6px' }}>
+                          <input
+                            type="text"
+                            value={r.part || ''}
+                            onChange={(e) => updateReleaseRow(idx, 'part', e.target.value)}
+                            style={{ width: '80px', padding: '4px 6px', border: '1px solid #CBD5E1', borderRadius: '4px' }}
+                          />
+                        </td>
+                        <td style={{ padding: '6px' }}>
+                          <input
+                            type="text"
+                            value={r.fabricType || ''}
+                            onChange={(e) => updateReleaseRow(idx, 'fabricType', e.target.value)}
+                            style={{ width: '160px', padding: '4px 6px', border: '1px solid #CBD5E1', borderRadius: '4px' }}
+                          />
+                        </td>
+                        <td style={{ padding: '6px' }}>
+                          <div style={{ display: 'flex', gap: '4px' }}>
+                            <input
+                              type="number"
+                              value={r.gsm || 180}
+                              onWheel={(e) => e.currentTarget.blur()}
+                              onChange={(e) => updateReleaseRow(idx, 'gsm', Number(e.target.value))}
+                              style={{ width: '50px', padding: '4px', border: '1px solid #CBD5E1', borderRadius: '4px' }}
+                            />
+                            <input
+                              type="text"
+                              value={r.dia || ''}
+                              onChange={(e) => updateReleaseRow(idx, 'dia', e.target.value)}
+                              style={{ width: '65px', padding: '4px', border: '1px solid #CBD5E1', borderRadius: '4px' }}
+                            />
+                          </div>
+                        </td>
+                        <td style={{ padding: '6px' }}>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={r.cadConsKgDz ?? ''}
+                            placeholder="kg/dz"
+                            onWheel={(e) => e.currentTarget.blur()}
+                            onChange={(e) => updateReleaseRow(idx, 'cadConsKgDz', e.target.value === '' ? null : Number(e.target.value))}
+                            style={{ width: '65px', padding: '4px', border: '1px solid #CBD5E1', borderRadius: '4px' }}
+                          />
+                        </td>
+                        <td style={{ padding: '6px' }}>
+                          <input
+                            type="number"
+                            value={r.finishKg ?? 0}
+                            onWheel={(e) => e.currentTarget.blur()}
+                            onChange={(e) => updateReleaseRow(idx, 'finishKg', Number(e.target.value))}
+                            style={{
+                              width: '75px',
+                              padding: '4px',
+                              border: '1px solid #059669',
+                              borderRadius: '4px',
+                              fontWeight: 700,
+                              color: '#065F46',
+                            }}
+                          />
+                        </td>
+                        <td style={{ padding: '6px', textAlign: 'center' }}>
+                          <input
+                            type="checkbox"
+                            checked={!!r.dyeToMatch}
+                            onChange={(e) => updateReleaseRow(idx, 'dyeToMatch', e.target.checked)}
+                          />
+                        </td>
+                        <td style={{ padding: '6px', textAlign: 'right' }}>
+                          <button
+                            onClick={() => removeReleaseRow(idx)}
+                            style={{
+                              border: 'none',
+                              background: '#FEE2E2',
+                              color: '#DC2626',
+                              borderRadius: '4px',
+                              padding: '2px 6px',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            ✕
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={{ marginTop: '14px' }}>
+                <label style={{ display: 'block', color: '#64748B', marginBottom: '4px' }}>
+                  Release Remarks / Knitting Instruction Note
+                </label>
+                <input
+                  type="text"
+                  value={releaseRemarks}
+                  onChange={(e) => setReleaseRemarks(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    borderRadius: '6px',
+                    border: '1px solid #CBD5E1',
+                    fontSize: '12px',
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: '8px', marginTop: '18px' }}>
+                <button
+                  onClick={() => setReleaseModalJob(null)}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: '6px',
+                    border: '1px solid #CBD5E1',
+                    background: '#FFFFFF',
+                    color: '#475569',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => submitRelease(true)}
+                  disabled={saving}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: '6px',
+                    border: '1px solid #0284C7',
+                    background: '#F0F9FF',
+                    color: '#0284C7',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Approve Only (Hold Release)
+                </button>
+                <button
+                  onClick={() => submitRelease(false)}
+                  disabled={saving}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: '#059669',
+                    color: '#FFFFFF',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {saving ? 'Releasing...' : 'Approve & Release to Knitting'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL 4: Edit Sample Order TNA */}
+        {editingSampleForm && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 50,
+              background: 'rgba(15, 23, 42, 0.45)',
+              backdropFilter: 'blur(3px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px',
+            }}
+          >
+            <div
+              style={{
+                width: '100%',
+                maxWidth: '520px',
+                background: '#FFFFFF',
+                borderRadius: '12px',
+                border: '1px solid #E2E8F0',
+                padding: '20px',
+                boxShadow: '0 20px 45px rgba(0,0,0,0.18)',
+                fontSize: '12px',
+              }}
+            >
+              <div style={{ fontSize: '14.5px', fontWeight: 800, color: '#0F274E', marginBottom: '12px' }}>
+                Sample Order Sheet TNA — {editingSampleForm.formNo} (Job #{editingSampleForm.jobNo})
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                {[
+                  { key: 'yarnDate', label: 'Sample Yarn Ready Date' },
+                  { key: 'knittingDate', label: 'Sample Knitting Date' },
+                  { key: 'dyeingDate', label: 'Sample Dyeing Date' },
+                  { key: 'printingDate', label: 'Sample Print/Emb Date' },
+                  { key: 'sewingDate', label: 'Sample Making / Sewing Date' },
+                  { key: 'dispatchDate', label: 'Planned Dispatch Date' },
+                  { key: 'actualDispatchDate', label: 'Actual Dispatch Date' },
+                ].map((f) => (
+                  <div key={f.key}>
+                    <label style={{ display: 'block', color: '#64748B', marginBottom: '2px', fontSize: '11px' }}>
+                      {f.label}
+                    </label>
+                    <input
+                      type="date"
+                      value={editingSampleForm.tna?.[f.key] || ''}
+                      onChange={(e) =>
+                        setEditingSampleForm({
+                          ...editingSampleForm,
+                          tna: { ...(editingSampleForm.tna || {}), [f.key]: e.target.value },
+                        })
+                      }
+                      style={{
+                        width: '100%',
+                        padding: '6px 8px',
+                        borderRadius: '6px',
+                        border: '1px solid #CBD5E1',
+                        fontSize: '11.5px',
+                      }}
+                    />
+                  </div>
+                ))}
+                <div>
+                  <label style={{ display: 'block', color: '#64748B', marginBottom: '2px', fontSize: '11px' }}>
+                    Courier AWB No.
+                  </label>
+                  <input
+                    type="text"
+                    value={editingSampleForm.tna?.awbNo || ''}
                     onChange={(e) =>
                       setEditingSampleForm({
                         ...editingSampleForm,
-                        tna: { ...(editingSampleForm.tna || {}), [f.key]: e.target.value },
+                        tna: { ...(editingSampleForm.tna || {}), awbNo: e.target.value },
                       })
                     }
-                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-white"
+                    style={{
+                      width: '100%',
+                      padding: '6px 8px',
+                      borderRadius: '6px',
+                      border: '1px solid #CBD5E1',
+                      fontSize: '11.5px',
+                    }}
                   />
                 </div>
-              ))}
-              <div>
-                <label className="block text-slate-400">Courier AWB No.</label>
-                <input
-                  type="text"
-                  value={editingSampleForm.tna?.awbNo || ''}
-                  onChange={(e) =>
-                    setEditingSampleForm({
-                      ...editingSampleForm,
-                      tna: { ...(editingSampleForm.tna || {}), awbNo: e.target.value },
-                    })
-                  }
-                  className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-white"
-                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '18px' }}>
+                <button
+                  onClick={() => setEditingSampleForm(null)}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: '6px',
+                    border: '1px solid #CBD5E1',
+                    background: '#FFFFFF',
+                    color: '#475569',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveSampleOrderTna}
+                  disabled={saving}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: '#0284C7',
+                    color: '#FFFFFF',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Save Sample TNA
+                </button>
               </div>
             </div>
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                onClick={() => setEditingSampleForm(null)}
-                className="rounded-lg border border-slate-700 px-3 py-1.5 text-slate-300"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={saveSampleOrderTna}
-                disabled={saving}
-                className="rounded-lg bg-cyan-500 px-4 py-1.5 font-semibold text-slate-950 hover:bg-cyan-400"
-              >
-                Save Sample TNA
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Modal 5: Approval Audit History Drawer */}
-      {historyJob && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 p-5 text-xs">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-sm font-semibold text-white">
-                Approval & Release Audit Trail — Job #{historyJob.jobNo} ({historyJob.styleNo})
-              </h3>
-              <button onClick={() => setHistoryJob(null)} className="text-slate-400 hover:text-white">
-                Close
-              </button>
-            </div>
-            <div className="mt-3 space-y-2.5 max-h-80 overflow-y-auto">
-              {historyList.map((h, i) => (
-                <div key={h.id || i} className="rounded-xl border border-slate-800 bg-slate-950 p-3">
-                  <div className="flex justify-between font-semibold text-cyan-300">
-                    <span>{h.action}</span>
-                    <span className="font-mono text-[10px] text-slate-400">{String(h.timestamp || '').slice(0, 16).replace('T', ' ')}</span>
-                  </div>
-                  <div className="mt-0.5 text-[11px] text-slate-400">Actor: {h.actor}</div>
-                  <div className="mt-1 text-slate-200">{h.remarks}</div>
+        {/* MODAL 5: History Audit Trail Drawer */}
+        {historyJob && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 50,
+              background: 'rgba(15, 23, 42, 0.45)',
+              backdropFilter: 'blur(3px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px',
+            }}
+          >
+            <div
+              style={{
+                width: '100%',
+                maxWidth: '520px',
+                background: '#FFFFFF',
+                borderRadius: '12px',
+                border: '1px solid #E2E8F0',
+                padding: '20px',
+                boxShadow: '0 20px 45px rgba(0,0,0,0.18)',
+                fontSize: '12px',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <div style={{ fontSize: '14.5px', fontWeight: 800, color: '#0F274E' }}>
+                  Approval Audit Trail — Job #{historyJob.jobNo} ({historyJob.styleNo})
                 </div>
-              ))}
+                <button
+                  onClick={() => setHistoryJob(null)}
+                  style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '14px' }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '320px', overflowY: 'auto' }}>
+                {historyList.length === 0 ? (
+                  <div style={{ color: '#94A3B8', padding: '12px', textAlign: 'center' }}>No log entries recorded yet</div>
+                ) : (
+                  historyList.map((h, i) => (
+                    <div
+                      key={h.id || i}
+                      style={{
+                        padding: '10px',
+                        background: '#F8FAFC',
+                        borderRadius: '6px',
+                        border: '1px solid #E2E8F0',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, color: '#0284C7' }}>
+                        <span>{h.action}</span>
+                        <span style={{ color: '#64748B', fontSize: '10px', fontFamily: 'monospace' }}>
+                          {String(h.timestamp || '').slice(0, 16).replace('T', ' ')}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px' }}>Actor: {h.actor}</div>
+                      <div style={{ fontSize: '11.5px', color: '#1E293B', marginTop: '4px' }}>{h.remarks}</div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </Shell>
   );
 }

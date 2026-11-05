@@ -190,13 +190,107 @@ Status ${r.presentStatus||'—'} · Remark ${remark}`}>{displayMode!=='PLAN'&&<d
   </section>
  ),[visibleLines,dates,timelineWidth,heatmapMode,showBaseline,displayMode,jobsByLine,capacityIndex,floorCapacityIndex,wStart,windowDays,view,lines,rows,itemCategory]);
 
- return <Shell title="Sewing Line Planning" eyebrow="Central Planning · T&A approved jobs auto-load here for review">
+ return <Shell title="4. Factory Sewing Line Gantt Chart Planning" eyebrow="Central Planning · T&A approved jobs auto-load here for review">
   <section className="module-hero"><div><span className="status-pill">Central Planning authority</span><h2>Factory-wise Sewing Gantt</h2><p>NFL and NCL use their own master lines. Timeline shows every calendar day, working-hours are simulated before applying, and draft plans require Central Planning approval.</p></div><div className="module-actions"><button className="btn btn-secondary" onClick={()=>document.documentElement.requestFullscreen?.()}>Full Screen</button><button className="btn btn-secondary" disabled={busy} onClick={generate}>Auto Load Approved T&A</button><button className="btn btn-primary" disabled={busy||!reviewed.length} onClick={()=>approve(reviewed.map(r=>r.styleId))}>Approve All Draft / Reviewed</button></div></section>
   {msg&&<div className="notice success-notice">{msg}</div>}{error&&<div className="notice">{error}</div>}
 
-  <section className="gantt-summary-grid">
-   <div><span>T&A approved, not loaded</span><strong>{unplanned.length}</strong></div><div><span>Draft</span><strong>{summary.draft}</strong></div><div><span>Reviewed</span><strong>{summary.reviewed}</strong></div><div><span>Approved Official</span><strong>{summary.approved}</strong></div><div><span>IE Bulletin Pending</span><strong>{summary.iePending}</strong></div><div><span>Machine Overload</span><strong>{summary.overloaded}</strong></div>
-  </section>
+  <div
+    style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+      gap: '10px',
+      marginBottom: '14px',
+    }}
+  >
+    <div
+      onClick={() => setPlanStatus('ALL')}
+      style={{
+        background: '#FFFFFF',
+        padding: '12px 14px',
+        borderRadius: '8px',
+        border: '1px solid #E2E8F0',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+        cursor: 'pointer',
+      }}
+    >
+      <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 650, textTransform: 'uppercase' }}>T&amp;A Approved / Unloaded</div>
+      <div style={{ fontSize: '22px', fontWeight: 900, color: '#0F274E', margin: '2px 0' }}>{unplanned.length} Styles</div>
+      <div style={{ fontSize: '11.5px', color: '#0284C7', fontWeight: 650 }}>Ready to schedule</div>
+    </div>
+    <div
+      onClick={() => setPlanStatus('DRAFT')}
+      style={{
+        background: planStatus === 'DRAFT' ? '#FFFBEB' : '#FFFFFF',
+        padding: '12px 14px',
+        borderRadius: '8px',
+        border: planStatus === 'DRAFT' ? '2px solid #D97706' : '1px solid #E2E8F0',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+        cursor: 'pointer',
+      }}
+    >
+      <div style={{ fontSize: '11px', color: '#D97706', fontWeight: 650, textTransform: 'uppercase' }}>Draft Line Plans</div>
+      <div style={{ fontSize: '22px', fontWeight: 900, color: '#B45309', margin: '2px 0' }}>{summary.draft} Styles</div>
+      <div style={{ fontSize: '11.5px', color: '#B45309', fontWeight: 650 }}>In planning draft</div>
+    </div>
+    <div
+      onClick={() => setPlanStatus('REVIEWED')}
+      style={{
+        background: planStatus === 'REVIEWED' ? '#F0F9FF' : '#FFFFFF',
+        padding: '12px 14px',
+        borderRadius: '8px',
+        border: planStatus === 'REVIEWED' ? '2px solid #0284C7' : '1px solid #E2E8F0',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+        cursor: 'pointer',
+      }}
+    >
+      <div style={{ fontSize: '11px', color: '#0284C7', fontWeight: 650, textTransform: 'uppercase' }}>Reviewed by Planner</div>
+      <div style={{ fontSize: '22px', fontWeight: 900, color: '#0369A1', margin: '2px 0' }}>{summary.reviewed} Styles</div>
+      <div style={{ fontSize: '11.5px', color: '#0284C7', fontWeight: 650 }}>Awaiting final approval</div>
+    </div>
+    <div
+      onClick={() => setPlanStatus('APPROVED')}
+      style={{
+        background: planStatus === 'APPROVED' ? '#ECFDF5' : '#FFFFFF',
+        padding: '12px 14px',
+        borderRadius: '8px',
+        border: planStatus === 'APPROVED' ? '2px solid #059669' : '1px solid #E2E8F0',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+        cursor: 'pointer',
+      }}
+    >
+      <div style={{ fontSize: '11px', color: '#059669', fontWeight: 650, textTransform: 'uppercase' }}>Approved Official</div>
+      <div style={{ fontSize: '22px', fontWeight: 900, color: '#047857', margin: '2px 0' }}>{summary.approved} Styles</div>
+      <div style={{ fontSize: '11.5px', color: '#047857', fontWeight: 650 }}>Active line commitments</div>
+    </div>
+    <div
+      onClick={() => setRisk('CRITICAL')}
+      style={{
+        background: risk === 'CRITICAL' ? '#FEF2F2' : '#FFFFFF',
+        padding: '12px 14px',
+        borderRadius: '8px',
+        border: risk === 'CRITICAL' ? '2px solid #DC2626' : '1px solid #FECACA',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+        cursor: 'pointer',
+      }}
+    >
+      <div style={{ fontSize: '11px', color: '#DC2626', fontWeight: 700, textTransform: 'uppercase' }}>Critical / Risks</div>
+      <div style={{ fontSize: '22px', fontWeight: 900, color: '#DC2626', margin: '2px 0' }}>{summary.critical + summary.risk} Styles</div>
+      <div style={{ fontSize: '11.5px', color: '#991B1B', fontWeight: 650 }}>{summary.critical} critical · {summary.risk} risk</div>
+    </div>
+    <div
+      style={{
+        background: summary.overloaded > 0 ? '#FEF2F2' : '#FFFFFF',
+        padding: '12px 14px',
+        borderRadius: '8px',
+        border: summary.overloaded > 0 ? '1px solid #FECACA' : '1px solid #E2E8F0',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+      }}
+    >
+      <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 650, textTransform: 'uppercase' }}>Floor Overload</div>
+      <div style={{ fontSize: '22px', fontWeight: 900, color: summary.overloaded > 0 ? '#DC2626' : '#0F274E', margin: '2px 0' }}>{summary.overloaded} Styles</div>
+      <div style={{ fontSize: '11.5px', color: '#64748B' }}>Machine capacity check</div>
+    </div>
+  </div>
 
   <section className="gantt-control-panel panel">
    <div className="gantt-filter-row">

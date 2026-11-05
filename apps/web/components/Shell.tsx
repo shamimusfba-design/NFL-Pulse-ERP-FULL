@@ -42,7 +42,7 @@ const DEPARTMENT_NAVIGATION_ITEMS: SidebarItem[] = [
   { id: 'merchandising', name: 'Sales & Merchandising', href: '/merchandising-bulk', matchPrefixes: ['/merchandising-bulk', '/merchandising-sample', '/modules/merchandising-overview', '/modules/merchandising', '/merchandising'] },
   { id: 'sample-room', name: 'Sample Room', href: '/modules/sample-room', matchPrefixes: ['/modules/sample-room'] },
   { id: 'trims', name: 'Trims & Accessories Store', href: '/modules/trims', matchPrefixes: ['/modules/trims'] },
-  { id: 'central-planning', name: 'Central Planning', href: '/modules/central-planning', matchPrefixes: ['/modules/central-planning', '/modules/ta', '/modules/planning-approvals', '/modules/capacity', '/modules/sewing-planning', '/modules/subcontract'] },
+  { id: 'central-planning', name: 'Central Planning', href: '/modules/planning-approvals', matchPrefixes: ['/modules/central-planning', '/modules/ta', '/modules/planning-approvals', '/modules/capacity', '/modules/sewing-planning', '/modules/subcontract'] },
   { id: 'yarn-knitting', name: 'Yarn Store & Knitting', href: '/modules/yarn-knitting', matchPrefixes: ['/modules/yarn-knitting', '/modules/yarn', '/modules/yarn-store', '/modules/knitting'] },
   { id: 'greige-store', name: 'Greige Fabric Store', href: '/modules/greige-store', matchPrefixes: ['/modules/greige-store'] },
   { id: 'dyeing-lab', name: 'Dyeing Lab', href: '/modules/dyeing-lab', matchPrefixes: ['/modules/dyeing-lab'] },
@@ -86,12 +86,11 @@ const DEPARTMENT_TOP_NAVS: DepartmentNavConfig[] = [
     deptName: 'Central Planning',
     matchPrefixes: ['/modules/central-planning', '/modules/ta', '/modules/planning-approvals', '/modules/capacity', '/modules/sewing-planning', '/modules/subcontract'],
     subItems: [
-      { name: 'Overview', href: '/modules/central-planning' },
-      { name: 'Time & Action', href: '/modules/ta' },
-      { name: 'Approvals & Release', href: '/modules/planning-approvals' },
-      { name: 'Capacity & Calendar', href: '/modules/capacity' },
-      { name: 'Sewing Line Gantt', href: '/modules/sewing-planning' },
-      { name: 'Subcontract Follow-up', href: '/modules/subcontract' },
+      { name: '1. Approval and Release', href: '/modules/planning-approvals' },
+      { name: '2. TNA Plan', href: '/modules/ta' },
+      { name: '3. Capacity Plan', href: '/modules/capacity' },
+      { name: '4. Sewing Line Gantt Chart', href: '/modules/sewing-planning' },
+      { name: '5. Subcontract Follow-up', href: '/modules/subcontract' },
     ]
   },
   {

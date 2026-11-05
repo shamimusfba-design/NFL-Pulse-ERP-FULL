@@ -5,13 +5,40 @@ import { useEffect, useMemo, useState } from 'react';
 import Shell from '../../../components/Shell';
 import { api } from '../../../lib/api';
 import { displayJobNo } from '../../../lib/display';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Cell,
+  CartesianGrid,
+} from 'recharts';
+import {
+  Clock,
+  CheckCircle2,
+  AlertTriangle,
+  FileText,
+  TrendingUp,
+  Search,
+  Filter,
+  Layers,
+  Sparkles,
+  Calendar,
+  X,
+  Plus,
+  ArrowRight,
+  ShieldAlert,
+  Boxes,
+} from 'lucide-react';
 
 function d(val?: string | null) {
   if (!val) return '';
   return String(val).slice(0, 10);
 }
 
-// Bug Fix: Sort all POs and return the EARLIEST CCD across all POs, matching the backend
+// Earliest CCD across all POs
 function firstCcd(style: any): string | null {
   const pos = (style?.purchaseOrders || [])
     .map((p: any) => d(p?.ccd || p?.shipmentDate))
@@ -57,12 +84,13 @@ const PROCESS_ROWS = [
   { key: 'ccd', label: 'Cargo Closing Date (Earliest CCD)', section: 'SHIPMENT', startField: 'cargoClosingDate', endField: 'cargoClosingDate', toggleKey: null, canOutside: false },
 ] as const;
 
-// ---- Slot load next to each T&A process (from the Capacity heatmap) ----
+// Heatmap slot helpers
 const SEC_HEAT: Record<string, string> = { KNITTING: 'knitting', DYEING: 'dyeing', PRINTING: 'printing', EMBROIDERY: 'embroidery', CUTTING: 'cutting', SEWING: 'sewing', FINISHING: 'finishing' };
 const SLOT_START = ['01', '11', '21'];
 const slotOfDate = (d: string) => { const day = Number(d.slice(8, 10)); return day <= 10 ? 1 : day <= 20 ? 2 : 3; };
 const prevMonth = (m: string) => { const [y, mo] = m.split('-').map(Number); const d = new Date(Date.UTC(y, mo - 2, 1)); return d.toISOString().slice(0, 7); };
 const monthLabel = (m: string) => new Date(m + '-01T00:00:00Z').toLocaleString('en-GB', { month: 'short', timeZone: 'UTC' });
+
 function slotLoad(heat: Record<string, any>, section: string, date: string) {
   const key = SEC_HEAT[section]; if (!key || !date) return null;
   const m = date.slice(0, 7), slotNo = slotOfDate(date);
@@ -70,7 +98,7 @@ function slotLoad(heat: Record<string, any>, section: string, date: string) {
   const sl = row?.slots?.find((x: any) => x.slotNo === slotNo);
   return sl ? { m, slotNo, unit: row.unit === 'KG' ? 'kg' : 'pcs', demand: sl.demand, capacity: sl.capacity, loadPct: sl.loadPct } : null;
 }
-/** Earlier (advance) slot with free capacity — looks back up to 3 slots. */
+
 function advanceSuggestion(heat: Record<string, any>, section: string, date: string, limit: number) {
   const key = SEC_HEAT[section]; if (!key || !date) return null;
   let m = date.slice(0, 7), slotNo = slotOfDate(date);
@@ -83,6 +111,7 @@ function advanceSuggestion(heat: Record<string, any>, section: string, date: str
 }
 
 const fmtNum = (n: number) => Math.round(Number(n) || 0).toLocaleString('en-US');
+const fmt = (n: any) => Number(n || 0).toLocaleString();
 
 export default function TaPage() {
   const [activeTab, setActiveTab] = useState<'TNA' | 'RISK_LIST' | 'FABRIC_TRIMS' | 'SAMPLE_PLAN' | 'SHIPMENT_MTG'>('TNA');
@@ -97,24 +126,37 @@ export default function TaPage() {
   const [overrideReason, setOverrideReason] = useState('');
   const [overloadedSlots, setOverloadedSlots] = useState<any[]>([]);
   const [showBaselineCompare, setShowBaselineCompare] = useState(false);
+  const [activeChartBar, setActiveChartBar] = useState<number | null>(null);
 
-  // Control Tower Data (Risk List, Fabric/Trims, Sample Planning, Shipment Meetings)
+  // Control Tower Data
   const [controlTower, setControlTower] = useState<any>(null);
   const [editingFabTrims, setEditingFabTrims] = useState<any>(null);
   const [editingSample, setEditingSample] = useState<any>(null);
   const [editingMeeting, setEditingMeeting] = useState<any>(null);
   const [heat, setHeat] = useState<Record<string, any>>({});
   const heatLimit = 85;
-  useEffect(() => {
-    const months = new Set<string>();
-    Object.values(plans || {}).forEach((pl: any) => Object.values(pl || {}).forEach((v: any) => { if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) { months.add(v.slice(0, 7)); months.add(prevMonth(v.slice(0, 7))); } }));
-    months.forEach((m) => { if (!heat[m]) api(`/planning/capacity/heatmap?month=${m}`).then((r: any) => setHeat((h) => ({ ...h, [m]: r }))).catch(() => {}); });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plans]);
 
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const months = new Set<string>();
+    Object.values(plans || {}).forEach((pl: any) =>
+      Object.values(pl || {}).forEach((v: any) => {
+        if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) {
+          months.add(v.slice(0, 7));
+          months.add(prevMonth(v.slice(0, 7)));
+        }
+      })
+    );
+    months.forEach((m) => {
+      if (!heat[m])
+        api(`/planning/capacity/heatmap?month=${m}`)
+          .then((r: any) => setHeat((h) => ({ ...h, [m]: r })))
+          .catch(() => {});
+    });
+  }, [plans]);
 
   async function loadQueue() {
     setError('');
@@ -138,20 +180,17 @@ export default function TaPage() {
     setSelectedOrderId(orderId);
     setError('');
     setMessage('');
-    setOverloadedSlots([]);
     try {
       const res = await api(`/planning/ta/orders/${orderId}`);
       setOrder(res.order);
       const next: Record<string, any> = {};
-      for (const s of res.order.styles || []) {
-        const p = s.taPlan || s.autoPlan || {};
-        const ccd = firstCcd(s) || d(p.cargoClosingDate);
-        next[s.id] = {
-          styleId: s.id,
-          taStatus: p.taStatus || 'DRAFT',
-          taVersion: Number(p.taVersion || 1),
+      for (const p of res.plans || []) {
+        next[p.styleId] = {
+          styleId: p.styleId,
+          taStatus: p.taStatus,
+          taVersion: p.taVersion,
+          fabricRequiredKg: p.fabricRequiredKg,
           orderConfirmDate: d(p.orderConfirmDate),
-          taPlanDate: d(p.taPlanDate) || new Date().toISOString().slice(0, 10),
           yarnInhouseDate: d(p.yarnInhouseDate),
           yarnDyeingStart: d(p.yarnDyeingStart),
           yarnDyeingEnd: d(p.yarnDyeingEnd),
@@ -159,12 +198,6 @@ export default function TaPage() {
           knittingEnd: d(p.knittingEnd),
           dyeingFinishingStart: d(p.dyeingFinishingStart),
           dyeingFinishingEnd: d(p.dyeingFinishingEnd),
-          printingStart: d(p.printingStart),
-          printingEnd: d(p.printingEnd),
-          embroideryStart: d(p.embroideryStart),
-          embroideryEnd: d(p.embroideryEnd),
-          washStart: d(p.washStart),
-          washEnd: d(p.washEnd),
           trimsInhouseDate: d(p.trimsInhouseDate),
           ppSampleApprovalDate: d(p.ppSampleApprovalDate),
           fileHandoverDate: d(p.fileHandoverDate),
@@ -172,14 +205,19 @@ export default function TaPage() {
           testCuttingDate: d(p.testCuttingDate),
           cuttingStart: d(p.cuttingStart),
           cuttingEnd: d(p.cuttingEnd),
+          printingStart: d(p.printingStart),
+          printingEnd: d(p.printingEnd),
+          embroideryStart: d(p.embroideryStart),
+          embroideryEnd: d(p.embroideryEnd),
           sewingStartDate: d(p.sewingStartDate),
           sewingEndDate: d(p.sewingEndDate),
+          washStart: d(p.washStart),
+          washEnd: d(p.washEnd),
           finishingStart: d(p.finishingStart),
           finishingEnd: d(p.finishingEnd),
           finalInspection: d(p.finalInspection),
           exFactoryDate: d(p.exFactoryDate),
-          cargoClosingDate: ccd,
-          fabricRequiredKg: Number(p.fabricRequiredKg || 500),
+          cargoClosingDate: d(p.cargoClosingDate),
           applicableProcesses: p.applicableProcesses || {
             yarnDyeing: false,
             knitting: true,
@@ -258,7 +296,7 @@ export default function TaPage() {
     });
   }
 
-  function setActivityTracking(styleId: string, rowKey: string, field: string, value: any) {
+  function setActivityTracking(styleId: string, rowKey: string, field: 'status' | 'delayReason', value: string) {
     setPlans((prev) => {
       const cur = prev[styleId] || { styleId };
       const curTrack = cur.activityTracking?.[rowKey] || {};
@@ -278,101 +316,117 @@ export default function TaPage() {
     });
   }
 
-  function toggleProcess(styleId: string, procKey: string, enabled: boolean) {
+  function toggleProcess(styleId: string, key: string, enabled: boolean) {
     setPlans((prev) => {
       const cur = prev[styleId] || { styleId };
+      const proc = { ...(cur.applicableProcesses || {}), [key]: enabled };
       return {
         ...prev,
-        [styleId]: {
-          ...cur,
-          applicableProcesses: { ...(cur.applicableProcesses || {}), [procKey]: enabled },
-        },
+        [styleId]: { ...cur, applicableProcesses: proc },
       };
     });
   }
 
-  function updateOutside(styleId: string, procKey: string, patch: Record<string, any>) {
+  function updateOutside(styleId: string, rowKey: string, patch: any) {
     setPlans((prev) => {
       const cur = prev[styleId] || { styleId };
-      const existing = cur.outsidePlan?.[procKey] || { outside: false, vendor: '', dailyCapacity: 4000 };
+      const out = { ...(cur.outsidePlan || {}) };
+      out[rowKey] = { ...(out[rowKey] || {}), ...patch };
       return {
         ...prev,
-        [styleId]: {
-          ...cur,
-          outsidePlan: {
-            ...(cur.outsidePlan || {}),
-            [procKey]: { ...existing, ...patch },
-          },
-        },
+        [styleId]: { ...cur, outsidePlan: out },
       };
     });
   }
 
-  async function autoCalculateStyle(styleId: string) {
-    if (!order) return;
-    setError('');
-    setMessage('');
-    try {
-      const cur = plans[styleId] || {};
-      const res = await api('/planning/ta/auto-plan', {
-        method: 'POST',
-        body: JSON.stringify({
-          orderId: order.id,
-          styleId,
-          overrides: {
-            orderConfirmDate: cur.orderConfirmDate,
-            fabricRequiredKg: cur.fabricRequiredKg,
-            applicableProcesses: cur.applicableProcesses,
-            outsidePlan: cur.outsidePlan,
-          },
-        }),
-      });
-      const generated = res.plans?.[0]?.plan;
-      if (generated) {
-        setPlans((prev) => ({
-          ...prev,
-          [styleId]: {
-            ...prev[styleId],
-            ...generated,
-            styleId,
-          },
-        }));
-        setMessage('Backward T&A schedule (including Test Cutting / Size Set) recalculated from earliest CCD.');
-      }
-    } catch (e: any) {
-      setError(e.message || 'Failed to auto-calculate T&A');
+  function autoCalculateStyle(styleId: string) {
+    const cur = plans[styleId];
+    if (!cur) return;
+    const styleObj = (order?.styles || []).find((s: any) => s.id === styleId);
+    const earliestCcd = firstCcd(styleObj) || cur.cargoClosingDate;
+    if (!earliestCcd) {
+      setError('Cannot calculate: PO CCD date is missing.');
+      return;
     }
+
+    const ccd = earliestCcd;
+    const exFactory = addDays(ccd, -2);
+    const fri = addDays(exFactory, -3);
+    const finishingEnd = addDays(fri, -1);
+    const finishingStart = addDays(finishingEnd, -7);
+    const sewingEnd = addDays(finishingStart, 0);
+    const sewingStart = addDays(sewingEnd, -12);
+    const cuttingEnd = addDays(sewingStart, -1);
+    const cuttingStart = addDays(cuttingEnd, -6);
+    const testCutting = addDays(cuttingStart, -2);
+    const ppMeeting = addDays(testCutting, -1);
+    const fileHandover = addDays(ppMeeting, -2);
+    const trimsInhouse = addDays(ppMeeting, -3);
+    const ppSample = addDays(fileHandover, -4);
+    const dyeingEnd = addDays(testCutting, -3);
+    const dyeingStart = addDays(dyeingEnd, -7);
+    const knittingEnd = addDays(dyeingStart, -2);
+    const knittingStart = addDays(knittingEnd, -8);
+    const yarnInhouse = addDays(knittingStart, -3);
+    const orderConfirm = addDays(yarnInhouse, -5);
+
+    setPlans((prev) => ({
+      ...prev,
+      [styleId]: {
+        ...cur,
+        cargoClosingDate: ccd,
+        exFactoryDate: exFactory,
+        finalInspection: fri,
+        finishingEnd,
+        finishingStart,
+        sewingEndDate: sewingEnd,
+        sewingStartDate: sewingStart,
+        cuttingEnd,
+        cuttingStart,
+        testCuttingDate: testCutting,
+        ppMeetingDate: ppMeeting,
+        fileHandoverDate: fileHandover,
+        trimsInhouseDate: trimsInhouse,
+        ppSampleApprovalDate: ppSample,
+        dyeingFinishingEnd: dyeingEnd,
+        dyeingFinishingStart: dyeingStart,
+        knittingEnd,
+        knittingStart,
+        yarnInhouseDate: yarnInhouse,
+        orderConfirmDate: orderConfirm,
+      },
+    }));
+    setMessage(`T&A backward schedule auto-calculated from PO CCD (${ccd}) for style.`);
   }
 
-  async function save(approve: boolean) {
+  async function save(approve = false) {
     if (!order) return;
     setSaving(true);
     setError('');
     setMessage('');
     setOverloadedSlots([]);
     try {
-      const stylesPayload = Object.values(plans).map((p: any) => ({
+      const payloadPlans = Object.values(plans).map((p: any) => ({
         ...p,
-        replanReason: replanReason.trim() || p.replanReason || undefined,
+        replanReason: replanReason.trim() || undefined,
+        capacityOverride,
+        overrideReason: capacityOverride ? overrideReason : undefined,
       }));
-      const res = await api('/planning/ta', {
+
+      const res = await api(`/planning/ta/orders/${order.id}`, {
         method: 'POST',
         body: JSON.stringify({
-          orderId: order.id,
+          plans: payloadPlans,
           approve,
-          capacityOverride,
-          overrideReason: overrideReason || undefined,
-          replanReason: replanReason.trim() || undefined,
-          styles: stylesPayload,
         }),
       });
-      setOrder(res.order);
+
       if (res.capacityCheck?.overloadedSlots?.length) {
         setOverloadedSlots(res.capacityCheck.overloadedSlots);
       }
       setMessage(
         approve
-          ? `T&A approved for ${displayJobNo(order.jobNo)}. Downstream section tasks created (Knitting, Dyeing, Trims, CAD, Test Cutting, Bulk Cutting, Sewing, Finishing) & Gantt auto-loaded.`
+          ? `T&A approved for ${displayJobNo(order.jobNo)}. Downstream section tasks created & Gantt auto-loaded.`
           : `T&A saved for ${displayJobNo(order.jobNo)}.`
       );
       setReplanReason('');
@@ -447,509 +501,995 @@ export default function TaPage() {
   const shipmentMeetings = controlTower?.shipmentMeetings || [];
   const buyerQuota = controlTower?.buyerQuota || [];
 
+  // KPI calculations
+  const tnaKpis = useMemo(() => {
+    let approved = 0;
+    let pending = 0;
+    let totalPcs = 0;
+    queue.forEach((q) => {
+      const styles = q.order?.styles || [];
+      totalPcs += styles.reduce((s: number, st: any) => s + Number(st.quantity || 0), 0);
+      const isApp = styles.length > 0 && styles.every((s: any) => s.sourceMetadata?.planning?.taStatus === 'APPROVED');
+      if (isApp) approved++;
+      else pending++;
+    });
+    const criticalRisks = riskList.filter((r: any) => r.riskLevel === 'CRITICAL').length;
+    const atRisk = riskList.filter((r: any) => r.riskLevel === 'AT_RISK').length;
+    return {
+      totalJobs: queue.length,
+      approved,
+      pending,
+      totalPcs,
+      criticalRisks,
+      atRisk,
+      totalRisks: criticalRisks + atRisk,
+      shipmentMtgs: shipmentMeetings.length,
+    };
+  }, [queue, riskList, shipmentMeetings]);
+
+  // Chart data: Milestone health distribution
+  const chartData = useMemo(() => {
+    return [
+      { name: 'T&A Approved', count: tnaKpis.approved, color: '#10B981', fill: '#A7F3D0', key: 'APPROVED' },
+      { name: 'Draft / In-Prep', count: tnaKpis.pending, color: '#0284C7', fill: '#BAE6FD', key: 'PENDING' },
+      { name: 'On Track Risk', count: Math.max(0, queue.length - tnaKpis.totalRisks), color: '#6366F1', fill: '#C7D2FE', key: 'ON_TRACK' },
+      { name: 'At Risk (Slip)', count: tnaKpis.atRisk, color: '#F59E0B', fill: '#FDE68A', key: 'AT_RISK' },
+      { name: 'Critical Delayed', count: tnaKpis.criticalRisks, color: '#EF4444', fill: '#FECACA', key: 'CRITICAL' },
+    ];
+  }, [tnaKpis, queue]);
+
+  const CustomChartTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const d = payload[0].payload;
+      const pct = tnaKpis.totalJobs > 0 ? Math.round((d.count / tnaKpis.totalJobs) * 100) : 0;
+      return (
+        <div
+          style={{
+            background: '#0F172A',
+            color: '#FFFFFF',
+            padding: '10px 14px',
+            borderRadius: '8px',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3)',
+            border: '1px solid #334155',
+            fontSize: '12px',
+            lineHeight: 1.4,
+            minWidth: '160px',
+            pointerEvents: 'none',
+          }}
+        >
+          <div style={{ fontWeight: 700, color: d.color, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: d.color }}></span>
+            {d.name}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', margin: '2px 0' }}>
+            <span style={{ color: '#94A3B8' }}>Orders / Jobs:</span>
+            <span style={{ fontWeight: 700 }}>{d.count} ({pct}%)</span>
+          </div>
+          <div style={{ marginTop: '6px', paddingTop: '4px', borderTop: '1px solid #1E293B', fontSize: '10.5px', color: '#CBD5E1' }}>
+            Click card to filter workqueue
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <Shell
-      title="Time & Action (T&A) & Planning Control Tower"
+      title="2. Time & Action (T&A) Planning Control Tower"
       eyebrow="Central Planning • Backward Schedule, Plan vs Actual, Critical Path & Follow-up"
     >
-      {/* Top Flow Navigation & Tab Switcher */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-3 text-xs">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-semibold uppercase tracking-wider text-slate-400">Central Planning Flow:</span>
-          <span className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 font-semibold text-cyan-200">
-            1. Time & Action (T&A)
-          </span>
-          <span className="text-slate-600">→</span>
-          <Link href="/modules/planning-approvals" className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-slate-200 hover:border-cyan-400">
-            2. Approval Desk & Release
-          </Link>
-          <span className="text-slate-600">→</span>
-          <Link href="/modules/capacity" className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-slate-200 hover:border-cyan-400">
-            3. Capacity & Holiday Calendar
-          </Link>
-          <span className="text-slate-600">→</span>
-          <Link href="/modules/sewing-planning" className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-slate-200 hover:border-cyan-400">
-            4. Sewing Line Gantt
-          </Link>
-          <span className="text-slate-600">→</span>
-          <Link href="/modules/subcontract" className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-slate-200 hover:border-cyan-400">
-            5. Subcontract Follow-up
-          </Link>
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          {[
-            { id: 'TNA', label: '1. Bulk T&A (Plan vs Actual)' },
-            { id: 'RISK_LIST', label: `2. Critical Path & Risk List (${riskList.filter((r: any) => r.riskLevel !== 'ON_TRACK').length})` },
-            { id: 'FABRIC_TRIMS', label: '3. Fabric & Trims Follow-up' },
-            { id: 'SAMPLE_PLAN', label: '4. Sample Planning & Quota' },
-            { id: 'SHIPMENT_MTG', label: `5. Shipment Meetings (${shipmentMeetings.length})` },
-          ].map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setActiveTab(t.id as any)}
-              className={`rounded-xl px-3 py-1.5 font-semibold transition ${
-                activeTab === t.id
-                  ? 'bg-cyan-500 text-slate-950'
-                  : 'border border-slate-700 bg-slate-950 text-slate-300 hover:border-slate-500'
-              }`}
+      <div className="erp-page-entrance" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {/* Module Header & Sub-Tab Switcher Bar */}
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            background: '#FFFFFF',
+            padding: '12px 18px',
+            borderRadius: '10px',
+            border: '1px solid #E2E8F0',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                background: 'linear-gradient(135deg, #0284C7, #0369A1)',
+                display: 'grid',
+                placeItems: 'center',
+                color: '#FFFFFF',
+                boxShadow: '0 2px 6px rgba(2, 132, 199, 0.3)',
+              }}
             >
-              {t.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {message && (
-        <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-200">{message}</div>
-      )}
-      {error && (
-        <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-200">{error}</div>
-      )}
-
-      {/* TAB 1: BULK T&A SCHEDULE (PLAN VS ACTUAL, RE-PLAN VERSIONING & TEST CUTTING) */}
-      {activeTab === 'TNA' && (
-        <div className="grid gap-6 lg:grid-cols-12">
-          {/* Left Workqueue */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4 lg:col-span-3">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-white">Planning Workqueue</h2>
-              <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300">{filteredQueue.length} jobs</span>
+              <Calendar size={18} />
             </div>
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search Job, Buyer, Style..."
-              className="mb-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white"
-            />
-            <div className="mb-3 flex gap-1 text-[11px]">
-              {(['ALL', 'PENDING', 'APPROVED'] as const).map((st) => (
-                <button
-                  key={st}
-                  onClick={() => setStatusFilter(st)}
-                  className={`flex-1 rounded-lg py-1 font-medium ${
-                    statusFilter === st ? 'bg-cyan-500 text-slate-950' : 'bg-slate-950 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {st}
-                </button>
-              ))}
-            </div>
-
-            <div className="max-h-[680px] space-y-2 overflow-y-auto pr-1">
-              {filteredQueue.map((task) => {
-                const ord = task.order;
-                const styles = ord?.styles || [];
-                const allApproved = styles.length > 0 && styles.every((s: any) => s.sourceMetadata?.planning?.taStatus === 'APPROVED');
-                const earliestOrderCcd = styles.map((s: any) => firstCcd(s)).filter(Boolean).sort()[0] || '—';
-                const ver = styles[0]?.sourceMetadata?.planning?.taVersion || 1;
-                return (
-                  <button
-                    key={task.id}
-                    onClick={() => ord?.id && selectOrder(ord.id)}
-                    className={`w-full rounded-xl border p-3 text-left text-xs transition ${
-                      selectedOrderId === ord?.id
-                        ? 'border-cyan-400 bg-cyan-500/10 text-white'
-                        : 'border-slate-800 bg-slate-950 text-slate-300 hover:border-slate-700'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="font-semibold text-white">{displayJobNo(ord?.jobNo)}</span>
-                      <div className="flex items-center gap-1">
-                        <span className="rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 font-mono text-[10px] text-cyan-300">
-                          v{ver}
-                        </span>
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                            allApproved
-                              ? 'border border-emerald-500/30 bg-emerald-500/15 text-emerald-200'
-                              : 'border border-amber-500/30 bg-amber-500/15 text-amber-200'
-                          }`}
-                        >
-                          {allApproved ? 'APPROVED' : 'DRAFT'}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="mt-1 text-slate-400">
-                      {ord?.buyer?.name} · {styles.map((s: any) => s.styleNo).join(', ')}
-                    </div>
-                    <div className="mt-1 flex justify-between text-[11px] text-slate-500">
-                      <span>{styles.reduce((sum: number, s: any) => sum + Number(s.quantity || 0), 0).toLocaleString()} pcs</span>
-                      <span className="text-cyan-300/90">Earliest CCD: {earliestOrderCcd}</span>
-                    </div>
-                  </button>
-                );
-              })}
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F274E', letterSpacing: '-0.01em' }}>
+                Time &amp; Action (T&amp;A) Plan &amp; Control Tower
+              </div>
+              <div style={{ fontSize: '11.5px', color: '#64748B' }}>
+                Backward scheduling from earliest PO CCD with milestone tracking and delay risk management
+              </div>
             </div>
           </div>
 
-          {/* Right Workspace */}
-          <div className="space-y-4 lg:col-span-9">
-            {overloadedSlots.length > 0 && (
-              <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-200">
-                <div className="font-semibold">Capacity Overload Warning ({overloadedSlots.length} slots exceed threshold):</div>
-                <ul className="mt-1 list-disc pl-5">
-                  {overloadedSlots.map((sl, i) => (
-                    <li key={i}>
-                      {sl.section} — {sl.month} Slot {sl.slot}: {sl.loadPct}% ({Number(sl.demand).toLocaleString()} / {Number(sl.capacity).toLocaleString()})
-                    </li>
-                  ))}
-                </ul>
+          {/* Sub-Tabs Switcher */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', background: '#F1F5F9', padding: '3px', borderRadius: '8px' }}>
+            {[
+              { id: 'TNA', label: '1. Bulk T&A Plan', count: queue.length },
+              { id: 'RISK_LIST', label: '2. Critical Path Risks', count: tnaKpis.totalRisks },
+              { id: 'FABRIC_TRIMS', label: '3. Fabric & Trims Follow-up', count: fabricTrimsList.length },
+              { id: 'SAMPLE_PLAN', label: '4. Sample Planning & Quota', count: samplePlanningList.length },
+              { id: 'SHIPMENT_MTG', label: '5. Shipment Meetings', count: shipmentMeetings.length },
+            ].map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setActiveTab(t.id as any)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  fontSize: '11.5px',
+                  fontWeight: activeTab === t.id ? 700 : 550,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: activeTab === t.id ? '#FFFFFF' : 'transparent',
+                  color: activeTab === t.id ? '#0284C7' : '#64748B',
+                  boxShadow: activeTab === t.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                {t.label} ({t.count})
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Notification Banners */}
+        {message && (
+          <div
+            style={{
+              padding: '10px 16px',
+              borderRadius: '8px',
+              background: '#ECFDF5',
+              border: '1px solid #A7F3D0',
+              color: '#065F46',
+              fontSize: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            <CheckCircle2 size={16} />
+            {message}
+          </div>
+        )}
+        {error && (
+          <div
+            style={{
+              padding: '10px 16px',
+              borderRadius: '8px',
+              background: '#FEF2F2',
+              border: '1px solid #FECACA',
+              color: '#991B1B',
+              fontSize: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            <AlertTriangle size={16} />
+            {error}
+          </div>
+        )}
+
+        {/* Trims & Accessories Store Standard KPI Cards */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gap: '10px',
+          }}
+        >
+          {/* Card 1: Total Jobs Tracked */}
+          <div
+            onClick={() => {
+              setActiveTab('TNA');
+              setStatusFilter('ALL');
+            }}
+            style={{
+              background: activeTab === 'TNA' && statusFilter === 'ALL' ? '#F0F9FF' : '#FFFFFF',
+              padding: '12px 14px',
+              borderRadius: '8px',
+              border: activeTab === 'TNA' && statusFilter === 'ALL' ? '2px solid #0284C7' : '1px solid #E2E8F0',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease-in-out',
+            }}
+            title="Click to view all jobs in T&A queue"
+          >
+            <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 650, textTransform: 'uppercase' }}>
+              Total Jobs Tracked
+            </div>
+            <div style={{ fontSize: '22px', fontWeight: 900, color: '#0F274E', margin: '2px 0' }}>
+              {tnaKpis.totalJobs} Jobs
+            </div>
+            <div style={{ fontSize: '11.5px', color: '#0284C7', fontWeight: 600 }}>
+              {fmt(tnaKpis.totalPcs)} Garment Pcs
+            </div>
+          </div>
+
+          {/* Card 2: T&A Approved */}
+          <div
+            onClick={() => {
+              setActiveTab('TNA');
+              setStatusFilter('APPROVED');
+            }}
+            style={{
+              background: activeTab === 'TNA' && statusFilter === 'APPROVED' ? '#ECFDF5' : '#FFFFFF',
+              padding: '12px 14px',
+              borderRadius: '8px',
+              border: activeTab === 'TNA' && statusFilter === 'APPROVED' ? '2px solid #059669' : '1px solid #E2E8F0',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease-in-out',
+            }}
+            title="Click to filter approved T&A plans"
+          >
+            <div style={{ fontSize: '11px', color: '#059669', fontWeight: 650, textTransform: 'uppercase' }}>
+              T&amp;A Approved
+            </div>
+            <div style={{ fontSize: '22px', fontWeight: 900, color: '#047857', margin: '2px 0' }}>
+              {tnaKpis.approved} Jobs
+            </div>
+            <div style={{ fontSize: '11.5px', color: '#047857', fontWeight: 600 }}>
+              Tasks dispathed to mills
+            </div>
+          </div>
+
+          {/* Card 3: Pending Approval / Draft */}
+          <div
+            onClick={() => {
+              setActiveTab('TNA');
+              setStatusFilter('PENDING');
+            }}
+            style={{
+              background: activeTab === 'TNA' && statusFilter === 'PENDING' ? '#FFFBEB' : '#FFFFFF',
+              padding: '12px 14px',
+              borderRadius: '8px',
+              border: activeTab === 'TNA' && statusFilter === 'PENDING' ? '2px solid #D97706' : '1px solid #E2E8F0',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease-in-out',
+            }}
+            title="Click to filter pending / draft T&A schedules"
+          >
+            <div style={{ fontSize: '11px', color: '#D97706', fontWeight: 650, textTransform: 'uppercase' }}>
+              Pending / In-Prep
+            </div>
+            <div style={{ fontSize: '22px', fontWeight: 900, color: '#B45309', margin: '2px 0' }}>
+              {tnaKpis.pending} Jobs
+            </div>
+            <div style={{ fontSize: '11.5px', color: '#B45309', fontWeight: 600 }}>
+              Awaiting planning sign-off
+            </div>
+          </div>
+
+          {/* Card 4: Critical Path & Delay Risks */}
+          <div
+            onClick={() => setActiveTab('RISK_LIST')}
+            style={{
+              background: activeTab === 'RISK_LIST' ? '#FEF2F2' : '#FFFFFF',
+              padding: '12px 14px',
+              borderRadius: '8px',
+              border: activeTab === 'RISK_LIST' ? '2px solid #DC2626' : '1px solid #FECACA',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease-in-out',
+            }}
+            title="Click to view Critical Path & Shipment-Risk Alert list"
+          >
+            <div style={{ fontSize: '11px', color: '#DC2626', fontWeight: 700, textTransform: 'uppercase' }}>
+              Critical Path Risks
+            </div>
+            <div style={{ fontSize: '22px', fontWeight: 900, color: '#DC2626', margin: '2px 0' }}>
+              {tnaKpis.totalRisks} Styles
+            </div>
+            <div style={{ fontSize: '11.5px', color: '#991B1B', fontWeight: 600 }}>
+              {tnaKpis.criticalRisks} Critical · {tnaKpis.atRisk} At-Risk
+            </div>
+          </div>
+
+          {/* Card 5: Fabric & Trims Follow-up */}
+          <div
+            onClick={() => setActiveTab('FABRIC_TRIMS')}
+            style={{
+              background: activeTab === 'FABRIC_TRIMS' ? '#F0F9FF' : '#FFFFFF',
+              padding: '12px 14px',
+              borderRadius: '8px',
+              border: activeTab === 'FABRIC_TRIMS' ? '2px solid #0284C7' : '1px solid #E2E8F0',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease-in-out',
+            }}
+            title="Click to open Weekly Fabric & Trims tracker"
+          >
+            <div style={{ fontSize: '11px', color: '#0284C7', fontWeight: 650, textTransform: 'uppercase' }}>
+              Fabric &amp; Trims Tracker
+            </div>
+            <div style={{ fontSize: '22px', fontWeight: 900, color: '#0369A1', margin: '2px 0' }}>
+              {fabricTrimsList.length} Jobs
+            </div>
+            <div style={{ fontSize: '11.5px', color: '#0284C7', fontWeight: 600 }}>
+              Weekly due vs received
+            </div>
+          </div>
+
+          {/* Card 6: Shipment Meetings */}
+          <div
+            onClick={() => setActiveTab('SHIPMENT_MTG')}
+            style={{
+              background: activeTab === 'SHIPMENT_MTG' ? '#EEF2FF' : '#FFFFFF',
+              padding: '12px 14px',
+              borderRadius: '8px',
+              border: activeTab === 'SHIPMENT_MTG' ? '2px solid #6366F1' : '1px solid #E2E8F0',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease-in-out',
+            }}
+            title="Click to open Shipment Meetings records"
+          >
+            <div style={{ fontSize: '11px', color: '#6366F1', fontWeight: 650, textTransform: 'uppercase' }}>
+              Shipment Meetings
+            </div>
+            <div style={{ fontSize: '22px', fontWeight: 900, color: '#4338CA', margin: '2px 0' }}>
+              {tnaKpis.shipmentMtgs} Decisions
+            </div>
+            <div style={{ fontSize: '11.5px', color: '#4338CA', fontWeight: 600 }}>
+              Weekly recovery actions
+            </div>
+          </div>
+        </div>
+
+        {/* Compact Interactive Recharts Chart: Milestone & Risk Distribution */}
+        <div
+          style={{
+            background: '#FFFFFF',
+            borderRadius: '10px',
+            border: '1px solid #E2E8F0',
+            padding: '14px 18px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: 750, color: '#0F274E' }}>
+                T&amp;A Schedule Health &amp; Critical Path Distribution
               </div>
-            )}
+              <div style={{ fontSize: '11px', color: '#64748B' }}>
+                Hover over bars to inspect critical milestone health and projected shipment runway
+              </div>
+            </div>
+            <span
+              style={{
+                background: '#F0F9FF',
+                color: '#0284C7',
+                border: '1px solid #BAE6FD',
+                padding: '3px 9px',
+                borderRadius: '12px',
+                fontSize: '11px',
+                fontWeight: 650,
+              }}
+            >
+              Interactive Status Bar
+            </span>
+          </div>
 
-            {order ? (
-              <div className="space-y-5">
-                {/* Order Header & Actions */}
-                <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <div className="text-xs uppercase tracking-wider text-cyan-400">{order.buyer?.name}</div>
-                      <h3 className="text-lg font-bold text-white">
-                        {displayJobNo(order.jobNo)} — T&A Schedule, Actuals & Re-Plan Control
-                      </h3>
-                      <p className="text-xs text-slate-400">
-                        Backward scheduled from the <strong className="text-cyan-300">earliest PO CCD</strong>. Includes Test Cutting / Size Set, Actual Dates, Delay Reasons, and Re-plan Version control.
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setShowBaselineCompare((v) => !v)}
-                        className="rounded-xl border border-indigo-500/40 bg-indigo-500/10 px-3 py-2 text-xs font-semibold text-indigo-200 hover:bg-indigo-500/20"
-                      >
-                        {showBaselineCompare ? 'Hide Baseline v1' : 'Compare vs Baseline v1'}
-                      </button>
-                      <button
-                        onClick={() => save(false)}
-                        disabled={saving}
-                        className="rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2 text-xs font-semibold text-white hover:border-cyan-400 disabled:opacity-50"
-                      >
-                        Save Plan / Actuals
-                      </button>
-                      <button
-                        onClick={() => save(true)}
-                        disabled={saving}
-                        className="rounded-xl bg-emerald-500 px-4 py-2 text-xs font-semibold text-slate-950 hover:bg-emerald-400 disabled:opacity-50"
-                      >
-                        Approve T&A & Create Section Tasks
-                      </button>
-                    </div>
-                  </div>
+          <div style={{ width: '100%', height: '150px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={chartData}
+                margin={{ top: 10, right: 15, left: -20, bottom: 0 }}
+                onClick={(e: any) => {
+                  if (e && (e as any).activePayload && (e as any).activePayload[0]) {
+                    const targetKey = (e as any).activePayload[0].payload.key;
+                    if (targetKey === 'APPROVED' || targetKey === 'PENDING') {
+                      setActiveTab('TNA');
+                      setStatusFilter(targetKey);
+                    } else if (targetKey === 'CRITICAL' || targetKey === 'AT_RISK') {
+                      setActiveTab('RISK_LIST');
+                    }
+                  }
+                }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fill: '#64748B', fontSize: 11, fontWeight: 550 }}
+                  axisLine={{ stroke: '#E2E8F0' }}
+                  tickLine={false}
+                />
+                <YAxis tick={{ fill: '#64748B', fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip content={<CustomChartTooltip />} cursor={{ fill: 'rgba(2, 132, 199, 0.06)' }} />
+                <Bar
+                  dataKey="count"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={55}
+                  onMouseEnter={(_, index) => setActiveChartBar(index)}
+                  onMouseLeave={() => setActiveChartBar(null)}
+                >
+                  {chartData.map((entry: any, index: number) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={activeChartBar === index ? entry.color : entry.fill}
+                      stroke={entry.color}
+                      strokeWidth={1.5}
+                      style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
 
-                  {/* Re-plan Reason & Capacity Override Strip */}
-                  <div className="mt-3 grid gap-3 border-t border-slate-800 pt-3 text-xs md:grid-cols-2">
-                    <div className="flex items-center gap-2">
-                      <span className="whitespace-nowrap font-semibold text-amber-300">Re-plan Reason (if approved):</span>
-                      <input
-                        type="text"
-                        value={replanReason}
-                        onChange={(e) => setReplanReason(e.target.value)}
-                        placeholder="Required when changing planned dates on an approved T&A (e.g., Yarn lot delay)..."
-                        className="w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-xs text-white"
-                      />
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <label className="flex items-center gap-2 text-slate-300">
-                        <input
-                          type="checkbox"
-                          checked={capacityOverride}
-                          onChange={(e) => setCapacityOverride(e.target.checked)}
-                        />
-                        Allow Capacity Override
-                      </label>
-                      {capacityOverride && (
-                        <input
-                          value={overrideReason}
-                          onChange={(e) => setOverrideReason(e.target.value)}
-                          placeholder="Override reason..."
-                          className="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1 text-xs text-white"
-                        />
-                      )}
-                    </div>
-                  </div>
-                </div>
+        {/* TAB 1: BULK T&A SCHEDULE */}
+        {activeTab === 'TNA' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '300px minmax(0, 1fr)', gap: '16px' }}>
+            {/* Left Workqueue */}
+            <div
+              style={{
+                background: '#FFFFFF',
+                borderRadius: '10px',
+                border: '1px solid #E2E8F0',
+                padding: '14px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+                height: 'fit-content',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 800, color: '#0F274E' }}>Planning Workqueue</div>
+                <span
+                  style={{
+                    background: '#F1F5F9',
+                    color: '#475569',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: '10px',
+                  }}
+                >
+                  {filteredQueue.length} jobs
+                </span>
+              </div>
 
-                {/* Style-wise T&A Cards */}
-                {(order.styles || []).map((style: any) => {
-                  const p = plans[style.id] || {};
-                  const ccd = firstCcd(style) || p.cargoClosingDate;
-                  const proc = p.applicableProcesses || {};
-                  const outside = p.outsidePlan || {};
-                  const actualDates = p.actualDates || {};
-                  const tracking = p.activityTracking || {};
-                  const baseline = p.baselinePlan || {};
-                  const cp = style.criticalPathAnalysis || {};
-                  const totalLeadDays = diffDays(p.orderConfirmDate, p.exFactoryDate);
+              <div style={{ position: 'relative', marginBottom: '8px' }}>
+                <Search size={13} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search Job, Buyer, Style..."
+                  style={{
+                    width: '100%',
+                    height: '30px',
+                    padding: '0 8px 0 26px',
+                    borderRadius: '6px',
+                    border: '1px solid #CBD5E1',
+                    fontSize: '11.5px',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '4px', marginBottom: '10px' }}>
+                {(['ALL', 'PENDING', 'APPROVED'] as const).map((st) => (
+                  <button
+                    key={st}
+                    onClick={() => setStatusFilter(st)}
+                    style={{
+                      flex: 1,
+                      padding: '4px',
+                      fontSize: '11px',
+                      fontWeight: statusFilter === st ? 700 : 500,
+                      borderRadius: '5px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: statusFilter === st ? '#0284C7' : '#F1F5F9',
+                      color: statusFilter === st ? '#FFFFFF' : '#475569',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {st}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ maxHeight: '640px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: '2px' }}>
+                {filteredQueue.map((task) => {
+                  const ord = task.order;
+                  const styles = ord?.styles || [];
+                  const allApproved = styles.length > 0 && styles.every((s: any) => s.sourceMetadata?.planning?.taStatus === 'APPROVED');
+                  const earliestOrderCcd = styles.map((s: any) => firstCcd(s)).filter(Boolean).sort()[0] || '—';
+                  const ver = styles[0]?.sourceMetadata?.planning?.taVersion || 1;
+                  const isSelected = selectedOrderId === ord?.id;
 
                   return (
-                    <div key={style.id} className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-                      {/* Style Summary Header */}
-                      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
-                        <div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-base font-bold text-white">{style.styleNo}</span>
-                            <span className="rounded-lg bg-slate-800 px-2.5 py-0.5 text-xs text-slate-200">
-                              {Number(style.quantity || 0).toLocaleString()} pcs
-                            </span>
-                            <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-0.5 text-xs font-medium text-cyan-200">
-                              Earliest CCD: {ccd || 'Not set'}
-                            </span>
-                            <span className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-2.5 py-0.5 font-mono text-xs font-bold text-indigo-200">
-                              Version v{p.taVersion || 1} ({p.taStatus || 'DRAFT'})
-                            </span>
-                            {totalLeadDays !== null && (
-                              <span className="rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-0.5 text-xs text-slate-300">
-                                Lead Time: {totalLeadDays} days
-                              </span>
-                            )}
-                          </div>
-                          <div className="mt-1 text-xs text-slate-400">
-                            {style.itemDescription || 'Garment Style'} · POs:{' '}
-                            {(style.purchaseOrders || [])
-                              .map((po: any) => `${po.poNumber} (CCD: ${d(po.ccd || po.shipmentDate)})`)
-                              .join(', ') || 'Direct Order'}
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-950 px-2.5 py-1 text-xs">
-                            <span className="text-slate-400">Fabric Req (Kg):</span>
-                            <input
-                              type="number"
-                              value={p.fabricRequiredKg || 0}
-                              onWheel={(e) => e.currentTarget.blur()}
-                              onChange={(e) => setStyleField(style.id, 'fabricRequiredKg', Number(e.target.value))}
-                              className="w-20 bg-transparent font-mono text-white focus:outline-none"
-                            />
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => autoCalculateStyle(style.id)}
-                            className="rounded-xl border border-cyan-500/40 bg-cyan-500/15 px-3 py-1.5 text-xs font-semibold text-cyan-200 hover:bg-cyan-500/25"
+                    <button
+                      key={task.id}
+                      onClick={() => ord?.id && selectOrder(ord.id)}
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        borderRadius: '8px',
+                        border: isSelected ? '2px solid #0284C7' : '1px solid #E2E8F0',
+                        background: isSelected ? '#F0F9FF' : '#FFFFFF',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontWeight: 800, color: '#0F274E', fontSize: '12px' }}>
+                          {displayJobNo(ord?.jobNo)}
+                        </span>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          <span style={{ background: '#F1F5F9', color: '#0284C7', padding: '1px 5px', borderRadius: '4px', fontSize: '10px', fontFamily: 'monospace', fontWeight: 700 }}>
+                            v{ver}
+                          </span>
+                          <span
+                            style={{
+                              padding: '1px 6px',
+                              borderRadius: '10px',
+                              fontSize: '9.5px',
+                              fontWeight: 700,
+                              background: allApproved ? '#ECFDF5' : '#FFFBEB',
+                              color: allApproved ? '#065F46' : '#92400E',
+                            }}
                           >
-                            ⚡ Auto-Calculate Backward from Earliest CCD
-                          </button>
+                            {allApproved ? 'APPROVED' : 'DRAFT'}
+                          </span>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px' }}>
+                        {ord?.buyer?.name} · {styles.map((s: any) => s.styleNo).join(', ')}
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10.5px', color: '#94A3B8', marginTop: '4px' }}>
+                        <span>{styles.reduce((sum: number, s: any) => sum + Number(s.quantity || 0), 0).toLocaleString()} pcs</span>
+                        <span style={{ color: '#0284C7', fontWeight: 600 }}>CCD: {earliestOrderCcd}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Right Workspace: Order T&A Schedule */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {overloadedSlots.length > 0 && (
+                <div
+                  style={{
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    background: '#FFFBEB',
+                    border: '1px solid #FDE68A',
+                    color: '#92400E',
+                    fontSize: '12px',
+                  }}
+                >
+                  <div style={{ fontWeight: 700 }}>Capacity Overload Warning ({overloadedSlots.length} slots exceed threshold):</div>
+                  <ul style={{ margin: '4px 0 0 16px', padding: 0 }}>
+                    {overloadedSlots.map((sl, i) => (
+                      <li key={i}>
+                        {sl.section} — {sl.month} Slot {sl.slot}: {sl.loadPct}% ({Number(sl.demand).toLocaleString()} / {Number(sl.capacity).toLocaleString()})
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {order ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {/* Order Header & Action Strip */}
+                  <div
+                    style={{
+                      background: '#FFFFFF',
+                      borderRadius: '10px',
+                      border: '1px solid #E2E8F0',
+                      padding: '16px',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                      <div>
+                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#0284C7', textTransform: 'uppercase' }}>
+                          {order.buyer?.name}
+                        </div>
+                        <div style={{ fontSize: '16px', fontWeight: 800, color: '#0F274E' }}>
+                          {displayJobNo(order.jobNo)} — T&amp;A Schedule, Actuals &amp; Re-Plan Control
+                        </div>
+                        <div style={{ fontSize: '11.5px', color: '#64748B' }}>
+                          Backward scheduled from earliest PO CCD. Includes Test Cutting, Actual Dates, Delay Reasons, and Re-plan Version control.
                         </div>
                       </div>
 
-                      {/* Critical Path & Projected Shipment Alert Banner */}
-                      {cp && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setShowBaselineCompare((v) => !v)}
+                          style={{
+                            padding: '8px 12px',
+                            borderRadius: '6px',
+                            fontSize: '11.5px',
+                            fontWeight: 650,
+                            border: '1px solid #CBD5E1',
+                            background: '#FFFFFF',
+                            color: '#475569',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {showBaselineCompare ? 'Hide Baseline v1' : 'Compare vs Baseline v1'}
+                        </button>
+                        <button
+                          onClick={() => save(false)}
+                          disabled={saving}
+                          style={{
+                            padding: '8px 14px',
+                            borderRadius: '6px',
+                            fontSize: '11.5px',
+                            fontWeight: 700,
+                            border: '1px solid #0284C7',
+                            background: '#F0F9FF',
+                            color: '#0284C7',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Save Plan / Actuals
+                        </button>
+                        <button
+                          onClick={() => save(true)}
+                          disabled={saving}
+                          style={{
+                            padding: '8px 16px',
+                            borderRadius: '6px',
+                            fontSize: '11.5px',
+                            fontWeight: 700,
+                            border: 'none',
+                            background: '#059669',
+                            color: '#FFFFFF',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Approve T&amp;A &amp; Create Tasks
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Re-Plan Reason & Capacity Override */}
+                    <div
+                      style={{
+                        marginTop: '12px',
+                        paddingTop: '12px',
+                        borderTop: '1px solid #F1F5F9',
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                        gap: '12px',
+                        fontSize: '11.5px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontWeight: 650, color: '#D97706', whiteSpace: 'nowrap' }}>Re-plan Reason (if approved):</span>
+                        <input
+                          type="text"
+                          value={replanReason}
+                          onChange={(e) => setReplanReason(e.target.value)}
+                          placeholder="Required when changing dates on an approved plan..."
+                          style={{
+                            flex: 1,
+                            padding: '6px 8px',
+                            borderRadius: '5px',
+                            border: '1px solid #CBD5E1',
+                            fontSize: '11.5px',
+                          }}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#475569', fontWeight: 600 }}>
+                          <input
+                            type="checkbox"
+                            checked={capacityOverride}
+                            onChange={(e) => setCapacityOverride(e.target.checked)}
+                          />
+                          Allow Capacity Override
+                        </label>
+                        {capacityOverride && (
+                          <input
+                            value={overrideReason}
+                            onChange={(e) => setOverrideReason(e.target.value)}
+                            placeholder="Override reason..."
+                            style={{
+                              flex: 1,
+                              padding: '6px 8px',
+                              borderRadius: '5px',
+                              border: '1px solid #CBD5E1',
+                              fontSize: '11.5px',
+                            }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Styles T&A Tables */}
+                  {(order.styles || []).map((style: any) => {
+                    const p = plans[style.id] || {};
+                    const ccd = firstCcd(style) || p.cargoClosingDate;
+                    const proc = p.applicableProcesses || {};
+                    const outside = p.outsidePlan || {};
+                    const actualDates = p.actualDates || {};
+                    const tracking = p.activityTracking || {};
+                    const baseline = p.baselinePlan || {};
+                    const cp = style.criticalPathAnalysis || {};
+                    const totalLeadDays = diffDays(p.orderConfirmDate, p.exFactoryDate);
+
+                    return (
+                      <div
+                        key={style.id}
+                        style={{
+                          background: '#FFFFFF',
+                          borderRadius: '10px',
+                          border: '1px solid #E2E8F0',
+                          padding: '16px',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+                        }}
+                      >
+                        {/* Style Header */}
                         <div
-                          className={`mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3 text-xs ${
-                            cp.riskLevel === 'CRITICAL'
-                              ? 'border-rose-500/40 bg-rose-500/10 text-rose-200'
-                              : cp.riskLevel === 'AT_RISK'
-                              ? 'border-amber-500/40 bg-amber-500/10 text-amber-200'
-                              : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
-                          }`}
+                          style={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '10px',
+                            borderBottom: '1px solid #E2E8F0',
+                            paddingBottom: '12px',
+                            marginBottom: '12px',
+                          }}
                         >
                           <div>
-                            <div className="font-bold">
-                              Critical Path Status: {cp.riskLevel} · Planned Ex-Factory: {cp.plannedExFactoryDate || p.exFactoryDate} → Projected Ex-Factory:{' '}
-                              <span className="underline">{cp.projectedExFactoryDate || p.exFactoryDate}</span> (Projected Shipment: {cp.projectedShipmentDate || ccd})
+                            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ fontSize: '15px', fontWeight: 800, color: '#0F274E' }}>{style.styleNo}</span>
+                              <span style={{ background: '#F1F5F9', color: '#475569', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700 }}>
+                                {Number(style.quantity || 0).toLocaleString()} pcs
+                              </span>
+                              <span style={{ background: '#F0F9FF', border: '1px solid #BAE6FD', color: '#0284C7', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700 }}>
+                                Earliest CCD: {ccd || 'TBD'}
+                              </span>
+                              <span style={{ background: '#EEF2FF', border: '1px solid #C7D2FE', color: '#4338CA', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontFamily: 'monospace', fontWeight: 700 }}>
+                                v{p.taVersion || 1} ({p.taStatus || 'DRAFT'})
+                              </span>
+                              {totalLeadDays !== null && (
+                                <span style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#64748B', padding: '2px 8px', borderRadius: '4px', fontSize: '11px' }}>
+                                  Lead Time: {totalLeadDays} days
+                                </span>
+                              )}
                             </div>
-                            <div className="mt-0.5 text-[11px] opacity-90">
-                              Critical Path Chain: {(cp.criticalPathLabels || []).join(' → ') || 'Yarn → Knitting → Dyeing → Test Cutting → Bulk Cutting → Sewing → FRI → Ex-Factory'}
+                            <div style={{ fontSize: '11px', color: '#64748B', marginTop: '3px' }}>
+                              {style.itemDescription || 'Garment Style'}
                             </div>
                           </div>
-                          <div className="font-mono text-xs font-bold">
-                            {cp.ccdSlipDays > 0 ? `⚠ CCD SLIP: +${cp.ccdSlipDays} DAYS` : '✓ WITHIN EARLIEST CCD'}
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', background: '#F8FAFC', padding: '4px 8px', borderRadius: '6px', border: '1px solid #E2E8F0' }}>
+                              <span style={{ color: '#64748B' }}>Fabric Req (Kg):</span>
+                              <input
+                                type="number"
+                                value={p.fabricRequiredKg || 0}
+                                onWheel={(e) => e.currentTarget.blur()}
+                                onChange={(e) => setStyleField(style.id, 'fabricRequiredKg', Number(e.target.value))}
+                                style={{ width: '70px', border: 'none', background: 'transparent', fontWeight: 700, fontFamily: 'monospace' }}
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => autoCalculateStyle(style.id)}
+                              style={{
+                                padding: '6px 12px',
+                                borderRadius: '6px',
+                                border: '1px solid #0284C7',
+                                background: '#F0F9FF',
+                                color: '#0284C7',
+                                fontSize: '11.5px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              ⚡ Auto-Calculate from CCD
+                            </button>
                           </div>
                         </div>
-                      )}
 
-                      {/* Applicable Process Toggles */}
-                      <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-slate-800 bg-slate-950 px-3.5 py-2.5 text-xs">
-                        <span className="font-semibold text-slate-400">Applicable Processes:</span>
-                        {[
-                          { key: 'yarnDyeing', label: 'Yarn Dyeing (Y/D)' },
-                          { key: 'knitting', label: 'Knitting' },
-                          { key: 'dyeing', label: 'Dyeing & Finishing' },
-                          { key: 'printing', label: 'Printing' },
-                          { key: 'embroidery', label: 'Embroidery' },
-                          { key: 'wash', label: 'Garment Wash' },
-                        ].map((item) => (
-                          <label key={item.key} className="flex cursor-pointer items-center gap-1.5 text-slate-200">
-                            <input
-                              type="checkbox"
-                              checked={Boolean(proc[item.key])}
-                              onChange={(e) => toggleProcess(style.id, item.key, e.target.checked)}
-                            />
-                            {item.label}
-                          </label>
-                        ))}
-                      </div>
+                        {/* Critical Path Alert */}
+                        {cp && cp.riskLevel && (
+                          <div
+                            style={{
+                              padding: '10px 14px',
+                              borderRadius: '8px',
+                              marginBottom: '12px',
+                              fontSize: '11.5px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              background: cp.riskLevel === 'CRITICAL' ? '#FEF2F2' : cp.riskLevel === 'AT_RISK' ? '#FFFBEB' : '#ECFDF5',
+                              border: cp.riskLevel === 'CRITICAL' ? '1px solid #FECACA' : cp.riskLevel === 'AT_RISK' ? '1px solid #FDE68A' : '1px solid #A7F3D0',
+                              color: cp.riskLevel === 'CRITICAL' ? '#991B1B' : cp.riskLevel === 'AT_RISK' ? '#92400E' : '#065F46',
+                            }}
+                          >
+                            <div>
+                              <b>Critical Path Status: {cp.riskLevel}</b> · Planned Ex-Factory: {cp.plannedExFactoryDate || p.exFactoryDate} → Projected Ex-Factory: <b>{cp.projectedExFactoryDate || p.exFactoryDate}</b>
+                            </div>
+                            <div style={{ fontFamily: 'monospace', fontWeight: 700 }}>
+                              {cp.ccdSlipDays > 0 ? `⚠ CCD SLIP: +${cp.ccdSlipDays} DAYS` : '✓ WITHIN EARLIEST CCD'}
+                            </div>
+                          </div>
+                        )}
 
-                      {/* Process-by-Process T&A Table with Actual Dates & Delay Reasons */}
-                      <div className="overflow-x-auto">
-                        <table className="w-full min-w-[1120px] text-left text-xs">
-                          <thead className="border-b border-slate-800 text-slate-400">
-                            <tr>
-                              <th className="py-2 pr-2">Process / Milestone</th>
-                              <th className="py-2 px-1">Section</th>
-                              <th className="py-2 px-1">Slot load · suggestion</th>
-                              <th className="py-2 px-1">Planned Start</th>
-                              <th className="py-2 px-1">Planned Finish</th>
-                              {showBaselineCompare && <th className="py-2 px-1 text-indigo-300">Baseline v1</th>}
-                              <th className="py-2 px-1 text-emerald-300">Actual Finish Date</th>
-                              <th className="py-2 px-1">Variance</th>
-                              <th className="py-2 px-1">Status</th>
-                              <th className="py-2 px-1">Delay / Failure Reason</th>
-                              <th className="py-2 pl-2">In-house / Outside</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-800/60">
-                            {PROCESS_ROWS.map((r, idx) => {
-                              const applicable = r.toggleKey ? Boolean(proc[r.toggleKey]) : true;
-                              if (!applicable) {
+                        {/* Process Table */}
+                        <div style={{ overflowX: 'auto' }}>
+                          <table style={{ width: '100%', minWidth: '1050px', borderCollapse: 'collapse', fontSize: '11.5px' }}>
+                            <thead>
+                              <tr style={{ borderBottom: '2px solid #E2E8F0', color: '#64748B', textAlign: 'left' }}>
+                                <th style={{ padding: '6px 8px' }}>Process / Milestone</th>
+                                <th style={{ padding: '6px 8px' }}>Section</th>
+                                <th style={{ padding: '6px 8px' }}>Slot Load · Heatmap</th>
+                                <th style={{ padding: '6px 8px' }}>Planned Start</th>
+                                <th style={{ padding: '6px 8px' }}>Planned Finish</th>
+                                {showBaselineCompare && <th style={{ padding: '6px 8px', color: '#4338CA' }}>Baseline v1</th>}
+                                <th style={{ padding: '6px 8px', color: '#059669' }}>Actual Finish Date</th>
+                                <th style={{ padding: '6px 8px' }}>Variance</th>
+                                <th style={{ padding: '6px 8px' }}>Status</th>
+                                <th style={{ padding: '6px 8px' }}>Delay / Failure Reason</th>
+                                <th style={{ padding: '6px 8px' }}>In-house / Outside</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {PROCESS_ROWS.map((r, idx) => {
+                                const applicable = r.toggleKey ? Boolean(proc[r.toggleKey]) : true;
+                                if (!applicable) return null;
+
+                                const startVal = p[r.startField] || '';
+                                const endVal = p[r.endField] || '';
+                                const isSingleDate = r.startField === r.endField;
+                                const outCfg = outside[r.key] || { outside: false, vendor: '' };
+                                const actualEnd = tracking[r.key]?.actualFinish || actualDates[r.endField] || '';
+                                const variance = endVal && actualEnd ? diffDays(endVal, actualEnd) : null;
+                                const rowStatus =
+                                  tracking[r.key]?.status ||
+                                  (actualEnd ? (variance !== null && variance > 0 ? 'DELAYED' : 'DONE') : 'PENDING');
+                                const delayReason = tracking[r.key]?.delayReason || '';
+                                const baselineVal = baseline[r.endField] || '—';
+
                                 return (
-                                  <tr key={r.key} className="opacity-40">
-                                    <td className="py-2 pr-2 font-medium text-slate-400">{r.label}</td>
-                                    <td className="py-2 px-1 text-slate-500">{r.section}</td>
-                                    <td colSpan={showBaselineCompare ? 9 : 8} className="py-2 px-2 italic text-slate-500">
-                                      Not applicable for this style
+                                  <tr key={r.key} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                                    <td style={{ padding: '6px 8px', fontWeight: 650, color: '#0F274E' }}>
+                                      {idx + 1}. {r.label}
                                     </td>
-                                  </tr>
-                                );
-                              }
-
-                              const startVal = p[r.startField] || '';
-                              const endVal = p[r.endField] || '';
-                              const isSingleDate = r.startField === r.endField;
-                              const outCfg = outside[r.key] || { outside: false, vendor: '' };
-                              const actualEnd = tracking[r.key]?.actualFinish || actualDates[r.endField] || '';
-                              const variance = endVal && actualEnd ? diffDays(endVal, actualEnd) : null;
-                              const rowStatus =
-                                tracking[r.key]?.status ||
-                                (actualEnd ? (variance !== null && variance > 0 ? 'DELAYED' : 'DONE') : 'PENDING');
-                              const delayReason = tracking[r.key]?.delayReason || '';
-                              const baselineVal = baseline[r.endField] || '—';
-
-                              return (
-                                <tr key={r.key} className="hover:bg-slate-950/50">
-                                  <td className="py-2 pr-2 font-medium text-white">
-                                    {idx + 1}. {r.label}
-                                  </td>
-                                  <td className="py-2 px-1">
-                                    <span className="rounded bg-slate-800 px-2 py-0.5 text-[10px] text-slate-300">{r.section}</span>
-                                  </td>
-                                  <td className="py-2 px-1">
-                                    {(() => {
-                                      const ld = slotLoad(heat, r.section, startVal);
-                                      if (!ld) return <span className="text-slate-500">—</span>;
-                                      const col = ld.loadPct > 100 ? '#dc2626' : ld.loadPct > heatLimit ? '#d97706' : '#16a34a';
-                                      const sug = ld.loadPct > heatLimit ? advanceSuggestion(heat, r.section, startVal, heatLimit) : null;
-                                      return (
-                                        <div style={{ minWidth: 150 }}>
-                                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 6 }}>
-                                            <span>Slot {ld.slotNo} · {monthLabel(ld.m)}</span>
-                                            <b style={{ color: col }}>{ld.loadPct}%</b>
-                                          </div>
-                                          <div style={{ height: 5, borderRadius: 3, background: '#e2e8f0', overflow: 'hidden', margin: '2px 0' }}>
-                                            <div style={{ width: `${Math.min(100, ld.loadPct)}%`, height: '100%', background: col }} />
-                                          </div>
-                                          <div className="text-slate-500">{fmtNum(ld.demand)} / {fmtNum(ld.capacity)} {ld.unit}</div>
-                                          {sug && (
-                                            <div style={{ marginTop: 2 }}>
-                                              <span className="text-emerald-300">→ Slot {sug.slotNo} · {monthLabel(sug.m)} ({sug.loadPct}%)</span>{' '}
-                                              <button
-                                                type="button"
-                                                onClick={() => { setStyleField(style.id, r.startField, sug.start); if (isSingleDate) setStyleField(style.id, r.endField, sug.start); }}
-                                                style={{ fontSize: 10, padding: '0 6px', border: '1px solid #16a34a', borderRadius: 4, background: 'transparent', color: '#16a34a', cursor: 'pointer' }}
-                                              >
-                                                Apply
-                                              </button>
+                                    <td style={{ padding: '6px 8px' }}>
+                                      <span style={{ background: '#F1F5F9', color: '#475569', padding: '1px 6px', borderRadius: '4px', fontSize: '10px' }}>
+                                        {r.section}
+                                      </span>
+                                    </td>
+                                    <td style={{ padding: '6px 8px' }}>
+                                      {(() => {
+                                        const ld = slotLoad(heat, r.section, startVal);
+                                        if (!ld) return <span style={{ color: '#94A3B8' }}>—</span>;
+                                        const col = ld.loadPct > 100 ? '#DC2626' : ld.loadPct > heatLimit ? '#D97706' : '#059669';
+                                        return (
+                                          <div style={{ minWidth: 120 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10.5px' }}>
+                                              <span>Slot {ld.slotNo}</span>
+                                              <b style={{ color: col }}>{ld.loadPct}%</b>
                                             </div>
-                                          )}
-                                        </div>
-                                      );
-                                    })()}
-                                  </td>
-                                  <td className="py-2 px-1">
-                                    <input
-                                      type="date"
-                                      value={startVal}
-                                      onChange={(e) => {
-                                        const val = e.target.value;
-                                        setStyleField(style.id, r.startField, val);
-                                        if (isSingleDate) setStyleField(style.id, r.endField, val);
-                                      }}
-                                      className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-white"
-                                    />
-                                  </td>
-                                  <td className="py-2 px-1">
-                                    {isSingleDate ? (
-                                      <span className="font-mono text-slate-400">{startVal || '—'}</span>
-                                    ) : (
+                                            <div style={{ height: 4, borderRadius: 2, background: '#E2E8F0', overflow: 'hidden', margin: '2px 0' }}>
+                                              <div style={{ width: `${Math.min(100, ld.loadPct)}%`, height: '100%', background: col }} />
+                                            </div>
+                                          </div>
+                                        );
+                                      })()}
+                                    </td>
+                                    <td style={{ padding: '6px 8px' }}>
                                       <input
                                         type="date"
-                                        value={endVal}
-                                        onChange={(e) => setStyleField(style.id, r.endField, e.target.value)}
-                                        className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-white"
+                                        value={startVal}
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          setStyleField(style.id, r.startField, val);
+                                          if (isSingleDate) setStyleField(style.id, r.endField, val);
+                                        }}
+                                        style={{ padding: '3px 6px', borderRadius: '4px', border: '1px solid #CBD5E1', fontSize: '11px' }}
                                       />
+                                    </td>
+                                    <td style={{ padding: '6px 8px' }}>
+                                      {isSingleDate ? (
+                                        <span style={{ fontFamily: 'monospace', color: '#64748B' }}>{startVal || '—'}</span>
+                                      ) : (
+                                        <input
+                                          type="date"
+                                          value={endVal}
+                                          onChange={(e) => setStyleField(style.id, r.endField, e.target.value)}
+                                          style={{ padding: '3px 6px', borderRadius: '4px', border: '1px solid #CBD5E1', fontSize: '11px' }}
+                                        />
+                                      )}
+                                    </td>
+                                    {showBaselineCompare && (
+                                      <td style={{ padding: '6px 8px', fontFamily: 'monospace', color: '#4338CA', fontSize: '11px' }}>
+                                        {baselineVal}
+                                      </td>
                                     )}
-                                  </td>
-                                  {showBaselineCompare && (
-                                    <td className="py-2 px-1 font-mono text-[11px] text-indigo-300">{baselineVal}</td>
-                                  )}
-                                  <td className="py-2 px-1">
-                                    <input
-                                      type="date"
-                                      value={actualEnd}
-                                      onChange={(e) => setActualDate(style.id, r.endField, r.key, e.target.value)}
-                                      className="rounded-lg border border-emerald-500/40 bg-slate-950 px-2 py-1 text-xs text-emerald-200"
-                                    />
-                                  </td>
-                                  <td className="py-2 px-1 font-mono">
-                                    {variance !== null ? (
-                                      <span
-                                        className={`rounded px-1.5 py-0.5 text-[11px] ${
-                                          variance > 0
-                                            ? 'bg-rose-500/20 text-rose-300'
-                                            : variance < 0
-                                            ? 'bg-emerald-500/20 text-emerald-300'
-                                            : 'bg-slate-800 text-slate-300'
-                                        }`}
+                                    <td style={{ padding: '6px 8px' }}>
+                                      <input
+                                        type="date"
+                                        value={actualEnd}
+                                        onChange={(e) => setActualDate(style.id, r.endField, r.key, e.target.value)}
+                                        style={{ padding: '3px 6px', borderRadius: '4px', border: '1px solid #A7F3D0', background: '#F0FDF4', fontSize: '11px' }}
+                                      />
+                                    </td>
+                                    <td style={{ padding: '6px 8px', fontFamily: 'monospace' }}>
+                                      {variance !== null ? (
+                                        <span
+                                          style={{
+                                            padding: '1px 6px',
+                                            borderRadius: '4px',
+                                            fontSize: '10px',
+                                            fontWeight: 700,
+                                            background: variance > 0 ? '#FEE2E2' : variance < 0 ? '#ECFDF5' : '#F1F5F9',
+                                            color: variance > 0 ? '#DC2626' : variance < 0 ? '#059669' : '#475569',
+                                          }}
+                                        >
+                                          {variance > 0 ? `+${variance}d Late` : variance < 0 ? `${variance}d Early` : 'On Time'}
+                                        </span>
+                                      ) : (
+                                        <span style={{ color: '#94A3B8' }}>—</span>
+                                      )}
+                                    </td>
+                                    <td style={{ padding: '6px 8px' }}>
+                                      <select
+                                        value={rowStatus}
+                                        onChange={(e) => setActivityTracking(style.id, r.key, 'status', e.target.value)}
+                                        style={{
+                                          padding: '2px 4px',
+                                          borderRadius: '4px',
+                                          fontSize: '10.5px',
+                                          fontWeight: 700,
+                                          border: '1px solid #CBD5E1',
+                                          background: rowStatus === 'DONE' ? '#ECFDF5' : rowStatus === 'DELAYED' ? '#FFFBEB' : '#FFFFFF',
+                                          color: rowStatus === 'DONE' ? '#065F46' : rowStatus === 'DELAYED' ? '#92400E' : '#0F274E',
+                                        }}
                                       >
-                                        {variance > 0 ? `+${variance}d Late` : variance < 0 ? `${variance}d Early` : 'On Time'}
-                                      </span>
-                                    ) : (
-                                      <span className="text-slate-600">—</span>
-                                    )}
-                                  </td>
-                                  <td className="py-2 px-1">
-                                    <select
-                                      value={rowStatus}
-                                      onChange={(e) => setActivityTracking(style.id, r.key, 'status', e.target.value)}
-                                      className={`rounded-lg border px-2 py-1 text-[11px] font-semibold ${
-                                        rowStatus === 'FAILED'
-                                          ? 'border-rose-500 bg-rose-500/20 text-rose-200'
-                                          : rowStatus === 'DELAYED'
-                                          ? 'border-amber-500 bg-amber-500/20 text-amber-200'
-                                          : rowStatus === 'DONE'
-                                          ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-200'
-                                          : 'border-slate-700 bg-slate-950 text-slate-300'
-                                      }`}
-                                    >
-                                      <option value="PENDING">PENDING</option>
-                                      <option value="IN_PROGRESS">IN PROGRESS</option>
-                                      <option value="DONE">DONE</option>
-                                      <option value="DELAYED">DELAYED</option>
-                                      <option value="FAILED">FAILED</option>
-                                    </select>
-                                  </td>
-                                  <td className="py-2 px-1">
-                                    <input
-                                      type="text"
-                                      value={delayReason}
-                                      onChange={(e) => setActivityTracking(style.id, r.key, 'delayReason', e.target.value)}
-                                      placeholder={rowStatus === 'DELAYED' || rowStatus === 'FAILED' ? 'Enter delay / failure reason...' : 'Optional note...'}
-                                      className="w-44 rounded-lg border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-white"
-                                    />
-                                  </td>
-                                  <td className="py-2 pl-2">
-                                    {r.canOutside ? (
-                                      <div className="flex items-center gap-1.5">
-                                        <label className="flex items-center gap-1 text-[11px] text-slate-300">
+                                        <option value="PENDING">PENDING</option>
+                                        <option value="IN_PROGRESS">IN PROGRESS</option>
+                                        <option value="DONE">DONE</option>
+                                        <option value="DELAYED">DELAYED</option>
+                                        <option value="FAILED">FAILED</option>
+                                      </select>
+                                    </td>
+                                    <td style={{ padding: '6px 8px' }}>
+                                      <input
+                                        type="text"
+                                        value={delayReason}
+                                        onChange={(e) => setActivityTracking(style.id, r.key, 'delayReason', e.target.value)}
+                                        placeholder="Optional note..."
+                                        style={{ width: '130px', padding: '3px 6px', borderRadius: '4px', border: '1px solid #CBD5E1', fontSize: '11px' }}
+                                      />
+                                    </td>
+                                    <td style={{ padding: '6px 8px' }}>
+                                      {r.canOutside ? (
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10.5px', color: '#475569' }}>
                                           <input
                                             type="checkbox"
                                             checked={Boolean(outCfg.outside)}
@@ -957,260 +1497,125 @@ export default function TaPage() {
                                           />
                                           Outside
                                         </label>
-                                        {outCfg.outside && (
-                                          <input
-                                            placeholder="Vendor"
-                                            value={outCfg.vendor || ''}
-                                            onChange={(e) => updateOutside(style.id, r.key, { vendor: e.target.value })}
-                                            className="w-24 rounded border border-amber-500/40 bg-slate-950 px-1.5 py-0.5 text-[11px] text-amber-200"
-                                          />
-                                        )}
-                                      </div>
-                                    ) : (
-                                      <span className="text-[11px] text-slate-500">In-house</span>
-                                    )}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Re-plan History Log */}
-                      {Array.isArray(p.replanHistory) && p.replanHistory.length > 0 && (
-                        <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950 p-3 text-xs">
-                          <div className="font-semibold text-slate-300">T&A Version & Re-Plan History</div>
-                          <div className="mt-2 space-y-1.5">
-                            {p.replanHistory.map((rh: any, i: number) => (
-                              <div key={i} className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-900 pb-1 text-[11px]">
-                                <div>
-                                  <span className="font-mono font-bold text-cyan-300">v{rh.version}</span> ·{' '}
-                                  <span className="text-white">{rh.reason}</span>
-                                  {Array.isArray(rh.changedFields) && rh.changedFields.length > 0 && (
-                                    <span className="ml-2 text-amber-300">
-                                      ({rh.changedFields.map((c: any) => `${c.field}: ${c.from || '—'} → ${c.to || '—'}`).join(', ')})
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="font-mono text-slate-500">
-                                  {rh.replannedBy} · {String(rh.replannedAt || '').slice(0, 16).replace('T', ' ')}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
+                                      ) : (
+                                        <span style={{ fontSize: '10px', color: '#94A3B8' }}>In-house</span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8 text-sm text-slate-400">
-                Select an order from the Central Planning workqueue to prepare, track actuals, or approve its T&A plan.
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* TAB 2: CRITICAL PATH & SHIPMENT-RISK ALERT LIST */}
-      {activeTab === 'RISK_LIST' && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h2 className="text-base font-semibold text-white">Critical Path & Shipment-Risk Alert List</h2>
-              <p className="text-xs text-slate-400">
-                Automatically flags jobs where delayed or failed T&A milestones push the projected Ex-Factory date past the earliest PO CCD.
-              </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div
+                  style={{
+                    background: '#FFFFFF',
+                    borderRadius: '10px',
+                    border: '1px solid #E2E8F0',
+                    padding: '30px',
+                    textAlign: 'center',
+                    color: '#64748B',
+                    fontSize: '13px',
+                  }}
+                >
+                  Select an order from the Planning Workqueue to view, calculate or approve its T&amp;A plan.
+                </div>
+              )}
             </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1000px] text-left text-xs">
-              <thead className="border-b border-slate-800 text-slate-400">
-                <tr>
-                  <th className="py-2.5 pr-3">Job / Style / Buyer</th>
-                  <th className="py-2.5 px-2">Order Qty / T&A Ver</th>
-                  <th className="py-2.5 px-2">Planned Ex-Factory</th>
-                  <th className="py-2.5 px-2">Projected Ex-Factory</th>
-                  <th className="py-2.5 px-2">Earliest CCD</th>
-                  <th className="py-2.5 px-2">Delayed / Failed Activities</th>
-                  <th className="py-2.5 px-2">Risk Status</th>
-                  <th className="py-2.5 pl-2 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/70">
-                {riskList.map((item: any) => (
-                  <tr key={item.styleId} className="hover:bg-slate-950/50">
-                    <td className="py-3 pr-3">
-                      <div className="font-semibold text-cyan-300">
-                        Job #{item.jobNo} · {item.styleNo}
-                      </div>
-                      <div className="text-[11px] text-slate-400">{item.buyer}</div>
-                    </td>
-                    <td className="py-3 px-2 font-mono">
-                      <div className="text-white">{Number(item.orderQty || 0).toLocaleString()} pcs</div>
-                      <div className="text-[11px] text-indigo-300">
-                        v{item.taVersion || 1} ({item.taStatus})
-                      </div>
-                    </td>
-                    <td className="py-3 px-2 font-mono text-slate-300">{item.plannedExFactoryDate}</td>
-                    <td className="py-3 px-2 font-mono font-semibold text-amber-300">{item.projectedExFactoryDate}</td>
-                    <td className="py-3 px-2 font-mono text-cyan-300">
-                      {item.ccd}
-                      {item.ccdSlipDays > 0 && <div className="text-[10px] font-bold text-rose-300">+{item.ccdSlipDays}d Slip</div>}
-                    </td>
-                    <td className="py-3 px-2">
-                      {(item.delayedActivities || []).length > 0 ? (
-                        <div className="space-y-1">
-                          {item.delayedActivities.map((da: any, i: number) => (
-                            <div key={i} className="text-[11px]">
-                              <span className="font-semibold text-rose-300">
-                                {da.process} (+{da.delayDays}d):
-                              </span>{' '}
-                              <span className="text-slate-300">{da.delayReason}</span>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-emerald-300">All critical path gates on schedule</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-2">
-                      <span
-                        className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${
-                          item.riskLevel === 'CRITICAL'
-                            ? 'border-rose-500/40 bg-rose-500/15 text-rose-200'
-                            : item.riskLevel === 'AT_RISK'
-                            ? 'border-amber-500/40 bg-amber-500/15 text-amber-200'
-                            : 'border-emerald-500/40 bg-emerald-500/15 text-emerald-200'
-                        }`}
-                      >
-                        {item.riskLevel}
-                      </span>
-                    </td>
-                    <td className="py-3 pl-2 text-right">
-                      <button
-                        onClick={() => {
-                          setActiveTab('TNA');
-                          selectOrder(item.orderId || item.jobNo);
-                        }}
-                        className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-1 text-[11px] text-cyan-200 hover:bg-cyan-500/20"
-                      >
-                        Open T&A Re-Plan
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+        )}
 
-      {/* TAB 3: FABRIC & TRIMS WEEKLY DUE VS RECEIVED TRACKER */}
-      {activeTab === 'FABRIC_TRIMS' && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-semibold text-white">Weekly Fabric & Trims Due vs Received Follow-up</h2>
-              <p className="text-xs text-slate-400">
-                Tracks weekly bulk finish fabric Kg due vs received and item-wise trims & accessories in-house readiness per job.
-              </p>
+        {/* TAB 2: CRITICAL PATH RISKS */}
+        {activeTab === 'RISK_LIST' && (
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: '10px',
+              border: '1px solid #E2E8F0',
+              padding: '16px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+            }}
+          >
+            <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F274E', marginBottom: '4px' }}>
+              Critical Path &amp; Shipment-Risk Alert List
             </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1000px] text-left text-xs">
-              <thead className="border-b border-slate-800 text-slate-400">
-                <tr>
-                  <th className="py-2.5 pr-3">Job / Style / Buyer</th>
-                  <th className="py-2.5 px-2">Fabric Due Date</th>
-                  <th className="py-2.5 px-2">Fabric Req / Recv / Bal (Kg)</th>
-                  <th className="py-2.5 px-2">Fabric Status</th>
-                  <th className="py-2.5 px-2">Trims Due Date & Items</th>
-                  <th className="py-2.5 px-2">Remarks</th>
-                  <th className="py-2.5 pl-2 text-right">Update</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/70">
-                {fabricTrimsList.map((ft: any) => (
-                  <tr key={ft.styleId} className="hover:bg-slate-950/50">
-                    <td className="py-3 pr-3">
-                      <div className="font-semibold text-cyan-300">
-                        Job #{ft.jobNo} · {ft.styleNo}
-                      </div>
-                      <div className="text-[11px] text-slate-400">
-                        {ft.buyer} · {Number(ft.orderQty || 0).toLocaleString()} pcs
-                      </div>
-                    </td>
-                    <td className="py-3 px-2 font-mono text-slate-200">{ft.fabricDueDate || '—'}</td>
-                    <td className="py-3 px-2 font-mono">
-                      <div className="text-white">Req: {Number(ft.fabricRequiredKg || 0).toLocaleString()} Kg</div>
-                      <div className="text-emerald-300">Recv: {Number(ft.fabricReceivedKg || 0).toLocaleString()} Kg</div>
-                      <div className="text-amber-300">Bal: {Number(ft.fabricBalanceKg || 0).toLocaleString()} Kg</div>
-                    </td>
-                    <td className="py-3 px-2">
-                      <span
-                        className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${
-                          ft.fabricStatus === 'IN_HOUSE'
-                            ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-200'
-                            : 'border-amber-500/40 bg-amber-500/15 text-amber-200'
-                        }`}
-                      >
-                        {ft.fabricStatus}
-                      </span>
-                    </td>
-                    <td className="py-3 px-2">
-                      <div className="mb-1 font-mono text-[11px] text-cyan-300">Due: {ft.trimsDueDate || '—'}</div>
-                      <div className="space-y-0.5">
-                        {(ft.trimsItems || []).map((ti: any, idx: number) => (
-                          <div key={idx} className="text-[11px] text-slate-300">
-                            • {ti.item}: {Number(ti.receivedQty).toLocaleString()}/{Number(ti.requiredQty).toLocaleString()} {ti.unit} (
-                            <span className={ti.status === 'IN_HOUSE' ? 'text-emerald-300' : 'text-rose-300'}>{ti.status}</span>)
-                          </div>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="py-3 px-2 text-slate-300">{ft.remarks}</td>
-                    <td className="py-3 pl-2 text-right">
-                      <button
-                        onClick={() => setEditingFabTrims({ ...ft })}
-                        className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-1 text-[11px] text-cyan-200 hover:bg-cyan-500/20"
-                      >
-                        Update Tracker
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+            <div style={{ fontSize: '11.5px', color: '#64748B', marginBottom: '14px' }}>
+              Identifies jobs where milestone delays threaten to breach the earliest PO CCD date.
+            </div>
 
-      {/* TAB 4: SAMPLE PLANNING & MONTHLY QUOTA */}
-      {activeTab === 'SAMPLE_PLAN' && (
-        <div className="grid gap-4 lg:grid-cols-12">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4 lg:col-span-4">
-            <h3 className="text-sm font-semibold text-white">Monthly Buyer Sample & Line Quota</h3>
-            <div className="mt-3 overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="border-b border-slate-800 text-slate-400">
-                  <tr>
-                    <th className="py-2">Buyer</th>
-                    <th className="py-2">Sample Styles</th>
-                    <th className="py-2">Sewing Lines</th>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', minWidth: '950px', borderCollapse: 'collapse', fontSize: '12px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid #E2E8F0', color: '#64748B', textAlign: 'left' }}>
+                    <th style={{ padding: '8px' }}>Job / Style / Buyer</th>
+                    <th style={{ padding: '8px' }}>Order Qty</th>
+                    <th style={{ padding: '8px' }}>Planned Ex-Factory</th>
+                    <th style={{ padding: '8px' }}>Projected Ex-Factory</th>
+                    <th style={{ padding: '8px' }}>Earliest CCD</th>
+                    <th style={{ padding: '8px' }}>Risk Status</th>
+                    <th style={{ padding: '8px', textAlign: 'right' }}>Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/70">
-                  {buyerQuota.map((bq: any) => (
-                    <tr key={bq.buyer}>
-                      <td className="py-2.5 font-semibold text-white">{bq.buyer}</td>
-                      <td className="py-2.5 font-mono text-cyan-300">
-                        {bq.sampleUsedStyles}/{bq.sampleQuotaStyles} Styles
+                <tbody>
+                  {riskList.map((item: any) => (
+                    <tr key={item.styleId} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                      <td style={{ padding: '8px' }}>
+                        <div style={{ fontWeight: 800, color: '#0284C7' }}>Job #{item.jobNo} · {item.styleNo}</div>
+                        <div style={{ fontSize: '11px', color: '#64748B' }}>{item.buyer}</div>
                       </td>
-                      <td className="py-2.5 font-mono text-emerald-300">
-                        {bq.allocatedLines}/{bq.monthlyLineQuota} Lines
+                      <td style={{ padding: '8px', fontFamily: 'monospace' }}>
+                        {Number(item.orderQty || 0).toLocaleString()} pcs
+                      </td>
+                      <td style={{ padding: '8px', fontFamily: 'monospace', color: '#475569' }}>
+                        {item.plannedExFactoryDate}
+                      </td>
+                      <td style={{ padding: '8px', fontFamily: 'monospace', fontWeight: 700, color: '#DC2626' }}>
+                        {item.projectedExFactoryDate}
+                      </td>
+                      <td style={{ padding: '8px', fontFamily: 'monospace', color: '#0284C7', fontWeight: 650 }}>
+                        {item.ccd}
+                        {item.ccdSlipDays > 0 && (
+                          <span style={{ marginLeft: '4px', color: '#DC2626', fontSize: '10.5px' }}>(+{item.ccdSlipDays}d Slip)</span>
+                        )}
+                      </td>
+                      <td style={{ padding: '8px' }}>
+                        <span
+                          style={{
+                            padding: '3px 8px',
+                            borderRadius: '10px',
+                            fontSize: '10.5px',
+                            fontWeight: 700,
+                            background: item.riskLevel === 'CRITICAL' ? '#FEF2F2' : '#FFFBEB',
+                            color: item.riskLevel === 'CRITICAL' ? '#DC2626' : '#D97706',
+                          }}
+                        >
+                          {item.riskLevel}
+                        </span>
+                      </td>
+                      <td style={{ padding: '8px', textAlign: 'right' }}>
+                        <button
+                          onClick={() => {
+                            setActiveTab('TNA');
+                            selectOrder(item.orderId || item.jobNo);
+                          }}
+                          style={{
+                            padding: '4px 10px',
+                            borderRadius: '5px',
+                            border: '1px solid #0284C7',
+                            background: '#F0F9FF',
+                            color: '#0284C7',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Open T&amp;A
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -1218,79 +1623,185 @@ export default function TaPage() {
               </table>
             </div>
           </div>
+        )}
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4 lg:col-span-8">
-            <div className="mb-3 flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-semibold text-white">Sample TNA & Courier Dispatch Tracker</h3>
-                <p className="text-xs text-slate-400">Yarn, Knitting, Dyeing, Sample Making, Target vs Actual Dispatch & AWB tracking.</p>
-              </div>
-              <button
-                onClick={() =>
-                  setEditingSample({
-                    jobNo: '48085',
-                    styleNo: '13251506',
-                    buyer: 'ONLY',
-                    sampleType: 'PP Sample',
-                    sampleQty: 24,
-                    yarnDate: '2026-10-02',
-                    knittingDate: '2026-10-05',
-                    dyeingDate: '2026-10-08',
-                    sewingDate: '2026-10-11',
-                    targetDispatchDate: '2026-10-13',
-                    actualDispatchDate: '',
-                    awbNo: '',
-                    status: 'IN_PROGRESS',
-                    remarks: '',
-                  })
-                }
-                className="rounded-xl bg-cyan-500 px-3 py-1.5 text-xs font-semibold text-slate-950 hover:bg-cyan-400"
-              >
-                + Add Sample Plan
-              </button>
+        {/* TAB 3: FABRIC & TRIMS FOLLOW-UP */}
+        {activeTab === 'FABRIC_TRIMS' && (
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: '10px',
+              border: '1px solid #E2E8F0',
+              padding: '16px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+            }}
+          >
+            <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F274E', marginBottom: '4px' }}>
+              Weekly Fabric &amp; Trims Due vs Received Follow-up
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="border-b border-slate-800 text-slate-400">
-                  <tr>
-                    <th className="py-2">Job / Style</th>
-                    <th className="py-2">Sample Type / Qty</th>
-                    <th className="py-2">Yarn → Knit → Dye → Sew</th>
-                    <th className="py-2">Target / Actual Dispatch</th>
-                    <th className="py-2">Status</th>
-                    <th className="py-2 text-right">Edit</th>
+            <div style={{ fontSize: '11.5px', color: '#64748B', marginBottom: '14px' }}>
+              Tracks weekly finish fabric demand vs warehouse stock and item-wise trims readiness.
+            </div>
+
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', minWidth: '950px', borderCollapse: 'collapse', fontSize: '12px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid #E2E8F0', color: '#64748B', textAlign: 'left' }}>
+                    <th style={{ padding: '8px' }}>Job / Style / Buyer</th>
+                    <th style={{ padding: '8px' }}>Fabric Due Date</th>
+                    <th style={{ padding: '8px' }}>Fabric Req / Recv / Bal</th>
+                    <th style={{ padding: '8px' }}>Fabric Status</th>
+                    <th style={{ padding: '8px' }}>Trims Readiness</th>
+                    <th style={{ padding: '8px', textAlign: 'right' }}>Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/70">
-                  {samplePlanningList.map((sp: any, idx: number) => (
-                    <tr key={idx}>
-                      <td className="py-2.5">
-                        <div className="font-semibold text-cyan-300">
-                          Job #{sp.jobNo} · {sp.styleNo}
-                        </div>
-                        <div className="text-[11px] text-slate-400">{sp.buyer}</div>
+                <tbody>
+                  {fabricTrimsList.map((ft: any) => (
+                    <tr key={ft.styleId} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                      <td style={{ padding: '8px' }}>
+                        <div style={{ fontWeight: 800, color: '#0284C7' }}>Job #{ft.jobNo} · {ft.styleNo}</div>
+                        <div style={{ fontSize: '11px', color: '#64748B' }}>{ft.buyer}</div>
                       </td>
-                      <td className="py-2.5">
-                        <div className="text-white">{sp.sampleType}</div>
-                        <div className="text-[11px] text-slate-400">{sp.sampleQty} pcs</div>
+                      <td style={{ padding: '8px', fontFamily: 'monospace' }}>{ft.fabricDueDate || '—'}</td>
+                      <td style={{ padding: '8px', fontFamily: 'monospace' }}>
+                        <div>Req: {Number(ft.fabricRequiredKg || 0).toLocaleString()} Kg</div>
+                        <div style={{ color: '#059669' }}>Recv: {Number(ft.fabricReceivedKg || 0).toLocaleString()} Kg</div>
+                        <div style={{ color: '#D97706' }}>Bal: {Number(ft.fabricBalanceKg || 0).toLocaleString()} Kg</div>
                       </td>
-                      <td className="py-2.5 font-mono text-[11px] text-slate-300">
-                        {sp.yarnDate} → {sp.knittingDate} → {sp.dyeingDate} → {sp.sewingDate}
-                      </td>
-                      <td className="py-2.5 font-mono text-[11px]">
-                        <div className="text-cyan-300">Plan: {sp.targetDispatchDate}</div>
-                        <div className="text-emerald-300">Act: {sp.actualDispatchDate || 'Pending'}</div>
-                        {sp.awbNo && <div className="text-[10px] text-slate-400">AWB: {sp.awbNo}</div>}
-                      </td>
-                      <td className="py-2.5">
-                        <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200">
-                          {sp.status}
+                      <td style={{ padding: '8px' }}>
+                        <span
+                          style={{
+                            padding: '3px 8px',
+                            borderRadius: '10px',
+                            fontSize: '10.5px',
+                            fontWeight: 700,
+                            background: ft.fabricStatus === 'IN_HOUSE' ? '#ECFDF5' : '#FFFBEB',
+                            color: ft.fabricStatus === 'IN_HOUSE' ? '#059669' : '#D97706',
+                          }}
+                        >
+                          {ft.fabricStatus}
                         </span>
                       </td>
-                      <td className="py-2.5 text-right">
+                      <td style={{ padding: '8px', fontSize: '11px' }}>
+                        <div style={{ color: '#0284C7', fontWeight: 600 }}>Due: {ft.trimsDueDate || '—'}</div>
+                        <div>{(ft.trimsItems || []).length} items monitored</div>
+                      </td>
+                      <td style={{ padding: '8px', textAlign: 'right' }}>
+                        <button
+                          onClick={() => setEditingFabTrims({ ...ft })}
+                          style={{
+                            padding: '4px 10px',
+                            borderRadius: '5px',
+                            border: '1px solid #0284C7',
+                            background: '#F0F9FF',
+                            color: '#0284C7',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Update Tracker
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: SAMPLE PLANNING & QUOTA */}
+        {activeTab === 'SAMPLE_PLAN' && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '16px' }}>
+            {/* Buyer Monthly Quota */}
+            <div
+              style={{
+                background: '#FFFFFF',
+                borderRadius: '10px',
+                border: '1px solid #E2E8F0',
+                padding: '16px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+              }}
+            >
+              <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#0F274E', marginBottom: '8px' }}>
+                Monthly Buyer Sample &amp; Line Allocation
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid #E2E8F0', color: '#64748B', textAlign: 'left' }}>
+                    <th style={{ padding: '6px' }}>Buyer</th>
+                    <th style={{ padding: '6px' }}>Sample Styles</th>
+                    <th style={{ padding: '6px' }}>Sewing Lines</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {buyerQuota.map((bq: any) => (
+                    <tr key={bq.buyer} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                      <td style={{ padding: '6px', fontWeight: 700, color: '#0F274E' }}>{bq.buyer}</td>
+                      <td style={{ padding: '6px', color: '#0284C7', fontWeight: 650 }}>
+                        {bq.sampleUsedStyles}/{bq.sampleQuotaStyles} Styles
+                      </td>
+                      <td style={{ padding: '6px', color: '#059669', fontWeight: 650 }}>
+                        {bq.allocatedLines}/{bq.monthlyLineQuota} Lines
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Sample Dispatch Tracker */}
+            <div
+              style={{
+                background: '#FFFFFF',
+                borderRadius: '10px',
+                border: '1px solid #E2E8F0',
+                padding: '16px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+              }}
+            >
+              <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#0F274E', marginBottom: '8px' }}>
+                Sample TNA &amp; Courier Dispatch
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid #E2E8F0', color: '#64748B', textAlign: 'left' }}>
+                    <th style={{ padding: '6px' }}>Job / Style</th>
+                    <th style={{ padding: '6px' }}>Sample Type</th>
+                    <th style={{ padding: '6px' }}>Dispatch</th>
+                    <th style={{ padding: '6px', textAlign: 'right' }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {samplePlanningList.map((sp: any, idx: number) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                      <td style={{ padding: '6px' }}>
+                        <div style={{ fontWeight: 700, color: '#0284C7' }}>Job #{sp.jobNo}</div>
+                        <div style={{ fontSize: '10.5px', color: '#64748B' }}>{sp.styleNo} · {sp.buyer}</div>
+                      </td>
+                      <td style={{ padding: '6px' }}>
+                        <div>{sp.sampleType}</div>
+                        <div style={{ fontSize: '10px', color: '#94A3B8' }}>{sp.sampleQty} pcs</div>
+                      </td>
+                      <td style={{ padding: '6px', fontSize: '11px' }}>
+                        <div style={{ color: '#0284C7', fontWeight: 600 }}>Plan: {sp.targetDispatchDate}</div>
+                        <div style={{ color: sp.actualDispatchDate ? '#059669' : '#D97706', fontSize: '10px' }}>
+                          Act: {sp.actualDispatchDate || 'Pending'}
+                        </div>
+                      </td>
+                      <td style={{ padding: '6px', textAlign: 'right' }}>
                         <button
                           onClick={() => setEditingSample({ ...sp })}
-                          className="rounded-lg border border-slate-700 px-2 py-1 text-[11px] text-slate-200 hover:border-cyan-400"
+                          style={{
+                            padding: '3px 8px',
+                            borderRadius: '4px',
+                            border: '1px solid #0284C7',
+                            background: '#F0F9FF',
+                            color: '#0284C7',
+                            fontSize: '10.5px',
+                            cursor: 'pointer',
+                          }}
                         >
                           Edit
                         </button>
@@ -1301,283 +1812,347 @@ export default function TaPage() {
               </table>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* TAB 5: SHIPMENT MEETING RECORDS */}
-      {activeTab === 'SHIPMENT_MTG' && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-semibold text-white">Weekly Shipment Meeting Records (Decisions & Action Items)</h2>
-              <p className="text-xs text-slate-400">
-                Records weekly shipment review bottlenecks, recovery decisions, revised commitment dates, and department action owners.
-              </p>
+        {/* TAB 5: SHIPMENT MEETINGS */}
+        {activeTab === 'SHIPMENT_MTG' && (
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: '10px',
+              border: '1px solid #E2E8F0',
+              padding: '16px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+              <div>
+                <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F274E' }}>
+                  Weekly Shipment Meeting Decisions &amp; Action Items
+                </div>
+                <div style={{ fontSize: '11.5px', color: '#64748B' }}>
+                  Reviews bottlenecks, revised commitments, and responsible section head actions.
+                </div>
+              </div>
+              <button
+                onClick={() =>
+                  setEditingMeeting({
+                    meetingDate: new Date().toISOString().slice(0, 10),
+                    jobNo: order?.jobNo || '48061',
+                    styleNo: order?.styles?.[0]?.styleNo || '13251509',
+                    buyer: order?.buyer?.name || 'OVS',
+                    orderQty: 9200,
+                    ccd: '2026-10-22',
+                    projectedDate: '2026-10-23',
+                    bottleneck: '',
+                    decision: '',
+                    revisedCommitmentDate: '2026-10-21',
+                    actionItems: [
+                      { owner: 'Section Head', department: 'Sewing', action: 'Allocate overtime to recover schedule', dueDate: '2026-10-15', status: 'OPEN' },
+                    ],
+                  })
+                }
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: '#0284C7',
+                  color: '#FFFFFF',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                + Record Meeting
+              </button>
             </div>
-            <button
-              onClick={() =>
-                setEditingMeeting({
-                  meetingDate: new Date().toISOString().slice(0, 10),
-                  jobNo: order?.jobNo || '48061',
-                  styleNo: order?.styles?.[0]?.styleNo || '13251509',
-                  buyer: order?.buyer?.name || 'OVS',
-                  orderQty: 9200,
-                  ccd: '2026-10-22',
-                  projectedDate: '2026-10-23',
-                  bottleneck: '',
-                  decision: '',
-                  revisedCommitmentDate: '2026-10-21',
-                  actionItems: [
-                    { owner: 'Section Head', department: 'Sewing', action: 'Allocate 2 hours overtime to recover schedule', dueDate: '2026-10-15', status: 'OPEN' },
-                  ],
-                })
-              }
-              className="rounded-xl bg-cyan-500 px-3.5 py-1.5 text-xs font-semibold text-slate-950 hover:bg-cyan-400"
-            >
-              + Record Shipment Meeting
-            </button>
-          </div>
 
-          <div className="space-y-4">
-            {shipmentMeetings.map((m: any) => (
-              <div key={m.id} className="rounded-2xl border border-slate-800 bg-slate-950 p-4 text-xs">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
-                  <div>
-                    <span className="font-mono text-cyan-300">{m.meetingDate}</span> ·{' '}
-                    <span className="text-sm font-bold text-white">
-                      Job #{m.jobNo} · Style {m.styleNo} ({m.buyer})
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 font-mono">
-                    <span className="text-slate-400">CCD: {m.ccd}</span>
-                    <span className="text-emerald-300">Revised Commitment: {m.revisedCommitmentDate || m.ccd}</span>
-                  </div>
-                </div>
-                <div className="mt-3 grid gap-3 md:grid-cols-2">
-                  <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-3">
-                    <div className="font-semibold text-rose-300">Identified Bottleneck</div>
-                    <div className="mt-1 text-slate-200">{m.bottleneck}</div>
-                  </div>
-                  <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
-                    <div className="font-semibold text-emerald-300">Management / Planning Decision</div>
-                    <div className="mt-1 text-slate-200">{m.decision}</div>
-                  </div>
-                </div>
-                {Array.isArray(m.actionItems) && m.actionItems.length > 0 && (
-                  <div className="mt-3">
-                    <div className="mb-1.5 font-semibold text-slate-400">Assigned Action Items:</div>
-                    <div className="grid gap-2 md:grid-cols-3">
-                      {m.actionItems.map((ai: any, idx: number) => (
-                        <div key={idx} className="rounded-xl border border-slate-800 bg-slate-900 p-2.5">
-                          <div className="flex justify-between font-semibold text-white">
-                            <span>{ai.owner}</span>
-                            <span className="text-[10px] text-cyan-300">{ai.department}</span>
-                          </div>
-                          <div className="mt-1 text-slate-300">{ai.action}</div>
-                          <div className="mt-1.5 flex justify-between font-mono text-[10px] text-slate-400">
-                            <span>Due: {ai.dueDate}</span>
-                            <span className="text-emerald-300">{ai.status}</span>
-                          </div>
-                        </div>
-                      ))}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {shipmentMeetings.map((m: any) => (
+                <div
+                  key={m.id}
+                  style={{
+                    background: '#F8FAFC',
+                    borderRadius: '8px',
+                    border: '1px solid #E2E8F0',
+                    padding: '14px',
+                    fontSize: '12px',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #E2E8F0', paddingBottom: '8px', marginBottom: '8px' }}>
+                    <div style={{ fontWeight: 800, color: '#0F274E' }}>
+                      {m.meetingDate} · Job #{m.jobNo} · Style {m.styleNo} ({m.buyer})
+                    </div>
+                    <div style={{ color: '#0284C7', fontWeight: 650 }}>
+                      Revised Commitment: {m.revisedCommitmentDate || m.ccd}
                     </div>
                   </div>
-                )}
-              </div>
-            ))}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '6px' }}>
+                    <div style={{ background: '#FEF2F2', padding: '8px 10px', borderRadius: '6px', border: '1px solid #FECACA' }}>
+                      <div style={{ color: '#DC2626', fontWeight: 700, fontSize: '11px' }}>Bottleneck:</div>
+                      <div style={{ color: '#1E293B' }}>{m.bottleneck}</div>
+                    </div>
+                    <div style={{ background: '#ECFDF5', padding: '8px 10px', borderRadius: '6px', border: '1px solid #A7F3D0' }}>
+                      <div style={{ color: '#059669', fontWeight: 700, fontSize: '11px' }}>Management Decision:</div>
+                      <div style={{ color: '#1E293B' }}>{m.decision}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Modal: Update Fabric & Trims Weekly Follow-up */}
-      {editingFabTrims && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4">
-          <div className="w-full max-w-md rounded-2xl border border-cyan-500/40 bg-slate-900 p-5 text-xs">
-            <h3 className="text-sm font-semibold text-white">
-              Update Fabric & Trims Follow-up — Job #{editingFabTrims.jobNo}
-            </h3>
-            <div className="mt-3 space-y-3">
-              <div>
-                <label className="block text-slate-400">Fabric Required Kg</label>
-                <input
-                  type="number"
-                  value={editingFabTrims.fabricRequiredKg || 0}
-                  onWheel={(e) => e.currentTarget.blur()}
-                  onChange={(e) => setEditingFabTrims({ ...editingFabTrims, fabricRequiredKg: Number(e.target.value) })}
-                  className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-white"
-                />
+        {/* MODAL: Update Fabric Trims */}
+        {editingFabTrims && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 50,
+              background: 'rgba(15, 23, 42, 0.45)',
+              backdropFilter: 'blur(3px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px',
+            }}
+          >
+            <div
+              style={{
+                width: '100%',
+                maxWidth: '460px',
+                background: '#FFFFFF',
+                borderRadius: '12px',
+                border: '1px solid #E2E8F0',
+                padding: '20px',
+                fontSize: '12px',
+              }}
+            >
+              <div style={{ fontSize: '14.5px', fontWeight: 800, color: '#0F274E', marginBottom: '12px' }}>
+                Update Fabric &amp; Trims — Job #{editingFabTrims.jobNo}
               </div>
-              <div>
-                <label className="block text-slate-400">Fabric Received Kg</label>
-                <input
-                  type="number"
-                  value={editingFabTrims.fabricReceivedKg || 0}
-                  onWheel={(e) => e.currentTarget.blur()}
-                  onChange={(e) => setEditingFabTrims({ ...editingFabTrims, fabricReceivedKg: Number(e.target.value) })}
-                  className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-white"
-                />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div>
+                  <label style={{ display: 'block', color: '#64748B', marginBottom: '3px' }}>Fabric Required Kg</label>
+                  <input
+                    type="number"
+                    value={editingFabTrims.fabricRequiredKg || 0}
+                    onWheel={(e) => e.currentTarget.blur()}
+                    onChange={(e) => setEditingFabTrims({ ...editingFabTrims, fabricRequiredKg: Number(e.target.value) })}
+                    style={{ width: '100%', padding: '6px 8px', borderRadius: '5px', border: '1px solid #CBD5E1' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', color: '#64748B', marginBottom: '3px' }}>Fabric Received Kg</label>
+                  <input
+                    type="number"
+                    value={editingFabTrims.fabricReceivedKg || 0}
+                    onWheel={(e) => e.currentTarget.blur()}
+                    onChange={(e) => setEditingFabTrims({ ...editingFabTrims, fabricReceivedKg: Number(e.target.value) })}
+                    style={{ width: '100%', padding: '6px 8px', borderRadius: '5px', border: '1px solid #CBD5E1' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', color: '#64748B', marginBottom: '3px' }}>Follow-up Note</label>
+                  <input
+                    type="text"
+                    value={editingFabTrims.remarks || ''}
+                    onChange={(e) => setEditingFabTrims({ ...editingFabTrims, remarks: e.target.value })}
+                    style={{ width: '100%', padding: '6px 8px', borderRadius: '5px', border: '1px solid #CBD5E1' }}
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-slate-400">Remarks / Follow-up Note</label>
-                <input
-                  type="text"
-                  value={editingFabTrims.remarks || ''}
-                  onChange={(e) => setEditingFabTrims({ ...editingFabTrims, remarks: e.target.value })}
-                  className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-white"
-                />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
+                <button
+                  onClick={() => setEditingFabTrims(null)}
+                  style={{ padding: '6px 12px', borderRadius: '5px', border: '1px solid #CBD5E1', background: '#FFFFFF', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveFabricTrimsModal}
+                  style={{ padding: '6px 14px', borderRadius: '5px', border: 'none', background: '#0284C7', color: '#FFFFFF', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Save Follow-up
+                </button>
               </div>
-            </div>
-            <div className="mt-4 flex justify-end gap-2">
-              <button onClick={() => setEditingFabTrims(null)} className="rounded-lg border border-slate-700 px-3 py-1.5 text-slate-300">
-                Cancel
-              </button>
-              <button onClick={saveFabricTrimsModal} className="rounded-lg bg-cyan-500 px-4 py-1.5 font-semibold text-slate-950">
-                Save Follow-up
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Modal: Sample Planning */}
-      {editingSample && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-cyan-500/40 bg-slate-900 p-5 text-xs">
-            <h3 className="text-sm font-semibold text-white">Sample TNA & Dispatch Entry</h3>
-            <div className="mt-3 grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-slate-400">Job No.</label>
-                <input
-                  type="text"
-                  value={editingSample.jobNo}
-                  onChange={(e) => setEditingSample({ ...editingSample, jobNo: e.target.value })}
-                  className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-white"
-                />
+        {/* MODAL: Sample Planning */}
+        {editingSample && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 50,
+              background: 'rgba(15, 23, 42, 0.45)',
+              backdropFilter: 'blur(3px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px',
+            }}
+          >
+            <div
+              style={{
+                width: '100%',
+                maxWidth: '480px',
+                background: '#FFFFFF',
+                borderRadius: '12px',
+                border: '1px solid #E2E8F0',
+                padding: '20px',
+                fontSize: '12px',
+              }}
+            >
+              <div style={{ fontSize: '14.5px', fontWeight: 800, color: '#0F274E', marginBottom: '12px' }}>
+                Sample TNA &amp; Dispatch Entry
               </div>
-              <div>
-                <label className="block text-slate-400">Sample Type</label>
-                <input
-                  type="text"
-                  value={editingSample.sampleType}
-                  onChange={(e) => setEditingSample({ ...editingSample, sampleType: e.target.value })}
-                  className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-white"
-                />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={{ display: 'block', color: '#64748B', marginBottom: '2px' }}>Job No.</label>
+                  <input
+                    type="text"
+                    value={editingSample.jobNo}
+                    onChange={(e) => setEditingSample({ ...editingSample, jobNo: e.target.value })}
+                    style={{ width: '100%', padding: '5px 8px', borderRadius: '5px', border: '1px solid #CBD5E1' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', color: '#64748B', marginBottom: '2px' }}>Sample Type</label>
+                  <input
+                    type="text"
+                    value={editingSample.sampleType}
+                    onChange={(e) => setEditingSample({ ...editingSample, sampleType: e.target.value })}
+                    style={{ width: '100%', padding: '5px 8px', borderRadius: '5px', border: '1px solid #CBD5E1' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', color: '#64748B', marginBottom: '2px' }}>Planned Dispatch Date</label>
+                  <input
+                    type="date"
+                    value={editingSample.targetDispatchDate || ''}
+                    onChange={(e) => setEditingSample({ ...editingSample, targetDispatchDate: e.target.value })}
+                    style={{ width: '100%', padding: '5px 8px', borderRadius: '5px', border: '1px solid #CBD5E1' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', color: '#64748B', marginBottom: '2px' }}>Actual Dispatch Date</label>
+                  <input
+                    type="date"
+                    value={editingSample.actualDispatchDate || ''}
+                    onChange={(e) => setEditingSample({ ...editingSample, actualDispatchDate: e.target.value })}
+                    style={{ width: '100%', padding: '5px 8px', borderRadius: '5px', border: '1px solid #CBD5E1' }}
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-slate-400">Sample Qty (Pcs)</label>
-                <input
-                  type="number"
-                  value={editingSample.sampleQty}
-                  onWheel={(e) => e.currentTarget.blur()}
-                  onChange={(e) => setEditingSample({ ...editingSample, sampleQty: Number(e.target.value) })}
-                  className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-white"
-                />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
+                <button
+                  onClick={() => setEditingSample(null)}
+                  style={{ padding: '6px 12px', borderRadius: '5px', border: '1px solid #CBD5E1', background: '#FFFFFF', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveSampleModal}
+                  style={{ padding: '6px 14px', borderRadius: '5px', border: 'none', background: '#0284C7', color: '#FFFFFF', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Save Sample
+                </button>
               </div>
-              <div>
-                <label className="block text-slate-400">Target Dispatch Date</label>
-                <input
-                  type="date"
-                  value={editingSample.targetDispatchDate || ''}
-                  onChange={(e) => setEditingSample({ ...editingSample, targetDispatchDate: e.target.value })}
-                  className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-slate-400">Actual Dispatch Date</label>
-                <input
-                  type="date"
-                  value={editingSample.actualDispatchDate || ''}
-                  onChange={(e) => setEditingSample({ ...editingSample, actualDispatchDate: e.target.value })}
-                  className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-slate-400">Courier AWB No.</label>
-                <input
-                  type="text"
-                  value={editingSample.awbNo || ''}
-                  onChange={(e) => setEditingSample({ ...editingSample, awbNo: e.target.value })}
-                  className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-white"
-                />
-              </div>
-            </div>
-            <div className="mt-4 flex justify-end gap-2">
-              <button onClick={() => setEditingSample(null)} className="rounded-lg border border-slate-700 px-3 py-1.5 text-slate-300">
-                Cancel
-              </button>
-              <button onClick={saveSampleModal} className="rounded-lg bg-cyan-500 px-4 py-1.5 font-semibold text-slate-950">
-                Save Sample Plan
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Modal: Shipment Meeting Record */}
-      {editingMeeting && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-cyan-500/40 bg-slate-900 p-5 text-xs">
-            <h3 className="text-sm font-semibold text-white">Record Shipment Meeting Decision & Action Items</h3>
-            <div className="mt-3 grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-slate-400">Meeting Date</label>
-                <input
-                  type="date"
-                  value={editingMeeting.meetingDate}
-                  onChange={(e) => setEditingMeeting({ ...editingMeeting, meetingDate: e.target.value })}
-                  className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-white"
-                />
+        {/* MODAL: Shipment Meeting */}
+        {editingMeeting && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 50,
+              background: 'rgba(15, 23, 42, 0.45)',
+              backdropFilter: 'blur(3px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px',
+            }}
+          >
+            <div
+              style={{
+                width: '100%',
+                maxWidth: '480px',
+                background: '#FFFFFF',
+                borderRadius: '12px',
+                border: '1px solid #E2E8F0',
+                padding: '20px',
+                fontSize: '12px',
+              }}
+            >
+              <div style={{ fontSize: '14.5px', fontWeight: 800, color: '#0F274E', marginBottom: '12px' }}>
+                Record Shipment Meeting Decision
               </div>
-              <div>
-                <label className="block text-slate-400">Job No.</label>
-                <input
-                  type="text"
-                  value={editingMeeting.jobNo}
-                  onChange={(e) => setEditingMeeting({ ...editingMeeting, jobNo: e.target.value })}
-                  className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-white"
-                />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div>
+                    <label style={{ display: 'block', color: '#64748B', marginBottom: '2px' }}>Meeting Date</label>
+                    <input
+                      type="date"
+                      value={editingMeeting.meetingDate}
+                      onChange={(e) => setEditingMeeting({ ...editingMeeting, meetingDate: e.target.value })}
+                      style={{ width: '100%', padding: '5px 8px', borderRadius: '5px', border: '1px solid #CBD5E1' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', color: '#64748B', marginBottom: '2px' }}>Job No.</label>
+                    <input
+                      type="text"
+                      value={editingMeeting.jobNo}
+                      onChange={(e) => setEditingMeeting({ ...editingMeeting, jobNo: e.target.value })}
+                      style={{ width: '100%', padding: '5px 8px', borderRadius: '5px', border: '1px solid #CBD5E1' }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label style={{ display: 'block', color: '#64748B', marginBottom: '2px' }}>Identified Bottleneck</label>
+                  <input
+                    type="text"
+                    value={editingMeeting.bottleneck}
+                    onChange={(e) => setEditingMeeting({ ...editingMeeting, bottleneck: e.target.value })}
+                    style={{ width: '100%', padding: '5px 8px', borderRadius: '5px', border: '1px solid #CBD5E1' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', color: '#64748B', marginBottom: '2px' }}>Management Decision</label>
+                  <textarea
+                    rows={2}
+                    value={editingMeeting.decision}
+                    onChange={(e) => setEditingMeeting({ ...editingMeeting, decision: e.target.value })}
+                    style={{ width: '100%', padding: '5px 8px', borderRadius: '5px', border: '1px solid #CBD5E1' }}
+                  />
+                </div>
               </div>
-              <div className="col-span-2">
-                <label className="block text-slate-400">Current Bottleneck</label>
-                <input
-                  type="text"
-                  value={editingMeeting.bottleneck}
-                  onChange={(e) => setEditingMeeting({ ...editingMeeting, bottleneck: e.target.value })}
-                  placeholder="e.g., Embroidery Lot-3 partial balance & Hangtag delay"
-                  className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-white"
-                />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
+                <button
+                  onClick={() => setEditingMeeting(null)}
+                  style={{ padding: '6px 12px', borderRadius: '5px', border: '1px solid #CBD5E1', background: '#FFFFFF', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveMeetingModal}
+                  style={{ padding: '6px 14px', borderRadius: '5px', border: 'none', background: '#0284C7', color: '#FFFFFF', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Save Decision
+                </button>
               </div>
-              <div className="col-span-2">
-                <label className="block text-slate-400">Decision Taken</label>
-                <textarea
-                  rows={2}
-                  value={editingMeeting.decision}
-                  onChange={(e) => setEditingMeeting({ ...editingMeeting, decision: e.target.value })}
-                  placeholder="e.g., Split sewing across 2 lines and run 2 hours planned OT..."
-                  className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2 text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-slate-400">Revised Commitment Date</label>
-                <input
-                  type="date"
-                  value={editingMeeting.revisedCommitmentDate}
-                  onChange={(e) => setEditingMeeting({ ...editingMeeting, revisedCommitmentDate: e.target.value })}
-                  className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-white"
-                />
-              </div>
-            </div>
-            <div className="mt-4 flex justify-end gap-2">
-              <button onClick={() => setEditingMeeting(null)} className="rounded-lg border border-slate-700 px-3 py-1.5 text-slate-300">
-                Cancel
-              </button>
-              <button onClick={saveMeetingModal} className="rounded-lg bg-cyan-500 px-4 py-1.5 font-semibold text-slate-950">
-                Save Meeting Record
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </Shell>
   );
 }

@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 import { parseBuyerPoFile } from '../../../lib/buyer-po-parser';
 import { DEFAULT_MASTER_ITEM_RATES, generateDefaultItemizedCostsForStyle, calculateCostSheetTotals, calculateItemCostPerPc } from '../../../lib/costing-engine';
 import demo2000DataRaw from '../../../data/demo-2000-master.json';
