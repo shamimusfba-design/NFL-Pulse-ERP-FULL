@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
+import { useFxScope } from './fx';
 import Link from 'next/link';
 import yarnStockMasterRaw from '../data/yarn-stock-master.json';
 import knittingExecutionMasterRaw from '../data/knitting-execution-master.json';
@@ -37,10 +38,11 @@ function ExecutiveDonut({
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   let accumulated = 0;
+  const fx = useFxScope();
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-      <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+    <div ref={fx.ref} data-fx={fx['data-fx']} style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+      <div className="fx-donut-wrap" style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
         <svg
           width={size}
           height={size}
@@ -59,9 +61,12 @@ function ExecutiveDonut({
             const strokeDasharray = `${(item.value / total) * circumference} ${circumference}`;
             const strokeDashoffset = -accumulated * circumference;
             accumulated += item.value / total;
+            const segLen = (item.value / total) * circumference;
             return (
               <circle
                 key={i}
+                className="fx-donut-seg"
+                style={{ ['--fx-dash' as any]: segLen, ['--fx-c' as any]: circumference, ['--fx-i' as any]: i }}
                 cx={size / 2}
                 cy={size / 2}
                 r={radius}
@@ -76,6 +81,7 @@ function ExecutiveDonut({
           })}
         </svg>
         <div
+          className="fx-donut-center"
           style={{
             position: 'absolute',
             inset: 0,
@@ -87,7 +93,7 @@ function ExecutiveDonut({
             pointerEvents: 'none'
           }}
         >
-          <span style={{ fontSize: '13px', fontWeight: 800, color: '#0f172a', lineHeight: 1.1 }}>
+          <span data-fx-count="" style={{ fontSize: '13px', fontWeight: 800, color: '#0f172a', lineHeight: 1.1 }}>
             {centerValue || n(total, 0)}
           </span>
           {unit && <span style={{ fontSize: '9px', color: '#64748b' }}>{unit}</span>}
@@ -161,10 +167,12 @@ function ExecutiveColumnChart({
       1,
       ...data.map((d) => Math.max(d.value1 || 0, d.value2 || 0))
     );
+  const fx = useFxScope();
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+    <div ref={fx.ref} data-fx={fx['data-fx']} style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
       <div
+        className="fx-bars"
         style={{
           display: 'flex',
           alignItems: 'flex-end',
@@ -182,6 +190,7 @@ function ExecutiveColumnChart({
           return (
             <div
               key={i}
+              className="fx-col"
               style={{
                 flex: 1,
                 display: 'flex',
@@ -194,25 +203,29 @@ function ExecutiveColumnChart({
             >
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: '3px', width: '100%', justifyContent: 'center' }}>
                 <div
+                  className="fx-bar"
                   title={`${d.name1 || 'Value 1'}: ${n(d.value1)}`}
                   style={{
+                    ['--fx-i' as any]: i * 2,
                     height: `${h1}px`,
                     width: h2 !== null ? '42%' : '60%',
                     backgroundColor: d.color1 || '#2563eb',
                     borderRadius: '4px 4px 0 0',
-                    transition: 'all 0.2s',
+                    transition: 'opacity .2s ease, filter .2s ease',
                     position: 'relative'
                   }}
                 />
                 {h2 !== null && (
                   <div
+                    className="fx-bar"
                     title={`${d.name2 || 'Value 2'}: ${n(d.value2)}`}
                     style={{
+                      ['--fx-i' as any]: i * 2 + 1,
                       height: `${h2}px`,
                       width: '42%',
                       backgroundColor: d.color2 || '#10b981',
                       borderRadius: '4px 4px 0 0',
-                      transition: 'all 0.2s'
+                      transition: 'opacity .2s ease, filter .2s ease'
                     }}
                   />
                 )}
@@ -272,6 +285,7 @@ function ExecutiveTrendLine({
   const width = 280;
   const paddingX = 14;
   const paddingY = 12;
+  const fx = useFxScope();
 
   const points = data.map((d, i) => {
     const x = paddingX + (i / (data.length - 1 || 1)) * (width - paddingX * 2);
@@ -283,7 +297,7 @@ function ExecutiveTrendLine({
   const areaD = `M ${paddingX},${height - paddingY} L ${points.join(' L ')} L ${width - paddingX},${height - paddingY} Z`;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+    <div ref={fx.ref} data-fx={fx['data-fx']} style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
       <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} style={{ overflow: 'visible' }}>
         <defs>
           <linearGradient id={`grad-${lineColor.replace('#', '')}`} x1="0" y1="0" x2="0" y2="1">
@@ -291,13 +305,15 @@ function ExecutiveTrendLine({
             <stop offset="100%" stopColor={lineColor} stopOpacity="0.0" />
           </linearGradient>
         </defs>
-        <path d={areaD} fill={`url(#grad-${lineColor.replace('#', '')})`} />
-        <path d={pathD} fill="none" stroke={lineColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path className="fx-area" d={areaD} fill={`url(#grad-${lineColor.replace('#', '')})`} />
+        <path className="fx-line" pathLength={1} d={pathD} fill="none" stroke={lineColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
         {data.map((d, i) => {
           const [x, y] = points[i].split(',').map(Number);
           return (
             <circle
               key={i}
+              className="fx-dot"
+              style={{ ['--fx-i' as any]: i }}
               cx={x}
               cy={y}
               r="3.5"

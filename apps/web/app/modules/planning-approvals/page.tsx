@@ -5,15 +5,15 @@ import { useEffect, useMemo, useState } from 'react';
 import Shell from '../../../components/Shell';
 import { api } from '../../../lib/api';
 import {
-  ResponsiveContainer,
   BarChart,
   Bar,
   XAxis,
   YAxis,
   Tooltip,
   Cell,
-  CartesianGrid,
+  CartesianGrid
 } from 'recharts';
+import { FX_SERIES, FxResponsiveContainer as ResponsiveContainer } from '../../../components/fx';
 import {
   CheckCircle2,
   Clock,
@@ -779,7 +779,7 @@ export default function PlanningApprovalsPage() {
                       allowDecimals={false}
                     />
                     <Tooltip content={<CustomChartTooltip />} cursor={{ fill: 'rgba(2, 132, 199, 0.06)' }} />
-                    <Bar
+                    <Bar {...FX_SERIES}
                       dataKey="count"
                       radius={[4, 4, 0, 0]}
                       maxBarSize={55}

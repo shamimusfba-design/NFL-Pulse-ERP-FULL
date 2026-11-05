@@ -1,5 +1,6 @@
 import './globals.css';
 import TableExportEnhancer from '../components/TableExportEnhancer';
+import FxEnhancer from '../components/fx/FxEnhancer';
 
 export const metadata = {
   title: 'NFL PULSE ERP · Northern Fashions Limited & Northern Clothing Ltd.',
@@ -18,6 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <TableExportEnhancer />
+        <FxEnhancer />
         {children}
       </body>
     </html>

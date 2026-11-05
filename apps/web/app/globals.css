@@ -1306,7 +1306,145 @@ tbody tr {
   transition: background-color 0.15s ease;
 }
 
-/* Interactive Chart Container Smooth Reveal */
-.recharts-responsive-container {
-  animation: erpFadeScale 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+/* Chart reveal is now handled by <FxResponsiveContainer> (components/fx) — see the NOS CHART & CARD MOTION STANDARD block at the end of this file. */
+
+
+/* ==========================================================================
+   NOS CHART & CARD MOTION STANDARD  (components/fx  ·  docs/CHART-STANDARD.md)
+   One formula for every chart, KPI number and card in the ERP:
+   - scroll-in: nothing plays until the element is on screen
+   - replay: leaving the screen and coming back plays it again from zero
+   - hover: focus the hovered mark, dim the rest, glass tooltip
+   - reduced motion: everything is shown instantly
+   ========================================================================== */
+:root {
+  --fx-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --fx-ease-soft: cubic-bezier(0.22, 0.8, 0.24, 1);
+  --fx-dur: 1100ms;
+  --fx-step: 70ms;
+}
+
+/* ---- keyframes ---- */
+@keyframes fxGrowY    { from { transform: scaleY(0); opacity: .35; } to { transform: scaleY(1); opacity: 1; } }
+@keyframes fxGrowX    { from { transform: scaleX(0); opacity: .35; } to { transform: scaleX(1); opacity: 1; } }
+@keyframes fxDraw     { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes fxFadeIn   { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fxPop      { 0% { opacity: 0; transform: scale(0); } 70% { opacity: 1; transform: scale(1.35); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes fxRise     { from { opacity: 0; transform: translate3d(0, 8px, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
+@keyframes fxDonut    { from { stroke-dasharray: 0 var(--fx-c); } to { stroke-dasharray: var(--fx-dash) var(--fx-c); } }
+@keyframes fxShimmer  { 0% { background-position: 120% 0; } 100% { background-position: -120% 0; } }
+
+/* ---- scroll-in reveal for cards / panels: <Reveal> ---- */
+.fx-reveal[data-fx="out"] { opacity: 0; transform: translate3d(0, 22px, 0); }
+.fx-reveal[data-fx="in"]  { animation: erpSlideUp .7s var(--fx-ease) calc(var(--fx-i, 0) * var(--fx-step)) both; }
+
+/* ---- placeholder while a chart waits to scroll into view ---- */
+.fx-chart-slot:empty {
+  border-radius: 8px;
+  background: linear-gradient(100deg, transparent 20%, rgba(148, 163, 184, .16) 45%, transparent 70%);
+  background-size: 250% 100%;
+  animation: fxShimmer 1.8s linear infinite;
+}
+
+/* ---- hand-built charts: put ref + data-fx on the root (useFxScope) and tag marks with these classes ---- */
+[data-fx] .fx-bar     { transform-origin: 50% 100%; transform-box: fill-box; }
+[data-fx] .fx-hbar    { transform-origin: 0 50%; }
+[data-fx="out"] .fx-bar  { transform: scaleY(0); opacity: 0; }
+[data-fx="out"] .fx-hbar { transform: scaleX(0); opacity: 0; }
+[data-fx="in"]  .fx-bar  { animation: fxGrowY .95s var(--fx-ease) calc(var(--fx-i, 0) * var(--fx-step)) both; }
+[data-fx="in"]  .fx-hbar { animation: fxGrowX 1s var(--fx-ease) calc(var(--fx-i, 0) * var(--fx-step)) both; }
+
+[data-fx="out"] .fx-line { stroke-dasharray: 1; stroke-dashoffset: 1; }
+[data-fx="in"]  .fx-line { stroke-dasharray: 1; stroke-dashoffset: 0; animation: fxDraw 1.3s var(--fx-ease-soft) calc(var(--fx-i, 0) * 120ms) both; }
+
+[data-fx="out"] .fx-area { opacity: 0; }
+[data-fx="in"]  .fx-area { animation: fxFadeIn .9s ease .7s both; }
+
+[data-fx] .fx-dot { transform-box: fill-box; transform-origin: center; }
+[data-fx="out"] .fx-dot { opacity: 0; transform: scale(0); }
+[data-fx="in"]  .fx-dot { animation: fxPop .5s var(--fx-ease) calc(.45s + var(--fx-i, 0) * 90ms) both; }
+
+[data-fx="out"] .fx-label { opacity: 0; }
+[data-fx="in"]  .fx-label { animation: fxRise .6s var(--fx-ease) calc(.5s + var(--fx-i, 0) * 80ms) both; }
+
+[data-fx="out"] .fx-donut-seg { stroke-dasharray: 0 var(--fx-c); }
+[data-fx="in"]  .fx-donut-seg { animation: fxDonut 1.15s var(--fx-ease-soft) calc(var(--fx-i, 0) * 140ms) both; }
+[data-fx="out"] .fx-donut-center { opacity: 0; transform: scale(.85); }
+[data-fx="in"]  .fx-donut-center { animation: erpFadeScale .8s var(--fx-ease) .35s both; }
+
+/* hover: lift the mark under the cursor, dim its siblings */
+.fx-bar, .fx-hbar, .fx-donut-seg { transition: opacity .2s ease, filter .2s ease; }
+[data-fx="in"] .bar-col:hover .fx-bar { filter: brightness(1.12) saturate(1.15); }
+[data-fx="in"] .bar-chart-flex:has(.bar-col:hover) .bar-col:not(:hover) .fx-bar,
+[data-fx="in"] .fx-bars:has(.fx-col:hover) .fx-col:not(:hover) .fx-bar { opacity: .45; }
+[data-fx="in"] .fx-col:hover .fx-bar { filter: brightness(1.12) saturate(1.15); }
+[data-fx="in"] .hbar-list:has(.hbar-row:hover) .hbar-row:not(:hover) { opacity: .55; }
+.hbar-row { transition: opacity .2s ease; }
+.donut-svg-wrap:has(.fx-donut-seg:hover) .fx-donut-seg:not(:hover),
+.fx-donut-wrap:has(.fx-donut-seg:hover) .fx-donut-seg:not(:hover) { opacity: .45; }
+.fx-donut-seg:hover { filter: drop-shadow(0 0 4px rgba(15, 23, 42, .25)); }
+.fx-donut-seg { cursor: pointer; }
+
+/* ---- Recharts: one hover / tooltip look for every chart ---- */
+.recharts-bar-rectangle path, .recharts-sector, .recharts-dot { transition: opacity .2s ease, filter .2s ease; }
+.recharts-bar:has(.recharts-bar-rectangle:hover) .recharts-bar-rectangle:not(:hover) { opacity: .5; }
+.recharts-bar-rectangle:hover path { filter: brightness(1.12) saturate(1.15); }
+.recharts-pie:has(.recharts-sector:hover) .recharts-sector:not(:hover) { opacity: .5; }
+.recharts-sector:hover { filter: drop-shadow(0 4px 8px rgba(15, 23, 42, .28)); }
+.recharts-tooltip-cursor { fill: rgba(37, 99, 235, .07) !important; stroke: rgba(37, 99, 235, .35) !important; stroke-dasharray: 3 3; }
+.recharts-default-tooltip {
+  background: rgba(255, 255, 255, .86) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(1.4);
+  backdrop-filter: blur(10px) saturate(1.4);
+  border: 1px solid rgba(148, 163, 184, .45) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, .16);
+  padding: 8px 11px !important;
+}
+.recharts-tooltip-wrapper { transition: transform .12s ease-out; }
+[data-theme="dark"] .recharts-default-tooltip { background: rgba(15, 23, 42, .82) !important; border-color: rgba(148, 163, 184, .3) !important; color: #e2e8f0; }
+[data-theme="dark"] .recharts-default-tooltip .recharts-tooltip-label { color: #f8fafc; }
+.recharts-legend-item { cursor: default; transition: opacity .2s ease; }
+
+/* KPI numbers: fixed-width digits so the card never jitters while counting */
+.fx-num, [data-fx-count], .ie-kpi-row strong, .overview-card-grid strong, .summary-metric-grid strong,
+.metric-value, .donut-center-val, .kpi-board-card strong { font-variant-numeric: tabular-nums; }
+
+/* loading placeholder for any block */
+.fx-skeleton { border-radius: 8px; background: linear-gradient(100deg, #e8edf4 25%, #f4f7fb 45%, #e8edf4 65%); background-size: 250% 100%; animation: fxShimmer 1.6s linear infinite; }
+[data-theme="dark"] .fx-skeleton { background: linear-gradient(100deg, #1e293b 25%, #2b3a52 45%, #1e293b 65%); background-size: 250% 100%; }
+
+/* ---- accessibility: honour "reduce motion" ---- */
+@media (prefers-reduced-motion: reduce) {
+  .fx-reveal, .fx-reveal[data-fx], [data-fx] .fx-bar, [data-fx] .fx-hbar, [data-fx] .fx-line, [data-fx] .fx-area,
+  [data-fx] .fx-dot, [data-fx] .fx-label, [data-fx] .fx-donut-seg, [data-fx] .fx-donut-center,
+  .erp-page-entrance, .erp-chart-card, .erp-card-animated, .kpi-grid > *, .metric-card, .compact-kpi-card, .page-stack > * {
+    animation: none !important; opacity: 1 !important; transform: none !important;
+  }
+  [data-fx] .fx-line { stroke-dasharray: none !important; stroke-dashoffset: 0 !important; }
+  [data-fx] .fx-donut-seg { stroke-dasharray: var(--fx-dash) var(--fx-c) !important; }
+  .fx-chart-slot:empty, .fx-skeleton { animation: none; }
+}
+
+/* CSS horizontal bars (.hbar-list rows, progress fills): animated automatically — no code needed.
+   FxEnhancer marks every .hbar-list / [data-fx-scope] with data-fx="in|out" as it scrolls in/out. */
+[data-fx="out"] .hbar-row i { transform: scaleX(0); transform-origin: 0 50%; opacity: 0; }
+[data-fx="in"]  .hbar-row i { transform-origin: 0 50%; animation: fxGrowX 1s var(--fx-ease) both; }
+[data-fx="in"] .hbar-row:nth-child(2) i { animation-delay: 60ms; }
+[data-fx="in"] .hbar-row:nth-child(3) i { animation-delay: 120ms; }
+[data-fx="in"] .hbar-row:nth-child(4) i { animation-delay: 180ms; }
+[data-fx="in"] .hbar-row:nth-child(5) i { animation-delay: 240ms; }
+[data-fx="in"] .hbar-row:nth-child(6) i { animation-delay: 300ms; }
+[data-fx="in"] .hbar-row:nth-child(7) i { animation-delay: 360ms; }
+[data-fx="in"] .hbar-row:nth-child(8) i { animation-delay: 420ms; }
+[data-fx="in"] .hbar-row:nth-child(9) i { animation-delay: 480ms; }
+[data-fx="in"] .hbar-row:nth-child(10) i { animation-delay: 540ms; }
+[data-fx="in"] .hbar-row:nth-child(11) i { animation-delay: 600ms; }
+[data-fx="in"] .hbar-row:nth-child(12) i { animation-delay: 660ms; }
+[data-fx="in"] .hbar-row:nth-child(13) i { animation-delay: 720ms; }
+[data-fx="in"] .hbar-row:nth-child(14) i { animation-delay: 780ms; }
+[data-fx="in"] .hbar-row:nth-child(15) i { animation-delay: 840ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-fx] .hbar-row i { animation: none !important; transform: none !important; opacity: 1 !important; }
 }

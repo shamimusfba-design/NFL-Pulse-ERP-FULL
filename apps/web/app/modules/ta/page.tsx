@@ -6,15 +6,15 @@ import Shell from '../../../components/Shell';
 import { api } from '../../../lib/api';
 import { displayJobNo } from '../../../lib/display';
 import {
-  ResponsiveContainer,
   BarChart,
   Bar,
   XAxis,
   YAxis,
   Tooltip,
   Cell,
-  CartesianGrid,
+  CartesianGrid
 } from 'recharts';
+import { FX_SERIES, FxResponsiveContainer as ResponsiveContainer } from '../../../components/fx';
 import {
   Clock,
   CheckCircle2,
@@ -917,7 +917,7 @@ export default function TaPage() {
                 />
                 <YAxis tick={{ fill: '#64748B', fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip content={<CustomChartTooltip />} cursor={{ fill: 'rgba(2, 132, 199, 0.06)' }} />
-                <Bar
+                <Bar {...FX_SERIES}
                   dataKey="count"
                   radius={[4, 4, 0, 0]}
                   maxBarSize={55}

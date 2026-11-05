@@ -4,7 +4,6 @@ import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import Shell from '../../../components/Shell';
 import {
-  ResponsiveContainer,
   BarChart,
   Bar,
   XAxis,
@@ -16,6 +15,7 @@ import {
   Pie,
   Cell
 } from 'recharts';
+import { FX_SERIES, FxResponsiveContainer as ResponsiveContainer } from '../../../components/fx';
 
 type InspectionStage = 'knitting' | 'greige' | 'dyeing';
 type InspectionStatus = 'Approved' | 'Hold' | 'Rejected' | 'Rework';
@@ -664,8 +664,8 @@ export default function FabricQualityPage() {
                     <YAxis tick={{ fontSize: 12, fill: '#64748b' }} unit=" kg" />
                     <Tooltip />
                     <Legend wrapperStyle={{ fontSize: '12px' }} />
-                    <Bar dataKey="passedKg" name="Passed Volume (Kg)" fill="#16a34a" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="defectKg" name="Defect / Hold (Kg)" fill="#dc2626" radius={[4, 4, 0, 0]} />
+                    <Bar {...FX_SERIES} dataKey="passedKg" name="Passed Volume (Kg)" fill="#16a34a" radius={[4, 4, 0, 0]} />
+                    <Bar {...FX_SERIES} dataKey="defectKg" name="Defect / Hold (Kg)" fill="#dc2626" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -682,7 +682,7 @@ export default function FabricQualityPage() {
               <div style={{ height: '240px', display: 'flex', alignItems: 'center' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie
+                    <Pie {...FX_SERIES}
                       data={defectParetoData}
                       dataKey="value"
                       nameKey="name"

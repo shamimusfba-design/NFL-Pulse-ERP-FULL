@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useFxScope } from './fx';
 
 // Compact Donut Chart with Exact Data Labels
 export function SvgDonut({ data }: { data: { label: string; value: number; color: string }[] }) {
@@ -10,9 +11,10 @@ export function SvgDonut({ data }: { data: { label: string; value: number; color
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   let accumulated = 0;
+  const fx = useFxScope();
 
   return (
-    <div className="donut-flex">
+    <div className="donut-flex" ref={fx.ref} data-fx={fx['data-fx']}>
       <div className="donut-svg-wrap">
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)', display: 'block' }}>
           <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="#f1f5f9" strokeWidth={strokeWidth} />
@@ -20,9 +22,12 @@ export function SvgDonut({ data }: { data: { label: string; value: number; color
             const strokeDasharray = `${(item.value / total) * circumference} ${circumference}`;
             const strokeDashoffset = -accumulated * circumference;
             accumulated += item.value / total;
+            const segLen = (item.value / total) * circumference;
             return (
               <circle
                 key={i}
+                className="fx-donut-seg"
+                style={{ ['--fx-dash' as any]: segLen, ['--fx-c' as any]: circumference, ['--fx-i' as any]: i }}
                 cx={size / 2}
                 cy={size / 2}
                 r={radius}
@@ -36,7 +41,7 @@ export function SvgDonut({ data }: { data: { label: string; value: number; color
             );
           })}
         </svg>
-        <div className="donut-center-text">
+        <div className="donut-center-text fx-donut-center">
           <span className="donut-center-val">{total.toLocaleString()}</span>
           <span className="donut-center-lbl">Total Jobs</span>
         </div>
@@ -64,8 +69,9 @@ export function SvgDonut({ data }: { data: { label: string; value: number; color
 // Compact Multi-Bar Chart with Data Labels on bars
 export function SvgBarChart({ data }: { data: { label: string; value1: number; value2?: number; color1?: string; color2?: string }[] }) {
   const maxVal = Math.max(1, ...data.flatMap(d => [d.value1, d.value2 || 0]));
+  const fx = useFxScope();
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+    <div ref={fx.ref} data-fx={fx['data-fx']} style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
       <div className="bar-chart-flex">
         {data.map((d, i) => (
           <div key={i} className="bar-col">
@@ -75,8 +81,8 @@ export function SvgBarChart({ data }: { data: { label: string; value1: number; v
                   {d.value1 >= 1000 ? `${(d.value1 / 1000).toFixed(0)}k` : d.value1}
                 </span>
                 <div
-                  className="bar-fill"
-                  style={{ height: `${Math.max(6, (d.value1 / maxVal) * 70)}px`, backgroundColor: d.color1 || '#2563eb' }}
+                  className="bar-fill fx-bar"
+                  style={{ height: `${Math.max(6, (d.value1 / maxVal) * 70)}px`, backgroundColor: d.color1 || '#2563eb', ['--fx-i' as any]: i * 2 }}
                   title={`${d.label} (Plan): ${d.value1.toLocaleString()}`}
                 />
               </div>
@@ -86,8 +92,8 @@ export function SvgBarChart({ data }: { data: { label: string; value1: number; v
                     {d.value2 >= 1000 ? `${(d.value2 / 1000).toFixed(0)}k` : d.value2}
                   </span>
                   <div
-                    className="bar-fill"
-                    style={{ height: `${Math.max(6, (d.value2 / maxVal) * 70)}px`, backgroundColor: d.color2 || '#10b981' }}
+                    className="bar-fill fx-bar"
+                    style={{ height: `${Math.max(6, (d.value2 / maxVal) * 70)}px`, backgroundColor: d.color2 || '#10b981', ['--fx-i' as any]: i * 2 + 1 }}
                     title={`${d.label} (Actual): ${d.value2.toLocaleString()}`}
                   />
                 </div>
@@ -120,6 +126,7 @@ export function SvgTrendChart({ data }: { data: { label: string; value: number }
   const padY = 16;
   const gw = width - padX * 2;
   const gh = height - padY * 2;
+  const fx = useFxScope();
 
   const points = data.map((d, i) => {
     const x = padX + (i / (data.length - 1 || 1)) * gw;
@@ -131,7 +138,7 @@ export function SvgTrendChart({ data }: { data: { label: string; value: number }
   const areaD = `${pathD} L ${points[points.length - 1]?.x || width} ${height} L ${points[0]?.x || 0} ${height} Z`;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+    <div ref={fx.ref} data-fx={fx['data-fx']} style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
       <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} style={{ overflow: 'visible' }}>
         <defs>
           <linearGradient id="trend-grad" x1="0" y1="0" x2="0" y2="1">
@@ -139,12 +146,12 @@ export function SvgTrendChart({ data }: { data: { label: string; value: number }
             <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.0" />
           </linearGradient>
         </defs>
-        <path d={areaD} fill="url(#trend-grad)" />
-        <path d={pathD} fill="none" stroke="#7c3aed" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path className="fx-area" d={areaD} fill="url(#trend-grad)" />
+        <path className="fx-line" pathLength={1} d={pathD} fill="none" stroke="#7c3aed" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
         {points.map((p, i) => (
           <g key={i}>
-            <circle cx={p.x} cy={p.y} r="3.5" fill="#fff" stroke="#7c3aed" strokeWidth="2" />
-            <text x={p.x} y={p.y - 6} textAnchor="middle" fontSize="8.5" fill="#6d28d9" fontWeight="700">
+            <circle className="fx-dot" style={{ ['--fx-i' as any]: i }} cx={p.x} cy={p.y} r="3.5" fill="#fff" stroke="#7c3aed" strokeWidth="2" />
+            <text className="fx-label" style={{ ['--fx-i' as any]: i }} x={p.x} y={p.y - 6} textAnchor="middle" fontSize="8.5" fill="#6d28d9" fontWeight="700">
               {p.value}%
             </text>
             <text x={p.x} y={height - 2} textAnchor="middle" fontSize="8" fill="#64748b" fontWeight="600">

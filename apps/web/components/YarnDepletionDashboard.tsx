@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from 'react';
 import {
-  ResponsiveContainer,
   AreaChart,
   Area,
   BarChart,
@@ -16,6 +15,7 @@ import {
   CartesianGrid,
   ReferenceLine
 } from 'recharts';
+import { FX_SERIES, FxResponsiveContainer as ResponsiveContainer } from './fx';
 
 function num(v: any) {
   if (v === null || v === undefined || v === '') return '—';
@@ -448,7 +448,7 @@ export default function YarnDepletionDashboard() {
                 <ReferenceLine y={25200} stroke="#0d9488" strokeDasharray="4 4" label={{ value: '26/1 ROP (25.2k)', fill: '#0d9488', fontSize: 10, position: 'right' }} />
 
                 {selectedCounts.includes('ne30Combed') && (
-                  <Line
+                  <Line {...FX_SERIES}
                     type="monotone"
                     dataKey="ne30Combed_stock"
                     name="30/1 Ne Combed"
@@ -459,7 +459,7 @@ export default function YarnDepletionDashboard() {
                   />
                 )}
                 {selectedCounts.includes('ne26Carded') && (
-                  <Line
+                  <Line {...FX_SERIES}
                     type="monotone"
                     dataKey="ne26Carded_stock"
                     name="26/1 Ne Carded"
@@ -469,7 +469,7 @@ export default function YarnDepletionDashboard() {
                   />
                 )}
                 {selectedCounts.includes('ne34Combed') && (
-                  <Line
+                  <Line {...FX_SERIES}
                     type="monotone"
                     dataKey="ne34Combed_stock"
                     name="34/1 Ne Combed"
@@ -479,7 +479,7 @@ export default function YarnDepletionDashboard() {
                   />
                 )}
                 {selectedCounts.includes('cvc30Melange') && (
-                  <Line
+                  <Line {...FX_SERIES}
                     type="monotone"
                     dataKey="cvc30Melange_stock"
                     name="30/1 CVC Melange"
@@ -489,7 +489,7 @@ export default function YarnDepletionDashboard() {
                   />
                 )}
                 {selectedCounts.includes('ne20Carded') && (
-                  <Line
+                  <Line {...FX_SERIES}
                     type="monotone"
                     dataKey="ne20Carded_stock"
                     name="20/1 Ne Carded"
@@ -530,19 +530,19 @@ export default function YarnDepletionDashboard() {
                 <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
 
                 {selectedCounts.includes('ne30Combed') && (
-                  <Bar dataKey="ne30Combed_depleted" name="30/1 Ne Combed" fill="#2563eb" radius={[4, 4, 0, 0]} />
+                  <Bar {...FX_SERIES} dataKey="ne30Combed_depleted" name="30/1 Ne Combed" fill="#2563eb" radius={[4, 4, 0, 0]} />
                 )}
                 {selectedCounts.includes('ne26Carded') && (
-                  <Bar dataKey="ne26Carded_depleted" name="26/1 Ne Carded" fill="#0d9488" radius={[4, 4, 0, 0]} />
+                  <Bar {...FX_SERIES} dataKey="ne26Carded_depleted" name="26/1 Ne Carded" fill="#0d9488" radius={[4, 4, 0, 0]} />
                 )}
                 {selectedCounts.includes('ne34Combed') && (
-                  <Bar dataKey="ne34Combed_depleted" name="34/1 Ne Combed" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                  <Bar {...FX_SERIES} dataKey="ne34Combed_depleted" name="34/1 Ne Combed" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
                 )}
                 {selectedCounts.includes('cvc30Melange') && (
-                  <Bar dataKey="cvc30Melange_depleted" name="30/1 CVC Melange" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                  <Bar {...FX_SERIES} dataKey="cvc30Melange_depleted" name="30/1 CVC Melange" fill="#f59e0b" radius={[4, 4, 0, 0]} />
                 )}
                 {selectedCounts.includes('ne20Carded') && (
-                  <Bar dataKey="ne20Carded_depleted" name="20/1 Ne Carded" fill="#ec4899" radius={[4, 4, 0, 0]} />
+                  <Bar {...FX_SERIES} dataKey="ne20Carded_depleted" name="20/1 Ne Carded" fill="#ec4899" radius={[4, 4, 0, 0]} />
                 )}
               </BarChart>
             </ResponsiveContainer>
@@ -575,8 +575,8 @@ export default function YarnDepletionDashboard() {
                   contentStyle={{ background: '#0f172a', color: '#fff', borderRadius: '8px', fontSize: '11px', border: 'none' }}
                 />
                 <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-                <Area type="monotone" dataKey="totalReceived" name="Total Inflow Receipts (GRN)" stroke="#16a34a" fillOpacity={1} fill="url(#colorRecv)" />
-                <Area type="monotone" dataKey="totalDepleted" name="Total Knitting Depletion (Issued)" stroke="#dc2626" fillOpacity={1} fill="url(#colorDepl)" />
+                <Area {...FX_SERIES} type="monotone" dataKey="totalReceived" name="Total Inflow Receipts (GRN)" stroke="#16a34a" fillOpacity={1} fill="url(#colorRecv)" />
+                <Area {...FX_SERIES} type="monotone" dataKey="totalDepleted" name="Total Knitting Depletion (Issued)" stroke="#dc2626" fillOpacity={1} fill="url(#colorDepl)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
