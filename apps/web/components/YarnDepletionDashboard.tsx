@@ -15,7 +15,7 @@ import {
   CartesianGrid,
   ReferenceLine
 } from 'recharts';
-import { FX_SERIES, FxResponsiveContainer as ResponsiveContainer } from './fx';
+import { FX_SERIES, FX_BAR, FX_PIE, FxResponsiveContainer as ResponsiveContainer } from './fx';
 
 function num(v: any) {
   if (v === null || v === undefined || v === '') return '—';
@@ -530,19 +530,19 @@ export default function YarnDepletionDashboard() {
                 <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
 
                 {selectedCounts.includes('ne30Combed') && (
-                  <Bar {...FX_SERIES} dataKey="ne30Combed_depleted" name="30/1 Ne Combed" fill="#2563eb" radius={[4, 4, 0, 0]} />
+                  <Bar {...FX_BAR} dataKey="ne30Combed_depleted" name="30/1 Ne Combed" fill="#2563eb" radius={[4, 4, 0, 0]} />
                 )}
                 {selectedCounts.includes('ne26Carded') && (
-                  <Bar {...FX_SERIES} dataKey="ne26Carded_depleted" name="26/1 Ne Carded" fill="#0d9488" radius={[4, 4, 0, 0]} />
+                  <Bar {...FX_BAR} dataKey="ne26Carded_depleted" name="26/1 Ne Carded" fill="#0d9488" radius={[4, 4, 0, 0]} />
                 )}
                 {selectedCounts.includes('ne34Combed') && (
-                  <Bar {...FX_SERIES} dataKey="ne34Combed_depleted" name="34/1 Ne Combed" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                  <Bar {...FX_BAR} dataKey="ne34Combed_depleted" name="34/1 Ne Combed" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
                 )}
                 {selectedCounts.includes('cvc30Melange') && (
-                  <Bar {...FX_SERIES} dataKey="cvc30Melange_depleted" name="30/1 CVC Melange" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                  <Bar {...FX_BAR} dataKey="cvc30Melange_depleted" name="30/1 CVC Melange" fill="#f59e0b" radius={[4, 4, 0, 0]} />
                 )}
                 {selectedCounts.includes('ne20Carded') && (
-                  <Bar {...FX_SERIES} dataKey="ne20Carded_depleted" name="20/1 Ne Carded" fill="#ec4899" radius={[4, 4, 0, 0]} />
+                  <Bar {...FX_BAR} dataKey="ne20Carded_depleted" name="20/1 Ne Carded" fill="#ec4899" radius={[4, 4, 0, 0]} />
                 )}
               </BarChart>
             </ResponsiveContainer>

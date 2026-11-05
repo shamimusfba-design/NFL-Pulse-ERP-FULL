@@ -23,7 +23,7 @@ import {
   Pie,
   Cell
 } from 'recharts';
-import { FX_SERIES, FxResponsiveContainer as ResponsiveContainer } from '../../components/fx';
+import { FX_SERIES, FX_BAR, FX_PIE, FxResponsiveContainer as ResponsiveContainer } from '../../components/fx';
 
 // Strict Corporate Palette
 const COLORS = {
@@ -1009,7 +1009,7 @@ export default function ManagementDashboardPage() {
                 <YAxis tick={{ fontSize: 12 }} unit="K" />
                 <Tooltip formatter={(val: any) => [`${val}K pcs`, '']} />
                 <Legend wrapperStyle={{ fontSize: '12.5px' }} />
-                <Bar {...FX_SERIES} dataKey="exported" fill={COLORS.blue} name="Exported (pcs)" radius={[2, 2, 0, 0]} />
+                <Bar {...FX_BAR} dataKey="exported" fill={COLORS.blue} name="Exported (pcs)" radius={[2, 2, 0, 0]} />
                 <Line {...FX_SERIES} type="monotone" dataKey="target" stroke={COLORS.green} strokeWidth={2} name="Target (pcs)" />
               </BarChart>
             </ResponsiveContainer>
@@ -1023,7 +1023,7 @@ export default function ManagementDashboardPage() {
             <div style={{ display: 'flex', alignItems: 'center', minHeight: '260px' }}>
               <ResponsiveContainer width="48%" height={260}>
                 <PieChart>
-                  <Pie {...FX_SERIES}
+                  <Pie {...FX_PIE}
                     data={overviewStats.donutData}
                     cx="50%"
                     cy="50%"
@@ -1229,8 +1229,8 @@ export default function ManagementDashboardPage() {
                 <YAxis tick={{ fontSize: 11 }} unit="K" />
                 <Tooltip formatter={(val: any) => [`${val}K pcs`, '']} />
                 <Legend wrapperStyle={{ fontSize: '11.5px' }} />
-                <Bar {...FX_SERIES} dataKey="quotaK" fill="#94A3B8" name="Monthly Quota" radius={[2, 2, 0, 0]} />
-                <Bar {...FX_SERIES} dataKey="confirmedK" fill={COLORS.blue} name="Confirmed Received" radius={[2, 2, 0, 0]} />
+                <Bar {...FX_BAR} dataKey="quotaK" fill="#94A3B8" name="Monthly Quota" radius={[2, 2, 0, 0]} />
+                <Bar {...FX_BAR} dataKey="confirmedK" fill={COLORS.blue} name="Confirmed Received" radius={[2, 2, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -1248,7 +1248,7 @@ export default function ManagementDashboardPage() {
                 <Tooltip formatter={(val: any) => [`${val}%`, 'On-Time Rate']} />
                 <Legend wrapperStyle={{ fontSize: '11.5px' }} />
                 <ReferenceLine y={95} stroke={COLORS.green} strokeDasharray="4 4" label={{ value: 'Target 95%', position: 'top', fill: COLORS.green, fontSize: 10 }} />
-                <Bar {...FX_SERIES} dataKey="onTimePct" fill={COLORS.green} name="On-Time Delivery %" radius={[2, 2, 0, 0]} />
+                <Bar {...FX_BAR} dataKey="onTimePct" fill={COLORS.green} name="On-Time Delivery %" radius={[2, 2, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -1320,11 +1320,11 @@ export default function ManagementDashboardPage() {
                 <YAxis dataKey="category" type="category" tick={{ fontSize: 11, fontWeight: 700 }} width={70} />
                 <Tooltip formatter={(val: any) => [`${Number(val).toFixed(2)}`, '']} />
                 <Legend wrapperStyle={{ fontSize: '10.5px' }} />
-                <Bar {...FX_SERIES} dataKey="fabricCostPc" stackId="a" fill={COLORS.cyan} name="Fabric" />
-                <Bar {...FX_SERIES} dataKey="cmPc" stackId="a" fill={COLORS.green} name="CM Earning" />
-                <Bar {...FX_SERIES} dataKey="trimsCostPc" stackId="a" fill={COLORS.amber} name="Trims/Print/Emb" />
-                <Bar {...FX_SERIES} dataKey="overheadPc" stackId="a" fill="#64748B" name="Overhead" />
-                <Bar {...FX_SERIES} dataKey="marginPc" stackId="a" fill={COLORS.purple} name="Margin" radius={[0, 2, 2, 0]} />
+                <Bar {...FX_BAR} dataKey="fabricCostPc" stackId="a" fill={COLORS.cyan} name="Fabric" />
+                <Bar {...FX_BAR} dataKey="cmPc" stackId="a" fill={COLORS.green} name="CM Earning" />
+                <Bar {...FX_BAR} dataKey="trimsCostPc" stackId="a" fill={COLORS.amber} name="Trims/Print/Emb" />
+                <Bar {...FX_BAR} dataKey="overheadPc" stackId="a" fill="#64748B" name="Overhead" />
+                <Bar {...FX_BAR} dataKey="marginPc" stackId="a" fill={COLORS.purple} name="Margin" radius={[0, 2, 2, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -1440,7 +1440,7 @@ export default function ManagementDashboardPage() {
               <YAxis tick={{ fontSize: 11 }} unit="T" />
               <Tooltip formatter={(val: any) => [`${val} Tons`, 'Volume']} />
               <Legend wrapperStyle={{ fontSize: '11.5px' }} />
-              <Bar {...FX_SERIES} dataKey="volume" fill={COLORS.teal} name="Inventory & Flow Volume (Tons)" radius={[2, 2, 0, 0]} />
+              <Bar {...FX_BAR} dataKey="volume" fill={COLORS.teal} name="Inventory & Flow Volume (Tons)" radius={[2, 2, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -1610,7 +1610,7 @@ export default function ManagementDashboardPage() {
                 <Tooltip formatter={(val: any) => [`${val}%`, 'Achievement']} />
                 <Legend wrapperStyle={{ fontSize: '11.5px' }} />
                 <ReferenceLine y={100} stroke="#64748B" strokeDasharray="3 3" label={{ value: '100% Target', position: 'top', fill: '#64748B', fontSize: 10 }} />
-                <Bar {...FX_SERIES} dataKey="actual" fill={COLORS.blue} name="Daily Output Achieved %" radius={[2, 2, 0, 0]} />
+                <Bar {...FX_BAR} dataKey="actual" fill={COLORS.blue} name="Daily Output Achieved %" radius={[2, 2, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -1627,7 +1627,7 @@ export default function ManagementDashboardPage() {
                 <YAxis tick={{ fontSize: 11 }} unit="%" />
                 <Tooltip formatter={(val: any) => [`${val}%`, '']} />
                 <Legend wrapperStyle={{ fontSize: '11.5px' }} />
-                <Bar {...FX_SERIES} dataKey="dhuRate" fill={COLORS.amber} name="Defect / DHU %" radius={[2, 2, 0, 0]} />
+                <Bar {...FX_BAR} dataKey="dhuRate" fill={COLORS.amber} name="Defect / DHU %" radius={[2, 2, 0, 0]} />
                 <Line {...FX_SERIES} type="monotone" dataKey="passRate" stroke={COLORS.green} strokeWidth={2.5} name="Quality Pass %" />
               </ComposedChart>
             </ResponsiveContainer>
@@ -1678,7 +1678,7 @@ export default function ManagementDashboardPage() {
               </div>
               <ResponsiveContainer width="100%" height={170}>
                 <PieChart>
-                  <Pie {...FX_SERIES}
+                  <Pie {...FX_PIE}
                     data={dyeingRftPieData}
                     cx="50%"
                     cy="50%"

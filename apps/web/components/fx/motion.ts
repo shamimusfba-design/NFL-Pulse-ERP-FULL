@@ -22,7 +22,7 @@ export function prefersReducedMotion(): boolean {
 
 /**
  * Spread onto every Recharts <Bar>, <Line>, <Area>, <Pie>, <Radar> ... :
- *   <Bar {...FX_SERIES} dataKey="x" />
+ *   <Line {...FX_SERIES} dataKey="x" />   (Bar uses FX_BAR, Pie uses FX_PIE — see FxShapes.tsx)
  * Charts only mount client-side (after they scroll into view), so reading
  * matchMedia at module load is safe — no hydration mismatch.
  */

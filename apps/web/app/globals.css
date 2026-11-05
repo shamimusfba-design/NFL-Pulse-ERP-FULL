@@ -1351,8 +1351,8 @@ tbody tr {
 [data-fx] .fx-hbar    { transform-origin: 0 50%; }
 [data-fx="out"] .fx-bar  { transform: scaleY(0); opacity: 0; }
 [data-fx="out"] .fx-hbar { transform: scaleX(0); opacity: 0; }
-[data-fx="in"]  .fx-bar  { animation: fxGrowY .95s var(--fx-ease) calc(var(--fx-i, 0) * var(--fx-step)) both; }
-[data-fx="in"]  .fx-hbar { animation: fxGrowX 1s var(--fx-ease) calc(var(--fx-i, 0) * var(--fx-step)) both; }
+[data-fx="in"]  .fx-bar  { animation: fxGrowY .95s var(--fx-ease) calc(var(--fx-i, 0) * var(--fx-step)) backwards; }
+[data-fx="in"]  .fx-hbar { animation: fxGrowX 1s var(--fx-ease) calc(var(--fx-i, 0) * var(--fx-step)) backwards; }
 
 [data-fx="out"] .fx-line { stroke-dasharray: 1; stroke-dashoffset: 1; }
 [data-fx="in"]  .fx-line { stroke-dasharray: 1; stroke-dashoffset: 0; animation: fxDraw 1.3s var(--fx-ease-soft) calc(var(--fx-i, 0) * 120ms) both; }
@@ -1368,7 +1368,7 @@ tbody tr {
 [data-fx="in"]  .fx-label { animation: fxRise .6s var(--fx-ease) calc(.5s + var(--fx-i, 0) * 80ms) both; }
 
 [data-fx="out"] .fx-donut-seg { stroke-dasharray: 0 var(--fx-c); }
-[data-fx="in"]  .fx-donut-seg { animation: fxDonut 1.15s var(--fx-ease-soft) calc(var(--fx-i, 0) * 140ms) both; }
+[data-fx="in"]  .fx-donut-seg { animation: fxDonut 1.15s var(--fx-ease-soft) calc(var(--fx-i, 0) * 140ms) backwards; }
 [data-fx="out"] .fx-donut-center { opacity: 0; transform: scale(.85); }
 [data-fx="in"]  .fx-donut-center { animation: erpFadeScale .8s var(--fx-ease) .35s both; }
 
@@ -1429,7 +1429,7 @@ tbody tr {
 /* CSS horizontal bars (.hbar-list rows, progress fills): animated automatically — no code needed.
    FxEnhancer marks every .hbar-list / [data-fx-scope] with data-fx="in|out" as it scrolls in/out. */
 [data-fx="out"] .hbar-row i { transform: scaleX(0); transform-origin: 0 50%; opacity: 0; }
-[data-fx="in"]  .hbar-row i { transform-origin: 0 50%; animation: fxGrowX 1s var(--fx-ease) both; }
+[data-fx="in"]  .hbar-row i { transform-origin: 0 50%; animation: fxGrowX 1s var(--fx-ease) backwards; }
 [data-fx="in"] .hbar-row:nth-child(2) i { animation-delay: 60ms; }
 [data-fx="in"] .hbar-row:nth-child(3) i { animation-delay: 120ms; }
 [data-fx="in"] .hbar-row:nth-child(4) i { animation-delay: 180ms; }
@@ -1448,3 +1448,14 @@ tbody tr {
 @media (prefers-reduced-motion: reduce) {
   [data-fx] .hbar-row i { animation: none !important; transform: none !important; opacity: 1 !important; }
 }
+
+/* ---- Recharts bars (FxBarShape): gradient + staggered rise, rebuild on value change ---- */
+.fx-rbar { transform-box: fill-box; transform-origin: 50% 100%; animation: fxGrowY .9s var(--fx-ease) calc(var(--fx-i, 0) * 55ms) backwards; transition: opacity .2s ease, filter .2s ease; }
+.fx-rbar-h { transform-origin: 0 50%; animation-name: fxGrowX; }
+.recharts-bar-rectangles:has(.fx-rbar:hover) .fx-rbar:not(:hover) { opacity: .42; }
+.fx-rbar:hover { filter: brightness(1.1) saturate(1.2) drop-shadow(0 4px 8px rgba(15, 23, 42, .22)); }
+/* lines: soft glow; areas: gentle */
+.recharts-line-curve { filter: drop-shadow(0 3px 5px rgba(15, 23, 42, .16)); }
+.recharts-pie-sector path, .recharts-sector { stroke: var(--surface-card, #fff); stroke-width: 1.5px; }
+[data-theme="dark"] .recharts-sector { stroke: #0f172a; }
+@media (prefers-reduced-motion: reduce) { .fx-rbar { animation: none !important; } }

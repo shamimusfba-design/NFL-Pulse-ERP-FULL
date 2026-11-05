@@ -17,7 +17,7 @@ import {
   Pie,
   Cell
 } from 'recharts';
-import { FX_SERIES, FxResponsiveContainer as ResponsiveContainer } from '../../components/fx';
+import { FX_SERIES, FX_BAR, FX_PIE, FxResponsiveContainer as ResponsiveContainer } from '../../components/fx';
 
 type GarmentSection = 'overview' | 'cutting' | 'printing' | 'embroidery' | 'sewing' | 'finishing' | 'defects';
 type QualityStatus = 'Passed' | 'Failed' | 'Hold' | 'Rework' | 'Pending';
@@ -641,8 +641,8 @@ export default function GarmentsQualityPage() {
                     <YAxis tick={{ fontSize: 12, fill: '#64748b' }} unit="%" />
                     <Tooltip />
                     <Legend wrapperStyle={{ fontSize: '12px' }} />
-                    <Bar {...FX_SERIES} dataKey="dhu" name="Actual DHU (%)" fill="#2563eb" radius={[4, 4, 0, 0]} />
-                    <Bar {...FX_SERIES} dataKey="target" name="Target Benchmark (%)" fill="#94a3b8" radius={[4, 4, 0, 0]} />
+                    <Bar {...FX_BAR} dataKey="dhu" name="Actual DHU (%)" fill="#2563eb" radius={[4, 4, 0, 0]} />
+                    <Bar {...FX_BAR} dataKey="target" name="Target Benchmark (%)" fill="#94a3b8" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -658,7 +658,7 @@ export default function GarmentsQualityPage() {
               <div style={{ height: '240px', display: 'flex', alignItems: 'center' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie {...FX_SERIES}
+                    <Pie {...FX_PIE}
                       data={defectPieData}
                       dataKey="value"
                       nameKey="name"

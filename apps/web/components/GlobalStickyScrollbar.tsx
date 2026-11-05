@@ -92,7 +92,7 @@ export default function GlobalStickyScrollbar() {
 
   return (
     <div
-      className="global-sticky-hscroll-container"
+      data-fx-ignore="" className="global-sticky-hscroll-container"
       style={{
         position: 'fixed',
         bottom: 0,

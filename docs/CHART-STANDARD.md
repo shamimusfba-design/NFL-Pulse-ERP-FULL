@@ -8,8 +8,10 @@ Claude Code, Google AI Studio) adding or fixing a chart gets the same effect aut
 | Element | Effect |
 |---|---|
 | Any chart | Nothing plays until it scrolls into view; then it draws itself. Scroll away and back → plays again from zero. |
-| Donut | Segments sweep clockwise one after another; centre number counts up. Hover: the hovered slice lifts, the rest dim. |
-| Column / bar | Bars grow from the baseline with a small stagger. Hover: hovered bar brightens, others dim. |
+| Donut | Sweeps clockwise from 12 o'clock; centre number counts up. Hover: the hovered slice pops out with a shadow, the rest dim. |
+| KPI / summary card | Rises and fades in with a stagger when it scrolls into view (automatic for any framed card that holds a KPI number). |
+| Any div / i bar or progress bar | Grows from its base automatically (FxEnhancer detects coloured bars sized by inline width/height). Mark a container `data-fx-ignore` to opt out. |
+| Column / bar | Gradient fill; bars rise from the baseline one after another; a bar whose value changes (filter) rebuilds from zero. Hover: hovered bar brightens, others dim. |
 | Line / area | The line draws left → right, area fades in, points pop, value labels rise. |
 | KPI number | Counts up from 0 (keeps commas, decimals, %, units). When a filter changes the value it glides old → new. |
 | Horizontal CSS bars (`.hbar-list`) | Grow from the left with a stagger — automatic. |
@@ -24,16 +26,18 @@ in the last block of `app/globals.css`.
 ### 1. Recharts charts
 ```tsx
 import { BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
-import { FX_SERIES, FxResponsiveContainer as ResponsiveContainer } from '<path>/components/fx';
+import { FX_SERIES, FX_BAR, FX_PIE, FxResponsiveContainer as ResponsiveContainer } from '<path>/components/fx';
 
 <ResponsiveContainer width="100%" height={260}>
   <BarChart data={rows}>
-    <Bar {...FX_SERIES} dataKey="value" />   {/* every Bar / Line / Area / Pie / Radar / Scatter */}
+    <Bar {...FX_BAR} dataKey="value" />      {/* every <Bar> */}
   </BarChart>
 </ResponsiveContainer>
+<Pie {...FX_PIE} … />                       {/* every <Pie> */}
+<Line {...FX_SERIES} … />                   {/* every Line / Area / Radar / Scatter */}
 ```
 * **Never** import `ResponsiveContainer` from `recharts` — use `FxResponsiveContainer` (it handles scroll-in + replay).
-* **Always** spread `{...FX_SERIES}` on every series element.
+* `FX_BAR` = gradient + staggered rise shape, `FX_PIE` = clockwise sweep + hover pop-out, `FX_SERIES` = standard draw timing.
 
 ### 2. Hand-built SVG / div charts
 ```tsx
@@ -54,7 +58,7 @@ Tag the marks (all defined in `globals.css`):
 | donut centre text | `fx-donut-center` | |
 
 ### 3. KPI numbers
-Automatic when the number sits in one of the known KPI containers (`FxEnhancer.tsx → KPI_SELECTORS`:
+Automatic for any standalone number with font-size ≥ 18px (e.g. `989 <span>Tons</span>`), and when the number sits in one of the known KPI containers (`FxEnhancer.tsx → KPI_SELECTORS`:
 `.ie-kpi-row strong`, `.overview-card-grid strong`, `.summary-metric-grid strong`, `.metric-value`, …).
 For a custom card add `data-fx-count` to the element that holds the number. In React code you can also
 use `<CountUp value={…} />`.

@@ -3,7 +3,7 @@
 //   node scripts/check-chart-standard.mjs --strict   -> exit 1 if anything violates the standard
 // Rules (see docs/CHART-STANDARD.md):
 //   1. Never import ResponsiveContainer from 'recharts' — use FxResponsiveContainer from components/fx.
-//   2. Every Recharts <Bar>/<Line>/<Area>/<Pie>/<Radar>/<Scatter> must spread {...FX_SERIES}.
+//   2. Recharts: <Bar {...FX_BAR}>, <Pie {...FX_PIE}>, <Line|Area|Radar|Scatter {...FX_SERIES}>.
 //   3. Hand-built SVG donuts/lines must use useFxScope + fx-* classes.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
@@ -37,9 +37,10 @@ function check(file) {
         // multi-line tags: look ahead up to the closing '>' of this tag
         const end = src.indexOf('>', m.index);
         const chunk = src.slice(m.index, end + 1);
-        if (!chunk.includes('FX_SERIES')) {
+        const need = tag === 'Bar' ? 'FX_BAR' : tag === 'Pie' ? 'FX_PIE' : 'FX_SERIES';
+        if (!chunk.includes(need)) {
           const line = src.slice(0, m.index).split('\n').length;
-          problems.push(`${rel}:${line}: <${tag}> is missing {...FX_SERIES}`);
+          problems.push(`${rel}:${line}: <${tag}> is missing {...${need}}`);
         }
       }
     }

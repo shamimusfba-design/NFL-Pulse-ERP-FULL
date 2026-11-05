@@ -12,7 +12,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 ## NOS chart & card motion standard (mandatory)
 
 Every chart, KPI number and card must follow `docs/CHART-STANDARD.md` (shared code in `components/fx/`):
-* Recharts: use `FxResponsiveContainer` (import as `ResponsiveContainer` from `components/fx`) and spread `{...FX_SERIES}` on every `Bar/Line/Area/Pie/Radar/Scatter`. Never import `ResponsiveContainer` from `recharts`.
+* Recharts: use `FxResponsiveContainer` (import as `ResponsiveContainer` from `components/fx`) and spread `{...FX_BAR}` on every `Bar`, `{...FX_PIE}` on every `Pie`, `{...FX_SERIES}` on every `Line/Area/Radar/Scatter`. Never import `ResponsiveContainer` from `recharts`.
 * Hand-built SVG/div charts: `useFxScope()` on the root + `fx-*` classes on the marks.
 * KPI numbers: `data-fx-count` or one of the KPI container classes.
 * Run `npm run check:charts` before committing.

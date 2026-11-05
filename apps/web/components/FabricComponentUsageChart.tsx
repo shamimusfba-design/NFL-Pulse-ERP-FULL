@@ -13,7 +13,7 @@ import {
   Pie,
   Cell
 } from 'recharts';
-import { FX_SERIES, FxResponsiveContainer as ResponsiveContainer } from './fx';
+import { FX_SERIES, FX_BAR, FX_PIE, FxResponsiveContainer as ResponsiveContainer } from './fx';
 
 interface ExecutionRow {
   buyer: string;
@@ -422,21 +422,21 @@ export default function FabricComponentUsageChart({ executionRows }: Props) {
                   />
                   {metricView === 'required' ? (
                     <>
-                      <Bar {...FX_SERIES}
+                      <Bar {...FX_BAR}
                         dataKey="bodyReq"
                         name="Body Required"
                         stackId={chartMode === 'stacked' ? 'a' : undefined}
                         fill={COMPONENT_COLORS.body}
                         radius={chartMode === 'stacked' ? [0, 0, 0, 0] : [4, 4, 0, 0]}
                       />
-                      <Bar {...FX_SERIES}
+                      <Bar {...FX_BAR}
                         dataKey="ribReq"
                         name="L Rib Required"
                         stackId={chartMode === 'stacked' ? 'a' : undefined}
                         fill={COMPONENT_COLORS.rib}
                         radius={chartMode === 'stacked' ? [0, 0, 0, 0] : [4, 4, 0, 0]}
                       />
-                      <Bar {...FX_SERIES}
+                      <Bar {...FX_BAR}
                         dataKey="sjerseyReq"
                         name="S.Jersey Required"
                         stackId={chartMode === 'stacked' ? 'a' : undefined}
@@ -446,21 +446,21 @@ export default function FabricComponentUsageChart({ executionRows }: Props) {
                     </>
                   ) : (
                     <>
-                      <Bar {...FX_SERIES}
+                      <Bar {...FX_BAR}
                         dataKey="bodyDye"
                         name="Body Dyed"
                         stackId={chartMode === 'stacked' ? 'a' : undefined}
                         fill={COMPONENT_COLORS.body}
                         radius={chartMode === 'stacked' ? [0, 0, 0, 0] : [4, 4, 0, 0]}
                       />
-                      <Bar {...FX_SERIES}
+                      <Bar {...FX_BAR}
                         dataKey="ribDye"
                         name="L Rib Dyed"
                         stackId={chartMode === 'stacked' ? 'a' : undefined}
                         fill={COMPONENT_COLORS.rib}
                         radius={chartMode === 'stacked' ? [0, 0, 0, 0] : [4, 4, 0, 0]}
                       />
-                      <Bar {...FX_SERIES}
+                      <Bar {...FX_BAR}
                         dataKey="sjerseyDye"
                         name="S.Jersey Dyed"
                         stackId={chartMode === 'stacked' ? 'a' : undefined}
@@ -492,7 +492,7 @@ export default function FabricComponentUsageChart({ executionRows }: Props) {
             {mounted ? (
               <ResponsiveContainer width="100%" height="100%" minWidth={200}>
                 <PieChart>
-                  <Pie {...FX_SERIES}
+                  <Pie {...FX_PIE}
                     data={pieChartData}
                     cx="50%"
                     cy="50%"

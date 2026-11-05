@@ -19,8 +19,9 @@ export function CountUp({ value, duration = FX.countDuration }: { value: number 
   useEffect(() => {
     if (!parsed || prefersReducedMotion()) { setShown(text); return; }
     if (!inView) { setShown(formatNumberLike(parsed, 0)); return; }
-    const t0 = performance.now();
+    let t0 = -1;
     const tick = (now: number) => {
+      if (t0 < 0) t0 = now;
       const k = Math.min(1, (now - t0) / duration);
       setShown(formatNumberLike(parsed, parsed.value * easeOutExpo(k)));
       if (k < 1) raf.current = requestAnimationFrame(tick);
