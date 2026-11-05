@@ -398,83 +398,24 @@ export default function Dashboard() {
 
   return (
     <Shell title="Executive Dashboard" eyebrow="Daily Operational Factory Execution">
-      {/* Dashboard Hero */}
-      <section className="dashboard-hero">
-        <div>
-          <div className="hero-kicker">Operations Dashboard</div>
-          <h2>Executive Operational Dashboard & Factory Execution</h2>
-          <p>Real-time factory floor KPIs, daily production targets, WIP & critical order follow-up.</p>
-        </div>
-        <div className="hero-actions">
-          <Link className="btn btn-primary" href="/jobs">Job 360</Link>
-          <Link className="btn btn-ghost" href="/tasks">Tasks Board</Link>
-        </div>
-      </section>
-
-      {/* NOS MERCHANDISING PROMINENT CALLOUT BANNER */}
-      <div style={{
-        background: 'linear-gradient(90deg, #091224 0%, #1e293b 100%)',
-        borderRadius: '12px',
-        padding: '14px 20px',
-        margin: '16px 0',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '12px',
-        border: '1px solid #334155',
-        boxShadow: '0 4px 14px rgba(0,0,0,0.12)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span className="nos-brand-badge" style={{ fontSize: '13px', padding: '4px 10px' }}>NOS</span>
-          <div>
-            <div style={{ color: '#ffffff', fontWeight: 800, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>Northern Operating System — Merchandising Command Center</span>
-              <span style={{ fontSize: '9.5px', background: '#3b82f6', color: '#fff', padding: '1px 6px', borderRadius: '4px', fontWeight: 900 }}>PHASE 01 READY</span>
-            </div>
-            <div style={{ color: '#94a3b8', fontSize: '11.5px', marginTop: '2px' }}>
-              Control tower with strict merchandiser-buyer access, 8 colorful KPI cards, 9-stage live pipeline &amp; brand quota matrix.
-            </div>
-          </div>
-        </div>
-        <Link
-          href="/merchandising"
-          style={{
-            background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-            color: '#ffffff',
-            padding: '8px 18px',
-            borderRadius: '8px',
-            fontSize: '12px',
-            fontWeight: 800,
-            textDecoration: 'none',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            boxShadow: '0 2px 8px rgba(37,99,235,0.4)'
-          }}
-        >
-          <span>⚡ Launch NOS Command Center</span>
-          <span>→</span>
-        </Link>
-      </div>
-
-      {/* MANAGEMENT VIEW SWITCHER TABS */}
-      <section style={{ display: 'flex', gap: '8px', margin: '14px 0 16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px', flexWrap: 'wrap' }}>
+      {/* EXECUTIVE TOP VIEW SWITCHER TABS - DIRECTLY AT THE TOP */}
+      <section style={{ display: 'flex', gap: '8px', margin: '4px 0 16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px', flexWrap: 'wrap' }}>
         <button
           type="button"
           onClick={() => setMainView('EXECUTIVE_KPI')}
           style={{
             padding: '8px 16px',
             borderRadius: '8px',
-            border: 'none',
-            background: mainView === 'EXECUTIVE_KPI' ? '#2563eb' : '#f1f5f9',
-            color: mainView === 'EXECUTIVE_KPI' ? '#fff' : '#475569',
+            border: mainView === 'EXECUTIVE_KPI' ? '1px solid #0284c7' : '1px solid #e2e8f0',
+            background: mainView === 'EXECUTIVE_KPI' ? '#0F274E' : '#ffffff',
+            color: mainView === 'EXECUTIVE_KPI' ? '#ffffff' : '#334155',
             fontWeight: 800,
             fontSize: '12px',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
+            boxShadow: mainView === 'EXECUTIVE_KPI' ? '0 2px 4px rgba(15,39,78,0.15)' : 'none',
             transition: 'all .15s ease'
           }}
         >
@@ -486,12 +427,13 @@ export default function Dashboard() {
           style={{
             padding: '8px 16px',
             borderRadius: '8px',
-            border: 'none',
-            background: mainView === 'REGISTER' ? '#2563eb' : '#f1f5f9',
-            color: mainView === 'REGISTER' ? '#fff' : '#475569',
+            border: mainView === 'REGISTER' ? '1px solid #0284c7' : '1px solid #e2e8f0',
+            background: mainView === 'REGISTER' ? '#0F274E' : '#ffffff',
+            color: mainView === 'REGISTER' ? '#ffffff' : '#334155',
             fontWeight: 800,
             fontSize: '12px',
             cursor: 'pointer',
+            boxShadow: mainView === 'REGISTER' ? '0 2px 4px rgba(15,39,78,0.15)' : 'none',
             transition: 'all .15s ease'
           }}
         >
@@ -503,15 +445,16 @@ export default function Dashboard() {
           style={{
             padding: '8px 16px',
             borderRadius: '8px',
-            border: 'none',
-            background: mainView === 'PHYSICAL_BOARD' ? '#2563eb' : '#f1f5f9',
-            color: mainView === 'PHYSICAL_BOARD' ? '#fff' : '#475569',
+            border: mainView === 'PHYSICAL_BOARD' ? '1px solid #0284c7' : '1px solid #e2e8f0',
+            background: mainView === 'PHYSICAL_BOARD' ? '#0F274E' : '#ffffff',
+            color: mainView === 'PHYSICAL_BOARD' ? '#ffffff' : '#334155',
             fontWeight: 800,
             fontSize: '12px',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
+            boxShadow: mainView === 'PHYSICAL_BOARD' ? '0 2px 4px rgba(15,39,78,0.15)' : 'none',
             transition: 'all .15s ease'
           }}
         >
@@ -523,15 +466,16 @@ export default function Dashboard() {
           style={{
             padding: '8px 16px',
             borderRadius: '8px',
-            border: 'none',
-            background: mainView === 'BUYER_QUOTA' ? '#2563eb' : '#f1f5f9',
-            color: mainView === 'BUYER_QUOTA' ? '#fff' : '#475569',
+            border: mainView === 'BUYER_QUOTA' ? '1px solid #0284c7' : '1px solid #e2e8f0',
+            background: mainView === 'BUYER_QUOTA' ? '#0F274E' : '#ffffff',
+            color: mainView === 'BUYER_QUOTA' ? '#ffffff' : '#334155',
             fontWeight: 800,
             fontSize: '12px',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
+            boxShadow: mainView === 'BUYER_QUOTA' ? '0 2px 4px rgba(15,39,78,0.15)' : 'none',
             transition: 'all .15s ease'
           }}
         >
@@ -543,15 +487,16 @@ export default function Dashboard() {
           style={{
             padding: '8px 16px',
             borderRadius: '8px',
-            border: 'none',
-            background: mainView === 'FABRIC_MEETING' ? '#2563eb' : '#f1f5f9',
-            color: mainView === 'FABRIC_MEETING' ? '#fff' : '#475569',
+            border: mainView === 'FABRIC_MEETING' ? '1px solid #0284c7' : '1px solid #e2e8f0',
+            background: mainView === 'FABRIC_MEETING' ? '#0F274E' : '#ffffff',
+            color: mainView === 'FABRIC_MEETING' ? '#ffffff' : '#334155',
             fontWeight: 800,
             fontSize: '12px',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
+            boxShadow: mainView === 'FABRIC_MEETING' ? '0 2px 4px rgba(15,39,78,0.15)' : 'none',
             transition: 'all .15s ease'
           }}
         >
