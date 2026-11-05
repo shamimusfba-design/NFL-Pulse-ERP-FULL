@@ -12,8 +12,104 @@ import { Warehouse, Search, MapPin, ArrowRight, X, Check } from 'lucide-react';
 export const FABRIC_RACKS = 20;
 export const FABRIC_SHELVES = 9;
 
-export type ShelfAssignment = { lineId: string; placedOn: string };
-export type RackLocations = Record<string, ShelfAssignment>; // key = shelfId "R01-S1"
+export type ShelfAssignment = { lineId: string; placedOn: string; custom?: string };
+/** key = shelfId "R01-S1" for a rack shelf, or "X:<lineId>" for a place outside the racks (custom text) */
+export type RackLocations = Record<string, ShelfAssignment>;
+export const isShelfKey = (k: string) => /^R\d+-S\d+$/.test(k);
+export const customKey = (lineId: string) => `X:${lineId}`;
+/** Human label for any location key */
+export function locLabel(key: string | undefined, locations: RackLocations): string {
+  if (!key) return '';
+  if (isShelfKey(key)) return shelfLabel(key);
+  return `Other: ${locations[key]?.custom || '—'}`;
+}
+/** Put a colour at a shelf or a custom place; removes its previous location. Returns the new map. */
+export function assignLocation(locations: RackLocations, lineId: string, pick: LocationPick, placedOn: string): RackLocations {
+  const next: RackLocations = {};
+  Object.entries(locations).forEach(([k, a]) => { if (a.lineId !== lineId) next[k] = a; });
+  if (pick.mode === 'shelf' && pick.shelf) next[pick.shelf] = { lineId, placedOn };
+  if (pick.mode === 'other' && pick.other.trim()) next[customKey(lineId)] = { lineId, placedOn, custom: pick.other.trim() };
+  return next;
+}
+export type LocationPick = { mode: 'shelf' | 'other'; rack: string; shelf: string; other: string };
+export const emptyPick = (): LocationPick => ({ mode: 'shelf', rack: '', shelf: '', other: '' });
+export const pickIsValid = (p: LocationPick, locations: RackLocations) =>
+  p.mode === 'shelf' ? !!p.shelf && !locations[p.shelf] : p.other.trim().length > 0;
+export const pickLabel = (p: LocationPick) => (p.mode === 'shelf' ? (p.shelf ? shelfLabel(p.shelf) : '') : p.other.trim() ? `Other: ${p.other.trim()}` : '');
+
+/**
+ * Rack → Shelf dropdowns (taken shelves are shown but cannot be chosen) and an
+ * "Other place" option for fabric kept anywhere outside the 20 racks — typed by the store keeper.
+ */
+export function LocationPicker({
+  locations,
+  value,
+  onChange,
+  lineLabel,
+  compact = false,
+}: {
+  locations: RackLocations;
+  value: LocationPick;
+  onChange: (v: LocationPick) => void;
+  lineLabel?: (lineId: string) => string;
+  compact?: boolean;
+}) {
+  const freeIn = (rack: number) => Array.from({ length: FABRIC_SHELVES }, (_, i) => shelfId(rack, i + 1)).filter(s => !locations[s]).length;
+  const sel = 'border border-slate-400 rounded-md px-2 py-1.5 text-[13px] text-slate-900 bg-white';
+  return (
+    <div className={`flex ${compact ? 'flex-wrap' : 'flex-wrap'} items-center gap-2`}>
+      <select
+        className={sel}
+        value={value.mode === 'other' ? '__other' : value.rack}
+        onChange={e => {
+          const v = e.target.value;
+          if (v === '__other') onChange({ ...value, mode: 'other', rack: '', shelf: '' });
+          else onChange({ ...value, mode: 'shelf', rack: v, shelf: '' });
+        }}
+      >
+        <option value="">Rack…</option>
+        {Array.from({ length: FABRIC_RACKS }, (_, r) => {
+          const f = freeIn(r + 1);
+          return (
+            <option key={r} value={String(r + 1)} disabled={f === 0}>
+              Rack {String(r + 1).padStart(2, '0')} — {f ? `${f} free` : 'full'}
+            </option>
+          );
+        })}
+        <option value="__other">Other place (write it)…</option>
+      </select>
+      {value.mode === 'shelf' && (
+        <select
+          className={sel}
+          value={value.shelf}
+          disabled={!value.rack}
+          onChange={e => onChange({ ...value, shelf: e.target.value })}
+        >
+          <option value="">Shelf…</option>
+          {value.rack &&
+            Array.from({ length: FABRIC_SHELVES }, (_, i) => {
+              const sid = shelfId(Number(value.rack), i + 1);
+              const a = locations[sid];
+              return (
+                <option key={sid} value={sid} disabled={!!a}>
+                  Shelf {i + 1}{a ? ` — taken${lineLabel ? ` (${lineLabel(a.lineId)})` : ''}` : ' — free'}
+                </option>
+              );
+            })}
+        </select>
+      )}
+      {value.mode === 'other' && (
+        <input
+          autoFocus
+          className={`${sel} min-w-[220px]`}
+          placeholder="e.g. Floor near gate 2, Cutting buffer, Bay 3"
+          value={value.other}
+          onChange={e => onChange({ ...value, other: e.target.value })}
+        />
+      )}
+    </div>
+  );
+}
 
 export type RackLine = {
   id: string;
@@ -37,7 +133,7 @@ export const ALL_SHELVES: string[] = Array.from({ length: FABRIC_RACKS }, (_, r)
   Array.from({ length: FABRIC_SHELVES }, (_, s) => shelfId(r + 1, s + 1))
 ).flat();
 
-/** First-time layout: in-store colours placed on shelves in arrival order (newest first), ~80% full. */
+/** (Demo only — no longer used: real placements are entered by the store.) */
 export function seedRackLocations(lines: RackLine[]): RackLocations {
   const inStore = lines
     .filter(l => l.stockBalance > 0.5)
@@ -92,11 +188,18 @@ export default function FabricRackLocation({
     Object.entries(locations).forEach(([sid, a]) => (m[a.lineId] = sid));
     return m;
   }, [locations]);
+  const otherCount = Object.keys(locations).filter(k => !isShelfKey(k)).length;
+  const lineName = (id: string) => { const l = byId.get(id); return l ? `${l.jobNo} ${l.color}` : ''; };
 
   const freeShelves = useMemo(() => ALL_SHELVES.filter(s => !locations[s]), [locations]);
   const inStore = useMemo(() => lines.filter(l => l.stockBalance > 0.5), [lines]);
   const unplaced = useMemo(() => inStore.filter(l => !lineShelf[l.id]), [inStore, lineShelf]);
   const occupied = ALL_SHELVES.length - freeShelves.length;
+  const savePick = (lineId: string, pick: LocationPick) => {
+    if (!pickIsValid(pick, locations)) return;
+    const l = byId.get(lineId);
+    onChange(assignLocation(locations, lineId, pick, today()), `${l?.jobNo} · ${l?.color} → ${pickLabel(pick)}`);
+  };
 
   const q = query.trim().toLowerCase();
   const matches = (sid: string) => {
@@ -189,7 +292,8 @@ export default function FabricRackLocation({
           <span className="px-2.5 py-1 rounded-md border border-slate-300 bg-white text-slate-800">Shelves: {ALL_SHELVES.length}</span>
           <span className="px-2.5 py-1 rounded-md border border-sky-300 bg-sky-50 text-sky-900">Occupied: {occupied}</span>
           <span className="px-2.5 py-1 rounded-md border border-emerald-300 bg-emerald-50 text-emerald-900">Free: {freeShelves.length}</span>
-          <span className="px-2.5 py-1 rounded-md border border-amber-300 bg-amber-50 text-amber-900">In store, not on a rack: {unplaced.length}</span>
+          <span className="px-2.5 py-1 rounded-md border border-violet-300 bg-violet-50 text-violet-900">Other places: {otherCount}</span>
+          <span className="px-2.5 py-1 rounded-md border border-amber-300 bg-amber-50 text-amber-900">In store, location not entered: {unplaced.length}</span>
         </div>
       </div>
 
@@ -404,22 +508,23 @@ export default function FabricRackLocation({
                           <td className="py-2 pr-2 text-right font-semibold text-slate-900">{Math.round(c.stockBalance).toLocaleString()} kg</td>
                           <td className="py-2 pr-2">
                             {sid ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-sky-300 bg-sky-50 text-sky-900 font-bold">
-                                <MapPin className="w-3.5 h-3.5" /> {shelfLabel(sid)}
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border font-bold ${isShelfKey(sid) ? 'border-sky-300 bg-sky-50 text-sky-900' : 'border-violet-300 bg-violet-50 text-violet-900'}`}>
+                                <MapPin className="w-3.5 h-3.5" /> {locLabel(sid, locations)}
                               </span>
                             ) : (
-                              <span className="px-2 py-0.5 rounded-md border border-amber-300 bg-amber-50 text-amber-900 font-bold">Not on a rack</span>
+                              <span className="px-2 py-0.5 rounded-md border border-amber-300 bg-amber-50 text-amber-900 font-bold">Location not entered</span>
                             )}
                           </td>
                           <td className="py-2 pr-2 font-semibold text-slate-800">{sid ? locations[sid].placedOn : '—'}</td>
                           <td className="py-2">
-                            {sid ? (
-                              <button onClick={() => showOnRack(sid, activeJob.jobNo)} className="px-2.5 py-1 rounded-md text-[12.5px] font-bold border border-slate-300 bg-white text-slate-900 hover:bg-slate-50">
-                                Show on rack
-                              </button>
-                            ) : (
-                              <AssignShelf free={freeShelves} onAssign={to => place(to, c.id)} />
-                            )}
+                            <div className="flex flex-col gap-1.5 items-start">
+                              {sid && isShelfKey(sid) && (
+                                <button onClick={() => showOnRack(sid, activeJob.jobNo)} className="px-2.5 py-1 rounded-md text-[12.5px] font-bold border border-slate-400 bg-white text-slate-900 hover:bg-slate-50">
+                                  Show on rack
+                                </button>
+                              )}
+                              <AssignPick locations={locations} lineName={lineName} label={sid ? 'Change' : 'Save'} onSave={pick => savePick(c.id, pick)} />
+                            </div>
                           </td>
                         </tr>
                       );
@@ -435,16 +540,18 @@ export default function FabricRackLocation({
   );
 }
 
-function AssignShelf({ free, onAssign }: { free: string[]; onAssign: (sid: string) => void }) {
-  const [v, setV] = useState('');
+function AssignPick({ locations, onSave, lineName, label }: { locations: RackLocations; onSave: (p: LocationPick) => void; lineName: (id: string) => string; label: string }) {
+  const [v, setV] = useState<LocationPick>(emptyPick());
+  const ok = pickIsValid(v, locations);
   return (
-    <div className="flex gap-1.5">
-      <select value={v} onChange={e => setV(e.target.value)} className="border border-slate-300 rounded-md px-1.5 py-1 text-[12.5px] text-slate-900">
-        <option value="">Free shelf…</option>
-        {free.map(s => <option key={s} value={s}>{shelfLabel(s)}</option>)}
-      </select>
-      <button disabled={!v} onClick={() => onAssign(v)} className="px-2 py-1 rounded-md text-[12.5px] font-bold nos-btn-primary disabled:opacity-50" title="Assign">
-        <Check className="w-4 h-4" />
+    <div className="flex flex-wrap items-center gap-1.5">
+      <LocationPicker locations={locations} value={v} onChange={setV} lineLabel={lineName} compact />
+      <button
+        disabled={!ok}
+        onClick={() => { onSave(v); setV(emptyPick()); }}
+        className="px-2.5 py-1.5 rounded-md text-[12.5px] font-bold nos-btn-primary disabled:opacity-50 inline-flex items-center gap-1"
+      >
+        <Check className="w-4 h-4" /> {label}
       </button>
     </div>
   );

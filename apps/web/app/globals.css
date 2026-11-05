@@ -1536,3 +1536,12 @@ html:not([data-theme="dark"]) .main :is(th,thead td)[class*="bg-purple-9"]{backg
 html:not([data-theme="dark"]) .main :is(th,thead td)[class*="bg-violet-9"]{background-color:#ede9fe !important;color:#5b21b6 !important}
 html:not([data-theme="dark"]) .main :is(th,thead td)[class*="bg-teal-9"]{background-color:#ccfbf1 !important;color:#115e59 !important}
 html:not([data-theme="dark"]) .main :is(th,thead td)[class*="bg-cyan-9"]{background-color:#cffafe !important;color:#155e75 !important}
+
+/* Entrance animations must not leave a transform behind: a lingering transform/will-change turns
+   every pop-up (position:fixed) inside the page into a box positioned relative to the page, so dialogs
+   opened lower down appeared off-centre or cut off. After the animation, nothing remains. */
+.erp-page-entrance, .erp-stagger-container, .erp-stagger-container > *, .erp-chart-card, .erp-card-animated,
+.page-stack > *, .kpi-grid > *, .metric-card, .compact-kpi-card {
+  animation-fill-mode: backwards !important;
+  will-change: auto !important;
+}

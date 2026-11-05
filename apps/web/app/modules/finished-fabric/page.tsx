@@ -46,9 +46,10 @@ import {
   Tooltip,
 } from 'recharts';
 import { FX_SERIES, FX_BAR, FxResponsiveContainer as ResponsiveContainer } from '../../../components/fx';
-import FabricRackLocation, { RackLocations, seedRackLocations, shelfLabel } from '../../../components/fabric/FabricRackLocation';
+import FabricRackLocation, { RackLocations, LocationPicker, LocationPick, emptyPick, pickIsValid, pickLabel, assignLocation, locLabel, isShelfKey } from '../../../components/fabric/FabricRackLocation';
 
-const RACK_STORE_KEY = 'nos-finished-fabric-rack-locations-v1';
+// v2: starts empty — only real placements entered by the store (v1 held an invented demo layout)
+const RACK_STORE_KEY = 'nos-finished-fabric-rack-locations-v2';
 
 // ============================================================================
 // DATA TYPES & INTERFACES
@@ -378,11 +379,8 @@ export default function FinishedFabricPage() {
     if (!rawLines.length) return;
     let stored: RackLocations | null = null;
     try { stored = JSON.parse(localStorage.getItem(RACK_STORE_KEY) || 'null'); } catch { stored = null; }
-    if (stored && typeof stored === 'object' && Object.keys(stored).length) { setRackLoc(stored); return; }
-    const seeded = seedRackLocations(rawLines);
-    setRackLoc(seeded);
-    try { localStorage.setItem(RACK_STORE_KEY, JSON.stringify(seeded)); } catch { /* ignore */ }
-  }, [rawLines]);
+    if (stored && typeof stored === 'object') setRackLoc(stored);
+  }, [rawLines.length > 0]);
   const saveRackLoc = (next: RackLocations, message: string) => {
     setRackLoc(next);
     try { localStorage.setItem(RACK_STORE_KEY, JSON.stringify(next)); } catch { /* storage full or blocked */ }
@@ -760,8 +758,14 @@ export default function FinishedFabricPage() {
     rackLoc: 'F.ST / Rack 14B2',
   });
 
+  const [recvPick, setRecvPick] = useState<LocationPick>(emptyPick());
+  const [verifyTarget, setVerifyTarget] = useState<DyeingChallanItem | null>(null);
+  const [verifyPick, setVerifyPick] = useState<LocationPick>(emptyPick());
+  const lineNameById = (id: string) => { const l = rawLines.find(x => x.id === id); return l ? `${l.jobNo} ${l.color}` : ''; };
+
   const handleOpenReceive = (colorLine: FabricColorLine) => {
     setReceiveModalTarget(colorLine);
+    setRecvPick(emptyPick());
     setReceiveForm({
       challanNo: `CH-${Date.now().toString().slice(-4)}`,
       date: new Date().toISOString().slice(0, 10),
@@ -777,6 +781,7 @@ export default function FinishedFabricPage() {
 
   const handleConfirmReceive = () => {
     if (!receiveModalTarget) return;
+    if (!pickIsValid(recvPick, rackLoc)) { showToast('Choose the rack & shelf (or write the other place) where this fabric is kept'); return; }
 
     const bKg = Number(receiveForm.bodyKg) || 0;
     const rKg = Number(receiveForm.ribKg) || 0;
@@ -799,7 +804,7 @@ export default function FinishedFabricPage() {
       weighedRibKg: rKg,
       rollCount: Number(receiveForm.rollCount) || 1,
       weightDiffKg: Number(diff.toFixed(1)),
-      rackLocation: receiveForm.rackLoc,
+      rackLocation: pickLabel(recvPick),
       shadeApproval: 'Approved',
       inspectionStatus: 'PASS',
       status: 'Accepted',
@@ -828,7 +833,7 @@ export default function FinishedFabricPage() {
       })
     );
 
-    showToast(`Dyeing Challan ${receiveForm.challanNo} successfully accepted! Added ${bKg + rKg} kg to stock.`);
+    saveRackLoc(assignLocation(rackLoc, receiveModalTarget.id, recvPick, receiveForm.date), `Challan ${receiveForm.challanNo} accepted · ${bKg + rKg} kg · kept at ${pickLabel(recvPick)}`);
     setReceiveModalTarget(null);
   };
 
@@ -1167,7 +1172,7 @@ export default function FinishedFabricPage() {
                 activeTab === 'location' ? 'bg-slate-800 text-sky-300' : 'bg-slate-100 text-slate-600'
               }`}
             >
-              {Object.keys(rackLoc).length}/180 Shelves
+              {Object.keys(rackLoc).filter(isShelfKey).length}/180 Shelves
             </span>
           </button>
         </div>
@@ -1699,12 +1704,12 @@ export default function FinishedFabricPage() {
                             <div className="flex flex-col items-center gap-1">
                               <span className="text-[11px] px-1.5 py-0.5 rounded bg-white border border-slate-300 text-slate-800 font-semibold">{c.stockState}</span>
                               {sid ? (
-                                <button onClick={() => openLocation(job.jobNo, 'racks')} className="text-[11px] px-1.5 py-0.5 rounded border border-sky-300 bg-sky-50 text-sky-900 font-bold inline-flex items-center gap-1" title="Show on rack">
-                                  <MapPin className="w-3 h-3" /> {shelfLabel(sid)}
+                                <button onClick={() => openLocation(job.jobNo, isShelfKey(sid) ? 'racks' : 'tracking')} className="text-[11px] px-1.5 py-0.5 rounded border border-sky-300 bg-sky-50 text-sky-900 font-bold inline-flex items-center gap-1" title="Show on rack">
+                                  <MapPin className="w-3 h-3" /> {locLabel(sid, rackLoc)}
                                 </button>
                               ) : c.stockBalance > 0.5 ? (
-                                <button onClick={() => openLocation(job.jobNo, 'tracking')} className="text-[11px] px-1.5 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-900 font-bold" title="Assign a shelf">
-                                  Not on a rack
+                                <button onClick={() => openLocation(job.jobNo, 'tracking')} className="text-[11px] px-1.5 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-900 font-bold" title="Enter the location">
+                                  Location not entered
                                 </button>
                               ) : null}
                             </div>
@@ -1946,7 +1951,7 @@ export default function FinishedFabricPage() {
                                 </span>
                                 {lineShelf[c.id] && (
                                   <button onClick={() => openLocation(job.jobNo, 'racks')} className="block mx-auto mt-1 text-[11px] px-1.5 py-0.5 rounded border border-sky-300 bg-sky-50 text-sky-900 font-bold" title="Show on rack">
-                                    {shelfLabel(lineShelf[c.id])}
+                                    {locLabel(lineShelf[c.id], rackLoc)}
                                   </button>
                                 )}
                               </td>
@@ -2125,12 +2130,7 @@ export default function FinishedFabricPage() {
                           </span>
                         ) : (
                           <button
-                            onClick={() => {
-                              setChallans((prev) =>
-                                prev.map((c) => (c.id === ch.id ? { ...c, status: 'Accepted' } : c))
-                              );
-                              showToast(`Challan ${ch.challanNo} accepted into Godown Stock!`);
-                            }}
+                            onClick={() => { setVerifyTarget(ch); setVerifyPick(emptyPick()); }}
                             className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded text-[10px] font-bold shadow-xs transition-colors"
                           >
                             Verify & Accept
@@ -2405,6 +2405,38 @@ export default function FinishedFabricPage() {
       {/* ===================================================================== */}
       {/* TAB 4: REUSE & LEFTOVER FABRIC */}
       {/* ===================================================================== */}
+      {verifyTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" onClick={() => setVerifyTarget(null)}>
+          <div className="bg-white rounded-xl border border-slate-300 shadow-xl w-full max-w-[560px] p-5" onClick={e => e.stopPropagation()}>
+            <div className="text-[12px] font-bold uppercase tracking-wide text-slate-600">Verify & accept challan</div>
+            <div className="text-[18px] font-extrabold text-slate-900 mb-1">{verifyTarget.challanNo}</div>
+            <div className="text-[13px] font-semibold text-slate-800 mb-4">
+              {verifyTarget.buyer} - {verifyTarget.jobNo} · {verifyTarget.color} · {verifyTarget.rollCount} rolls · {verifyTarget.weighedBodyKg + verifyTarget.weighedRibKg} kg weighed
+            </div>
+            <label className="block text-[13px] font-bold text-slate-900 mb-1.5">Where is it kept? Rack & shelf (or another place)</label>
+            <LocationPicker locations={rackLoc} value={verifyPick} onChange={setVerifyPick} lineLabel={lineNameById} />
+            <div className="flex justify-end gap-2 mt-5">
+              <button onClick={() => setVerifyTarget(null)} className="px-3 py-1.5 rounded-lg text-[13px] font-bold border border-slate-400 bg-white text-slate-900">Cancel</button>
+              <button
+                disabled={!pickIsValid(verifyPick, rackLoc)}
+                onClick={() => {
+                  const ch = verifyTarget;
+                  const label = pickLabel(verifyPick);
+                  setChallans(prev => prev.map(c => (c.id === ch.id ? { ...c, status: 'Accepted', rackLocation: label } : c)));
+                  const line = rawLines.find(l => l.jobNo === ch.jobNo.replace(/^.*?-\s*/, '').trim() && l.color === ch.color) || rawLines.find(l => ch.jobNo.includes(l.jobNo) && l.color === ch.color);
+                  if (line) saveRackLoc(assignLocation(rackLoc, line.id, verifyPick, new Date().toISOString().slice(0, 10)), `Challan ${ch.challanNo} accepted · kept at ${label}`);
+                  else showToast(`Challan ${ch.challanNo} accepted · kept at ${label}`);
+                  setVerifyTarget(null);
+                }}
+                className="px-3 py-1.5 rounded-lg text-[13px] font-bold nos-btn-primary disabled:opacity-50"
+              >
+                Accept & save location
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {activeTab === 'location' && (
         <div className="bg-white rounded-xl border border-slate-200 p-4 mb-5">
           <FabricRackLocation
@@ -2641,13 +2673,8 @@ export default function FinishedFabricPage() {
                   />
                 </div>
                 <div className="col-span-2">
-                  <label className="block font-semibold text-slate-700 mb-1">Warehouse Rack / Bin Location</label>
-                  <input
-                    type="text"
-                    value={receiveForm.rackLoc}
-                    onChange={(e) => setReceiveForm({ ...receiveForm, rackLoc: e.target.value })}
-                    className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded font-semibold focus:bg-white focus:outline-none"
-                  />
+                  <label className="block font-semibold text-slate-700 mb-1">Where is it kept? Rack & shelf (or another place)</label>
+                  <LocationPicker locations={rackLoc} value={recvPick} onChange={setRecvPick} lineLabel={lineNameById} />
                 </div>
               </div>
 
