@@ -376,6 +376,25 @@ header.top {
   box-shadow: 0 2px 4px rgba(15,39,78,0.15) !important;
 }
 
+
+/* NOS: follow-up table full width — request rail sits beside the summary on top; row details open as a right drawer */
+.layout.toprail{align-items:stretch;margin-bottom:12px}
+.layout.toprail{align-items:start}
+.layout.toprail .side.entry:not(.drawer){position:relative !important;top:auto !important;height:auto;max-height:560px;min-height:220px}
+.layout.toprail + .panel .tablewrap table{width:100%}
+.layout.toprail + .panel .tablewrap th,.layout.toprail + .panel .tablewrap td{white-space:normal;padding:6px 7px;font-size:12.5px;line-height:1.3;vertical-align:middle}
+.layout.toprail + .panel .tablewrap th{font-size:11.5px}
+.layout.toprail + .panel .tablewrap td select{max-width:112px;font-size:12px;padding-right:16px}
+.layout.toprail + .panel .tablewrap .chip,.layout.toprail + .panel .tablewrap .st{white-space:normal;line-height:1.25;padding-top:1px;padding-bottom:1px}
+.layout.toprail + .panel .tablewrap td.nx{min-width:140px;max-width:220px}
+.layout.toprail + .panel .tablewrap .sk0{min-width:90px}
+.layout.toprail + .panel .tablewrap td:nth-child(-n+2),.layout.toprail + .panel .tablewrap th:nth-child(-n+2){white-space:nowrap}
+.layout.toprail > div:empty{display:none}
+.layout.toprail:has(> div:empty){grid-template-columns:minmax(0,1fr)}
+.layout.toprail + .panel .tablewrap{max-height:calc(100vh - 140px)}
+.layout.toprail .side.entry.drawer{position:fixed !important;top:0 !important;right:0;bottom:0;left:auto;width:min(560px,96vw);height:100vh;max-height:none;min-height:0;z-index:40;border-radius:0;box-shadow:-14px 0 40px rgba(8,12,18,.22);animation:nosDrawerIn .28s cubic-bezier(.16,1,.3,1)}
+.overlay.open.dr{display:block;position:fixed;inset:0;background:rgba(8,12,18,.35);z-index:39}
+@keyframes nosDrawerIn{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
 </style>
 </head>
 <body>
@@ -1735,22 +1754,20 @@ function samplePage(m){
  ${sel('fcoll','All collections',uniq(inT,g=>String(g.coll||'')),F.coll,c=>'Coll # '+c)}${sel('fmonth','All delivery months',uniq(inT,g=>g.nextDue.slice(0,7)),F.month,monthLabel)}${sel('fms','All merchandising status',MS,F.ms)}${sel('fstage','All present status',STAGES.concat(['All sent','TNA pending','Returned']),F.stage)}${sel('fdst','All delivery status',DSTAT,F.dst)}
  <button class="btn sm" id="fclear">Clear filters</button></div>
  ${active?`<div class="achips">${active}</div>`:''}
- <div class="layout"><div style="min-width:0">
+ <div class="layout toprail"><div style="min-width:0">
  <div class="kpis">${kp.map(([k,v,l,t])=>`<button class="kpi ${t} ${k&&F.quick===k?'on':''}" data-q="${k}"><div class="n">${v}</div><div class="l">${l}</div></button>`).join('')}</div>
  ${VIEW==='followup'?`<div class="minis">
   <div class="panel mini"><div class="ptitle">Merchandising status</div>${donutHTML(mE,mz.length,[n(mz.length),'sample rows'],'ms')}</div>
   <div class="panel mini funnel"><div class="ptitle">Style journey</div>${fun.map(([l,v])=>`<div class="fb"><span>${l}</span><div class="tr"><div style="width:${v/tot*100}%"></div></div><span class="num">${n(v)}</span></div>`).join('')}${buyerSms?`<div class="muted" style="font-size:12px;margin-top:6px">SMS → order: ${wS?Math.round(sP/wS*100):0}% (${sP} of ${wS} SMS styles)</div>`:''}</div>
   <div class="panel mini"><div class="ptitle">Sub-brand-wise</div><div class="scrollbox"><table class="btab"><thead><tr><th>Sub-brand</th><th class="num">Rows</th><th class="num">Open</th><th class="num">Late</th><th class="num">Approved</th></tr></thead><tbody>${sbR.map(([b,o])=>`<tr data-fsub="${esc(b)}" class="${F.sub===b?'sel':''}"><td>${esc(b)}</td><td class="num">${o.s}</td><td class="num">${o.o}</td><td class="num" style="color:var(--bad)">${o.l||''}</td><td class="num">${o.a}</td></tr>`).join('')}</tbody></table></div></div>
   <div class="panel mini"><div class="ptitle">Offer / Dev quota, ${monthLabel(QMONTH)}</div><div class="scrollbox">${qr.map(q=>{const p=q.od?q.used/q.od:1;const col=p>1?'var(--bad)':p>=.8?'var(--warn)':'var(--good)';const lab=q.used>q.od?chip('Over by '+(q.used-q.od),'bad'):q.used===q.od?chip('Full','warn'):chip((q.od-q.used)+' left','good');return `<div class="qrow"><span class="nm">${esc(q.line)} <span class="muted">${q.used}/${q.od}</span></span><div class="tr"><div style="width:${Math.min(100,p*100)}%;background:${col}"></div></div><span>${lab}</span></div>`}).join('')||'<div class="empty">No quota line</div>'}</div></div>
- </div>`:''}
- <div class="panel"><div class="tablewrap"><table class="${VIEW==='followup'?'':'noband'}"><thead>
+ </div>`:''}</div><aside class="panel side entry ${railOpen||!mobile()?'open':''}" id="side"></aside></div><div class="panel"><div class="tablewrap"><table class="${VIEW==='followup'?'':'noband'}"><thead>
   ${VIEW==='followup'?`<tr class="grpband"><th class="g0" colspan="3">Sample</th><th class="gm" colspan="1">Merchandiser</th><th class="gs" colspan="2">Sample Planning</th><th class="g0" colspan="6"></th><th class="gs" colspan="2">Sample Planning</th><th class="gm" colspan="4">Merchandiser</th><th class="gs">Store</th><th class="gs"></th><th class="g0"></th></tr>`:''}
   <tr class="hdr">${VC.map(([k,l,cl,nm,own])=>`<th class="${cl}" data-sort="${k}">${l}${sort.k===k?`<span class="ar">${sort.dir>0?'▲':'▼'}</span>`:''}</th>`).join('')}</tr></thead>
  <tbody>${slice.map(g=>`<tr data-k="${esc(g.key)}" class="${g.key===selKey?'sel':''} ${g.fl.late?'late':''}">${VC.map(([k,,cl])=>`<td class="${cl} ${k==='next'?'nx':''}">${cellHTML(g,k)}</td>`).join('')}</tr>`).join('')}</tbody>
  ${rows.length&&VIEW==='followup'?`<tfoot><tr><td colspan="8"><b>${n(rows.length)} sample rows</b></td><td class="num"><b>${n(rows.reduce((a,g)=>a+g.cols,0))}</b></td><td class="num"><b>${n(rows.reduce((a,g)=>a+g.qty,0))}</b></td><td colspan="11"></td></tr></tfoot>`:''}</table>
  ${rows.length?'':'<div class="empty">No sample row matches. Clear a filter or pick another sample type.</div>'}</div>
- <div class="pager"><span>${rows.length?pageN*PER+1:0}–${Math.min(rows.length,(pageN+1)*PER)} of ${n(rows.length)}</span><span><button class="btn sm" id="pprev" ${pageN?'':'disabled'}>Previous</button> Page ${pageN+1} of ${pages} <button class="btn sm" id="pnext" ${pageN<pages-1?'':'disabled'}>Next</button> <button class="btn sm" id="fexport">Copy for Excel</button></span></div></div>
- </div><aside class="panel side entry ${railOpen||!mobile()?'open':''}" id="side"></aside></div>`;
+ <div class="pager"><span>${rows.length?pageN*PER+1:0}–${Math.min(rows.length,(pageN+1)*PER)} of ${n(rows.length)}</span><span><button class="btn sm" id="pprev" ${pageN?'':'disabled'}>Previous</button> Page ${pageN+1} of ${pages} <button class="btn sm" id="pnext" ${pageN<pages-1?'':'disabled'}>Next</button> <button class="btn sm" id="fexport">Copy for Excel</button></span></div></div>`;
  m.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{TYPE=b.dataset.t;pageN=0;render()});
  m.querySelectorAll('[data-b]').forEach(b=>b.onclick=()=>{F.buyer=b.dataset.b;F.sub='';if(TYPE==='SMS'&&F.buyer&&!hasSmsBuyer(F.buyer))TYPE='all';pageN=0;render()});
  const mb=G('mineBtn');if(mb)mb.onclick=()=>{mine=!mine;pageN=0;render()};
@@ -1786,8 +1803,9 @@ const returnedGroups=()=>GROUPS.filter(g=>g.apr==='Returned');
 function renderRail(){
  const el=G('side');if(!el)return;const mob=mobile();overlay.classList.toggle('open',mob&&railOpen);
  const cur=selKey&&GROUPS.find(g=>g.key===selKey);let mode=railMode;if((mode==='detail'||mode==='tnaform'||mode==='cost')&&!cur)mode='tna';
+ const drawer=!mob&&!!cur&&mode!=='tna';el.classList.toggle('drawer',drawer);overlay.classList.toggle('open',(mob||drawer)&&railOpen);overlay.classList.toggle('dr',drawer&&railOpen);
  const pc=pendingGroups().length;
- el.innerHTML=`<div class="rtabs"><button class="rtab ${mode==='tna'?'on':''}" data-rm="tna">TNA pending<span class="rcnt">${pc}</span></button>${canNew()?`<button class="rtab ${mode==='yarn'?'on':''}" data-rm="yarn">Yarn requisition</button>`:''}${cur&&mode==='cost'?'<button class="rtab on">Cost sheet</button>':''}${cur&&mode==='detail'?'<button class="rtab on">Style detail</button>':''}${cur&&mode==='tnaform'?'<button class="rtab on">Give TNA</button>':''}${mob?'<button class="rtab" data-rm="close" style="margin-left:auto">Close</button>':''}</div><div class="rpane" id="rpane"></div>`;
+ el.innerHTML=`<div class="rtabs"><button class="rtab ${mode==='tna'?'on':''}" data-rm="tna">TNA pending<span class="rcnt">${pc}</span></button>${canNew()?`<button class="rtab ${mode==='yarn'?'on':''}" data-rm="yarn">Yarn requisition</button>`:''}${cur&&mode==='cost'?'<button class="rtab on">Cost sheet</button>':''}${cur&&mode==='detail'?'<button class="rtab on">Style detail</button>':''}${cur&&mode==='tnaform'?'<button class="rtab on">Give TNA</button>':''}${mob||drawer?'<button class="rtab" data-rm="close" style="margin-left:auto">Close ✕</button>':''}</div><div class="rpane" id="rpane"></div>`;
  el.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{const m=b.dataset.rm;if(m==='close'){closeRail();return}selKey=null;PREFILL=null;railMode=m;render()});
  const p=G('rpane');
  if(mode==='tna')tnaList(p);else if(mode==='new')newForm(p);else if(mode==='tnaform')tnaForm(p,cur);else if(mode==='cost')costForm(p,cur);else if(mode==='yarn')yarnForm(p,cur||null);else detail(p,cur);
@@ -2206,16 +2224,14 @@ function page(m){
  <div class="typebar" role="group" aria-label="Buyer"><button class="tbtn ${!F.buyer?'on':''}" data-b=""><b>All buyers</b><span>${n(vis.length)}</span></button>${bList.map(b=>`<button class="tbtn ${F.buyer===b?'on':''}" data-b="${esc(b)}"><b>${esc(b)}</b><span>${bCnt[b]}</span></button>`).join('')}</div>
  <div class="fbar"><input type="search" id="fq" placeholder="Search job, style, merchandiser" value="${esc(F.q)}" aria-label="Search">${sel('fmerch','All merchandisers',uniq(vis,j=>j.merch),F.merch)}${sel('fstage','All workflow stages',stages,F.stage)}${sel('flab','Lab dip: all',['Pending','All approved','Not started'],F.lab)}${sel('fbom','Trims checklist: all',['Not started','Draft','Ready'],F.bom)}${sel('fmonth','All shipment months',uniq(vis,j=>(j.cargo||'').slice(0,7)),F.month,monthLabel)}<label class="muted" style="font-size:12.5px">Ship from <input type="date" id="ffrom" value="${esc(F.from)}"></label><label class="muted" style="font-size:12.5px">to <input type="date" id="fto" value="${esc(F.to)}"></label><button class="btn sm" id="fclear">Clear filters</button></div>
  ${active?`<div class="achips">${active}</div>`:''}
- <div class="layout"><div style="min-width:0">
- <div class="kpis kp11">${kp.map(([k,v,l,t])=>`<button class="kpi ${t} ${F.quick===k?'on':''}" data-q="${k}"><div class="n">${v}</div><div class="l">${l}</div></button>`).join('')}</div>
- <div class="panel"><div class="tablewrap"><table><thead>
+ <div class="layout toprail"><div style="min-width:0">
+ <div class="kpis kp11">${kp.map(([k,v,l,t])=>`<button class="kpi ${t} ${F.quick===k?'on':''}" data-q="${k}"><div class="n">${v}</div><div class="l">${l}</div></button>`).join('')}</div></div><aside class="panel side entry ${railOpen||!mobile()?'open':''}" id="side"></aside></div><div class="panel"><div class="tablewrap"><table><thead>
   <tr class="grpband">${bands.map(b=>`<th class="${GROUPS[b.g][1]}" colspan="${b.n}">${GROUPS[b.g][0]}</th>`).join('')}</tr>
   <tr class="hdr">${COLS.map(([k,l,cl])=>`<th class="${cl} ${cl&&cl.startsWith('sk')?'sk':''}" data-sort="${k}">${l}${sort.k===k?`<span class="ar">${sort.dir>0?'▲':'▼'}</span>`:''}</th>`).join('')}</tr></thead>
  <tbody>${slice.map(j=>`<tr data-k="${esc(j.id)}" class="${j.id===selId?'sel':''} ${j.risk?'late':''}">${COLS.map(([k,,cl])=>`<td class="${cl} ${cl&&cl.startsWith('sk')?'sk':''}">${cellHTML(j,k)}</td>`).join('')}</tr>`).join('')}</tbody>
  ${rows.length?(()=>{const qi=COLS.findIndex(c=>c[0]==='qty');return `<tfoot><tr><td class="sk sk0"><b>${n(rows.length)} jobs</b></td><td colspan="${qi-1}"></td><td class="num"><b>${n(rows.reduce((a,j)=>a+j.qty,0))}</b></td><td colspan="${COLS.length-qi-1}"></td></tr></tfoot>`})():''}</table>
  ${rows.length?'':'<div class="empty">No job matches. Clear a filter.</div>'}</div>
- <div class="pager"><span>${rows.length?pageN*PER+1:0}–${Math.min(rows.length,(pageN+1)*PER)} of ${n(rows.length)}</span><span><button class="btn sm" id="pprev" ${pageN?'':'disabled'}>Previous</button> Page ${pageN+1} of ${pages} <button class="btn sm" id="pnext" ${pageN<pages-1?'':'disabled'}>Next</button> <button class="btn sm" id="fexport">Copy for Excel</button></span></div></div>
- </div><aside class="panel side entry ${railOpen||!mobile()?'open':''}" id="side"></aside></div>`;
+ <div class="pager"><span>${rows.length?pageN*PER+1:0}–${Math.min(rows.length,(pageN+1)*PER)} of ${n(rows.length)}</span><span><button class="btn sm" id="pprev" ${pageN?'':'disabled'}>Previous</button> Page ${pageN+1} of ${pages} <button class="btn sm" id="pnext" ${pageN<pages-1?'':'disabled'}>Next</button> <button class="btn sm" id="fexport">Copy for Excel</button></span></div></div>`;
  bindBar();
  m.querySelectorAll('[data-b]').forEach(b=>b.onclick=()=>{F.buyer=b.dataset.b;pageN=0;render()});
  const q=G('fq');q.oninput=()=>{F.q=q.value;clearTimeout(page.t);page.t=setTimeout(()=>{pageN=0;render();const e=G('fq');e.focus();e.setSelectionRange(e.value.length,e.value.length)},280)};
@@ -2244,8 +2260,9 @@ function pendingFor(u){const L=[];JOBS.forEach(j=>{if(!seeJob(j)&&!['cad','ie','
   if(u.kind==='store'&&j.demo&&bomOf(j).lines.some(l=>l.ord.st==='Ordered'&&num(l.ord.recv)<num(l.ord.qty)))L.push([j,'trims','Update trims and accessories received'])});return L}
 function renderRail(){const el=G('side');if(!el)return;const mob=mobile();overlay.classList.toggle('open',mob&&railOpen);
  const cur=selId&&JOBS.find(j=>j.id===selId);let mode=railMode;if((mode==='job'||mode==='form')&&!cur)mode='tasks';
+ const drawer=!mob&&!!cur&&mode!=='tasks';el.classList.toggle('drawer',drawer);overlay.classList.toggle('open',(mob||drawer)&&railOpen);overlay.classList.toggle('dr',drawer&&railOpen);
  const pc=pendingFor(me).length;
- el.innerHTML=`<div class="rtabs"><button class="rtab ${mode==='tasks'?'on':''}" data-rm="tasks">My pending tasks<span class="rcnt">${pc}</span></button>${cur&&mode==='job'?'<button class="rtab on">Job detail</button>':''}${cur&&mode==='form'?`<button class="rtab on">${esc(FORMNAME[formType]||'Form')}</button>`:''}${mob?'<button class="rtab" data-rm="close" style="margin-left:auto">Close</button>':''}</div><div class="rpane" id="rpane"></div>`;
+ el.innerHTML=`<div class="rtabs"><button class="rtab ${mode==='tasks'?'on':''}" data-rm="tasks">My pending tasks<span class="rcnt">${pc}</span></button>${cur&&mode==='job'?'<button class="rtab on">Job detail</button>':''}${cur&&mode==='form'?`<button class="rtab on">${esc(FORMNAME[formType]||'Form')}</button>`:''}${mob||drawer?'<button class="rtab" data-rm="close" style="margin-left:auto">Close ✕</button>':''}</div><div class="rpane" id="rpane"></div>`;
  el.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{const m=b.dataset.rm;if(m==='close'){closeRail();return}selId=null;formType='';REVIEW=null;railMode=m;render()});
  const p=G('rpane');if(mode==='tasks')tasksPane(p);else if(mode==='job')jobPane(p,cur);else formPane(p,cur)}
 function goTask(id,k){if(k==='trims'){VIEW='trims';TRIMJOB=id;railMode='tasks';selId=null;render();return}if(k==='lab'){VIEW='follow';openRail('job',id);return}if(k==='trims'){VIEW='trims';railMode='tasks';selId=null;render();return}if(k==='bom'){VIEW='bom';openRail('form',id,'bom');return}VIEW='follow';openRail('form',id,k)}
@@ -2601,7 +2618,7 @@ function bomSheetHTML(j){const L=bomOf(j).lines;return `<div class="ps"><h2>NORT
  <div class="sig"><div>Prepared By<br>Merchandiser</div><div>Checked By<br>Team Leader</div><div>Received By<br>Store</div></div></div>`}
 function bomView(m){const vis=JOBS.filter(j=>seeJob(j)&&j.demo&&j.wf.order==='done');const c=s=>vis.filter(j=>j.bomV===s).length;const rows=vis.filter(j=>!F.bom||j.bomV===F.bom);
  m.innerHTML=roleBar()+`<div class="kpis" style="grid-template-columns:repeat(4,minmax(0,1fr))"><button class="kpi" data-bf=""><div class="n">${vis.length}</div><div class="l">Jobs</div></button><button class="kpi warn ${F.bom==='Not started'?'on':''}" data-bf="Not started"><div class="n">${c('Not started')}</div><div class="l">Not started</div></button><button class="kpi ${F.bom==='Draft'?'on':''}" data-bf="Draft"><div class="n">${c('Draft')}</div><div class="l">Draft</div></button><button class="kpi good ${F.bom==='Ready'?'on':''}" data-bf="Ready"><div class="n">${c('Ready')}</div><div class="l">Ready</div></button></div>
- <div class="layout"><div style="min-width:0"><div class="panel"><div class="tablewrap" style="min-height:0"><table class="noband"><thead><tr class="hdr"><th>Job</th><th>Style</th><th>Buyer</th><th>Item</th><th class="num">Order qty</th><th>Checklist</th><th class="num">Items</th><th class="num">Ordered</th><th></th></tr></thead><tbody>${rows.map(j=>{const L=bomOf(j).lines;return `<tr data-bj="${esc(j.id)}" class="${j.id===selId?'sel':''}"><td><b>${esc(j.jobCode)}</b></td><td>${esc(j.style)}</td><td>${esc(j.buyerName)}</td><td>${esc(j.item||'')}</td><td class="num">${n(j.qty)}</td><td>${pill({Ready:'done',Draft:'run','Not started':'wait'}[j.bomV],j.bomV)}</td><td class="num">${L.length}</td><td class="num">${L.filter(l=>l.ord.st==='Ordered').length}</td><td><button class="btn sm primary">Open</button></td></tr>`}).join('')}</tbody></table>${rows.length?'':'<div class="empty">No job here. Jobs appear after the order is confirmed.</div>'}</div></div></div><aside class="panel side entry ${railOpen||!mobile()?'open':''}" id="side"></aside></div>`;
+ <div class="layout toprail"><div style="min-width:0"></div><aside class="panel side entry ${railOpen||!mobile()?'open':''}" id="side"></aside></div><div class="panel"><div class="tablewrap" style="min-height:0"><table class="noband"><thead><tr class="hdr"><th>Job</th><th>Style</th><th>Buyer</th><th>Item</th><th class="num">Order qty</th><th>Checklist</th><th class="num">Items</th><th class="num">Ordered</th><th></th></tr></thead><tbody>${rows.map(j=>{const L=bomOf(j).lines;return `<tr data-bj="${esc(j.id)}" class="${j.id===selId?'sel':''}"><td><b>${esc(j.jobCode)}</b></td><td>${esc(j.style)}</td><td>${esc(j.buyerName)}</td><td>${esc(j.item||'')}</td><td class="num">${n(j.qty)}</td><td>${pill({Ready:'done',Draft:'run','Not started':'wait'}[j.bomV],j.bomV)}</td><td class="num">${L.length}</td><td class="num">${L.filter(l=>l.ord.st==='Ordered').length}</td><td><button class="btn sm primary">Open</button></td></tr>`}).join('')}</tbody></table>${rows.length?'':'<div class="empty">No job here. Jobs appear after the order is confirmed.</div>'}</div></div>`;
  bindBar();m.querySelectorAll('[data-bf]').forEach(b=>b.onclick=()=>{F.bom=F.bom===b.dataset.bf?'':b.dataset.bf;render()});
  m.querySelectorAll('[data-bj]').forEach(tr=>tr.onclick=()=>{openRail('form',tr.dataset.bj,'bom')});
  renderRail()}
