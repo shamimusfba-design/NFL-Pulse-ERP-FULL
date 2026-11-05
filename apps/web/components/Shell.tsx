@@ -245,6 +245,9 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [pendingTasksCount, setPendingTasksCount] = useState<number>(0);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Phone (≤760px): the sidebar is hidden; ☰ opens it as a slide-in drawer instead of collapsing it
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const isPhone = () => typeof window !== 'undefined' && window.matchMedia('(max-width: 760px)').matches;
 
   // Day / Night mode
   useEffect(() => {
@@ -283,7 +286,16 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
     } catch {}
   }, []);
 
+  useEffect(() => { setMobileNavOpen(false); }, [pathname]);
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMobileNavOpen(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [mobileNavOpen]);
+
   const toggleSidebar = () => {
+    if (isPhone()) { setMobileNavOpen(o => !o); return; }
     setSidebarCollapsed(prev => {
       const next = !prev;
       try {
@@ -418,7 +430,8 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
   }, [query]);
 
   return (
-    <div className={`shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+    <div className={`shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${mobileNavOpen ? 'mobile-nav-open' : ''}`}>
+      {mobileNavOpen && <div className="mobile-nav-backdrop" onClick={() => setMobileNavOpen(false)} aria-hidden="true" />}
       <GlobalStickyScrollbar />
 
       {/* Persistent Enterprise Sidebar */}
@@ -804,7 +817,7 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
               title="Securely sign out and terminate ERP session"
             >
               <span>🚪</span>
-              <span>Sign Out</span>
+              <span className="topbar-signout-label">Sign Out</span>
             </button>
 
             {/* Theme Day / Night Toggle at Extreme Right Corner */}

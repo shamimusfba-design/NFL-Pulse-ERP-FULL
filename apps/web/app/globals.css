@@ -1545,3 +1545,57 @@ html:not([data-theme="dark"]) .main :is(th,thead td)[class*="bg-cyan-9"]{backgro
   animation-fill-mode: backwards !important;
   will-change: auto !important;
 }
+
+/* ==========================================================================
+   NOS PHONE STANDARD (≤760px) — applies to every page; desktop is untouched.
+   See docs/MOBILE-STANDARD.md
+   ========================================================================== */
+.pwa-update-bar{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:100;display:flex;align-items:center;gap:12px;background:#0f274e;color:#fff;padding:10px 14px;border-radius:10px;box-shadow:0 10px 30px rgba(15,23,42,.3);font-size:14px;font-weight:600;max-width:calc(100vw - 24px)}
+.pwa-update-bar button{border:0;border-radius:8px;padding:6px 12px;background:#38bdf8;color:#0f274e;font-weight:800;cursor:pointer}
+.mobile-nav-backdrop{display:none}
+
+@media (max-width:760px){
+  /* menu: ☰ opens the sidebar as a drawer */
+  .shell.mobile-nav-open .sidebar{display:block !important;position:fixed !important;top:0;left:0;bottom:0;height:100vh;width:min(86vw,300px) !important;z-index:70;opacity:1 !important;visibility:visible !important;pointer-events:auto !important;padding:14px 12px !important;box-shadow:12px 0 40px rgba(8,12,18,.35);animation:nosDrawerSlide .22s cubic-bezier(.16,1,.3,1)}
+  .shell.mobile-nav-open .mobile-nav-backdrop{display:block;position:fixed;inset:0;background:rgba(8,12,18,.45);z-index:69}
+  @keyframes nosDrawerSlide{from{transform:translateX(-30px);opacity:.4}to{transform:none;opacity:1}}
+
+  /* top bar: title row, then a full-width job search, then compact buttons */
+  .main{padding:12px !important;min-width:0;overflow-x:hidden}
+  .topbar{flex-wrap:wrap;gap:10px !important;align-items:center !important;margin-bottom:12px !important}
+  .topbar > div:first-child{flex:1 1 100%;min-width:0}
+  .topbar h1{font-size:20px !important;line-height:1.2 !important;overflow-wrap:anywhere}
+  .topbar .page-eyebrow{font-size:10.5px;line-height:1.3}
+  .top-actions{width:100%;display:flex;flex-wrap:wrap;gap:6px !important;align-items:center}
+  .top-actions > div:first-child{flex:1 1 100%;min-width:0}
+  .top-actions > div:first-child > div:first-child{width:100%;box-sizing:border-box}
+  .top-actions > div:first-child input{flex:1;min-width:0;width:100% !important}
+  .top-actions .topbar-signout-label{display:none}
+  .top-actions .user-badge{max-width:58vw;overflow:hidden}
+  .global-dept-subnav{overflow-x:auto;flex-wrap:nowrap !important;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+
+  /* nothing spills sideways: wide tables scroll inside their own box */
+  .main table{display:block;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .main pre,.main img,.main svg:not(.recharts-surface),.main iframe{max-width:100%}
+
+  /* grids collapse: small repeated tiles -> fitted columns, page layouts -> one column */
+  .main [style*="grid-template-columns:repeat(" i]{grid-template-columns:repeat(auto-fill,minmax(min(100%,150px),1fr)) !important}
+  .main [style*="grid-template-columns" i]:not([style*="grid-template-columns:repeat(" i]){grid-template-columns:minmax(0,1fr) !important}
+  .main .grid-cols-3,.main .grid-cols-4,.main .grid-cols-5,.main .grid-cols-6,.main .grid-cols-7,.main .grid-cols-8,.main .grid-cols-12{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
+  .main [class*="col-span-"]:not([class*="sm:col-span"]):not([class*="md:col-span"]){grid-column:auto / span 1}
+  .main [style*="display:flex" i]:not([style*="nowrap" i]):not([style*="column" i]){flex-wrap:wrap}
+  .main [style*="min-width:" i]{min-width:0 !important}
+  .main [class*="min-w-["]{min-width:0 !important}
+  .main table [class*="min-w-["],.main table [style*="min-width:" i]{min-width:revert !important}
+
+  /* pop-ups use the whole screen */
+  .main .fixed.inset-0{padding:8px !important;align-items:flex-end !important}
+  .main .fixed.inset-0 > div{max-width:100% !important;width:100% !important;max-height:92vh;overflow-y:auto;border-radius:14px 14px 0 0 !important}
+
+  /* fingers, not mouse: bigger targets; 16px inputs stop iPhone from zooming in */
+  .main input:not([type="checkbox"]):not([type="radio"]),.main select,.main textarea{font-size:16px !important;min-height:40px}
+  .main button{min-height:36px}
+
+  /* charts keep a readable height */
+  .main .recharts-responsive-container,.main .fx-chart-slot{min-height:200px}
+}

@@ -17,3 +17,10 @@ Every chart, KPI number and card must follow `docs/CHART-STANDARD.md` (shared co
 * KPI numbers: `data-fx-count` or one of the KPI container classes.
 * Run `npm run check:charts` before committing.
 <!-- END NOS CHART STANDARD -->
+
+<!-- NOS MOBILE STANDARD -->
+## NOS phone & PWA standard (mandatory)
+Every page must stay usable on a phone (≤760px) without changing desktop: follow `docs/MOBILE-STANDARD.md`
+(responsive grids, card layout for floor-used tables, no fixed-width sections, pop-ups as `fixed inset-0` overlays).
+Never cache data or API responses in `public/sw.js`.
+<!-- END NOS MOBILE STANDARD -->
