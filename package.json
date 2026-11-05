@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "npm run dev --workspace=apps/web",
     "build": "npm run build --workspace=apps/web",
+    "publish:hosting": "npm run build && node scripts/prepare-hosting.js && npx firebase-tools deploy --only hosting",
     "lint": "node -e 'process.exit(0)'",
     "db:generate": "npm run prisma:generate -w @nfl/api",
     "db:migrate": "npm run prisma:migrate -w @nfl/api",
