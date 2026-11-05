@@ -33,7 +33,7 @@ interface DepartmentNavConfig {
 const MAIN_NAVIGATION_ITEMS: SidebarItem[] = [
   { id: 'management', name: 'Management Dashboard', href: '/management', requiresManagement: true },
   { id: 'executive', name: 'Executive Dashboard', href: '/' },
-  { id: 'job360', name: 'Job 360', href: '/jobs', badge: '2,000', badgeType: 'primary' },
+  { id: 'job360', name: 'Job 360', href: '/jobs' },
   { id: 'tasks', name: 'My Pending Work', href: '/tasks' },
 ];
 
