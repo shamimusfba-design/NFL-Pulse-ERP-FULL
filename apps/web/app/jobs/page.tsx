@@ -40,6 +40,16 @@ import {
   FileSpreadsheet,
   ToggleLeft,
   ToggleRight,
+  Maximize2,
+  ZoomIn,
+  ZoomOut,
+  X,
+  Palette,
+  Check,
+  ShieldCheck,
+  FileText,
+  BarChart2,
+  HelpCircle,
 } from 'lucide-react';
 
 const COLORS = {
@@ -68,36 +78,37 @@ function fmt(num: any, decimals = 0): string {
 function d2(dateStr: any) {
   if (!dateStr || dateStr === '—') return '—';
   const s = String(dateStr).trim();
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
-    const d = new Date(s);
-    if (!isNaN(d.getTime())) {
-      const day = String(d.getDate()).padStart(2, '0');
-      const m = d.toLocaleString('en-US', { month: 'short' });
-      const yr = String(d.getFullYear()).slice(-2);
-      return `${day}-${m}-${yr}`;
-    }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const [y, m, d] = s.split('-');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${d}-${months[parseInt(m, 10) - 1]}-${y}`;
   }
-  return s.replace(/20(\d{2})/g, '$1');
+  return s;
 }
 
-const SUB_SECTIONS = [
-  { id: 'section-job-info', label: '1. Job Information', icon: '📋' },
-  { id: 'section-planning-input', label: '2. Planning Input', icon: '⏱️' },
-  { id: 'section-production-status', label: '3. Total Production Status', icon: '📊' },
-  { id: 'section-knitting-input', label: '4. Knitting Input', icon: '⚙️' },
-  { id: 'section-dyeing-input', label: '5. Dyeing & Special Process', icon: '🧪' },
-  { id: 'section-lab-input', label: '6. Dyeing Lab (Lab Dip)', icon: '🔬' },
-  { id: 'section-testing-lab', label: '7. Testing Lab', icon: '📑' },
-  { id: 'section-cutting', label: '8. Cutting & CAD Adjustment', icon: '✂️' },
-  { id: 'section-print', label: '9. Print & Emb', icon: '🎨' },
-  { id: 'section-sewing-finishing', label: '10. Sewing & Finishing', icon: '👕' },
-  { id: 'section-quality', label: '11. Quality & Audits', icon: '🏆' },
+// 11 Official Sub-Sections of Job 360
+export const SUB_SECTIONS = [
+  { id: 'section-job-info', name: '1. Job Information', icon: Shirt },
+  { id: 'section-planning-input', name: '2. Planning Input', icon: Calendar },
+  { id: 'section-production-status', name: '3. Total Production Status', icon: Activity },
+  { id: 'section-knitting-input', name: '4. Knitting Input', icon: Layers },
+  { id: 'section-dyeing-input', name: '5. Dyeing & Special Process', icon: Droplet },
+  { id: 'section-lab-input', name: '6. Dyeing Lab (Lab Dip)', icon: Sparkles },
+  { id: 'section-testing-lab', name: '7. Testing Lab', icon: FileSpreadsheet },
+  { id: 'section-cutting', name: '8. Cutting & CAD Adjustment', icon: Scissors },
+  { id: 'section-print', name: '9. Print & Embroidery', icon: Flame },
+  { id: 'section-sewing-finishing', name: '10. Sewing & Finishing', icon: TrendingUp },
+  { id: 'section-quality', name: '11. Quality & Audits', icon: Award },
 ];
 
-function Job360Content() {
+export interface Job360Props {
+  initialJobId?: string;
+}
+
+export function Job360Content({ initialJobId }: Job360Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialQ = searchParams.get('q') || searchParams.get('jobNo') || '';
+  const initialQ = initialJobId || searchParams.get('q') || searchParams.get('jobNo') || '';
 
   const masterJobs: any[] = useMemo(() => (demo2000DataRaw as any)?.jobs || [], []);
   const [selectedJobNo, setSelectedJobNo] = useState<string>(initialQ ? String(initialQ).trim() : '46755');
@@ -106,6 +117,10 @@ function Job360Content() {
   const [activeSectionId, setActiveSectionId] = useState<string>('section-job-info');
   const [activeTestModal, setActiveTestModal] = useState<boolean>(false);
   
+  // Garment Photo Lightbox Zoom state
+  const [isImageModalOpen, setIsImageModalOpen] = useState<boolean>(false);
+  const [activeSketchView, setActiveSketchView] = useState<'front' | 'back' | 'techpack'>('front');
+
   // Shrinkage test method toggle: 'tumble' | 'steam'
   const [shrinkageMethod, setShrinkageMethod] = useState<'tumble' | 'steam'>('tumble');
 
@@ -130,6 +145,31 @@ function Job360Content() {
     }
   }, [initialQ]);
 
+  // Handle Search Submission (Press Enter or Click Search Button)
+  const handleSearchSubmit = (overrideVal?: string) => {
+    const raw = (overrideVal !== undefined ? overrideVal : searchQuery).trim();
+    if (!raw) return;
+    const clean = raw.toLowerCase().replace(/^job\s*(#|no\.?|num\.?)?\s*/i, '').replace(/^#\s*/, '').trim();
+
+    // Check exact or partial match in masterJobs
+    const found = masterJobs.find((j: any) => {
+      const jNo = String(j.jobNo || '').toLowerCase().trim();
+      const sNo = String(j.styleNo || '').toLowerCase().trim();
+      const b = String(j.buyer || '').toLowerCase().trim();
+      return jNo === clean || jNo.includes(clean) || sNo.includes(clean) || b.includes(clean);
+    });
+
+    if (found) {
+      setSelectedJobNo(String(found.jobNo));
+      setSearchQuery('');
+      setIsSearchOpen(false);
+    } else {
+      setSelectedJobNo(clean);
+      setSearchQuery('');
+      setIsSearchOpen(false);
+    }
+  };
+
   // Auto-spy scroll listener: as user scrolls, active tab automatically updates
   useEffect(() => {
     const handleScroll = () => {
@@ -151,7 +191,7 @@ function Job360Content() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Smooth scroll to section when button clicked
+  // Smooth scroll handler when a sub-section button is clicked
   const scrollToSection = (id: string) => {
     setActiveSectionId(id);
     const el = document.getElementById(id);
@@ -162,7 +202,7 @@ function Job360Content() {
     }
   };
 
-  // Search filter
+  // Search filter for autocomplete dropdown
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return masterJobs.slice(0, 10);
     const q = searchQuery.toLowerCase().trim();
@@ -174,7 +214,7 @@ function Job360Content() {
         const it = String(j.item || '').toLowerCase();
         return jNo.includes(q) || b.includes(q) || s.includes(q) || it.includes(q);
       })
-      .slice(0, 12);
+      .slice(0, 15);
   }, [searchQuery, masterJobs]);
 
   if (!job) {
@@ -193,103 +233,59 @@ function Job360Content() {
   
   const sewQty = Number(job.sewing?.sewingActualQty) || (isShipped ? oq : Math.round(oq * 0.94));
   const cutQty = Number(job.cutting?.cutQty || job.cutting?.cutDone) || (isShipped ? oq : Math.round(oq * 1.02));
-  const printQty = Number(job.printEmb?.printActualQty) || (job.printEmb ? Math.round(oq * 0.98) : 0);
-  const embQty = Number(job.printEmb?.embActualQty) || (job.printEmb ? Math.round(oq * 0.95) : 0);
-  const shipQty = Number(job.shipment?.shipQty) || (isShipped ? oq : 0);
+  const printQty = Number(job.printEmb?.printActualQty) || (isShipped ? oq : Math.round(oq * 0.98));
+  const shipQty = isShipped ? oq : 0;
 
-  const fabReq = Number(job.fabric?.fabricReqKg) || Math.round(oq * 0.24);
-  const fabRecv = Number(job.fabric?.fabricReceivedKg) || Math.round(fabReq * 0.98);
-  const fabBal = Math.max(0, fabReq - fabRecv);
+  const sewBal = Math.max(0, oq - sewQty);
+  const cutBal = Math.max(0, oq - cutQty);
+  const shipBal = Math.max(0, oq - shipQty);
 
-  const knitReq = Number(job.knitting?.greyReqKg) || Math.round(fabReq * 1.05);
-  const knitDone = Number(job.knitting?.greyProducedKg) || (isShipped ? knitReq : Math.round(knitReq * 0.99));
+  // Fabric & Yarn conversions
+  const smv = Number(job.smv) || 7.8;
+  const targetPerHour = Math.round((60 / smv) * 24);
+  const knitReq = Math.round(oq * 0.265); // ~265g fabric per garment
+  const knitDone = isShipped ? knitReq : Math.round(knitReq * 0.98);
   const knitBal = Math.max(0, knitReq - knitDone);
 
-  const dyeReq = fabReq;
+  const dyeReq = knitReq;
   const dyeDone = isShipped ? dyeReq : Math.round(dyeReq * 0.96);
   const dyeBal = Math.max(0, dyeReq - dyeDone);
+  const fabRecv = dyeDone;
 
-  const cutBal = Math.max(0, oq - cutQty);
-  const sewBal = Math.max(0, oq - sewQty);
-  const shipBal = Math.max(0, oq - shipQty);
   const totalCartons = Math.ceil(oq / 24);
 
-  // IE & Industrial Engineering
-  const smv = Number(job.ie?.smv) || 7.8;
-  const machineQty = Number(job.ie?.machineQty) || 22;
-  const manpower = Number(job.ie?.manpower) || 32;
-  const targetPerHour = Number(job.ie?.targetPerHour) || Math.round((60 / smv) * machineQty * 0.75);
-  const dailyTarget = Number(job.ie?.dailyTarget) || targetPerHour * 10;
-
-  // Garment Illustration
-  const primaryColor = job.fabric?.colors || 'Pink Melange';
-
-  // Realistic PO Breakdown with Cartons & Accurate Statuses
-  const poBreakdown = [
-    {
-      po: `PO-${job.jobNo}-EUR01`,
-      destination: 'Germany 🇩🇪',
-      port: 'Hamburg Port',
-      terms: 'FOB Chittagong',
-      qty: Math.round(oq * 0.45),
-      cartons: Math.ceil((oq * 0.45) / 24),
-      shipDate: job.dates?.exFactory || '05-Aug-2026',
-      status: isShipped ? 'SHIPPED' : 'IN PRODUCTION',
-      statusColor: isShipped ? COLORS.green : COLORS.blue,
-      statusBg: isShipped ? '#DCFCE7' : '#E0F2FE'
-    },
-    {
-      po: `PO-${job.jobNo}-EUR02`,
-      destination: 'France 🇫🇷',
-      port: 'Le Havre Port',
-      terms: 'FOB Chittagong',
-      qty: Math.round(oq * 0.30),
-      cartons: Math.ceil((oq * 0.30) / 24),
-      shipDate: job.dates?.exFactory || '05-Aug-2026',
-      status: isShipped ? 'SHIPPED' : 'SEWING WIP',
-      statusColor: isShipped ? COLORS.green : COLORS.purple,
-      statusBg: isShipped ? '#DCFCE7' : '#F3E8FF'
-    },
-    {
-      po: `PO-${job.jobNo}-EUR03`,
-      destination: 'United Kingdom 🇬🇧',
-      port: 'Felixstowe Port',
-      terms: 'FOB Chittagong',
-      qty: Math.round(oq * 0.25),
-      cartons: Math.ceil((oq * 0.25) / 24),
-      shipDate: job.dates?.exFactory || '07-Aug-2026',
-      status: isShipped ? 'SHIPPED' : 'CUTTING DONE',
-      statusColor: isShipped ? COLORS.green : COLORS.amber,
-      statusBg: isShipped ? '#DCFCE7' : '#FEF3C7'
-    },
-  ];
-
-  // TNA Milestones
-  const tnaMilestones = [
-    { step: '1. Master Order Booking & CAD Tech Pack', planStart: '22-Jan-2026', planEnd: '28-Jan-2026', actualStart: '22-Jan-2026', actualEnd: '27-Jan-2026', status: 'COMPLETED', lead: 'CAD & Merch' },
-    { step: '2. Lab Dip / Color Shade Approval', planStart: '29-Jan-2026', planEnd: '14-Feb-2026', actualStart: '28-Jan-2026', actualEnd: '12-Feb-2026', status: 'COMPLETED', lead: 'Dyeing Lab' },
-    { step: '3. Yarn Booking, In-House & Quality Clearance', planStart: '15-Feb-2026', planEnd: '05-Mar-2026', actualStart: '15-Feb-2026', actualEnd: '03-Mar-2026', status: 'COMPLETED', lead: 'Yarn Store' },
-    { step: '4. Knitting Execution & Weight Audit', planStart: '06-Mar-2026', planEnd: '28-Mar-2026', actualStart: '05-Mar-2026', actualEnd: '26-Mar-2026', status: 'COMPLETED', lead: 'Knitting Dept' },
-    { step: '5. Dyeing & Finishing Process', planStart: '01-Apr-2026', planEnd: '25-Apr-2026', actualStart: '01-Apr-2026', actualEnd: '23-Apr-2026', status: 'COMPLETED', lead: 'Dyeing Dept' },
-    { step: '6. Bulk Fabric Store Delivery & Shrinkage Test', planStart: '26-Apr-2026', planEnd: '05-May-2026', actualStart: '25-Apr-2026', actualEnd: '03-May-2026', status: 'COMPLETED', lead: 'Fabric Quality' },
-    { step: '7. PP Sample Approval & Buyer Comments', planStart: '06-May-2026', planEnd: '20-May-2026', actualStart: '05-May-2026', actualEnd: '18-May-2026', status: 'COMPLETED', lead: 'Sample Room' },
-    { step: '8. Trims & Accessories 100% In-House Check', planStart: '21-May-2026', planEnd: '10-Jun-2026', actualStart: '20-May-2026', actualEnd: '08-Jun-2026', status: 'COMPLETED', lead: 'Trims Store' },
-    { step: '9. Bulk Cutting & Bundle Preparation', planStart: job.dates?.cuttingStart || '10-Jul-2026', planEnd: job.dates?.cuttingEnd || '13-Jul-2026', actualStart: '10-Jul-2026', actualEnd: '12-Jul-2026', status: 'COMPLETED', lead: 'Cutting Floor' },
-    { step: '10. Printing & Embroidery Execution', planStart: '12-Jul-2026', planEnd: '15-Jul-2026', actualStart: '12-Jul-2026', actualEnd: '15-Jul-2026', status: 'COMPLETED', lead: 'Print & Emb' },
-    { step: '11. Sewing Line Production Execution', planStart: job.dates?.sewingStart || '15-Jul-2026', planEnd: job.dates?.sewingEnd || '18-Jul-2026', actualStart: '15-Jul-2026', actualEnd: '18-Jul-2026', status: isShipped ? 'COMPLETED' : 'IN PROGRESS', lead: 'Sewing Line 14B' },
+  // Backward schedule milestones
+  const backwardSchedule = [
+    { step: '1. PO Confirmation & Tech Pack Handover', planStart: '12-Apr-2026', planEnd: '14-Apr-2026', actualStart: '12-Apr-2026', actualEnd: '14-Apr-2026', status: 'COMPLETED', lead: 'Merchandising' },
+    { step: '2. Yarn Indent & Booking (Akij & Square)', planStart: '15-Apr-2026', planEnd: '18-Apr-2026', actualStart: '15-Apr-2026', actualEnd: '17-Apr-2026', status: 'COMPLETED', lead: 'Procurement' },
+    { step: '3. Yarn Sourcing & Delivery into Mill Store', planStart: '19-Apr-2026', planEnd: '25-Apr-2026', actualStart: '19-Apr-2026', actualEnd: '24-Apr-2026', status: 'COMPLETED', lead: 'Yarn Store' },
+    { step: '4. Lab Dip Approval (Northern / DBL / GMS)', planStart: '20-Apr-2026', planEnd: '02-May-2026', actualStart: '20-Apr-2026', actualEnd: '01-May-2026', status: 'COMPLETED', lead: 'Dyeing Lab' },
+    { step: '5. Circular Knitting Production', planStart: '26-Apr-2026', planEnd: '10-May-2026', actualStart: '25-Apr-2026', actualEnd: '09-May-2026', status: 'COMPLETED', lead: 'Knitting Unit' },
+    { step: '6. Greige Store Audit & Batch Allocation', planStart: '11-May-2026', planEnd: '14-May-2026', actualStart: '11-May-2026', actualEnd: '13-May-2026', status: 'COMPLETED', lead: 'Greige Store' },
+    { step: '7. Dyeing & Special Process (Peach & Brush)', planStart: '15-May-2026', planEnd: '30-May-2026', actualStart: '15-May-2026', actualEnd: '29-May-2026', status: 'COMPLETED', lead: 'Dyeing Floor' },
+    { step: '8. Finished Fabric Store Quality & Shade Release', planStart: '01-Jun-2026', planEnd: '06-Jun-2026', actualStart: '01-Jun-2026', actualEnd: '05-Jun-2026', status: 'COMPLETED', lead: 'Finished Fabric Store' },
+    { step: '9. CAD Marker Lay Calibration & Bulk Cutting', planStart: '08-Jun-2026', planEnd: '18-Jun-2026', actualStart: '07-Jun-2026', actualEnd: '17-Jun-2026', status: 'COMPLETED', lead: 'Cutting Floor' },
+    { step: '10. Chest Print & Placement Embroidery', planStart: '19-Jun-2026', planEnd: '30-Jun-2026', actualStart: '18-Jun-2026', actualEnd: '29-Jun-2026', status: 'COMPLETED', lead: 'Print Unit' },
+    { step: '11. Sewing Floor Assembly (Lines 16B & 14B)', planStart: '01-Jul-2026', planEnd: '24-Jul-2026', actualStart: '01-Jul-2026', actualEnd: '23-Jul-2026', status: isShipped ? 'COMPLETED' : 'RUNNING ON LINE', lead: 'Sewing Production' },
     { step: '12. Finishing, AQL 1.5 Audit & Ex-Factory Cargo', planStart: job.dates?.exFactory || '05-Aug-2026', planEnd: job.dates?.cargoClosing || '07-Aug-2026', actualStart: '04-Aug-2026', actualEnd: '05-Aug-2026', status: isShipped ? 'COMPLETED' : 'PENDING PACKING', lead: 'Quality & Shipping' },
   ];
 
-  // Master Unified Production Pipeline
+  // =========================================================================
+  // UNIFIED END-TO-END MASTER PRODUCTION PIPELINE (YARN TO SHIPMENT IN ONE PLACE)
+  // =========================================================================
   const masterPipeline = [
-    { section: '1. Yarn Allotment & Issue', unit: 'kg', req: Math.round(knitReq * 1.02), act: Math.round(knitReq * 1.02), bal: 0, yieldRate: '100.0%', status: '100% ISSUED', inCharge: 'Yarn Store In-Charge' },
-    { section: '2. Circular Knitting', unit: 'kg', req: knitReq, act: knitDone, bal: knitBal, yieldRate: `${((knitDone / knitReq) * 100).toFixed(1)}%`, status: knitBal === 0 ? 'COMPLETED' : 'IN PROGRESS', inCharge: 'Knitting Master' },
-    { section: '3. Dyeing & Finishing Delivery', unit: 'kg', req: dyeReq, act: dyeDone, bal: dyeBal, yieldRate: `${((dyeDone / dyeReq) * 100).toFixed(1)}%`, status: dyeBal === 0 ? 'COMPLETED' : 'IN PROGRESS', inCharge: 'Dyeing Head' },
-    { section: '4. Bulk Cutting Production', unit: 'pcs', req: oq, act: cutQty, bal: cutBal, yieldRate: `${((cutQty / oq) * 100).toFixed(1)}%`, status: 'CUTTING DONE', inCharge: 'Cutting In-Charge' },
-    { section: '5. Print & Embroidery Panels', unit: 'pcs', req: oq, act: printQty, bal: Math.max(0, oq - printQty), yieldRate: `${((printQty / oq) * 100).toFixed(1)}%`, status: printQty >= oq ? 'PASSED 100%' : 'RUNNING', inCharge: 'Print Floor Mgr' },
-    { section: '6. Sewing Line Output', unit: 'pcs', req: oq, act: sewQty, bal: sewBal, yieldRate: `${((sewQty / oq) * 100).toFixed(1)}%`, status: isShipped ? 'COMPLETED' : 'RUNNING ON LINE', inCharge: 'Line Supervisor' },
-    { section: '7. Finishing & Carton Packing', unit: 'pcs', req: oq, act: sewQty, bal: sewBal, yieldRate: `${((sewQty / oq) * 100).toFixed(1)}%`, status: isShipped ? '100% PACKED' : 'IN PACKING', inCharge: 'Finishing In-Charge' },
-    { section: '8. Ex-Factory Shipment', unit: 'pcs', req: oq, act: shipQty, bal: shipBal, yieldRate: `${((shipQty / oq) * 100).toFixed(1)}%`, status: isShipped ? 'SHIPPED' : 'SCHEDULED', inCharge: 'Commercial & Logistics' },
+    { section: '1. Yarn Allotment & Store Issue', floor: 'Yarn Godown', unit: 'kg', req: Math.round(knitReq * 1.02), act: Math.round(knitReq * 1.02), bal: 0, yieldRate: '100.0%', rft: '99.5%', status: '100% ISSUED', inCharge: 'Yarn Store In-Charge' },
+    { section: '2. Circular Knitting Floor', floor: 'Knitting Shed-1', unit: 'kg', req: knitReq, act: knitDone, bal: knitBal, yieldRate: `${((knitDone / knitReq) * 100).toFixed(1)}%`, rft: '98.8%', status: knitBal === 0 ? 'COMPLETED' : 'IN PROGRESS', inCharge: 'Knitting Master' },
+    { section: '3. Greige Fabric Store Receiving & Audit', floor: 'Greige Store Bay 2', unit: 'kg', req: knitReq, act: Math.round(knitDone * 0.999), bal: 2, yieldRate: '99.9%', rft: '99.2%', status: 'AUDITED & ACCEPTED', inCharge: 'Greige Store Officer' },
+    { section: '4. Dyeing & Special Finishing Plant', floor: 'NFL Dyeing Plant', unit: 'kg', req: dyeReq, act: dyeDone, bal: dyeBal, yieldRate: `${((dyeDone / dyeReq) * 100).toFixed(1)}%`, rft: '97.4%', status: dyeBal === 0 ? 'COMPLETED' : 'IN PROGRESS', inCharge: 'Dyeing Head' },
+    { section: '5. Dyeing Lab & Shade Continuity', floor: 'Central Color Lab', unit: 'shades', req: 3, act: 3, bal: 0, yieldRate: '100.0%', rft: '100.0%', status: 'ALL SHADES APPROVED', inCharge: 'Lab Manager' },
+    { section: '6. Testing Laboratory Quality Clearance', floor: 'Testing Lab', unit: 'reports', req: 1, act: 1, bal: 0, yieldRate: '100.0%', rft: '100.0%', status: 'GRADE 4-5 PASS', inCharge: 'Testing Head' },
+    { section: '7. Finished Fabric Store & Clearance', floor: 'Finished Godown', unit: 'kg', req: dyeDone, act: dyeDone, bal: 0, yieldRate: '100.0%', rft: '99.0%', status: 'STOCK READY FOR CUTTING', inCharge: 'Store Officer' },
+    { section: '8. CAD Marker Lay & Bulk Cutting', floor: 'Cutting Tables 2 & 4', unit: 'pcs', req: oq, act: cutQty, bal: cutBal, yieldRate: `${((cutQty / oq) * 100).toFixed(1)}%`, rft: '99.35%', status: 'CUTTING DONE (+136 pcs)', inCharge: 'Cutting In-Charge' },
+    { section: '9. Print & Placement Embroidery', floor: 'Printing Floor', unit: 'pcs', req: oq, act: printQty, bal: Math.max(0, oq - printQty), yieldRate: `${((printQty / oq) * 100).toFixed(1)}%`, rft: '99.52%', status: printQty >= oq ? 'PASSED 100%' : 'RUNNING', inCharge: 'Print Floor Mgr' },
+    { section: '10. Sewing Floor Line Assembly', floor: 'Lines 16B & 14B', unit: 'pcs', req: oq, act: sewQty, bal: sewBal, yieldRate: `${((sewQty / oq) * 100).toFixed(1)}%`, rft: '98.91%', status: isShipped ? 'COMPLETED' : 'RUNNING ON LINE', inCharge: 'Line Supervisor' },
+    { section: '11. Finishing, Ironing & Carton Packing', floor: 'Finishing Hall', unit: 'cartons', req: totalCartons, act: totalCartons, bal: 0, yieldRate: '100.0%', rft: '99.57%', status: isShipped ? '271 CTNS PACKED' : 'IN PACKING', inCharge: 'Finishing In-Charge' },
+    { section: '12. AQL 1.5 Final Audit & Ex-Factory Cargo', floor: 'Cargo Gate-1', unit: 'pcs', req: oq, act: shipQty, bal: shipBal, yieldRate: `${((shipQty / oq) * 100).toFixed(1)}%`, rft: '99.62%', status: isShipped ? 'SHIPPED & CLOSED' : 'SCHEDULED', inCharge: 'Logistics Head' },
   ];
 
   // REAL NFL Dyeing Lab (Lab Dip) Register (Matches User Image 1)
@@ -389,15 +385,41 @@ function Job360Content() {
       result: 'Not Ok',
       isOk: false,
       supplier: 'Sparkle',
-      yarnBrand: 'Square',
-      yarnLot: 'LOT-8412',
+      yarnBrand: 'Kader',
+      yarnLot: 'LOT-1102',
     },
     {
       date: '01.01.26',
-      buyer: 'B/S Only',
-      jobNo: '29402',
-      batch: '1626',
-      color: 'Cloud Dancer',
+      buyer: 'UTG',
+      jobNo: '29611',
+      batch: '102022',
+      color: 'RFD Aop',
+      qtyKg: 430,
+      fabType: 'Vis,L/S/J 210 GSM',
+      composition: '95% Viscose 5% Elastane',
+      rubDry: '4-5',
+      rubWet: '2-3',
+      colorChange: '4-5',
+      cfWash: '4-5',
+      cfWater: '4',
+      perspAcid: '4',
+      perspAlk: '3-4',
+      saliva: '3-4',
+      bursting: '141.2 KPa',
+      testRep: '3-4',
+      buyerReq: '3-4',
+      result: 'Not Ok',
+      isOk: false,
+      supplier: 'DB Tex',
+      yarnBrand: 'Vardhman',
+      yarnLot: 'LOT-9921',
+    },
+    {
+      date: '01.01.26',
+      buyer: 'OVS SPA',
+      jobNo: '46755',
+      batch: '99014+99018',
+      color: 'Pink Melange',
       qtyKg: 520,
       fabType: 'CVC Fleece 270 GSM',
       composition: '60% Cotton 40% Polyester',
@@ -418,58 +440,6 @@ function Job360Content() {
       yarnBrand: 'Akij',
       yarnLot: 'LOT-6710',
     },
-    {
-      date: '01.01.26',
-      buyer: 'B/S Only',
-      jobNo: '46161',
-      batch: '103002',
-      color: 'Sweat Lavender',
-      qtyKg: 610,
-      fabType: 'CVC Terry 240 GSM',
-      composition: '60% Cotton 40% Polyester',
-      rubDry: '4-5',
-      rubWet: '4-5',
-      colorChange: '4-5',
-      cfWash: '4-5',
-      cfWater: '4-5',
-      perspAcid: '4-5',
-      perspAlk: '4-5',
-      saliva: '4-5',
-      bursting: '146.2 KPa',
-      testRep: '4-5',
-      buyerReq: '3-4',
-      result: 'OK',
-      isOk: true,
-      supplier: 'Northern Dyeing',
-      yarnBrand: 'Square',
-      yarnLot: 'LOT-7822',
-    },
-    {
-      date: '01.01.26',
-      buyer: 'B/S Name it',
-      jobNo: '44027-9th',
-      batch: '20177+22995',
-      color: 'Greige Fabric (Dusty Olive)',
-      qtyKg: 490,
-      fabType: 'CVC Terry 240 GSM',
-      composition: '60% Cotton 40% Polyester',
-      rubDry: '4-5',
-      rubWet: '4-5',
-      colorChange: '4-5',
-      cfWash: '4-5',
-      cfWater: '4-5',
-      perspAcid: '4-5',
-      perspAlk: '4-5',
-      saliva: '4-5',
-      bursting: '143.1 KPa',
-      testRep: '4-5',
-      buyerReq: '3-4',
-      result: 'OK',
-      isOk: true,
-      supplier: 'DB Tex',
-      yarnBrand: 'Bablu',
-      yarnLot: 'LOT-3391',
-    },
   ];
 
   // Special Processes Table (Peach / Brush / AOP sent vs received)
@@ -478,189 +448,379 @@ function Job360Content() {
       process: 'Fabric Brushing & Peach Finish',
       sentKg: 820,
       sentDate: '12-Apr-2026',
-      challanSent: 'CH-BR-9901',
-      recvKg: 805,
-      recvDate: '15-Apr-2026',
-      challanRecv: 'CR-BR-4412',
-      lossKg: 15,
-      lossPct: '1.83%',
-      status: 'CLEARED & DELIVERED',
-      inCharge: 'M. Selim (Finishing Sub-Dept)'
+      recvKg: 798,
+      recvDate: '16-Apr-2026',
+      lossKg: 22,
+      lossPct: '2.68%',
+      mill: 'Northern Dyeing Plant 2',
+      challan: 'CH-BR-9912',
+      status: 'APPROVED',
     },
     {
-      process: 'All-Over Rotary Screen Print (AOP)',
-      sentKg: 740,
-      sentDate: '16-Apr-2026',
-      challanSent: 'CH-PR-8812',
-      recvKg: 728,
-      recvDate: '20-Apr-2026',
-      challanRecv: 'CR-PR-3310',
-      lossKg: 12,
-      lossPct: '1.62%',
-      status: 'CLEARED & DELIVERED',
-      inCharge: 'Farid Ahmed (Print In-Charge)'
-    }
-  ];
-
-  // Cutting & CAD Marker Adjustments Table
-  const cadCuttingAdjustments = [
-    {
-      color: primaryColor,
-      steamL: '-2.2%',
-      steamW: '-1.1%',
-      tumbleL: '-2.8%',
-      tumbleW: '-1.5%',
-      cadMarkerLengthAdj: '+2.9%',
-      cadMarkerWidthAdj: '+1.6%',
-      cadUpdatedBy: 'CAD Pattern Master (S. K. Paul)',
-      cuttingTableLayAdj: '+2.8% Lay Length / +1.5% Lay Width',
-      cuttingUpdatedBy: 'Cutting Floor QC (M. Mominul)',
-      markerLengthMeters: '8.45 m',
-      layCount: '48 plies',
-      netConsumption: '2.42 kg/dz',
-      status: 'CALIBRATED & APPROVED'
+      process: 'All-Over Print (AOP) - Rotary Screen',
+      sentKg: 845,
+      sentDate: '17-Apr-2026',
+      recvKg: 822,
+      recvDate: '23-Apr-2026',
+      lossKg: 23,
+      lossPct: '2.72%',
+      mill: 'Pakiza Printing Complex',
+      challan: 'CH-PR-4011',
+      status: 'APPROVED',
     },
-    {
-      color: 'Heather Grey',
-      steamL: '-2.5%',
-      steamW: '-1.3%',
-      tumbleL: '-3.1%',
-      tumbleW: '-1.7%',
-      cadMarkerLengthAdj: '+3.2%',
-      cadMarkerWidthAdj: '+1.8%',
-      cadUpdatedBy: 'CAD Pattern Master (S. K. Paul)',
-      cuttingTableLayAdj: '+3.1% Lay Length / +1.7% Lay Width',
-      cuttingUpdatedBy: 'Cutting Floor QC (M. Mominul)',
-      markerLengthMeters: '8.52 m',
-      layCount: '52 plies',
-      netConsumption: '2.45 kg/dz',
-      status: 'CALIBRATED & APPROVED'
-    }
   ];
 
-  // Hourly Sewing Production Chart
+  // Hourly sewing run-rate data
   const hourlySewingData = [
-    { hour: '08:00', target: targetPerHour, actual: Math.round(targetPerHour * 0.95) },
-    { hour: '09:00', target: targetPerHour, actual: Math.round(targetPerHour * 1.02) },
-    { hour: '10:00', target: targetPerHour, actual: Math.round(targetPerHour * 1.05) },
-    { hour: '11:00', target: targetPerHour, actual: Math.round(targetPerHour * 0.98) },
+    { hour: '08:00', target: targetPerHour, actual: Math.round(targetPerHour * 0.88) },
+    { hour: '09:00', target: targetPerHour, actual: Math.round(targetPerHour * 0.95) },
+    { hour: '10:00', target: targetPerHour, actual: Math.round(targetPerHour * 1.02) },
+    { hour: '11:00', target: targetPerHour, actual: Math.round(targetPerHour * 1.04) },
     { hour: '12:00', target: targetPerHour, actual: Math.round(targetPerHour * 1.01) },
-    { hour: '14:00', target: targetPerHour, actual: Math.round(targetPerHour * 1.04) },
-    { hour: '15:00', target: targetPerHour, actual: Math.round(targetPerHour * 1.08) },
+    { hour: '14:00', target: targetPerHour, actual: Math.round(targetPerHour * 1.06) },
+    { hour: '15:00', target: targetPerHour, actual: Math.round(targetPerHour * 1.03) },
     { hour: '16:00', target: targetPerHour, actual: Math.round(targetPerHour * 0.96) },
   ];
 
-  // Section-Wise Inspection Reports
-  const sectionInspections = [
-    { section: '1. Fabric Store Inspection', std: '4-Point System (ASTM D5430)', inspected: `${fmt(fabRecv)} kg (18 rolls)`, defectCount: 14, dhu: '1.2 pts/100 yd', majorDefects: 'Slub (6), Thick-thin (5), Fly yarn (3)', result: 'PASSED', auditor: 'Zahid Hossain (Sr. Fabric QC)' },
-    { section: '2. Cutting Inspection', std: 'Bundle & Notch Audit', inspected: `${fmt(cutQty)} pcs (42 bundles)`, defectCount: 8, dhu: '0.19%', majorDefects: 'Pattern notch shift (5), Bow cut (3)', result: 'PASSED', auditor: 'Mominul Islam (Cutting QC)' },
-    { section: '3. Printing Inspection', std: 'AATCC Crock & Wash Test', inspected: `${fmt(printQty)} pcs`, defectCount: 11, dhu: '0.22%', majorDefects: 'Registration shift (6), Pin hole (5)', result: 'PASSED', auditor: 'Farid Ahmed (Print QC)' },
-    { section: '4. Sewing In-Line Inspection', std: 'Traffic Light 7-Bundle System', inspected: '3,850 pcs', defectCount: 42, dhu: '1.09%', majorDefects: 'Skip stitch (18), Raw edge (14), Puckering (10)', result: 'PASSED', auditor: 'Shamima Akter (Line QC In-charge)' },
-    { section: '5. Finishing 100% Inspection', std: '100% Garment Inspection', inspected: `${fmt(sewQty)} pcs`, defectCount: 28, dhu: '0.43%', majorDefects: 'Uncut thread (18), Spot mark (10 - rectified)', result: 'PASSED', auditor: 'Kamrul Hassan (Finishing In-charge)' },
+  // =========================================================================
+  // COLOR-WISE & SIZE-WISE BREAKDOWN MATRIX (TOTAL ORDER FULFILLMENT)
+  // =========================================================================
+  const colorSizeBreakdown = [
+    {
+      color: 'Pink Melange',
+      pantone: 'HUAFU-HH114',
+      fabricSpec: '100% Cotton CVC 240 GSM Fleece',
+      xs: 250,
+      s: 520,
+      m: 750,
+      l: 820,
+      xl: 410,
+      xxl: 150,
+      totalPcs: 2900,
+      ratio: '44.6%',
+      cartons: 121,
+      fobValue: 9860.0,
+      status: '100% Cut & Sewn',
+      statusColor: COLORS.green,
+    },
+    {
+      color: 'Heather Grey Melange',
+      pantone: 'OPT-10 Swatch',
+      fabricSpec: '60/40 CVC Fleece 240 GSM',
+      xs: 200,
+      s: 410,
+      m: 620,
+      l: 680,
+      xl: 340,
+      xxl: 120,
+      totalPcs: 2370,
+      ratio: '36.5%',
+      cartons: 99,
+      fobValue: 8058.0,
+      status: '100% Cut & Sewn',
+      statusColor: COLORS.green,
+    },
+    {
+      color: 'Dark Charcoal Melange',
+      pantone: 'AS-23-STD',
+      fabricSpec: '60/40 CVC Fleece 240 GSM',
+      xs: 110,
+      s: 210,
+      m: 320,
+      l: 350,
+      xl: 180,
+      xxl: 61,
+      totalPcs: 1231,
+      ratio: '18.9%',
+      cartons: 51,
+      fobValue: 4185.4,
+      status: '100% Cut & Sewn',
+      statusColor: COLORS.green,
+    },
+  ];
+
+  // =========================================================================
+  // SECTION-WISE QUALITY AUDIT PIPELINE (KNITTING 4-POINT TO EXPORT AQL 1.5)
+  // =========================================================================
+  const sectionQualityPipeline = [
+    {
+      section: '1. Knitting Quality (Greige Fabric)',
+      floor: 'Knitting Shed-1',
+      std: '4-Point System (ASTM D5430)',
+      inspected: '1,720 kg (28 rolls)',
+      defectsFound: '11 defects',
+      score: '14.2 Pts / 100 yd²',
+      benchmark: '< 20 Pts Benchmark',
+      majorDefects: 'Yarn contamination (6 pcs), Needle line (3 pcs), Lycra drop (2 pcs)',
+      verdict: 'GRADE A PASS',
+      verdictColor: COLORS.green,
+      auditor: 'Zahid Hossain (Knitting QA)',
+    },
+    {
+      section: '2. Dyeing & Special Process',
+      floor: 'Dyeing Unit 2',
+      std: '4-Point & Spectro Delta E',
+      inspected: '1,665 kg (26 rolls)',
+      defectsFound: '8 defects',
+      score: '12.5 Pts / 100 yd² · ΔE 0.42',
+      benchmark: '< 16 Pts / ΔE < 0.8',
+      majorDefects: 'Dye crease (4 pcs), Shade band (2 pcs - rectified), Selvedge curl (2 pcs)',
+      verdict: 'GRADE A PASS',
+      verdictColor: COLORS.green,
+      auditor: 'S.M. Hasibul Alam (Lab Mgr)',
+    },
+    {
+      section: '3. Cutting & Layup Audit',
+      floor: 'Cutting Hall Tables 2 & 4',
+      std: 'Lay Tension & 100% Notch Audit',
+      inspected: `${fmt(oq)} Cut Panels (271 bundles)`,
+      defectsFound: '42 defective panels',
+      score: '0.65% DHU',
+      benchmark: '< 1.2% DHU',
+      majorDefects: 'Pattern notch shift (22 pcs), Bow cut (12 pcs), Lay tension fray (8 pcs)',
+      verdict: 'PASSED',
+      verdictColor: COLORS.green,
+      auditor: 'Mominul Islam (Cutting QC)',
+    },
+    {
+      section: '4. Print & Placement Embroidery',
+      floor: 'Print & Heat-Transfer Floor',
+      std: 'AATCC Crock (Dry/Wet) & Wash',
+      inspected: `${fmt(oq)} Printed Garments`,
+      defectsFound: '31 panels rectified',
+      score: '0.48% DHU',
+      benchmark: '< 1.0% DHU',
+      majorDefects: 'Placement shift (18 pcs), Ink pin-hole (8 pcs), Edge bleed (5 pcs)',
+      verdict: 'PASSED',
+      verdictColor: COLORS.green,
+      auditor: 'Farid Ahmed (Print QC)',
+    },
+    {
+      section: '5. Sewing In-Line Inspection',
+      floor: 'Sewing Lines 16B & 14B',
+      std: 'Traffic Light 7-Bundle Check',
+      inspected: '3,850 Pcs Inspected',
+      defectsFound: '42 defects detected',
+      score: '1.09% DHU',
+      benchmark: '< 2.0% DHU',
+      majorDefects: 'Skip stitch (18 pcs), Raw edge (14 pcs), Puckering (10 pcs)',
+      verdict: 'PASSED',
+      verdictColor: COLORS.green,
+      auditor: 'Shamima Akter (Line QC In-charge)',
+    },
+    {
+      section: '6. Finishing 100% Inspection',
+      floor: 'Finishing Hall Packing',
+      std: '100% Garment Measurement & Inspection',
+      inspected: `${fmt(oq)} Garments Checked`,
+      defectsFound: '28 defects rectified',
+      score: '0.43% DHU',
+      benchmark: '< 1.0% DHU',
+      majorDefects: 'Uncut thread (18 pcs), Spot mark (10 pcs - washed out)',
+      verdict: '100% RECTIFIED & PASSED',
+      verdictColor: COLORS.green,
+      auditor: 'Kamrul Hassan (Finishing In-charge)',
+    },
+    {
+      section: '7. Pre-Final AQL 1.5 Inspection',
+      floor: 'QA Audit Station 3',
+      std: 'MIL-STD-105E Level II Normal',
+      inspected: '315 Pcs Sample Size',
+      defectsFound: 'Critical: 0 | Major: 3 | Minor: 6',
+      score: '0.95% DHU (Allowed Ac=10, Re=11)',
+      benchmark: 'Ac = 10, Re = 11',
+      majorDefects: 'Major: Size label misplace (2), Neck trim skew (1) · Minor: Loose thread (6)',
+      verdict: 'PRE-FINAL ACCEPTED',
+      verdictColor: COLORS.green,
+      auditor: 'Md. Shariful Alam (Lead QA)',
+    },
+    {
+      section: '8. Final Buyer Export Audit Sign-Off',
+      floor: 'Finished Goods Warehouse',
+      std: 'AQL 1.5 Final Random Inspection',
+      inspected: '315 Pcs + 100% Cartons',
+      defectsFound: 'Critical: 0 | Major: 1 | Minor: 2',
+      score: '0.38% Overall Factory DHU',
+      benchmark: 'Ac = 10, Re = 11',
+      majorDefects: 'Major: Button tension (1) · Minor: Poly fold (2)',
+      verdict: 'APPROVED · EX-FACTORY RELEASED',
+      verdictColor: COLORS.green,
+      auditor: 'Md. Shariful Alam (Lead QA)',
+    },
+  ];
+
+  // Defect breakdown bar chart data across production sections
+  const defectBreakdownData = [
+    { defect: 'Skip Stitch', pcs: 18, section: 'Sewing' },
+    { defect: 'Uncut Thread', pcs: 18, section: 'Finishing' },
+    { defect: 'Print Shift', pcs: 18, section: 'Print' },
+    { defect: 'Raw Edge', pcs: 14, section: 'Sewing' },
+    { defect: 'Bow Cut', pcs: 12, section: 'Cutting' },
+    { defect: 'Spot Mark', pcs: 10, section: 'Finishing' },
+    { defect: 'Puckering', pcs: 10, section: 'Sewing' },
+    { defect: 'Ink Pin-Hole', pcs: 8, section: 'Print' },
+    { defect: 'Lay Fray', pcs: 8, section: 'Cutting' },
+    { defect: 'Yarn Slub', pcs: 6, section: 'Knitting' },
+    { defect: 'Edge Bleed', pcs: 5, section: 'Print' },
+    { defect: 'Dye Crease', pcs: 4, section: 'Dyeing' },
+    { defect: 'Needle Line', pcs: 3, section: 'Knitting' },
   ];
 
   // Quick jump jobs
-  const quickJobs = ['46755', '48092', '48085', '48061', '22041'];
+  const quickJobs = ['46755', '48092', '48085', '48061', '22041', '44025', '47658'];
 
   return (
     <Shell title="Job 360" eyebrow={`Single Job Life-Cycle Intelligence · Order to Shipment · #${job.jobNo}`}>
       <div style={{ maxWidth: '1440px', margin: '0 auto', color: '#1E293B', paddingBottom: '80px' }}>
 
         {/* ========================================================================= */}
-        {/* TOP CONTROL BAR: SEARCH & JOB JUMP (SINGLE JOB FOCUS) */}
+        {/* TOP CONTROL BAR: SEARCH & JOB JUMP (PROMINENT & INTUITIVE) */}
         {/* ========================================================================= */}
         <div style={{
           background: '#FFFFFF',
-          borderRadius: '10px',
+          borderRadius: '12px',
           border: `1px solid ${COLORS.border}`,
-          padding: '12px 18px',
-          marginBottom: '14px',
+          padding: '14px 20px',
+          marginBottom: '16px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           flexWrap: 'wrap',
-          gap: '12px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+          gap: '14px',
+          boxShadow: '0 2px 6px rgba(15,39,78,0.04)'
         }}>
-          {/* Active Job Identity */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* Active Job Identity Badge */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div style={{
-              background: '#0F274E',
+              background: 'linear-gradient(135deg, #0F274E 0%, #1E3A8A 100%)',
               color: '#FFFFFF',
-              padding: '6px 14px',
+              padding: '8px 16px',
               borderRadius: '8px',
               fontWeight: 900,
-              fontSize: '15px',
-              letterSpacing: '0.5px'
+              fontSize: '16px',
+              letterSpacing: '0.5px',
+              boxShadow: '0 2px 8px rgba(15,39,78,0.2)'
             }}>
               JOB #{job.jobNo}
             </div>
             <div>
-              <div style={{ fontSize: '14px', fontWeight: 800, color: COLORS.navy }}>
+              <div style={{ fontSize: '15px', fontWeight: 900, color: COLORS.navy }}>
                 {job.buyer} · Style {job.styleNo}
               </div>
-              <div style={{ fontSize: '11.5px', color: COLORS.grey }}>
-                {job.item || job.itemDescription} · Order: <strong>{fmt(oq)} pcs</strong> ({totalCartons} Cartons) · Merchandiser: <strong>{job.merchandiser || 'Tariqul Islam'}</strong>
+              <div style={{ fontSize: '12px', color: COLORS.grey, marginTop: '2px' }}>
+                {job.item || job.itemDescription || "Men's Athletic Crewneck Sweatshirt"} · Order: <strong>{fmt(oq)} pcs</strong> ({totalCartons} Cartons) · Merchandiser: <strong>{job.merchandiser || 'Tariqul Islam'}</strong>
               </div>
             </div>
           </div>
 
-          {/* Quick Selectors & Live Search */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 700 }}>Quick Jump:</span>
-            {quickJobs.map((qj) => (
-              <button
-                key={qj}
-                type="button"
-                onClick={() => setSelectedJobNo(qj)}
+          {/* PROMINENT JOB SEARCH BAR & QUICK SELECTORS */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            {/* Quick jump pills */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <span style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 700 }}>Quick Jump:</span>
+              {quickJobs.map((qj) => (
+                <button
+                  key={qj}
+                  type="button"
+                  onClick={() => setSelectedJobNo(qj)}
+                  style={{
+                    background: selectedJobNo === qj ? COLORS.navy : '#F1F5F9',
+                    color: selectedJobNo === qj ? '#FFFFFF' : COLORS.navy,
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '4px 8px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  #{qj}
+                </button>
+              ))}
+            </div>
+
+            {/* EXPANDED PROMINENT SEARCH BAR WITH ENTER SUBMIT */}
+            <div style={{ position: 'relative' }}>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSearchSubmit();
+                }}
                 style={{
-                  background: selectedJobNo === qj ? COLORS.navy : '#F1F5F9',
-                  color: selectedJobNo === qj ? '#FFFFFF' : COLORS.navy,
-                  border: 'none',
-                  borderRadius: '6px',
-                  padding: '4px 10px',
-                  fontSize: '11px',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: '#F8FAFC',
+                  border: `2px solid ${isSearchOpen ? COLORS.blue : '#CBD5E1'}`,
+                  borderRadius: '8px',
+                  padding: '2px 4px 2px 10px',
+                  width: '320px',
+                  boxShadow: isSearchOpen ? '0 0 0 3px rgba(2,132,199,0.15)' : 'none',
+                  transition: 'all 0.2s ease'
                 }}
               >
-                #{qj}
-              </button>
-            ))}
-
-            {/* Search Input Dropdown */}
-            <div style={{ position: 'relative' }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                background: '#F8FAFC',
-                border: `1px solid ${COLORS.border}`,
-                borderRadius: '6px',
-                padding: '4px 8px',
-                width: '210px'
-              }}>
-                <Search size={14} color={COLORS.grey} style={{ marginRight: '6px' }} />
+                <Search size={15} color={COLORS.grey} style={{ marginRight: '8px', flexShrink: 0 }} />
                 <input
                   type="text"
-                  placeholder="Search Job, Buyer, Style..."
+                  placeholder="Search Job # (e.g. 46755), Style..."
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
                     setIsSearchOpen(true);
                   }}
                   onFocus={() => setIsSearchOpen(true)}
+                  onBlur={() => {
+                    setTimeout(() => setIsSearchOpen(false), 200);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleSearchSubmit();
+                    }
+                  }}
                   style={{
                     border: 'none',
                     outline: 'none',
                     background: 'transparent',
-                    fontSize: '11.5px',
-                    width: '100%'
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    width: '100%',
+                    color: COLORS.navy
                   }}
                 />
-              </div>
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setIsSearchOpen(false);
+                    }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: COLORS.grey }}
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  style={{
+                    background: COLORS.navy,
+                    color: '#FFFFFF',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '5px 10px',
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    marginLeft: '4px',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  Jump ↵
+                </button>
+              </form>
 
-              {isSearchOpen && searchQuery.trim() && (
+              {/* Autocomplete Dropdown */}
+              {isSearchOpen && (
                 <div style={{
                   position: 'absolute',
                   top: '100%',
@@ -669,29 +829,42 @@ function Job360Content() {
                   background: '#FFFFFF',
                   border: `1px solid ${COLORS.border}`,
                   borderRadius: '8px',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                  width: '320px',
-                  maxHeight: '300px',
+                  boxShadow: '0 10px 28px rgba(0,0,0,0.12)',
+                  width: '360px',
+                  maxHeight: '340px',
                   overflowY: 'auto',
-                  marginTop: '4px'
+                  marginTop: '6px'
                 }}>
+                  <div style={{ padding: '8px 12px', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', fontSize: '10.5px', fontWeight: 800, color: COLORS.grey, textTransform: 'uppercase' }}>
+                    Available Matching Factory Jobs ({searchResults.length})
+                  </div>
                   {searchResults.map((sj: any) => (
                     <div
                       key={sj.jobNo}
-                      onClick={() => {
-                        setSelectedJobNo(String(sj.jobNo));
-                        setIsSearchOpen(false);
-                        setSearchQuery('');
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        handleSearchSubmit(String(sj.jobNo));
                       }}
+                      onClick={() => handleSearchSubmit(String(sj.jobNo))}
                       style={{
-                        padding: '8px 12px',
+                        padding: '10px 12px',
                         borderBottom: '1px solid #F1F5F9',
                         cursor: 'pointer',
-                        fontSize: '11.5px'
+                        fontSize: '12px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
                       }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = '#F8FAFC')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = '#FFFFFF')}
                     >
-                      <strong style={{ color: COLORS.blue }}>Job #{sj.jobNo}</strong> · {sj.buyer}
-                      <div style={{ color: COLORS.grey, fontSize: '10.5px' }}>Style: {sj.styleNo} · {sj.orderQty} pcs</div>
+                      <div>
+                        <strong style={{ color: COLORS.blue, fontSize: '13px' }}>Job #{sj.jobNo}</strong> · <span style={{ fontWeight: 700 }}>{sj.buyer}</span>
+                        <div style={{ color: COLORS.grey, fontSize: '11px' }}>Style: {sj.styleNo} · {fmt(sj.orderQty)} pcs</div>
+                      </div>
+                      <span style={{ fontSize: '10px', fontWeight: 750, padding: '2px 6px', borderRadius: '4px', background: '#F1F5F9', color: COLORS.navy }}>
+                        {sj.presentStatus || 'In Prod'}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -708,14 +881,15 @@ function Job360Content() {
                 background: '#FFFFFF',
                 border: `1px solid ${COLORS.border}`,
                 borderRadius: '6px',
-                padding: '5px 12px',
-                fontSize: '11.5px',
+                padding: '6px 14px',
+                fontSize: '12px',
                 fontWeight: 700,
                 cursor: 'pointer',
-                color: COLORS.navy
+                color: COLORS.navy,
+                boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
               }}
             >
-              <Printer size={13} /> Print Dossier
+              <Printer size={14} /> Print Dossier
             </button>
           </div>
         </div>
@@ -733,12 +907,13 @@ function Job360Content() {
           marginBottom: '18px',
           boxShadow: '0 4px 12px rgba(15,39,78,0.06)',
           display: 'flex',
-          alignItems: 'center',
           gap: '6px',
           overflowX: 'auto',
-          whiteSpace: 'nowrap'
+          whiteSpace: 'nowrap',
+          borderRadius: '8px'
         }}>
           {SUB_SECTIONS.map((sec) => {
+            const IconComponent = sec.icon;
             const isActive = activeSectionId === sec.id;
             return (
               <button
@@ -746,30 +921,29 @@ function Job360Content() {
                 type="button"
                 onClick={() => scrollToSection(sec.id)}
                 style={{
-                  display: 'inline-flex',
+                  display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
                   padding: '7px 12px',
                   borderRadius: '6px',
                   border: 'none',
-                  background: isActive ? COLORS.navy : '#F1F5F9',
-                  color: isActive ? '#FFFFFF' : COLORS.navy,
-                  fontSize: '11px',
-                  fontWeight: 800,
+                  fontSize: '12px',
+                  fontWeight: isActive ? 800 : 600,
+                  background: isActive ? COLORS.navy : 'transparent',
+                  color: isActive ? '#FFFFFF' : '#475569',
                   cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                  flexShrink: 0
+                  transition: 'all 0.15s ease'
                 }}
               >
-                <span>{sec.icon}</span>
-                <span>{sec.label}</span>
+                <IconComponent size={14} />
+                <span>{sec.name}</span>
               </button>
             );
           })}
         </div>
 
         {/* ========================================================================= */}
-        {/* SUB-SECTION 1: JOB INFORMATION */}
+        {/* SUB-SECTION 1: JOB INFORMATION (WITH GARMENT PHOTO LIGHTBOX & SIZE MATRIX) */}
         {/* ========================================================================= */}
         <div
           id="section-job-info"
@@ -789,7 +963,7 @@ function Job360Content() {
                 1. Job Information · Core Specifications, Commercials &amp; PO Breakdown
               </h3>
               <div style={{ fontSize: '11.5px', color: COLORS.grey, marginTop: '2px' }}>
-                Complete order identification, buyer contract specs, FOB valuation and PO destinations
+                Complete order identification, technical flat sketch, size breakdown matrix, and PO logistics
               </div>
             </div>
             <span style={{
@@ -804,36 +978,225 @@ function Job360Content() {
             </span>
           </div>
 
-          {/* Primary Job Info Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '10px', marginBottom: '14px' }}>
-            <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>TOTAL ORDER VOLUME</div>
-              <div style={{ fontSize: '22px', fontWeight: 900, color: COLORS.navy, margin: '2px 0' }}>{fmt(oq)} pcs</div>
-              <div style={{ fontSize: '11.5px', color: COLORS.blue, fontWeight: 600 }}>{totalCartons} Master Cartons</div>
-            </div>
-            <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>FOB PRICE (USD)</div>
-              <div style={{ fontSize: '22px', fontWeight: 900, color: COLORS.navy, margin: '2px 0' }}>${job.fob || '3.40'}</div>
-              <div style={{ fontSize: '11.5px', color: COLORS.grey, fontWeight: 600 }}>Per Pc FOB Chittagong</div>
-            </div>
-            <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>TOTAL ORDER VALUE</div>
-              <div style={{ fontSize: '22px', fontWeight: 900, color: COLORS.green, margin: '2px 0' }}>
-                ${fmt(oq * (Number(job.fob) || 3.40))}
+          {/* HERO SPLIT: GARMENT STYLE PHOTO CARD + COMMERCIAL SPECIFICATIONS */}
+          <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '16px', marginBottom: '16px' }}>
+            {/* Garment Style Photo Thumbnail Card */}
+            <div
+              onClick={() => setIsImageModalOpen(true)}
+              style={{
+                background: 'linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%)',
+                border: `1px solid ${COLORS.border}`,
+                borderRadius: '10px',
+                padding: '12px',
+                textAlign: 'center',
+                cursor: 'pointer',
+                position: 'relative',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = COLORS.blue;
+                e.currentTarget.style.boxShadow = '0 6px 16px rgba(2,132,199,0.12)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = COLORS.border;
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              {/* Garment SVG Vector Technical Flat Illustration */}
+              <div style={{ position: 'relative', height: '150px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="140" height="140" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  {/* Garment Body Shadow */}
+                  <path d="M50 45 L75 40 Q100 48 125 40 L150 45 L180 80 L160 95 L145 75 L145 165 L55 165 L55 75 L40 95 L20 80 Z" fill="#CBD5E1" opacity="0.3" transform="translate(4,4)" />
+                  {/* Garment Main Body */}
+                  <path d="M50 45 L75 40 Q100 48 125 40 L150 45 L180 80 L160 95 L145 75 L145 165 L55 165 L55 75 L40 95 L20 80 Z" fill="#3B82F6" stroke="#1E40AF" strokeWidth="2.5" />
+                  {/* Ribbed Neckline */}
+                  <path d="M75 40 Q100 52 125 40 Q100 34 75 40 Z" fill="#1D4ED8" stroke="#1E40AF" strokeWidth="2" />
+                  {/* Chest Placement Artwork / Graphic Print */}
+                  <rect x="75" y="70" width="50" height="28" rx="4" fill="#FFFFFF" fillOpacity="0.85" />
+                  <text x="100" y="88" textAnchor="middle" fill="#0F274E" fontSize="9" fontWeight="900" fontFamily="sans-serif">ATHLETIC 26</text>
+                  {/* Ribbed Bottom Hem */}
+                  <rect x="55" y="155" width="90" height="10" fill="#1D4ED8" stroke="#1E40AF" strokeWidth="1.5" />
+                  {/* Sleeve Rib Cuffs */}
+                  <rect x="160" y="85" width="20" height="10" transform="rotate(-40 160 85)" fill="#1D4ED8" />
+                  <rect x="25" y="73" width="20" height="10" transform="rotate(40 25 73)" fill="#1D4ED8" />
+                  {/* Center & Raglan Stitch lines */}
+                  <line x1="50" y1="45" x2="80" y2="60" stroke="#FFFFFF" strokeDasharray="2 2" strokeWidth="1.5" />
+                  <line x1="150" y1="45" x2="120" y2="60" stroke="#FFFFFF" strokeDasharray="2 2" strokeWidth="1.5" />
+                </svg>
+
+                {/* Zoom badge overlay */}
+                <div style={{
+                  position: 'absolute',
+                  bottom: '6px',
+                  right: '6px',
+                  background: 'rgba(15,39,78,0.85)',
+                  color: '#FFFFFF',
+                  padding: '3px 7px',
+                  borderRadius: '5px',
+                  fontSize: '10px',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '3px'
+                }}>
+                  <Maximize2 size={11} /> Zoom Photo
+                </div>
               </div>
-              <div style={{ fontSize: '11.5px', color: COLORS.green, fontWeight: 600 }}>Export Value Confirmed</div>
-            </div>
-            <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>GARMENT SMV / TARGET</div>
-              <div style={{ fontSize: '22px', fontWeight: 900, color: COLORS.purple, margin: '2px 0' }}>{smv} min</div>
-              <div style={{ fontSize: '11.5px', color: COLORS.purple, fontWeight: 600 }}>Target: {targetPerHour} pcs/hr</div>
-            </div>
-            <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>PRINT / EMB TYPE</div>
-              <div style={{ fontSize: '15px', fontWeight: 900, color: COLORS.navy, margin: '6px 0 2px' }}>
-                {job.printEmb?.printType || 'Water Base & HD'}
+
+              {/* Garment Caption & Click instruction */}
+              <div style={{ marginTop: '8px', borderTop: '1px solid #E2E8F0', paddingTop: '6px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 800, color: COLORS.navy }}>Style #{job.styleNo}</div>
+                <div style={{ fontSize: '10px', color: COLORS.grey }}>Crewneck Athletic Sweatshirt</div>
+                <div style={{ fontSize: '10px', fontWeight: 700, color: COLORS.blue, marginTop: '2px' }}>
+                  Click to enlarge tech pack →
+                </div>
               </div>
-              <div style={{ fontSize: '11.5px', color: COLORS.grey, fontWeight: 600 }}>Chest Placement Print</div>
+            </div>
+
+            {/* Primary Job Info Cards */}
+            <div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px', marginBottom: '12px' }}>
+                <div style={{ background: '#F8FAFC', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+                  <div style={{ fontSize: '10.5px', color: COLORS.grey, fontWeight: 650 }}>TOTAL ORDER VOLUME</div>
+                  <div style={{ fontSize: '20px', fontWeight: 900, color: COLORS.navy, margin: '2px 0' }}>{fmt(oq)} pcs</div>
+                  <div style={{ fontSize: '11px', color: COLORS.blue, fontWeight: 600 }}>{totalCartons} Master Cartons</div>
+                </div>
+                <div style={{ background: '#F8FAFC', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+                  <div style={{ fontSize: '10.5px', color: COLORS.grey, fontWeight: 650 }}>FOB PRICE (USD)</div>
+                  <div style={{ fontSize: '20px', fontWeight: 900, color: COLORS.navy, margin: '2px 0' }}>${job.fob || '3.40'}</div>
+                  <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 600 }}>Per Pc FOB Chittagong</div>
+                </div>
+                <div style={{ background: '#F8FAFC', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+                  <div style={{ fontSize: '10.5px', color: COLORS.grey, fontWeight: 650 }}>TOTAL ORDER VALUE</div>
+                  <div style={{ fontSize: '20px', fontWeight: 900, color: COLORS.green, margin: '2px 0' }}>
+                    ${fmt(oq * (Number(job.fob) || 3.40))}
+                  </div>
+                  <div style={{ fontSize: '11px', color: COLORS.green, fontWeight: 600 }}>Export Value Confirmed</div>
+                </div>
+                <div style={{ background: '#F8FAFC', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+                  <div style={{ fontSize: '10.5px', color: COLORS.grey, fontWeight: 650 }}>GARMENT SMV / TARGET</div>
+                  <div style={{ fontSize: '20px', fontWeight: 900, color: COLORS.purple, margin: '2px 0' }}>{smv} min</div>
+                  <div style={{ fontSize: '11px', color: COLORS.purple, fontWeight: 600 }}>Target: {targetPerHour} pcs/hr</div>
+                </div>
+                <div style={{ background: '#F8FAFC', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+                  <div style={{ fontSize: '10.5px', color: COLORS.grey, fontWeight: 650 }}>PRINT / EMB TYPE</div>
+                  <div style={{ fontSize: '14px', fontWeight: 900, color: COLORS.navy, margin: '4px 0 2px' }}>
+                    {job.printEmb?.printType || 'Water Base & HD'}
+                  </div>
+                  <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 600 }}>Chest Placement Print</div>
+                </div>
+              </div>
+
+              {/* Quick specs pill row */}
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', fontSize: '11px', color: COLORS.grey }}>
+                <span style={{ background: '#F1F5F9', padding: '3px 8px', borderRadius: '4px' }}>
+                  Fabric: <strong>CVC Brushed Fleece 240 GSM</strong>
+                </span>
+                <span style={{ background: '#F1F5F9', padding: '3px 8px', borderRadius: '4px' }}>
+                  Composition: <strong>60% Cotton 40% Polyester</strong>
+                </span>
+                <span style={{ background: '#F1F5F9', padding: '3px 8px', borderRadius: '4px' }}>
+                  Colorways: <strong>3 Colors (Pink Mel, Heather Grey, Dark Charcoal)</strong>
+                </span>
+                <span style={{ background: '#F1F5F9', padding: '3px 8px', borderRadius: '4px' }}>
+                  Sewing Lines: <strong>Line 16B & Line 14B</strong>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* ========================================================================= */}
+          {/* COLOR-WISE & SIZE-WISE BREAKDOWN MATRIX (TOTAL ORDER FULFILLMENT) */}
+          {/* ========================================================================= */}
+          <div style={{ marginTop: '16px', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <div style={{ fontSize: '13px', fontWeight: 900, color: COLORS.navy, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Palette size={15} color={COLORS.blue} />
+                Color-Wise &amp; Size-Wise Breakdown Matrix (Master PO Fulfillment)
+              </div>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: COLORS.green, background: '#DCFCE7', padding: '2px 8px', borderRadius: '4px' }}>
+                Total Order: {fmt(oq)} Pcs (100% Breakdown Verified)
+              </span>
+            </div>
+
+            <div style={{ overflowX: 'auto', border: `1px solid ${COLORS.border}`, borderRadius: '8px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ background: '#0F274E', color: '#FFFFFF', borderBottom: `1px solid ${COLORS.border}` }}>
+                    <th style={{ padding: '8px 10px', fontWeight: 800 }}>Colourway Name</th>
+                    <th style={{ padding: '8px 10px', fontWeight: 700 }}>Pantone Ref</th>
+                    <th style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 700 }}>XS</th>
+                    <th style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 700 }}>S</th>
+                    <th style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 700 }}>M</th>
+                    <th style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 700 }}>L</th>
+                    <th style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 700 }}>XL</th>
+                    <th style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 700 }}>XXL</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 900, background: '#1E3A8A' }}>Total Pcs</th>
+                    <th style={{ padding: '8px 8px', textAlign: 'center', fontWeight: 700 }}>Ratio %</th>
+                    <th style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 700 }}>Cartons</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 800 }}>FOB Total ($)</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 800 }}>PO Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {colorSizeBreakdown.map((row, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9', background: idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC' }}>
+                      <td style={{ padding: '9px 10px', fontWeight: 800, color: COLORS.navy }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: idx === 0 ? '#EC4899' : idx === 1 ? '#94A3B8' : '#334155' }}></span>
+                          {row.color}
+                        </div>
+                      </td>
+                      <td style={{ padding: '9px 10px', color: COLORS.grey, fontSize: '11px' }}>{row.pantone}</td>
+                      <td style={{ padding: '9px 8px', textAlign: 'right', color: '#334155' }}>{fmt(row.xs)}</td>
+                      <td style={{ padding: '9px 8px', textAlign: 'right', color: '#334155' }}>{fmt(row.s)}</td>
+                      <td style={{ padding: '9px 8px', textAlign: 'right', color: '#334155' }}>{fmt(row.m)}</td>
+                      <td style={{ padding: '9px 8px', textAlign: 'right', color: '#334155' }}>{fmt(row.l)}</td>
+                      <td style={{ padding: '9px 8px', textAlign: 'right', color: '#334155' }}>{fmt(row.xl)}</td>
+                      <td style={{ padding: '9px 8px', textAlign: 'right', color: '#334155' }}>{fmt(row.xxl)}</td>
+                      <td style={{ padding: '9px 10px', textAlign: 'right', fontWeight: 900, color: COLORS.navy, background: '#F1F5F9' }}>
+                        {fmt(row.totalPcs)}
+                      </td>
+                      <td style={{ padding: '9px 8px', textAlign: 'center', fontWeight: 700, color: COLORS.blue }}>{row.ratio}</td>
+                      <td style={{ padding: '9px 8px', textAlign: 'right', color: COLORS.grey }}>{row.cartons} ctns</td>
+                      <td style={{ padding: '9px 10px', textAlign: 'right', fontWeight: 800, color: COLORS.green }}>${fmt(row.fobValue, 2)}</td>
+                      <td style={{ padding: '9px 10px', textAlign: 'center' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 800, padding: '2px 8px', borderRadius: '4px', background: '#DCFCE7', color: COLORS.green }}>
+                          {row.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr style={{ background: '#0F274E', color: '#FFFFFF', fontWeight: 900 }}>
+                    <td style={{ padding: '10px 10px' }}>TOTAL MASTER PO</td>
+                    <td style={{ padding: '10px 10px', fontSize: '11px', color: '#94A3B8' }}>3 Colorways</td>
+                    <td style={{ padding: '10px 8px', textAlign: 'right' }}>560</td>
+                    <td style={{ padding: '10px 8px', textAlign: 'right' }}>1,140</td>
+                    <td style={{ padding: '10px 8px', textAlign: 'right' }}>1,690</td>
+                    <td style={{ padding: '10px 8px', textAlign: 'right' }}>1,850</td>
+                    <td style={{ padding: '10px 8px', textAlign: 'right' }}>930</td>
+                    <td style={{ padding: '10px 8px', textAlign: 'right' }}>331</td>
+                    <td style={{ padding: '10px 10px', textAlign: 'right', background: '#1E3A8A', color: '#38BDF8', fontSize: '13px' }}>
+                      {fmt(oq)} pcs
+                    </td>
+                    <td style={{ padding: '10px 8px', textAlign: 'center' }}>100%</td>
+                    <td style={{ padding: '10px 8px', textAlign: 'right' }}>{totalCartons} ctns</td>
+                    <td style={{ padding: '10px 10px', textAlign: 'right', color: '#4ADE80' }}>
+                      ${fmt(oq * (Number(job.fob) || 3.40), 2)}
+                    </td>
+                    <td style={{ padding: '10px 10px', textAlign: 'center' }}>
+                      <span style={{ fontSize: '10.5px', background: '#15803D', color: '#FFFFFF', padding: '3px 8px', borderRadius: '4px' }}>
+                        ✓ FULFILLED
+                      </span>
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
             </div>
           </div>
 
@@ -852,40 +1215,53 @@ function Job360Content() {
                     <th style={{ padding: '8px 10px' }}>Delivery Terms</th>
                     <th style={{ padding: '8px 10px', textAlign: 'right' }}>Order Qty</th>
                     <th style={{ padding: '8px 10px', textAlign: 'right' }}>Carton Qty</th>
-                    <th style={{ padding: '8px 10px', textAlign: 'center' }}>Ex-Factory Date</th>
+                    <th style={{ padding: '8px 10px' }}>Ex-Factory Date</th>
                     <th style={{ padding: '8px 10px', textAlign: 'center' }}>Present Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {poBreakdown.map((row, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                      <td style={{ padding: '8px 10px', fontWeight: 800, color: COLORS.blue }}>{row.po}</td>
-                      <td style={{ padding: '8px 10px', fontWeight: 700 }}>{row.destination}</td>
-                      <td style={{ padding: '8px 10px', color: COLORS.grey }}>{row.port}</td>
-                      <td style={{ padding: '8px 10px' }}>{row.terms}</td>
-                      <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 800, color: COLORS.navy }}>
-                        {fmt(row.qty)} pcs
-                      </td>
-                      <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 750, color: COLORS.purple }}>
-                        {row.cartons} ctns
-                      </td>
-                      <td style={{ padding: '8px 10px', textAlign: 'center', color: COLORS.grey }}>
-                        {d2(row.shipDate)}
-                      </td>
-                      <td style={{ padding: '8px 10px', textAlign: 'center' }}>
-                        <span style={{
-                          fontSize: '10px',
-                          fontWeight: 800,
-                          padding: '3px 8px',
-                          borderRadius: '4px',
-                          background: row.statusBg,
-                          color: row.statusColor
-                        }}>
-                          {row.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                    <td style={{ padding: '8px 10px', fontWeight: 800, color: COLORS.blue }}>PO-{job.jobNo}-EUR01</td>
+                    <td style={{ padding: '8px 10px' }}>Germany 🇩🇪</td>
+                    <td style={{ padding: '8px 10px', color: COLORS.grey }}>Hamburg Port</td>
+                    <td style={{ padding: '8px 10px' }}>FOB Chittagong</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 800 }}>{fmt(Math.round(oq * 0.45))} pcs</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'right', color: COLORS.purple }}>{Math.ceil(oq * 0.45 / 24)} ctns</td>
+                    <td style={{ padding: '8px 10px' }}>{d2(job.dates?.exFactory || '05-Aug-2026')}</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                      <span style={{ fontSize: '10px', fontWeight: 800, padding: '2px 8px', borderRadius: '4px', background: isShipped ? '#DCFCE7' : '#FEF3C7', color: isShipped ? COLORS.green : COLORS.amber }}>
+                        {isShipped ? 'SHIPPED' : 'IN PRODUCTION'}
+                      </span>
+                    </td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                    <td style={{ padding: '8px 10px', fontWeight: 800, color: COLORS.blue }}>PO-{job.jobNo}-EUR02</td>
+                    <td style={{ padding: '8px 10px' }}>France 🇫🇷</td>
+                    <td style={{ padding: '8px 10px', color: COLORS.grey }}>Le Havre Port</td>
+                    <td style={{ padding: '8px 10px' }}>FOB Chittagong</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 800 }}>{fmt(Math.round(oq * 0.30))} pcs</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'right', color: COLORS.purple }}>{Math.ceil(oq * 0.30 / 24)} ctns</td>
+                    <td style={{ padding: '8px 10px' }}>{d2(job.dates?.exFactory || '05-Aug-2026')}</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                      <span style={{ fontSize: '10px', fontWeight: 800, padding: '2px 8px', borderRadius: '4px', background: isShipped ? '#DCFCE7' : '#E0F2FE', color: isShipped ? COLORS.green : COLORS.blue }}>
+                        {isShipped ? 'SHIPPED' : 'SEWING WIP'}
+                      </span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '8px 10px', fontWeight: 800, color: COLORS.blue }}>PO-{job.jobNo}-EUR03</td>
+                    <td style={{ padding: '8px 10px' }}>United Kingdom 🇬🇧</td>
+                    <td style={{ padding: '8px 10px', color: COLORS.grey }}>Felixstowe Port</td>
+                    <td style={{ padding: '8px 10px' }}>FOB Chittagong</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 800 }}>{fmt(Math.round(oq * 0.25))} pcs</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'right', color: COLORS.purple }}>{Math.ceil(oq * 0.25 / 24)} ctns</td>
+                    <td style={{ padding: '8px 10px' }}>{d2(job.dates?.exFactory || '05-Aug-2026')}</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                      <span style={{ fontSize: '10px', fontWeight: 800, padding: '2px 8px', borderRadius: '4px', background: isShipped ? '#DCFCE7' : '#E0F2FE', color: isShipped ? COLORS.green : COLORS.blue }}>
+                        {isShipped ? 'SHIPPED' : 'CUTTING DONE'}
+                      </span>
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -921,16 +1297,17 @@ function Job360Content() {
             </span>
           </div>
 
+          {/* Planning Lead KPIs */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', marginBottom: '14px' }}>
             <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
               <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>TARGET SHIP DATE</div>
-              <div style={{ fontSize: '18px', fontWeight: 900, color: COLORS.navy, margin: '2px 0' }}>{d2(job.dates?.exFactory) || '05-Aug-26'}</div>
-              <div style={{ fontSize: '11.5px', color: COLORS.green, fontWeight: 600 }}>Week {job.shipment?.week || 'W32'}</div>
+              <div style={{ fontSize: '18px', fontWeight: 900, color: COLORS.navy, margin: '2px 0' }}>{d2(job.dates?.exFactory || '05-Aug-2026')}</div>
+              <div style={{ fontSize: '11.5px', color: COLORS.blue, fontWeight: 600 }}>Week W32</div>
             </div>
             <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
               <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>ASSIGNED SEWING LINE</div>
-              <div style={{ fontSize: '18px', fontWeight: 900, color: COLORS.blue, margin: '2px 0' }}>{job.lineAllocation?.line || 'Line 14B (Floor 3)'}</div>
-              <div style={{ fontSize: '11.5px', color: COLORS.grey, fontWeight: 600 }}>Capacity: {dailyTarget} pcs/day</div>
+              <div style={{ fontSize: '18px', fontWeight: 900, color: COLORS.navy, margin: '2px 0' }}>16B</div>
+              <div style={{ fontSize: '11.5px', color: COLORS.grey, fontWeight: 600 }}>Capacity: 2068 pcs/day</div>
             </div>
             <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
               <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>CRITICAL PATH SLACK</div>
@@ -939,45 +1316,39 @@ function Job360Content() {
             </div>
             <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
               <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>PP SAMPLE GATE</div>
-              <div style={{ fontSize: '18px', fontWeight: 900, color: COLORS.purple, margin: '2px 0' }}>APPROVED</div>
+              <div style={{ fontSize: '16px', fontWeight: 900, color: COLORS.purple, margin: '4px 0 2px' }}>APPROVED</div>
               <div style={{ fontSize: '11.5px', color: COLORS.grey, fontWeight: 600 }}>Buyer sign-off in-hand</div>
             </div>
           </div>
 
+          {/* Backward Schedule Table */}
           <div style={{ overflowX: 'auto', border: `1px solid ${COLORS.border}`, borderRadius: '8px' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px', textAlign: 'left' }}>
               <thead>
                 <tr style={{ background: '#F1F5F9', borderBottom: `1px solid ${COLORS.border}`, color: COLORS.navy }}>
-                  <th style={{ padding: '8px 10px' }}>Milestone Activity</th>
+                  <th style={{ padding: '8px 10px' }}>Milestone / Stage</th>
                   <th style={{ padding: '8px 10px' }}>Planned Start</th>
-                  <th style={{ padding: '8px 10px' }}>Planned End</th>
+                  <th style={{ padding: '8px 10px' }}>Planned Finish</th>
                   <th style={{ padding: '8px 10px' }}>Actual Start</th>
-                  <th style={{ padding: '8px 10px' }}>Actual End</th>
-                  <th style={{ padding: '8px 10px' }}>Responsible Lead</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'center' }}>Status</th>
+                  <th style={{ padding: '8px 10px' }}>Actual Finish</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'center' }}>Milestone Status</th>
+                  <th style={{ padding: '8px 10px' }}>Department Lead</th>
                 </tr>
               </thead>
               <tbody>
-                {tnaMilestones.map((m, idx) => (
+                {backwardSchedule.map((m, idx) => (
                   <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
                     <td style={{ padding: '8px 10px', fontWeight: 700, color: COLORS.navy }}>{m.step}</td>
                     <td style={{ padding: '8px 10px', color: COLORS.grey }}>{m.planStart}</td>
                     <td style={{ padding: '8px 10px', color: COLORS.grey }}>{m.planEnd}</td>
-                    <td style={{ padding: '8px 10px', color: COLORS.navy, fontWeight: 700 }}>{m.actualStart}</td>
-                    <td style={{ padding: '8px 10px', color: COLORS.navy, fontWeight: 700 }}>{m.actualEnd}</td>
-                    <td style={{ padding: '8px 10px', color: COLORS.blue, fontWeight: 600 }}>{m.lead}</td>
+                    <td style={{ padding: '8px 10px', fontWeight: 600 }}>{m.actualStart}</td>
+                    <td style={{ padding: '8px 10px', fontWeight: 600 }}>{m.actualEnd}</td>
                     <td style={{ padding: '8px 10px', textAlign: 'center' }}>
-                      <span style={{
-                        fontSize: '10px',
-                        fontWeight: 800,
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        background: m.status === 'COMPLETED' ? '#DCFCE7' : m.status.includes('PROGRESS') ? '#E0F2FE' : '#FEF3C7',
-                        color: m.status === 'COMPLETED' ? COLORS.green : m.status.includes('PROGRESS') ? COLORS.blue : COLORS.amber
-                      }}>
+                      <span style={{ fontSize: '10px', fontWeight: 800, padding: '2px 8px', borderRadius: '4px', background: m.status === 'COMPLETED' ? '#DCFCE7' : '#E0F2FE', color: m.status === 'COMPLETED' ? COLORS.green : COLORS.blue }}>
                         {m.status}
                       </span>
                     </td>
+                    <td style={{ padding: '8px 10px', color: COLORS.grey }}>{m.lead}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1003,14 +1374,14 @@ function Job360Content() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
             <div>
               <h3 style={{ fontSize: '15px', fontWeight: 900, color: COLORS.navy, margin: 0 }}>
-                3. Total Production Status · Unified Section-Wise Quantity &amp; Balance Board
+                3. Total Production Status · Unified End-to-End Manufacturing Master Board
               </h3>
               <div style={{ fontSize: '11.5px', color: COLORS.grey, marginTop: '2px' }}>
-                Unified master tracking of required, produced, balance and yield across all manufacturing stages
+                Complete pipeline tracking from Yarn sourcing to Garment shipment in one unified view
               </div>
             </div>
             <span style={{ fontSize: '11px', fontWeight: 800, color: COLORS.blue, background: '#E0F2FE', padding: '4px 10px', borderRadius: '6px' }}>
-              FACTORY MASTER PIPELINE
+              ALL 12 STAGES SYNCHRONIZED
             </span>
           </div>
 
@@ -1050,45 +1421,42 @@ function Job360Content() {
             </div>
           </div>
 
-          {/* Unified Pipeline Table */}
+          {/* Unified Master Pipeline Table Covering All 12 Stages */}
           <div style={{ overflowX: 'auto', border: `1px solid ${COLORS.border}`, borderRadius: '8px' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px', textAlign: 'left' }}>
               <thead>
                 <tr style={{ background: '#F1F5F9', borderBottom: `1px solid ${COLORS.border}`, color: COLORS.navy }}>
                   <th style={{ padding: '8px 10px' }}>Section / Manufacturing Stage</th>
+                  <th style={{ padding: '8px 10px' }}>Factory Floor Location</th>
                   <th style={{ padding: '8px 10px', textAlign: 'center' }}>Unit</th>
                   <th style={{ padding: '8px 10px', textAlign: 'right' }}>Required Demand</th>
                   <th style={{ padding: '8px 10px', textAlign: 'right' }}>Actual Produced</th>
                   <th style={{ padding: '8px 10px', textAlign: 'right' }}>Balance / Excess</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'center' }}>Yield Rate</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'center' }}>Achievement</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'center' }}>RFT Quality</th>
                   <th style={{ padding: '8px 10px', textAlign: 'center' }}>Stage Status</th>
                   <th style={{ padding: '8px 10px' }}>Responsible In-Charge</th>
                 </tr>
               </thead>
               <tbody>
                 {masterPipeline.map((row, idx) => (
-                  <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                  <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9', background: idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC' }}>
                     <td style={{ padding: '8px 10px', fontWeight: 800, color: COLORS.navy }}>{row.section}</td>
+                    <td style={{ padding: '8px 10px', color: COLORS.grey }}>{row.floor}</td>
                     <td style={{ padding: '8px 10px', textAlign: 'center', color: COLORS.grey }}>{row.unit}</td>
-                    <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700 }}>{fmt(row.req)}</td>
-                    <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 800, color: COLORS.green }}>{fmt(row.act)}</td>
-                    <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: row.bal > 0 ? COLORS.amber : COLORS.grey }}>
+                    <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600 }}>{fmt(row.req)}</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 800, color: COLORS.blue }}>{fmt(row.act)}</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: row.bal === 0 ? COLORS.green : COLORS.amber }}>
                       {fmt(row.bal)}
                     </td>
-                    <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 800, color: COLORS.blue }}>{row.yieldRate}</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 800, color: COLORS.green }}>{row.yieldRate}</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 700, color: COLORS.emerald }}>{row.rft}</td>
                     <td style={{ padding: '8px 10px', textAlign: 'center' }}>
-                      <span style={{
-                        fontSize: '10px',
-                        fontWeight: 800,
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        background: row.status.includes('COMPLETED') || row.status.includes('PASSED') || row.status.includes('DONE') || row.status.includes('SHIPPED') || row.status.includes('100%') ? '#DCFCE7' : '#E0F2FE',
-                        color: row.status.includes('COMPLETED') || row.status.includes('PASSED') || row.status.includes('DONE') || row.status.includes('SHIPPED') || row.status.includes('100%') ? COLORS.green : COLORS.blue
-                      }}>
+                      <span style={{ fontSize: '10px', fontWeight: 800, padding: '2px 8px', borderRadius: '4px', background: row.status.includes('COMPLETED') || row.status.includes('100%') || row.status.includes('APPROVED') || row.status.includes('SHIPPED') ? '#DCFCE7' : '#FEF3C7', color: row.status.includes('COMPLETED') || row.status.includes('100%') || row.status.includes('APPROVED') || row.status.includes('SHIPPED') ? COLORS.green : COLORS.amber }}>
                         {row.status}
                       </span>
                     </td>
-                    <td style={{ padding: '8px 10px', color: COLORS.grey }}>{row.inCharge}</td>
+                    <td style={{ padding: '8px 10px', color: COLORS.grey, fontSize: '11px' }}>{row.inCharge}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1097,7 +1465,7 @@ function Job360Content() {
         </div>
 
         {/* ========================================================================= */}
-        {/* SUB-SECTION 4: KNITTING INPUT (PRACTICAL REAL FACTORY DATA) */}
+        {/* SUB-SECTION 4: KNITTING INPUT */}
         {/* ========================================================================= */}
         <div
           id="section-knitting-input"
@@ -1114,77 +1482,57 @@ function Job360Content() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
             <div>
               <h3 style={{ fontSize: '15px', fontWeight: 900, color: COLORS.navy, margin: 0 }}>
-                4. Knitting Input · Yarn Lot, Greige Output &amp; Fabric Store Delivery
+                4. Knitting Input · Yarn Lot, Count, Brand &amp; Machine Parameters
               </h3>
               <div style={{ fontSize: '11.5px', color: COLORS.grey, marginTop: '2px' }}>
-                Yarn lot allocation, circular knitting kg produced and delivery to Greige Fabric Store
+                Practical knitting floor parameters with yarn allocation and delivery into Greige Store
               </div>
             </div>
             <span style={{ fontSize: '11px', fontWeight: 800, color: COLORS.green, background: '#DCFCE7', padding: '4px 10px', borderRadius: '6px' }}>
-              ✓ KNITTING COMPLETED &amp; STORE RECEIVED
+              ✓ KNITTING COMPLETED
             </span>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', marginBottom: '14px' }}>
-            <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>YARN DEMAND (KG)</div>
-              <div style={{ fontSize: '20px', fontWeight: 900, color: COLORS.navy, margin: '2px 0' }}>{fmt(knitReq)} kg</div>
-              <div style={{ fontSize: '11px', color: COLORS.green, fontWeight: 600 }}>100% In-House</div>
-            </div>
-            <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>GREY FABRIC KNITTED</div>
-              <div style={{ fontSize: '20px', fontWeight: 900, color: COLORS.blue, margin: '2px 0' }}>{fmt(knitDone)} kg</div>
-              <div style={{ fontSize: '11px', color: COLORS.blue, fontWeight: 600 }}>Total 68 Rolls Produced</div>
-            </div>
-            <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>KNITTING BALANCE</div>
-              <div style={{ fontSize: '20px', fontWeight: 900, color: knitBal === 0 ? COLORS.green : COLORS.red, margin: '2px 0' }}>{fmt(knitBal)} kg</div>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 600 }}>0 kg Remaining</div>
-            </div>
-            <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>GREIGE STORE DELIVERY</div>
-              <div style={{ fontSize: '16px', fontWeight: 900, color: COLORS.green, margin: '4px 0 2px' }}>100% RECEIVED</div>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 600 }}>Challan: CH-KN-4421</div>
-            </div>
           </div>
 
           <div style={{ overflowX: 'auto', border: `1px solid ${COLORS.border}`, borderRadius: '8px' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px', textAlign: 'left' }}>
               <thead>
                 <tr style={{ background: '#F1F5F9', borderBottom: `1px solid ${COLORS.border}`, color: COLORS.navy }}>
-                  <th style={{ padding: '8px 10px' }}>Yarn Lot &amp; Brand</th>
+                  <th style={{ padding: '8px 10px' }}>Yarn Brand</th>
+                  <th style={{ padding: '8px 10px' }}>Yarn Lot #</th>
                   <th style={{ padding: '8px 10px' }}>Count &amp; Composition</th>
-                  <th style={{ padding: '8px 10px' }}>Fabric Type</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'right' }}>Req Grey (Kg)</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'right' }}>Knitted (Kg)</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'right' }}>Rolls</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'center' }}>Delivery Status</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'right' }}>Allocated (kg)</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'right' }}>Knitted (kg)</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'right' }}>Greige Delv (kg)</th>
+                  <th style={{ padding: '8px 10px' }}>Machine Dia / Gauge</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'center' }}>Knitting Status</th>
                 </tr>
               </thead>
               <tbody>
                 <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
-                  <td style={{ padding: '8px 10px', fontWeight: 800, color: COLORS.blue }}>Lot 8921 · Bablu Spinning</td>
-                  <td style={{ padding: '8px 10px' }}>30/1 Combed Cotton (100%)</td>
-                  <td style={{ padding: '8px 10px', fontWeight: 600 }}>Single Jersey (160 GSM)</td>
-                  <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700 }}>{fmt(knitReq * 0.92)} kg</td>
-                  <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 800, color: COLORS.green }}>{fmt(knitDone * 0.92)} kg</td>
-                  <td style={{ padding: '8px 10px', textAlign: 'right' }}>62 rolls</td>
+                  <td style={{ padding: '8px 10px', fontWeight: 800, color: COLORS.navy }}>Akij Spinning Mills</td>
+                  <td style={{ padding: '8px 10px', fontWeight: 700, color: COLORS.blue }}>LOT-6710</td>
+                  <td style={{ padding: '8px 10px' }}>30/1 CVC Combed (60/40)</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600 }}>1,250 kg</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 800, color: COLORS.blue }}>1,235 kg</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 800, color: COLORS.green }}>1,235 kg</td>
+                  <td style={{ padding: '8px 10px' }}>30" Dia × 24 Gauge</td>
                   <td style={{ padding: '8px 10px', textAlign: 'center' }}>
                     <span style={{ fontSize: '10px', fontWeight: 800, padding: '2px 8px', borderRadius: '4px', background: '#DCFCE7', color: COLORS.green }}>
-                      ✓ RECEIVED IN GREIGE STORE
+                      DELIVERED
                     </span>
                   </td>
                 </tr>
-                <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
-                  <td style={{ padding: '8px 10px', fontWeight: 800, color: COLORS.blue }}>Lot 4410 · DBL Spinning</td>
-                  <td style={{ padding: '8px 10px' }}>20/1 Cotton + 70D Spandex</td>
-                  <td style={{ padding: '8px 10px', fontWeight: 600 }}>1x1 Spandex Rib Collar &amp; Cuff</td>
-                  <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700 }}>{fmt(knitReq * 0.08)} kg</td>
-                  <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 800, color: COLORS.green }}>{fmt(knitDone * 0.08)} kg</td>
-                  <td style={{ padding: '8px 10px', textAlign: 'right' }}>6 rolls</td>
+                <tr>
+                  <td style={{ padding: '8px 10px', fontWeight: 800, color: COLORS.navy }}>Square Textiles</td>
+                  <td style={{ padding: '8px 10px', fontWeight: 700, color: COLORS.blue }}>LOT-7822</td>
+                  <td style={{ padding: '8px 10px' }}>20/1 Carded Cotton (Loop Yarn)</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600 }}>500 kg</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 800, color: COLORS.blue }}>485 kg</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 800, color: COLORS.green }}>483 kg</td>
+                  <td style={{ padding: '8px 10px' }}>30" Dia × 20 Gauge</td>
                   <td style={{ padding: '8px 10px', textAlign: 'center' }}>
                     <span style={{ fontSize: '10px', fontWeight: 800, padding: '2px 8px', borderRadius: '4px', background: '#DCFCE7', color: COLORS.green }}>
-                      ✓ RECEIVED IN GREIGE STORE
+                      DELIVERED
                     </span>
                   </td>
                 </tr>
@@ -1211,90 +1559,59 @@ function Job360Content() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
             <div>
               <h3 style={{ fontSize: '15px', fontWeight: 900, color: COLORS.navy, margin: 0 }}>
-                5. Dyeing &amp; Special Process · Batch Output, Peach/Brushing &amp; Store Delivery
+                5. Dyeing &amp; Special Process · Batch Delivery, Peach/Brush &amp; AOP Tracking
               </h3>
               <div style={{ fontSize: '11.5px', color: COLORS.grey, marginTop: '2px' }}>
-                Batch execution, finished fabric kg delivered and special process (peach, brush, AOP) dispatch/receive
+                Batch deliveries from dyeing mills with sent vs received weights and process loss %
               </div>
             </div>
             <span style={{ fontSize: '11px', fontWeight: 800, color: COLORS.green, background: '#DCFCE7', padding: '4px 10px', borderRadius: '6px' }}>
-              ✓ DELIVERED TO FINISHED STORE
+              ✓ 100% DELIVERED
             </span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', marginBottom: '14px' }}>
-            <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>DYEING DEMAND</div>
-              <div style={{ fontSize: '20px', fontWeight: 900, color: COLORS.navy, margin: '2px 0' }}>{fmt(dyeReq)} kg</div>
-              <div style={{ fontSize: '11px', color: COLORS.blue, fontWeight: 600 }}>Finished Fabric Target</div>
-            </div>
-            <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>DELIVERED TO STORE</div>
-              <div style={{ fontSize: '20px', fontWeight: 900, color: COLORS.green, margin: '2px 0' }}>{fmt(dyeDone)} kg</div>
-              <div style={{ fontSize: '11px', color: COLORS.green, fontWeight: 600 }}>100% Quality Passed</div>
-            </div>
-            <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>DYEING SUPPLIER</div>
-              <div style={{ fontSize: '16px', fontWeight: 900, color: COLORS.navy, margin: '4px 0 2px' }}>DB Tex / Northern</div>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 600 }}>Batch: 01160+10281</div>
-            </div>
-            <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>SPECIAL PROCESS</div>
-              <div style={{ fontSize: '16px', fontWeight: 900, color: COLORS.purple, margin: '4px 0 2px' }}>Peach &amp; Brushing</div>
-              <div style={{ fontSize: '11px', color: COLORS.purple, fontWeight: 600 }}>Process Loss: 1.83% (OK)</div>
-            </div>
-          </div>
-
-          {/* Special Process Tracking Table */}
-          <div style={{ marginTop: '8px' }}>
-            <div style={{ fontSize: '12px', fontWeight: 800, color: COLORS.navy, marginBottom: '6px' }}>
-              Special Process Dispatch &amp; Receiving Log (Peach, Brush, AOP Process Tracking)
-            </div>
-            <div style={{ overflowX: 'auto', border: `1px solid ${COLORS.border}`, borderRadius: '8px' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px', textAlign: 'left' }}>
-                <thead>
-                  <tr style={{ background: '#F1F5F9', borderBottom: `1px solid ${COLORS.border}`, color: COLORS.navy }}>
-                    <th style={{ padding: '8px 10px' }}>Special Process</th>
-                    <th style={{ padding: '8px 10px', textAlign: 'right' }}>Sent Qty (Kg)</th>
-                    <th style={{ padding: '8px 10px', textAlign: 'center' }}>Dispatch Date &amp; Challan</th>
-                    <th style={{ padding: '8px 10px', textAlign: 'right' }}>Received Qty (Kg)</th>
-                    <th style={{ padding: '8px 10px', textAlign: 'center' }}>Return Date &amp; Challan</th>
-                    <th style={{ padding: '8px 10px', textAlign: 'right' }}>Loss / Wastage</th>
-                    <th style={{ padding: '8px 10px', textAlign: 'center' }}>Process Status</th>
+          <div style={{ overflowX: 'auto', border: `1px solid ${COLORS.border}`, borderRadius: '8px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ background: '#F1F5F9', borderBottom: `1px solid ${COLORS.border}`, color: COLORS.navy }}>
+                  <th style={{ padding: '8px 10px' }}>Special Process</th>
+                  <th style={{ padding: '8px 10px' }}>Dyeing / Processing Mill</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'right' }}>Sent Qty (kg)</th>
+                  <th style={{ padding: '8px 10px' }}>Sent Date</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'right' }}>Received Qty (kg)</th>
+                  <th style={{ padding: '8px 10px' }}>Received Date</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'right' }}>Process Loss (kg / %)</th>
+                  <th style={{ padding: '8px 10px' }}>Mill Challan #</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'center' }}>Verdict</th>
+                </tr>
+              </thead>
+              <tbody>
+                {specialProcessLog.map((row, idx) => (
+                  <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                    <td style={{ padding: '8px 10px', fontWeight: 800, color: COLORS.navy }}>{row.process}</td>
+                    <td style={{ padding: '8px 10px', color: COLORS.grey }}>{row.mill}</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600 }}>{row.sentKg} kg</td>
+                    <td style={{ padding: '8px 10px', color: COLORS.grey }}>{row.sentDate}</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 800, color: COLORS.blue }}>{row.recvKg} kg</td>
+                    <td style={{ padding: '8px 10px', color: COLORS.grey }}>{row.recvDate}</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'right', color: COLORS.amber, fontWeight: 700 }}>
+                      -{row.lossKg} kg ({row.lossPct})
+                    </td>
+                    <td style={{ padding: '8px 10px', fontWeight: 700, color: COLORS.blue }}>{row.challan}</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                      <span style={{ fontSize: '10px', fontWeight: 800, padding: '2px 8px', borderRadius: '4px', background: '#DCFCE7', color: COLORS.green }}>
+                        ✓ {row.status}
+                      </span>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {specialProcessLog.map((row, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                      <td style={{ padding: '8px 10px', fontWeight: 800, color: COLORS.navy }}>{row.process}</td>
-                      <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700 }}>{row.sentKg} kg</td>
-                      <td style={{ padding: '8px 10px', textAlign: 'center', color: COLORS.grey }}>
-                        {row.sentDate} ({row.challanSent})
-                      </td>
-                      <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 800, color: COLORS.green }}>
-                        {row.recvKg} kg
-                      </td>
-                      <td style={{ padding: '8px 10px', textAlign: 'center', color: COLORS.grey }}>
-                        {row.recvDate} ({row.challanRecv})
-                      </td>
-                      <td style={{ padding: '8px 10px', textAlign: 'right', color: COLORS.amber, fontWeight: 700 }}>
-                        {row.lossKg} kg ({row.lossPct})
-                      </td>
-                      <td style={{ padding: '8px 10px', textAlign: 'center' }}>
-                        <span style={{ fontSize: '10px', fontWeight: 800, padding: '2px 8px', borderRadius: '4px', background: '#DCFCE7', color: COLORS.green }}>
-                          ✓ {row.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
 
         {/* ========================================================================= */}
-        {/* SUB-SECTION 6: DYEING LAB (REAL NFL LAB DIP FORMAT - MATCHES USER IMAGES) */}
+        {/* SUB-SECTION 6: DYEING LAB (LAB DIP) */}
         {/* ========================================================================= */}
         <div
           id="section-lab-input"
@@ -1311,63 +1628,54 @@ function Job360Content() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
             <div>
               <h3 style={{ fontSize: '15px', fontWeight: 900, color: COLORS.navy, margin: 0 }}>
-                6. Dyeing Lab (Lab Dip) · LD# Register &amp; Mill Shade Approval Matrix
+                6. Dyeing Lab (Lab Dip) · Official LD#2026 Register &amp; Mill Shade Approval Matrix
               </h3>
               <div style={{ fontSize: '11.5px', color: COLORS.grey, marginTop: '2px' }}>
-                Lab dip submissions, Pantone codes, buyer option approvals across accredited dye houses
+                Direct factory format with Northern, DBL, GMS, Yasin and Amantex option approvals
               </div>
             </div>
-            <span style={{ fontSize: '11px', fontWeight: 800, color: COLORS.green, background: '#DCFCE7', padding: '4px 10px', borderRadius: '6px' }}>
-              ✓ SHADE APPROVED (OPTION B1)
+            <span style={{ fontSize: '11px', fontWeight: 800, color: '#15803D', background: '#DCFCE7', padding: '4px 10px', borderRadius: '6px' }}>
+              ✓ SHADES APPROVED
             </span>
           </div>
 
-          {/* Table 1: Lab Dip Register (Image 1 Style Lime Header) */}
+          {/* TABLE 1: OFFICIAL LD#2026 REGISTER (MATCHES IMAGE 1) */}
           <div style={{ marginBottom: '16px' }}>
             <div style={{ fontSize: '12px', fontWeight: 800, color: COLORS.navy, marginBottom: '6px' }}>
-              Lab Dip Submission &amp; Approval Register (LD# / 2026)
+              Official NFL Dyeing Lab Register (LD#2026 Series)
             </div>
-            <div style={{ overflowX: 'auto', border: '1px solid #D9F99D', borderRadius: '8px' }}>
+            <div style={{ overflowX: 'auto', border: `1px solid ${COLORS.border}`, borderRadius: '8px' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px', textAlign: 'left' }}>
                 <thead>
-                  <tr style={{ background: '#CCFF00', color: '#000000', fontWeight: 900, borderBottom: '2px solid #84CC16' }}>
-                    <th style={{ padding: '8px 10px', borderRight: '1px solid #BEF264' }}>LD#2026</th>
-                    <th style={{ padding: '8px 10px', borderRight: '1px solid #BEF264' }}>APP. OPT.</th>
-                    <th style={{ padding: '8px 10px', borderRight: '1px solid #BEF264' }}>BUYER NAME</th>
-                    <th style={{ padding: '8px 10px', borderRight: '1px solid #BEF264' }}>COLOR NAME</th>
-                    <th style={{ padding: '8px 10px', borderRight: '1px solid #BEF264' }}>PANTONE NUMBER</th>
-                    <th style={{ padding: '8px 10px', borderRight: '1px solid #BEF264' }}>FABRICATION</th>
-                    <th style={{ padding: '8px 10px', borderRight: '1px solid #BEF264' }}>STYLE NUMBER</th>
-                    <th style={{ padding: '8px 10px', borderRight: '1px solid #BEF264' }}>DEPARTMENT</th>
-                    <th style={{ padding: '8px 10px', borderRight: '1px solid #BEF264' }}>MERCHANDISER</th>
-                    <th style={{ padding: '8px 10px', borderRight: '1px solid #BEF264', textAlign: 'center' }}>STF</th>
-                    <th style={{ padding: '8px 10px', textAlign: 'center' }}>REMARKS</th>
+                  <tr style={{ background: '#CCFF00', color: '#000000', fontWeight: 800, borderBottom: '2px solid #000000' }}>
+                    <th style={{ padding: '8px 10px' }}>LD#2026</th>
+                    <th style={{ padding: '8px 10px' }}>APP. OPT.</th>
+                    <th style={{ padding: '8px 10px' }}>BUYER NAME</th>
+                    <th style={{ padding: '8px 10px' }}>COLOR NAME</th>
+                    <th style={{ padding: '8px 10px' }}>PANTONE NUMBER</th>
+                    <th style={{ padding: '8px 10px' }}>FABRICATION</th>
+                    <th style={{ padding: '8px 10px' }}>STYLE NUMBER</th>
+                    <th style={{ padding: '8px 10px' }}>DEPARTMENT</th>
+                    <th style={{ padding: '8px 10px' }}>MERCHANDISER NAME</th>
+                    <th style={{ padding: '8px 10px' }}>STF</th>
+                    <th style={{ padding: '8px 10px' }}>REMARKS</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {realLabDipRegister.map((ld, i) => (
-                    <tr key={i} style={{ borderBottom: '1px solid #F1F5F9', background: i % 2 === 0 ? '#FFFFFF' : '#FAFAFA' }}>
-                      <td style={{ padding: '8px 10px', fontWeight: 800, color: COLORS.navy }}>{ld.ldNo}</td>
-                      <td style={{ padding: '8px 10px', fontWeight: 800, color: COLORS.green }}>{ld.appOpt}</td>
-                      <td style={{ padding: '8px 10px', fontWeight: 700 }}>{ld.buyer}</td>
-                      <td style={{ padding: '8px 10px', fontWeight: 700, color: COLORS.navy }}>{ld.color}</td>
-                      <td style={{ padding: '8px 10px', color: COLORS.grey }}>{ld.pantone}</td>
-                      <td style={{ padding: '8px 10px' }}>{ld.fabric}</td>
-                      <td style={{ padding: '8px 10px', fontWeight: 600 }}>{ld.style}</td>
-                      <td style={{ padding: '8px 10px', color: COLORS.grey }}>{ld.dept}</td>
-                      <td style={{ padding: '8px 10px', fontWeight: 650 }}>{ld.merch}</td>
-                      <td style={{ padding: '8px 10px', textAlign: 'center', color: COLORS.grey }}>{ld.stf}</td>
-                      <td style={{ padding: '8px 10px', textAlign: 'center' }}>
-                        <span style={{
-                          fontSize: '10px',
-                          fontWeight: 800,
-                          padding: '2px 8px',
-                          borderRadius: '4px',
-                          background: ld.remarks.includes('APPROVED') || ld.remarks.includes('PASS') ? '#DCFCE7' : ld.remarks.includes('OVER') ? '#FEF3C7' : '#F1F5F9',
-                          color: ld.remarks.includes('APPROVED') || ld.remarks.includes('PASS') ? COLORS.green : ld.remarks.includes('OVER') ? COLORS.amber : COLORS.grey
-                        }}>
-                          {ld.remarks}
-                        </span>
+                  {realLabDipRegister.map((row, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid #E2E8F0', background: idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC' }}>
+                      <td style={{ padding: '8px 10px', fontWeight: 800, color: COLORS.navy }}>{row.ldNo}</td>
+                      <td style={{ padding: '8px 10px', fontWeight: 700, color: COLORS.green }}>{row.appOpt}</td>
+                      <td style={{ padding: '8px 10px', fontWeight: 700 }}>{row.buyer}</td>
+                      <td style={{ padding: '8px 10px', fontWeight: 800, color: COLORS.blue }}>{row.color}</td>
+                      <td style={{ padding: '8px 10px', color: COLORS.grey }}>{row.pantone}</td>
+                      <td style={{ padding: '8px 10px' }}>{row.fabric}</td>
+                      <td style={{ padding: '8px 10px', fontWeight: 600 }}>{row.style}</td>
+                      <td style={{ padding: '8px 10px', color: COLORS.grey }}>{row.dept}</td>
+                      <td style={{ padding: '8px 10px' }}>{row.merch}</td>
+                      <td style={{ padding: '8px 10px', color: COLORS.grey }}>{row.stf}</td>
+                      <td style={{ padding: '8px 10px', fontWeight: 800, color: row.remarks === 'APPROVED' || row.remarks === 'PASS' ? COLORS.green : COLORS.red }}>
+                        {row.remarks}
                       </td>
                     </tr>
                   ))}
@@ -1376,15 +1684,15 @@ function Job360Content() {
             </div>
           </div>
 
-          {/* Table 2: Mill Shade Approval Matrix across Mills (Image 2 Style) */}
+          {/* TABLE 2: MILL SHADE APPROVAL MATRIX (MATCHES IMAGE 2) */}
           <div>
             <div style={{ fontSize: '12px', fontWeight: 800, color: COLORS.navy, marginBottom: '6px' }}>
-              Mill Shade Approval Matrix across Nominated Dye Houses (Northern, DBL, GMS, Yasin, Amantex)
+              Mill Shade Approval Matrix (Northern · DBL · GMS · Yasin · Amantex)
             </div>
             <div style={{ overflowX: 'auto', border: `1px solid ${COLORS.border}`, borderRadius: '8px' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px', textAlign: 'left' }}>
                 <thead>
-                  <tr style={{ background: '#F1F5F9', borderBottom: `1px solid ${COLORS.border}`, color: COLORS.navy }}>
+                  <tr style={{ background: '#0F274E', color: '#FFFFFF', fontWeight: 800, borderBottom: '1px solid #E2E8F0' }}>
                     <th style={{ padding: '8px 10px' }}>PANTONE NAME</th>
                     <th style={{ padding: '8px 10px' }}>PANTONE NUMBER</th>
                     <th style={{ padding: '8px 10px' }}>Fabric</th>
@@ -1396,26 +1704,16 @@ function Job360Content() {
                   </tr>
                 </thead>
                 <tbody>
-                  {millShadeMatrix.map((m, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                      <td style={{ padding: '8px 10px', fontWeight: 800, color: COLORS.navy }}>{m.pantoneName}</td>
-                      <td style={{ padding: '8px 10px', color: COLORS.grey }}>{m.pantoneNumber}</td>
-                      <td style={{ padding: '8px 10px', fontWeight: 700 }}>{m.fabric}</td>
-                      <td style={{ padding: '8px 10px', color: m.northern.ok ? COLORS.green : COLORS.red, fontWeight: 750 }}>
-                        {m.northern.text}
-                      </td>
-                      <td style={{ padding: '8px 10px', color: m.dbl.ok ? COLORS.green : COLORS.red, fontWeight: 750 }}>
-                        {m.dbl.text}
-                      </td>
-                      <td style={{ padding: '8px 10px', color: m.gms.ok ? COLORS.green : COLORS.red, fontWeight: 750 }}>
-                        {m.gms.text}
-                      </td>
-                      <td style={{ padding: '8px 10px', color: m.yasin.ok ? COLORS.green : COLORS.red, fontWeight: 750 }}>
-                        {m.yasin.text}
-                      </td>
-                      <td style={{ padding: '8px 10px', color: m.amantex.ok ? COLORS.green : COLORS.red, fontWeight: 750 }}>
-                        {m.amantex.text}
-                      </td>
+                  {millShadeMatrix.map((row, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid #E2E8F0' }}>
+                      <td style={{ padding: '8px 10px', fontWeight: 800, color: COLORS.navy }}>{row.pantoneName}</td>
+                      <td style={{ padding: '8px 10px', color: COLORS.grey }}>{row.pantoneNumber}</td>
+                      <td style={{ padding: '8px 10px', fontWeight: 700 }}>{row.fabric}</td>
+                      <td style={{ padding: '8px 10px', color: row.northern.ok ? '#047857' : '#DC2626', fontWeight: 700 }}>{row.northern.text}</td>
+                      <td style={{ padding: '8px 10px', color: row.dbl.ok ? '#047857' : '#DC2626', fontWeight: 700 }}>{row.dbl.text}</td>
+                      <td style={{ padding: '8px 10px', color: row.gms.ok ? '#047857' : '#DC2626', fontWeight: 700 }}>{row.gms.text}</td>
+                      <td style={{ padding: '8px 10px', color: row.yasin.ok ? '#047857' : '#DC2626', fontWeight: 700 }}>{row.yasin.text}</td>
+                      <td style={{ padding: '8px 10px', color: row.amantex.ok ? '#047857' : '#DC2626', fontWeight: 700 }}>{row.amantex.text}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1425,7 +1723,7 @@ function Job360Content() {
         </div>
 
         {/* ========================================================================= */}
-        {/* SUB-SECTION 7: TESTING LAB (MATCHES REAL NFL TESTING LABORATORY FORMAT) */}
+        {/* SUB-SECTION 7: TESTING LAB */}
         {/* ========================================================================= */}
         <div
           id="section-testing-lab"
@@ -1442,94 +1740,91 @@ function Job360Content() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
             <div>
               <h3 style={{ fontSize: '15px', fontWeight: 900, color: COLORS.navy, margin: 0 }}>
-                7. Testing Lab · Fabric Quality Tests &amp; Official Laboratory Certificate
+                7. Testing Lab · Official Physical &amp; Color Fastness Register &amp; Test Certificate
               </h3>
               <div style={{ fontSize: '11.5px', color: COLORS.grey, marginTop: '2px' }}>
-                Rubbing fastness, wash fastness, perspiration, bursting strength and Northern Fashion Ltd. accredited report
+                Rubbing dry/wet, CF to wash/water, perspiration acid/alkaline, bursting strength &amp; supplier audits
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                type="button"
-                onClick={() => setActiveTestModal(true)}
-                style={{
-                  fontSize: '11.5px',
-                  fontWeight: 800,
-                  color: '#FFFFFF',
-                  background: COLORS.navy,
-                  border: 'none',
-                  padding: '6px 14px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 4px rgba(15,39,78,0.1)'
-                }}
-              >
-                📄 View Official Certificate (NFL26090096)
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setActiveTestModal(true)}
+              style={{
+                background: COLORS.navy,
+                color: '#FFFFFF',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '5px 12px',
+                fontSize: '11.5px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}
+            >
+              <FileSpreadsheet size={13} /> View Official Laboratory Certificate
+            </button>
           </div>
 
-          {/* Testing Lab Register Table (Matches Images 3 & 4) */}
           <div style={{ overflowX: 'auto', border: `1px solid ${COLORS.border}`, borderRadius: '8px' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', textAlign: 'left' }}>
               <thead>
-                <tr style={{ background: '#F1F5F9', borderBottom: `1px solid ${COLORS.border}`, color: COLORS.navy }}>
-                  <th style={{ padding: '8px 8px' }}>Date</th>
-                  <th style={{ padding: '8px 8px' }}>Buyer</th>
-                  <th style={{ padding: '8px 8px' }}>Job No</th>
-                  <th style={{ padding: '8px 8px' }}>Batch</th>
-                  <th style={{ padding: '8px 8px' }}>Color</th>
-                  <th style={{ padding: '8px 8px' }}>Fabric &amp; GSM</th>
-                  <th style={{ padding: '8px 8px', textAlign: 'center' }}>Rubbing Dry</th>
-                  <th style={{ padding: '8px 8px', textAlign: 'center' }}>Rubbing Wet</th>
-                  <th style={{ padding: '8px 8px', textAlign: 'center' }}>Color Change</th>
-                  <th style={{ padding: '8px 8px', textAlign: 'center' }}>CF to Wash</th>
-                  <th style={{ padding: '8px 8px', textAlign: 'center' }}>CF Water</th>
-                  <th style={{ padding: '8px 8px', textAlign: 'center' }}>Bursting</th>
-                  <th style={{ padding: '8px 8px', textAlign: 'center' }}>Test Rep</th>
-                  <th style={{ padding: '8px 8px', textAlign: 'center' }}>Buyer Req</th>
-                  <th style={{ padding: '8px 8px', textAlign: 'center' }}>Result</th>
-                  <th style={{ padding: '8px 8px' }}>Dyeing Supplier</th>
+                <tr style={{ background: '#F1F5F9', borderBottom: `2px solid ${COLORS.navy}`, color: COLORS.navy }}>
+                  <th style={{ padding: '6px 8px' }}>Date</th>
+                  <th style={{ padding: '6px 8px' }}>Buyer</th>
+                  <th style={{ padding: '6px 8px' }}>Job No</th>
+                  <th style={{ padding: '6px 8px' }}>Colour</th>
+                  <th style={{ padding: '6px 8px' }}>Batch No</th>
+                  <th style={{ padding: '6px 8px', textAlign: 'right' }}>Qty (kg)</th>
+                  <th style={{ padding: '6px 8px' }}>Fab Type</th>
+                  <th style={{ padding: '6px 8px' }}>GSM</th>
+                  <th style={{ padding: '6px 8px', textAlign: 'center' }}>Rubbing Dry</th>
+                  <th style={{ padding: '6px 8px', textAlign: 'center' }}>Rubbing Wet</th>
+                  <th style={{ padding: '6px 8px', textAlign: 'center' }}>CF Color</th>
+                  <th style={{ padding: '6px 8px', textAlign: 'center' }}>CF Wash</th>
+                  <th style={{ padding: '6px 8px', textAlign: 'center' }}>Bursting</th>
+                  <th style={{ padding: '6px 8px', textAlign: 'center' }}>Result</th>
+                  <th style={{ padding: '6px 8px' }}>Dyeing Supplier</th>
                 </tr>
               </thead>
               <tbody>
                 {realTestingLabRegister.map((row, idx) => (
-                  <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                    <td style={{ padding: '8px 8px', color: COLORS.grey }}>{row.date}</td>
-                    <td style={{ padding: '8px 8px', fontWeight: 700 }}>{row.buyer}</td>
-                    <td style={{ padding: '8px 8px', fontWeight: 800, color: COLORS.blue }}>{row.jobNo}</td>
-                    <td style={{ padding: '8px 8px', color: COLORS.navy, fontWeight: 700 }}>{row.batch}</td>
-                    <td style={{ padding: '8px 8px', fontWeight: 700 }}>{row.color}</td>
-                    <td style={{ padding: '8px 8px' }}>{row.fabType}</td>
-                    <td style={{ padding: '8px 8px', textAlign: 'center' }}>{row.rubDry}</td>
+                  <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9', background: row.isOk ? '#FFFFFF' : '#FFF1F2' }}>
+                    <td style={{ padding: '6px 8px' }}>{row.date}</td>
+                    <td style={{ padding: '6px 8px', fontWeight: 700 }}>{row.buyer}</td>
+                    <td style={{ padding: '6px 8px', fontWeight: 800, color: COLORS.navy }}>{row.jobNo}</td>
+                    <td style={{ padding: '6px 8px', fontWeight: 700, color: COLORS.blue }}>{row.color}</td>
+                    <td style={{ padding: '6px 8px', color: COLORS.grey }}>{row.batch}</td>
+                    <td style={{ padding: '6px 8px', textAlign: 'right' }}>{row.qtyKg}</td>
+                    <td style={{ padding: '6px 8px' }}>{row.fabType}</td>
+                    <td style={{ padding: '6px 8px' }}>{(row as any).gsm || '220'}</td>
+                    <td style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 700 }}>{row.rubDry}</td>
                     <td style={{
-                      padding: '8px 8px',
+                      padding: '6px 8px',
                       textAlign: 'center',
                       fontWeight: 800,
-                      background: !row.isOk ? '#FEE2E2' : 'transparent',
-                      color: !row.isOk ? COLORS.red : 'inherit'
+                      background: row.rubWet.startsWith('2') ? '#FEE2E2' : 'transparent',
+                      color: row.rubWet.startsWith('2') ? '#B91C1C' : '#047857'
                     }}>
                       {row.rubWet}
                     </td>
-                    <td style={{ padding: '8px 8px', textAlign: 'center' }}>{row.colorChange}</td>
-                    <td style={{ padding: '8px 8px', textAlign: 'center' }}>{row.cfWash}</td>
-                    <td style={{ padding: '8px 8px', textAlign: 'center' }}>{row.cfWater}</td>
-                    <td style={{ padding: '8px 8px', textAlign: 'center', fontWeight: 750 }}>{row.bursting}</td>
-                    <td style={{ padding: '8px 8px', textAlign: 'center', fontWeight: 800 }}>{row.testRep}</td>
-                    <td style={{ padding: '8px 8px', textAlign: 'center', color: COLORS.grey }}>{row.buyerReq}</td>
-                    <td style={{ padding: '8px 8px', textAlign: 'center' }}>
+                    <td style={{ padding: '6px 8px', textAlign: 'center' }}>{row.colorChange}</td>
+                    <td style={{ padding: '6px 8px', textAlign: 'center' }}>{row.cfWash}</td>
+                    <td style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 600 }}>{row.bursting}</td>
+                    <td style={{ padding: '6px 8px', textAlign: 'center' }}>
                       <span style={{
                         fontSize: '10px',
-                        fontWeight: 900,
-                        padding: '2px 8px',
+                        fontWeight: 800,
+                        padding: '2px 6px',
                         borderRadius: '4px',
                         background: row.isOk ? '#DCFCE7' : '#FEE2E2',
-                        color: row.isOk ? COLORS.green : COLORS.red
+                        color: row.isOk ? '#15803D' : '#B91C1C'
                       }}>
                         {row.result}
                       </span>
                     </td>
-                    <td style={{ padding: '8px 8px', fontWeight: 650, color: COLORS.navy }}>{row.supplier}</td>
+                    <td style={{ padding: '6px 8px', fontWeight: 600 }}>{row.supplier}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1538,7 +1833,7 @@ function Job360Content() {
         </div>
 
         {/* ========================================================================= */}
-        {/* SUB-SECTION 8: CUTTING & CAD ADJUSTMENT (STEAM OR TUMBLE TOGGLE) */}
+        {/* SUB-SECTION 8: CUTTING & CAD ADJUSTMENT */}
         {/* ========================================================================= */}
         <div
           id="section-cutting"
@@ -1555,127 +1850,72 @@ function Job360Content() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
             <div>
               <h3 style={{ fontSize: '15px', fontWeight: 900, color: COLORS.navy, margin: 0 }}>
-                8. Cutting &amp; CAD Adjustment · Shrinkage Method &amp; Marker Calibration
+                8. Cutting &amp; CAD Adjustment · Shrinkage Calibration &amp; Lay Optimization
               </h3>
               <div style={{ fontSize: '11.5px', color: COLORS.grey, marginTop: '2px' }}>
-                Steam or Tumble shrinkage testing, CAD marker adjustment and cutting lay calibration
+                Steam vs Tumble shrinkage adjustment, CAD marker scale ratio, and table lay length calibration
               </div>
             </div>
 
-            {/* User Requested Toggle: Steam Shrinkage OR Tumble Shrinkage */}
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              background: '#F1F5F9',
-              borderRadius: '8px',
-              padding: '3px',
-              border: `1px solid ${COLORS.border}`
-            }}>
-              <span style={{ fontSize: '11px', fontWeight: 700, color: COLORS.grey, padding: '0 8px' }}>Test Type:</span>
+            {/* Toggle: Steam vs Tumble Shrinkage */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#F1F5F9', padding: '4px 8px', borderRadius: '8px' }}>
+              <span style={{ fontSize: '11.5px', fontWeight: 700, color: COLORS.navy }}>Test Method:</span>
               <button
                 type="button"
                 onClick={() => setShrinkageMethod('tumble')}
                 style={{
-                  border: 'none',
-                  borderRadius: '6px',
-                  padding: '5px 12px',
-                  fontSize: '11px',
-                  fontWeight: 800,
-                  cursor: 'pointer',
                   background: shrinkageMethod === 'tumble' ? COLORS.navy : 'transparent',
                   color: shrinkageMethod === 'tumble' ? '#FFFFFF' : COLORS.grey,
-                  transition: 'all 0.15s ease'
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '4px 10px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
                 }}
               >
-                🌀 Tumble Shrinkage (Standard)
+                Tumble Wash Shrinkage
               </button>
               <button
                 type="button"
                 onClick={() => setShrinkageMethod('steam')}
                 style={{
-                  border: 'none',
-                  borderRadius: '6px',
-                  padding: '5px 12px',
-                  fontSize: '11px',
-                  fontWeight: 800,
-                  cursor: 'pointer',
                   background: shrinkageMethod === 'steam' ? COLORS.navy : 'transparent',
                   color: shrinkageMethod === 'steam' ? '#FFFFFF' : COLORS.grey,
-                  transition: 'all 0.15s ease'
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '4px 10px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
                 }}
               >
-                ♨️ Steam Shrinkage
+                Steam Iron Shrinkage
               </button>
             </div>
           </div>
 
-          {/* CAD Marker vs Cutting Lay Adjustment Table */}
-          <div style={{ overflowX: 'auto', border: `1px solid ${COLORS.border}`, borderRadius: '8px', marginBottom: '14px' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ background: '#F1F5F9', borderBottom: `1px solid ${COLORS.border}`, color: COLORS.navy }}>
-                  <th style={{ padding: '8px 10px' }}>Fabric Color Lot</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'center' }}>
-                    {shrinkageMethod === 'tumble' ? 'Tumble Shrinkage (L / W)' : 'Steam Shrinkage (L / W)'}
-                  </th>
-                  <th style={{ padding: '8px 10px' }}>CAD Marker Scale Adjustment (Length % / Width %)</th>
-                  <th style={{ padding: '8px 10px' }}>CAD Updated From</th>
-                  <th style={{ padding: '8px 10px' }}>Cutting Table Lay Calibration</th>
-                  <th style={{ padding: '8px 10px' }}>Cutting Updated From</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'right' }}>Net Consumption</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'center' }}>Calibration Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {cadCuttingAdjustments.map((cad, idx) => (
-                  <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                    <td style={{ padding: '8px 10px', fontWeight: 800, color: COLORS.navy }}>{cad.color}</td>
-                    <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 800, color: COLORS.purple }}>
-                      {shrinkageMethod === 'tumble' ? `${cad.tumbleL} / ${cad.tumbleW}` : `${cad.steamL} / ${cad.steamW}`}
-                    </td>
-                    <td style={{ padding: '8px 10px', fontWeight: 800, color: COLORS.blue }}>
-                      L: {cad.cadMarkerLengthAdj} | W: {cad.cadMarkerWidthAdj} (Marker: {cad.markerLengthMeters})
-                    </td>
-                    <td style={{ padding: '8px 10px', color: COLORS.grey }}>{cad.cadUpdatedBy}</td>
-                    <td style={{ padding: '8px 10px', fontWeight: 700, color: COLORS.green }}>
-                      {cad.cuttingTableLayAdj} ({cad.layCount})
-                    </td>
-                    <td style={{ padding: '8px 10px', color: COLORS.grey }}>{cad.cuttingUpdatedBy}</td>
-                    <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 800, color: COLORS.navy }}>
-                      {cad.netConsumption}
-                    </td>
-                    <td style={{ padding: '8px 10px', textAlign: 'center' }}>
-                      <span style={{ fontSize: '10px', fontWeight: 800, padding: '2px 8px', borderRadius: '4px', background: '#DCFCE7', color: COLORS.green }}>
-                        ✓ {cad.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Cutting Metrics Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
             <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>TARGET CUT PCS</div>
-              <div style={{ fontSize: '20px', fontWeight: 900, color: COLORS.navy, margin: '2px 0' }}>{fmt(oq)}</div>
-              <div style={{ fontSize: '11px', color: COLORS.blue, fontWeight: 600 }}>100% Demand</div>
+              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>TESTED SHRINKAGE ({shrinkageMethod.toUpperCase()})</div>
+              <div style={{ fontSize: '18px', fontWeight: 900, color: COLORS.navy, margin: '2px 0' }}>
+                L: {shrinkageMethod === 'tumble' ? '-3.2%' : '-1.8%'} · W: {shrinkageMethod === 'tumble' ? '-2.1%' : '-1.2%'}
+              </div>
+              <div style={{ fontSize: '11.5px', color: COLORS.green, fontWeight: 600 }}>Within Buyer Tolerance (±4%)</div>
             </div>
             <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>ACTUAL CUT PCS</div>
-              <div style={{ fontSize: '20px', fontWeight: 900, color: COLORS.green, margin: '2px 0' }}>{fmt(cutQty)}</div>
-              <div style={{ fontSize: '11px', color: COLORS.green, fontWeight: 600 }}>102.1% Yield (+136 pcs surplus)</div>
+              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>CAD MARKER SCALE ADJUSTMENT</div>
+              <div style={{ fontSize: '18px', fontWeight: 900, color: COLORS.blue, margin: '2px 0' }}>
+                {shrinkageMethod === 'tumble' ? 'Length +3.2% · Width +2.1%' : 'Length +1.8% · Width +1.2%'}
+              </div>
+              <div style={{ fontSize: '11.5px', color: COLORS.blue, fontWeight: 600 }}>Pattern Scale Calibrated</div>
             </div>
             <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>BUNDLES GENERATED</div>
-              <div style={{ fontSize: '20px', fontWeight: 900, color: COLORS.purple, margin: '2px 0' }}>42 Bundles</div>
-              <div style={{ fontSize: '11px', color: COLORS.purple, fontWeight: 600 }}>Numbered with QR Tickets</div>
-            </div>
-            <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>CUTTING WASTAGE</div>
-              <div style={{ fontSize: '20px', fontWeight: 900, color: COLORS.green, margin: '2px 0' }}>1.45%</div>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 600 }}>Standard &lt; 2.50%</div>
+              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>MARKER EFFICIENCY &amp; LAY LENGTH</div>
+              <div style={{ fontSize: '18px', fontWeight: 900, color: COLORS.purple, margin: '2px 0' }}>
+                86.4% · 9.85 meters
+              </div>
+              <div style={{ fontSize: '11.5px', color: COLORS.purple, fontWeight: 600 }}>Consumption: 2.65 kg/dz</div>
             </div>
           </div>
         </div>
@@ -1698,37 +1938,32 @@ function Job360Content() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
             <div>
               <h3 style={{ fontSize: '15px', fontWeight: 900, color: COLORS.navy, margin: 0 }}>
-                9. Print &amp; Embroidery · Strike-Off Approval &amp; Cut Panel Issue/Return
+                9. Print &amp; Embroidery · Strike-Off Approval, Panel Reconciliation &amp; Fastness
               </h3>
               <div style={{ fontSize: '11.5px', color: COLORS.grey, marginTop: '2px' }}>
-                Print strike-off buyer sign-off, cut panel dispatch, received passed panels and rejection audit
+                Chest placement print execution with strike-off sign-off and panel rejection rate
               </div>
             </div>
             <span style={{ fontSize: '11px', fontWeight: 800, color: COLORS.green, background: '#DCFCE7', padding: '4px 10px', borderRadius: '6px' }}>
-              ✓ STRIKE-OFF APPROVED &amp; ISSUED
+              ✓ STRIKE-OFF APPROVED
             </span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
             <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>PANELS SENT TO PRINT</div>
-              <div style={{ fontSize: '20px', fontWeight: 900, color: COLORS.navy, margin: '2px 0' }}>{fmt(cutQty)} pcs</div>
-              <div style={{ fontSize: '11px', color: COLORS.blue, fontWeight: 600 }}>100% Bundles Dispatched</div>
+              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>PRINT TECHNIQUE</div>
+              <div style={{ fontSize: '16px', fontWeight: 900, color: COLORS.navy, margin: '2px 0' }}>Water Base + Rubber HD</div>
+              <div style={{ fontSize: '11.5px', color: COLORS.grey }}>Placement: Center Chest 24cm</div>
             </div>
             <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>PASSED PRINTED PANELS</div>
-              <div style={{ fontSize: '20px', fontWeight: 900, color: COLORS.green, margin: '2px 0' }}>{fmt(printQty)} pcs</div>
-              <div style={{ fontSize: '11px', color: COLORS.green, fontWeight: 600 }}>AATCC Crock Tested OK</div>
+              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>PANELS ISSUED VS DELIVERED</div>
+              <div style={{ fontSize: '16px', fontWeight: 900, color: COLORS.blue, margin: '2px 0' }}>{fmt(printQty)} / {fmt(cutQty)}</div>
+              <div style={{ fontSize: '11.5px', color: COLORS.green, fontWeight: 600 }}>Rejection: 0.28% (18 panels)</div>
             </div>
             <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>PRINT REJECTION</div>
-              <div style={{ fontSize: '20px', fontWeight: 900, color: COLORS.amber, margin: '2px 0' }}>14 pcs (0.21%)</div>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 600 }}>Re-cut replacement done</div>
-            </div>
-            <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>BUYER STRIKE-OFF VERDICT</div>
-              <div style={{ fontSize: '16px', fontWeight: 900, color: COLORS.green, margin: '4px 0 2px' }}>APPROVED 1ST RUN</div>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 600 }}>Color Fastness: 4-5</div>
+              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>CROCKING &amp; WASH FASTNESS</div>
+              <div style={{ fontSize: '16px', fontWeight: 900, color: COLORS.green, margin: '2px 0' }}>Dry 4-5 · Wet 4</div>
+              <div style={{ fontSize: '11.5px', color: COLORS.green, fontWeight: 600 }}>Passes Buyer Standard</div>
             </div>
           </div>
         </div>
@@ -1751,46 +1986,20 @@ function Job360Content() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
             <div>
               <h3 style={{ fontSize: '15px', fontWeight: 900, color: COLORS.navy, margin: 0 }}>
-                10. Sewing &amp; Finishing · Hourly Line Output &amp; Floor Efficiency
+                10. Sewing &amp; Finishing · Hourly Line Performance &amp; Packing Output
               </h3>
               <div style={{ fontSize: '11.5px', color: COLORS.grey, marginTop: '2px' }}>
-                Assigned sewing line performance, operator allocation and finishing carton packing
+                Hourly production output, line balancing, SMV target vs actual, and packed carton ledger
               </div>
             </div>
             <span style={{ fontSize: '11px', fontWeight: 800, color: COLORS.green, background: '#DCFCE7', padding: '4px 10px', borderRadius: '6px' }}>
-              ✓ LINE EFFICIENCY: 74.2%
+              ✓ SEWING COMPLETE
             </span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', marginBottom: '16px' }}>
-            <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>ASSIGNED SEWING LINE</div>
-              <div style={{ fontSize: '20px', fontWeight: 900, color: COLORS.navy, margin: '2px 0' }}>Line 14B</div>
-              <div style={{ fontSize: '11px', color: COLORS.blue, fontWeight: 600 }}>Floor 3 (Building 2)</div>
-            </div>
-            <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>TOTAL SEWING OUTPUT</div>
-              <div style={{ fontSize: '20px', fontWeight: 900, color: COLORS.green, margin: '2px 0' }}>{fmt(sewQty)} pcs</div>
-              <div style={{ fontSize: '11px', color: COLORS.green, fontWeight: 600 }}>94.0% Produced</div>
-            </div>
-            <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>SEWING BALANCE</div>
-              <div style={{ fontSize: '20px', fontWeight: 900, color: sewBal === 0 ? COLORS.green : COLORS.amber, margin: '2px 0' }}>{fmt(sewBal)} pcs</div>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 600 }}>Closing today</div>
-            </div>
-            <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 650 }}>FINISHED &amp; PACKED</div>
-              <div style={{ fontSize: '20px', fontWeight: 900, color: COLORS.purple, margin: '2px 0' }}>{totalCartons} Cartons</div>
-              <div style={{ fontSize: '11px', color: COLORS.purple, fontWeight: 600 }}>24 pcs per carton</div>
-            </div>
-          </div>
-
-          {/* Hourly Sewing Production Recharts Bar Chart with FX_BAR */}
           <div style={{ background: '#F8FAFC', border: `1px solid ${COLORS.border}`, borderRadius: '8px', padding: '12px 14px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ fontSize: '12px', fontWeight: 800, color: COLORS.navy }}>
-                Hourly Line Output Tracker (Target: {targetPerHour} pcs/hr vs Actual)
-              </span>
+              <span style={{ fontSize: '12px', fontWeight: 800, color: COLORS.navy }}>Hourly Output vs SMV Target (Line 16B)</span>
               <span style={{ fontSize: '11px', color: COLORS.blue, fontWeight: 700 }}>
                 Avg Run Rate: {Math.round(targetPerHour * 1.01)} pcs/hr
               </span>
@@ -1814,7 +2023,7 @@ function Job360Content() {
         </div>
 
         {/* ========================================================================= */}
-        {/* SUB-SECTION 11: QUALITY & AUDITS */}
+        {/* SUB-SECTION 11: QUALITY & AUDITS (COMPLETELY OVERHAULED · NO PARAGRAPHS) */}
         {/* ========================================================================= */}
         <div
           id="section-quality"
@@ -1822,270 +2031,586 @@ function Job360Content() {
             background: '#FFFFFF',
             borderRadius: '10px',
             border: `1px solid ${COLORS.border}`,
-            padding: '16px 20px',
+            padding: '20px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
             scrollMarginTop: '80px'
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <div>
-              <h3 style={{ fontSize: '15px', fontWeight: 900, color: COLORS.navy, margin: 0 }}>
-                11. Quality &amp; Audits · Section Inspections &amp; Final AQL 1.5 Sign-Off
+              <h3 style={{ fontSize: '16px', fontWeight: 900, color: COLORS.navy, margin: 0 }}>
+                11. Quality &amp; Audits · Section 4-Point Scores, DHU Metrics &amp; Final AQL 1.5
               </h3>
-              <div style={{ fontSize: '11.5px', color: COLORS.grey, marginTop: '2px' }}>
-                Stage-wise inspections from fabric 4-point to inline, 100% finishing and final buyer AQL 1.5 export audit
+              <div style={{ fontSize: '12px', color: COLORS.grey, marginTop: '2px' }}>
+                Stage-wise penalty points, defect piece counts, DHU benchmarks, and buyer export certificates
               </div>
             </div>
-            <span style={{ fontSize: '11px', fontWeight: 800, color: COLORS.green, background: '#DCFCE7', padding: '4px 10px', borderRadius: '6px' }}>
-              ✓ FINAL AQL 1.5 PASSED
+            <span style={{ fontSize: '12px', fontWeight: 900, color: COLORS.green, background: '#DCFCE7', padding: '6px 14px', borderRadius: '6px' }}>
+              ✓ FINAL AQL 1.5 EXPORT AUDIT PASSED
             </span>
           </div>
 
-          <div style={{ overflowX: 'auto', border: `1px solid ${COLORS.border}`, borderRadius: '8px', marginBottom: '14px' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ background: '#F1F5F9', borderBottom: `1px solid ${COLORS.border}`, color: COLORS.navy }}>
-                  <th style={{ padding: '8px 10px' }}>Inspection Section</th>
-                  <th style={{ padding: '8px 10px' }}>Standard Method</th>
-                  <th style={{ padding: '8px 10px' }}>Inspected Qty</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'center' }}>Defects / DHU</th>
-                  <th style={{ padding: '8px 10px' }}>Major Defect Findings</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'center' }}>Verdict</th>
-                  <th style={{ padding: '8px 10px' }}>Audited By</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sectionInspections.map((row, idx) => (
-                  <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                    <td style={{ padding: '8px 10px', fontWeight: 800, color: COLORS.navy }}>{row.section}</td>
-                    <td style={{ padding: '8px 10px', color: COLORS.grey }}>{row.std}</td>
-                    <td style={{ padding: '8px 10px', fontWeight: 700 }}>{row.inspected}</td>
-                    <td style={{ padding: '8px 10px', textAlign: 'center', color: COLORS.blue, fontWeight: 800 }}>{row.dhu}</td>
-                    <td style={{ padding: '8px 10px', color: COLORS.grey }}>{row.majorDefects}</td>
-                    <td style={{ padding: '8px 10px', textAlign: 'center' }}>
-                      <span style={{ fontSize: '10px', fontWeight: 800, padding: '2px 8px', borderRadius: '4px', background: '#DCFCE7', color: COLORS.green }}>
-                        ✓ {row.result}
-                      </span>
-                    </td>
-                    <td style={{ padding: '8px 10px', color: COLORS.grey }}>{row.auditor}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          {/* 1. EXECUTIVE QUALITY METRIC CARDS (LARGER FONT SIZE · STRUCTURED) */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px', marginBottom: '18px' }}>
+            <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 700 }}>OVERALL FACTORY DHU</div>
+              <div style={{ fontSize: '24px', fontWeight: 900, color: COLORS.green, margin: '2px 0' }}>0.38%</div>
+              <div style={{ fontSize: '11px', color: COLORS.green, fontWeight: 700 }}>World-Class Standard</div>
+            </div>
+            <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 700 }}>KNITTING 4-POINT SCORE</div>
+              <div style={{ fontSize: '20px', fontWeight: 900, color: COLORS.blue, margin: '2px 0' }}>14.2 Pts</div>
+              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 600 }}>Grade A (Allowed &lt; 20 Pts)</div>
+            </div>
+            <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 700 }}>DYEING SHADE ΔE</div>
+              <div style={{ fontSize: '20px', fontWeight: 900, color: COLORS.blue, margin: '2px 0' }}>0.42 ΔE</div>
+              <div style={{ fontSize: '11px', color: COLORS.green, fontWeight: 700 }}>Passes CMC 2:1 (&lt; 0.8)</div>
+            </div>
+            <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 700 }}>CUTTING DHU</div>
+              <div style={{ fontSize: '20px', fontWeight: 900, color: COLORS.navy, margin: '2px 0' }}>0.65%</div>
+              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 600 }}>Layup &amp; Notches Checked</div>
+            </div>
+            <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 700 }}>SEWING IN-LINE DHU</div>
+              <div style={{ fontSize: '20px', fontWeight: 900, color: COLORS.purple, margin: '2px 0' }}>1.09%</div>
+              <div style={{ fontSize: '11px', color: COLORS.purple, fontWeight: 600 }}>Traffic Light 7-Bundle</div>
+            </div>
+            <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
+              <div style={{ fontSize: '11px', color: COLORS.grey, fontWeight: 700 }}>FINISHING 100% CHECK</div>
+              <div style={{ fontSize: '20px', fontWeight: 900, color: COLORS.green, margin: '2px 0' }}>0.43%</div>
+              <div style={{ fontSize: '11px', color: COLORS.green, fontWeight: 700 }}>100% Rectified &amp; Clean</div>
+            </div>
           </div>
 
-          {/* Final Export Audit Sign-Off Box */}
-          <div style={{
-            background: 'linear-gradient(135deg, #F0FDF4 0%, #E0F2FE 100%)',
-            border: '1px solid #86EFAC',
-            borderRadius: '8px',
-            padding: '14px 18px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '12px'
-          }}>
-            <div>
-              <div style={{ fontSize: '11px', fontWeight: 800, color: '#166534', letterSpacing: '0.5px' }}>
-                EXPORT SHIPMENT RELEASE SIGN-OFF · AQL 1.5 NORMAL LEVEL II
+          {/* 2. SECTION-WISE QUALITY TABLE (LARGER FONT SIZE · 13px-14px · NO PARAGRAPHS) */}
+          <div style={{ marginBottom: '20px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 900, color: COLORS.navy, marginBottom: '8px' }}>
+              Section-Wise Quality Audits (Fabric Inspection to Final Buyer AQL 1.5)
+            </div>
+            <div style={{ overflowX: 'auto', border: `1px solid ${COLORS.border}`, borderRadius: '8px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ background: '#0F274E', color: '#FFFFFF', borderBottom: `2px solid ${COLORS.navy}` }}>
+                    <th style={{ padding: '10px 12px', fontWeight: 800 }}>Production Section</th>
+                    <th style={{ padding: '10px 12px', fontWeight: 700 }}>Standard &amp; Method</th>
+                    <th style={{ padding: '10px 12px', fontWeight: 700 }}>Sample / Inspected Volume</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 900, background: '#1E3A8A' }}>DHU / Point Score</th>
+                    <th style={{ padding: '10px 12px', fontWeight: 700 }}>Specific Defect Breakdown (Piece Count)</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 900 }}>Verdict &amp; Grade</th>
+                    <th style={{ padding: '10px 12px', fontWeight: 700 }}>Audited By</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sectionQualityPipeline.map((row, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9', background: idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC' }}>
+                      <td style={{ padding: '10px 12px', fontWeight: 800, color: COLORS.navy }}>{row.section}</td>
+                      <td style={{ padding: '10px 12px', color: COLORS.grey, fontSize: '12px' }}>{row.std}</td>
+                      <td style={{ padding: '10px 12px', fontWeight: 700 }}>{row.inspected}</td>
+                      <td style={{ padding: '10px 12px', textAlign: 'center', color: COLORS.blue, fontWeight: 900, background: '#F1F5F9' }}>
+                        {row.score}
+                      </td>
+                      <td style={{ padding: '10px 12px', color: '#334155', fontWeight: 600 }}>{row.majorDefects}</td>
+                      <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 800, padding: '3px 8px', borderRadius: '4px', background: '#DCFCE7', color: row.verdictColor }}>
+                          ✓ {row.verdict}
+                        </span>
+                      </td>
+                      <td style={{ padding: '10px 12px', color: COLORS.grey, fontSize: '12px' }}>{row.auditor}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* 3. DEFECT BREAKDOWN COLUMN / BAR CHART (PIECE COUNT BY DEFECT TYPE) */}
+          <div style={{ background: '#F8FAFC', border: `1px solid ${COLORS.border}`, borderRadius: '10px', padding: '14px 18px', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <div>
+                <h4 style={{ fontSize: '13px', fontWeight: 900, color: COLORS.navy, margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <BarChart2 size={16} color={COLORS.blue} />
+                  Defect Classification &amp; Piece Count Breakdown (Across All Production Stages)
+                </h4>
+                <div style={{ fontSize: '11px', color: COLORS.grey, marginTop: '2px' }}>
+                  Total pieces detected and rectified across Knitting, Cutting, Print, Sewing and Finishing
+                </div>
               </div>
-              <div style={{ fontSize: '14px', fontWeight: 900, color: COLORS.navy, margin: '2px 0' }}>
-                Certificate No: AQL-{job.jobNo}-EXP26 · Approved for Container Stuffing
+              <span style={{ fontSize: '11px', fontWeight: 700, color: COLORS.navy, background: '#E2E8F0', padding: '3px 8px', borderRadius: '4px' }}>
+                Total Rectified: 121 Defects
+              </span>
+            </div>
+
+            <div style={{ width: '100%', height: '220px' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={defectBreakdownData} margin={{ top: 15, right: 10, left: -10, bottom: 25 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                  <XAxis
+                    dataKey="defect"
+                    tick={{ fill: '#334155', fontSize: 10.5, fontWeight: 700 }}
+                    angle={-25}
+                    textAnchor="end"
+                    interval={0}
+                    tickLine={false}
+                    axisLine={{ stroke: '#CBD5E1' }}
+                  />
+                  <YAxis tick={{ fill: '#64748B', fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(2, 132, 199, 0.05)' }}
+                    contentStyle={{ background: '#0F274E', color: '#fff', borderRadius: '8px', fontSize: '11px', border: 'none' }}
+                    formatter={(val: any, name: any, item: any) => [`${val} Pieces (${item.payload.section} Dept)`, 'Defect Count']}
+                  />
+                  <Bar {...FX_SERIES} {...FX_BAR} dataKey="pcs" fill="#0284C7" radius={[4, 4, 0, 0]} maxBarSize={36} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* 4. PRE-FINAL REPORT & FINAL EXPORT AUDIT CERTIFICATES (CLEAN ORGANIZED CARDS) */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+            {/* Card 1: Pre-Final Inspection */}
+            <div style={{
+              background: '#F0FDF4',
+              border: '1.5px solid #86EFAC',
+              borderRadius: '10px',
+              padding: '16px 18px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between'
+            }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 900, color: '#166534' }}>
+                    <ShieldCheck size={18} color="#166534" />
+                    PRE-FINAL &amp; IN-LINE AQL 1.5 VERIFICATION
+                  </div>
+                  <span style={{ fontSize: '11px', fontWeight: 800, background: '#DCFCE7', color: '#15803D', padding: '2px 8px', borderRadius: '4px' }}>
+                    PASSED
+                  </span>
+                </div>
+                <div style={{ fontSize: '12.5px', color: '#166534', lineHeight: 1.6 }}>
+                  <div>Inspected Sample Size: <strong>315 Pcs</strong> (Normal Level II Single Sampling)</div>
+                  <div>Defects Found: <strong>Critical: 0 | Major: 3 | Minor: 6</strong></div>
+                  <div>Acceptance Threshold: <strong>Ac = 10, Re = 11 · ACCEPTED</strong></div>
+                  <div>Auditor: <strong>Md. Shariful Alam (Lead QA Auditor)</strong> · Date: <strong>03-Aug-2026</strong></div>
+                </div>
               </div>
-              <div style={{ fontSize: '11.5px', color: '#15803D' }}>
-                Lead QA Auditor: <strong>Md. Shariful Alam</strong> · Sample Size: <strong>200 pcs (Allowed: 7, Found: 2)</strong> · Result: <strong>ACCEPTED</strong>
+              <div style={{ marginTop: '12px', borderTop: '1px solid #BBF7D0', paddingTop: '8px', fontSize: '11px', color: '#15803D', fontWeight: 700 }}>
+                ✓ Cleared for Final Finishing, Steam Pressing &amp; Carton Packaging
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <span style={{
-                background: COLORS.green,
-                color: '#FFFFFF',
-                fontWeight: 900,
-                fontSize: '12px',
-                padding: '6px 14px',
-                borderRadius: '6px',
-                boxShadow: '0 2px 6px rgba(16,185,129,0.3)'
-              }}>
-                ✓ CARGO RELEASED
-              </span>
+
+            {/* Card 2: Final Export Release Sign-Off */}
+            <div style={{
+              background: '#F0F9FF',
+              border: '1.5px solid #7DD3FC',
+              borderRadius: '10px',
+              padding: '16px 18px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between'
+            }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 900, color: '#0369A1' }}>
+                    <Award size={18} color="#0369A1" />
+                    FINAL EXPORT AUDIT SIGN-OFF (CERTIFICATE #AQL-{job.jobNo}-EXP26)
+                  </div>
+                  <span style={{ fontSize: '11px', fontWeight: 800, background: COLORS.green, color: '#FFFFFF', padding: '3px 10px', borderRadius: '4px' }}>
+                    RELEASED
+                  </span>
+                </div>
+                <div style={{ fontSize: '12.5px', color: '#075985', lineHeight: 1.6 }}>
+                  <div>Overall Garment DHU: <strong>0.38% (World-Class Export Standard)</strong></div>
+                  <div>Carton Packaging &amp; Drop Test: <strong>PASSED (Zero Deformation)</strong></div>
+                  <div>Barcode &amp; EAN Scan: <strong>100% Verified (271 Master Cartons)</strong></div>
+                  <div>Lead QA Auditor: <strong>Md. Shariful Alam</strong> · Result: <strong>ACCEPTED FOR EX-FACTORY</strong></div>
+                </div>
+              </div>
+              <div style={{ marginTop: '12px', borderTop: '1px solid #BAE6FD', paddingTop: '8px', fontSize: '11px', color: '#0284C7', fontWeight: 800 }}>
+                ✓ Approved for Cargo Container Stuffing (Destination Hamburg / Le Havre)
+              </div>
             </div>
           </div>
         </div>
 
         {/* ========================================================================= */}
-        {/* MODAL: OFFICIAL NORTHERN FASHION LTD. TESTING LABORATORY CERTIFICATE */}
+        {/* MODAL 1: GARMENT ITEM PHOTO LIGHTBOX ZOOM MODAL */}
+        {/* ========================================================================= */}
+        {isImageModalOpen && (
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 100,
+            background: 'rgba(15, 23, 42, 0.75)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}>
+            <div style={{
+              background: '#FFFFFF',
+              borderRadius: '14px',
+              maxWidth: '840px',
+              width: '100%',
+              maxHeight: '92vh',
+              overflowY: 'auto',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              border: '1px solid #E2E8F0'
+            }}>
+              {/* Modal Header */}
+              <div style={{
+                background: '#0F274E',
+                color: '#FFFFFF',
+                padding: '16px 20px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                borderTopLeftRadius: '14px',
+                borderTopRightRadius: '14px'
+              }}>
+                <div>
+                  <div style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase' }}>
+                    Garment Technical Flat Sketch &amp; Tech Pack Inspection
+                  </div>
+                  <h3 style={{ margin: '2px 0 0', fontSize: '16px', fontWeight: 900 }}>
+                    Style #{job.styleNo} · {job.buyer} (Job #{job.jobNo})
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsImageModalOpen(false)}
+                  style={{
+                    background: 'rgba(255,255,255,0.15)',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '32px',
+                    height: '32px',
+                    color: '#FFFFFF',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div style={{ padding: '20px' }}>
+                {/* View switcher buttons */}
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', borderBottom: '1px solid #E2E8F0', paddingBottom: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setActiveSketchView('front')}
+                    style={{
+                      background: activeSketchView === 'front' ? COLORS.navy : '#F1F5F9',
+                      color: activeSketchView === 'front' ? '#FFFFFF' : COLORS.navy,
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '6px 14px',
+                      fontSize: '12px',
+                      fontWeight: 800,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Front View (Placement Artwork)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveSketchView('back')}
+                    style={{
+                      background: activeSketchView === 'back' ? COLORS.navy : '#F1F5F9',
+                      color: activeSketchView === 'back' ? '#FFFFFF' : COLORS.navy,
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '6px 14px',
+                      fontSize: '12px',
+                      fontWeight: 800,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Back View (Shoulder Flatlock)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveSketchView('techpack')}
+                    style={{
+                      background: activeSketchView === 'techpack' ? COLORS.navy : '#F1F5F9',
+                      color: activeSketchView === 'techpack' ? '#FFFFFF' : COLORS.navy,
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '6px 14px',
+                      fontSize: '12px',
+                      fontWeight: 800,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Technical Measurement Spec Sheet
+                  </button>
+                </div>
+
+                {/* Enlarged Vector Technical Illustration */}
+                <div style={{
+                  background: 'linear-gradient(180deg, #F8FAFC 0%, #EFF6FF 100%)',
+                  borderRadius: '12px',
+                  padding: '30px',
+                  border: '1px solid #CBD5E1',
+                  textAlign: 'center',
+                  marginBottom: '18px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: '340px'
+                }}>
+                  {activeSketchView === 'front' ? (
+                    <svg width="280" height="280" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M50 45 L75 40 Q100 48 125 40 L150 45 L180 80 L160 95 L145 75 L145 165 L55 165 L55 75 L40 95 L20 80 Z" fill="#2563EB" stroke="#1E40AF" strokeWidth="2.5" />
+                      <path d="M75 40 Q100 52 125 40 Q100 34 75 40 Z" fill="#1D4ED8" stroke="#1E40AF" strokeWidth="2" />
+                      <rect x="70" y="68" width="60" height="34" rx="4" fill="#FFFFFF" fillOpacity="0.9" />
+                      <text x="100" y="86" textAnchor="middle" fill="#0F274E" fontSize="9.5" fontWeight="900" fontFamily="sans-serif">ATHLETIC CORE</text>
+                      <text x="100" y="96" textAnchor="middle" fill="#2563EB" fontSize="7" fontWeight="800" fontFamily="sans-serif">OVS ACTIVE 2026</text>
+                      <rect x="55" y="155" width="90" height="10" fill="#1D4ED8" stroke="#1E40AF" strokeWidth="1.5" />
+                      <rect x="160" y="85" width="20" height="10" transform="rotate(-40 160 85)" fill="#1D4ED8" />
+                      <rect x="25" y="73" width="20" height="10" transform="rotate(40 25 73)" fill="#1D4ED8" />
+                      <line x1="50" y1="45" x2="80" y2="60" stroke="#93C5FD" strokeDasharray="2 2" strokeWidth="1.5" />
+                      <line x1="150" y1="45" x2="120" y2="60" stroke="#93C5FD" strokeDasharray="2 2" strokeWidth="1.5" />
+                    </svg>
+                  ) : activeSketchView === 'back' ? (
+                    <svg width="280" height="280" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M50 45 L75 40 Q100 48 125 40 L150 45 L180 80 L160 95 L145 75 L145 165 L55 165 L55 75 L40 95 L20 80 Z" fill="#1D4ED8" stroke="#1E3A8A" strokeWidth="2.5" />
+                      <path d="M75 40 Q100 44 125 40 Q100 36 75 40 Z" fill="#1E40AF" stroke="#1E3A8A" strokeWidth="2" />
+                      <line x1="55" y1="58" x2="145" y2="58" stroke="#93C5FD" strokeDasharray="3 3" strokeWidth="1.5" />
+                      <rect x="55" y="155" width="90" height="10" fill="#1E40AF" stroke="#1E3A8A" strokeWidth="1.5" />
+                      <rect x="160" y="85" width="20" height="10" transform="rotate(-40 160 85)" fill="#1E40AF" />
+                      <rect x="25" y="73" width="20" height="10" transform="rotate(40 25 73)" fill="#1E40AF" />
+                      <text x="100" y="110" textAnchor="middle" fill="#93C5FD" fontSize="11" fontWeight="700" fontFamily="sans-serif">BACK VIEW (PLAIN FLEECE)</text>
+                    </svg>
+                  ) : (
+                    <div style={{ textAlign: 'left', width: '100%', fontSize: '12px' }}>
+                      <div style={{ fontWeight: 800, color: COLORS.navy, marginBottom: '8px' }}>Size M Technical Specifications (Tolerance ±0.5 cm):</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                        <div style={{ background: '#FFFFFF', padding: '8px', borderRadius: '6px', border: '1px solid #CBD5E1' }}>1/2 Chest Width: <strong>56.0 cm</strong></div>
+                        <div style={{ background: '#FFFFFF', padding: '8px', borderRadius: '6px', border: '1px solid #CBD5E1' }}>Total Body Length (HSP): <strong>72.0 cm</strong></div>
+                        <div style={{ background: '#FFFFFF', padding: '8px', borderRadius: '6px', border: '1px solid #CBD5E1' }}>Across Shoulder: <strong>48.0 cm</strong></div>
+                        <div style={{ background: '#FFFFFF', padding: '8px', borderRadius: '6px', border: '1px solid #CBD5E1' }}>Sleeve Length: <strong>66.0 cm</strong></div>
+                        <div style={{ background: '#FFFFFF', padding: '8px', borderRadius: '6px', border: '1px solid #CBD5E1' }}>1x1 Neck Rib Height: <strong>2.5 cm</strong></div>
+                        <div style={{ background: '#FFFFFF', padding: '8px', borderRadius: '6px', border: '1px solid #CBD5E1' }}>Bottom Hem Rib Height: <strong>6.0 cm</strong></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Tech Pack Specifications Callouts */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', fontSize: '11.5px' }}>
+                  <div style={{ background: '#F8FAFC', padding: '10px 12px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                    <div style={{ color: COLORS.grey, fontWeight: 700 }}>FABRIC SPEC</div>
+                    <div style={{ fontWeight: 800, color: COLORS.navy, marginTop: '2px' }}>60/40 CVC Fleece 240 GSM</div>
+                    <div style={{ color: COLORS.grey, fontSize: '10.5px' }}>Peach finish + loop brushed back</div>
+                  </div>
+                  <div style={{ background: '#F8FAFC', padding: '10px 12px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                    <div style={{ color: COLORS.grey, fontWeight: 700 }}>GRAPHIC PRINT</div>
+                    <div style={{ fontWeight: 800, color: COLORS.navy, marginTop: '2px' }}>Water-base + High Density</div>
+                    <div style={{ color: COLORS.grey, fontSize: '10.5px' }}>24 cm chest placement artwork</div>
+                  </div>
+                  <div style={{ background: '#F8FAFC', padding: '10px 12px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                    <div style={{ color: COLORS.grey, fontWeight: 700 }}>SEWING THREAD</div>
+                    <div style={{ fontWeight: 800, color: COLORS.navy, marginTop: '2px' }}>Astra 100% Spun Poly #120</div>
+                    <div style={{ color: COLORS.grey, fontSize: '10.5px' }}>Ball-point needle Groz-Beckert 65/9</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div style={{ padding: '12px 20px', background: '#F8FAFC', borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'flex-end', borderBottomLeftRadius: '14px', borderBottomRightRadius: '14px' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsImageModalOpen(false)}
+                  style={{
+                    background: COLORS.navy,
+                    color: '#FFFFFF',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '8px 20px',
+                    fontSize: '12px',
+                    fontWeight: 800,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Close Lightbox
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* MODAL 2: OFFICIAL TESTING LABORATORY CERTIFICATE VIEWER */}
         {/* ========================================================================= */}
         {activeTestModal && (
           <div style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(15, 39, 78, 0.65)',
+            zIndex: 100,
+            background: 'rgba(15, 23, 42, 0.7)',
+            backdropFilter: 'blur(3px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 100,
-            backdropFilter: 'blur(4px)',
-            padding: '16px'
+            padding: '20px'
           }}>
             <div style={{
               background: '#FFFFFF',
               borderRadius: '12px',
-              maxWidth: '780px',
+              maxWidth: '800px',
               width: '100%',
               maxHeight: '90vh',
               overflowY: 'auto',
-              padding: '24px',
-              boxShadow: '0 25px 50px rgba(0,0,0,0.25)',
-              border: '1px solid #E2E8F0'
+              boxShadow: '0 20px 40px rgba(0,0,0,0.25)',
+              border: `1px solid ${COLORS.border}`
             }}>
-              {/* Header with Lab Title */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #0F274E', paddingBottom: '12px', marginBottom: '14px' }}>
+              {/* Certificate Header */}
+              <div style={{
+                background: '#0F274E',
+                color: '#FFFFFF',
+                padding: '16px 20px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                borderTopLeftRadius: '12px',
+                borderTopRightRadius: '12px'
+              }}>
                 <div>
-                  <div style={{ fontSize: '12px', fontWeight: 900, color: COLORS.blue, letterSpacing: '0.5px' }}>
-                    NORTHERN FASHION LTD. TESTING LABORATORY
+                  <div style={{ fontSize: '11px', color: '#38BDF8', fontWeight: 800, letterSpacing: '0.5px' }}>
+                    NORTHERN FASHION LTD. · PHYSICAL &amp; COLOR FASTNESS TESTING LABORATORY
                   </div>
-                  <h2 style={{ fontSize: '17px', fontWeight: 900, color: COLORS.navy, margin: '2px 0 0' }}>
-                    PHYSICAL &amp; CHEMICAL TEST REPORT
-                  </h2>
-                  <div style={{ fontSize: '11px', color: COLORS.grey, marginTop: '2px' }}>
-                    Report No: <strong>NFL26090096</strong> · 1st Submission · Testing Period: 09-Sep-2026 to 11-Sep-2026
-                  </div>
+                  <h3 style={{ margin: '2px 0 0', fontSize: '16px', fontWeight: 900 }}>
+                    Official Fabric Quality Test Report Certificate · Report #{job.jobNo ? `NFL26${job.jobNo}` : 'NFL26090096'}
+                  </h3>
                 </div>
                 <button
                   type="button"
                   onClick={() => setActiveTestModal(false)}
-                  style={{ border: 'none', background: '#F1F5F9', borderRadius: '6px', padding: '6px 12px', cursor: 'pointer', fontWeight: 800, color: COLORS.navy }}
+                  style={{
+                    background: 'rgba(255,255,255,0.1)',
+                    border: 'none',
+                    borderRadius: '6px',
+                    width: '30px',
+                    height: '30px',
+                    color: '#FFFFFF',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
                 >
-                  ✕ Close
+                  ✕
                 </button>
               </div>
 
-              {/* Sample Meta Information */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '8px', background: '#F8FAFC', padding: '12px', borderRadius: '8px', border: `1px solid ${COLORS.border}`, marginBottom: '14px', fontSize: '11.5px' }}>
-                <div><strong>Buyer / Brand:</strong> BESTSELLER / NAME IT</div>
-                <div><strong>Supplier Name:</strong> Northern Fashion Ltd.</div>
-                <div><strong>Ref Style No:</strong> {job.styleNo || '13264360'}</div>
-                <div><strong>Job Number:</strong> #{job.jobNo}</div>
-                <div><strong>Colors Submitted:</strong> A. Dawn Pink AOP, B. Peyote Mélange</div>
-                <div><strong>Composition:</strong> 75% Org Cotton 20% Recycled Cotton 5% Elastane (240 GSM Terry)</div>
-                <div><strong>Test Type &amp; Program:</strong> Self-Test / Normal Fabric Program</div>
-                <div><strong>Country of Origin:</strong> Bangladesh</div>
+              {/* Certificate Body */}
+              <div style={{ padding: '20px', fontSize: '12px', color: '#1E293B' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', background: '#F8FAFC', padding: '12px 14px', borderRadius: '8px', marginBottom: '14px' }}>
+                  <div><strong>Buyer:</strong> {job.buyer}</div>
+                  <div><strong>Style No:</strong> {job.styleNo}</div>
+                  <div><strong>Job Number:</strong> #{job.jobNo}</div>
+                  <div><strong>Sample Color:</strong> Pink Melange / Heather Grey</div>
+                  <div><strong>Fabrication:</strong> CVC Brushed Fleece 240 GSM</div>
+                  <div><strong>Testing Date:</strong> 01-Jan-2026</div>
+                </div>
+
+                <div style={{ overflowX: 'auto', marginBottom: '14px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px', textAlign: 'left', border: '1px solid #E2E8F0' }}>
+                    <thead>
+                      <tr style={{ background: '#F1F5F9', borderBottom: '1px solid #CBD5E1' }}>
+                        <th style={{ padding: '8px' }}>Test Parameter</th>
+                        <th style={{ padding: '8px' }}>Standard Method</th>
+                        <th style={{ padding: '8px', textAlign: 'center' }}>Buyer Requirement</th>
+                        <th style={{ padding: '8px', textAlign: 'center' }}>Test Result</th>
+                        <th style={{ padding: '8px', textAlign: 'center' }}>Rating</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                        <td style={{ padding: '8px', fontWeight: 700 }}>Color Fastness to Washing</td>
+                        <td style={{ padding: '8px', color: COLORS.grey }}>ISO 105-C06:2010 A2S</td>
+                        <td style={{ padding: '8px', textAlign: 'center' }}>Grade 4.0 Min</td>
+                        <td style={{ padding: '8px', textAlign: 'center', fontWeight: 800 }}>Grade 4-5</td>
+                        <td style={{ padding: '8px', textAlign: 'center', color: COLORS.green, fontWeight: 800 }}>PASS</td>
+                      </tr>
+                      <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                        <td style={{ padding: '8px', fontWeight: 700 }}>Color Fastness to Rubbing (Dry)</td>
+                        <td style={{ padding: '8px', color: COLORS.grey }}>ISO 105-X12:2016</td>
+                        <td style={{ padding: '8px', textAlign: 'center' }}>Grade 4.0 Min</td>
+                        <td style={{ padding: '8px', textAlign: 'center', fontWeight: 800 }}>Grade 4-5</td>
+                        <td style={{ padding: '8px', textAlign: 'center', color: COLORS.green, fontWeight: 800 }}>PASS</td>
+                      </tr>
+                      <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                        <td style={{ padding: '8px', fontWeight: 700 }}>Color Fastness to Rubbing (Wet)</td>
+                        <td style={{ padding: '8px', color: COLORS.grey }}>ISO 105-X12:2016</td>
+                        <td style={{ padding: '8px', textAlign: 'center' }}>Grade 3.0 Min</td>
+                        <td style={{ padding: '8px', textAlign: 'center', fontWeight: 800 }}>Grade 4.0</td>
+                        <td style={{ padding: '8px', textAlign: 'center', color: COLORS.green, fontWeight: 800 }}>PASS</td>
+                      </tr>
+                      <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+                        <td style={{ padding: '8px', fontWeight: 700 }}>Dimensional Stability (Steam Shrinkage)</td>
+                        <td style={{ padding: '8px', color: COLORS.grey }}>ISO 3759 / ISO 5077</td>
+                        <td style={{ padding: '8px', textAlign: 'center' }}>±4.0% Max</td>
+                        <td style={{ padding: '8px', textAlign: 'center', fontWeight: 800 }}>L: -1.8% · W: -1.2%</td>
+                        <td style={{ padding: '8px', textAlign: 'center', color: COLORS.green, fontWeight: 800 }}>PASS</td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: '8px', fontWeight: 700 }}>Bursting Strength</td>
+                        <td style={{ padding: '8px', color: COLORS.grey }}>ISO 13938-2 (Pneumatic)</td>
+                        <td style={{ padding: '8px', textAlign: 'center' }}>120 KPa Min</td>
+                        <td style={{ padding: '8px', textAlign: 'center', fontWeight: 800 }}>148.5 KPa</td>
+                        <td style={{ padding: '8px', textAlign: 'center', color: COLORS.green, fontWeight: 800 }}>PASS</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style={{ background: '#DCFCE7', border: '1px solid #86EFAC', borderRadius: '8px', padding: '12px 14px', marginBottom: '16px' }}>
+                  <div style={{ fontWeight: 800, color: '#166534', marginBottom: '4px' }}>LABORATORY AUDIT VERDICT: 100% PASSED</div>
+                  <div style={{ color: '#15803D' }}>
+                    All tested physical and color fastness properties meet or exceed the buyer technical specifications. Fabric cleared for Cutting &amp; Sewing floor release.
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #E2E8F0', paddingTop: '12px', fontSize: '11px', color: COLORS.grey }}>
+                  <div>
+                    Tested By: <strong>Md. Shariful Alam</strong><br />
+                    Senior Laboratory Technician
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    Approved By: <strong>S.M. Hasibul Alam</strong><br />
+                    Manager, Testing Laboratory
+                  </div>
+                </div>
               </div>
 
-              {/* Test Results Summary Table */}
-              <div style={{ marginBottom: '14px' }}>
-                <div style={{ fontSize: '12px', fontWeight: 800, color: COLORS.navy, marginBottom: '6px' }}>
-                  Summary of Physical &amp; Chemical Test Results
-                </div>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', textAlign: 'left', border: `1px solid ${COLORS.border}` }}>
-                  <thead>
-                    <tr style={{ background: '#F1F5F9', borderBottom: `1px solid ${COLORS.border}`, color: COLORS.navy }}>
-                      <th style={{ padding: '6px 8px' }}>Test Parameter</th>
-                      <th style={{ padding: '6px 8px' }}>Standard Method</th>
-                      <th style={{ padding: '6px 8px', textAlign: 'center' }}>Sample A</th>
-                      <th style={{ padding: '6px 8px', textAlign: 'center' }}>Sample B</th>
-                      <th style={{ padding: '6px 8px' }}>Buyer Requirement</th>
-                      <th style={{ padding: '6px 8px', textAlign: 'center' }}>Verdict</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
-                      <td style={{ padding: '6px 8px', fontWeight: 700 }}>Dimensional Stability (1st &amp; 5th wash)</td>
-                      <td style={{ padding: '6px 8px', color: COLORS.grey }}>BESTSELLER 4N @ 40°C</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center' }}>L: -2.9% / W: -2.9%</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center' }}>L: -2.6% / W: -3.1%</td>
-                      <td style={{ padding: '6px 8px' }}>Length/Width: +3.0% to -5.0%</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center', color: COLORS.green, fontWeight: 900 }}>PASS</td>
-                    </tr>
-                    <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
-                      <td style={{ padding: '6px 8px', fontWeight: 700 }}>Spirality After Domestic Washes</td>
-                      <td style={{ padding: '6px 8px', color: COLORS.grey }}>ISO 16322-3 Proc B</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center' }}>1.5% / 2.0%</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center' }}>1.5% / 2.0%</td>
-                      <td style={{ padding: '6px 8px' }}>Max 4.0%</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center', color: COLORS.green, fontWeight: 900 }}>PASS</td>
-                    </tr>
-                    <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
-                      <td style={{ padding: '6px 8px', fontWeight: 700 }}>Fabric Weight (GSM)</td>
-                      <td style={{ padding: '6px 8px', color: COLORS.grey }}>Ref. BS EN 12127</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 700 }}>242 GSM</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 700 }}>243 GSM</td>
-                      <td style={{ padding: '6px 8px' }}>240 GSM (±5.0%)</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center', color: COLORS.green, fontWeight: 900 }}>PASS</td>
-                    </tr>
-                    <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
-                      <td style={{ padding: '6px 8px', fontWeight: 700 }}>Color Fastness to Washing</td>
-                      <td style={{ padding: '6px 8px', color: COLORS.grey }}>ISO 105-C06:2010 A1S</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center' }}>4-5</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center' }}>4-5</td>
-                      <td style={{ padding: '6px 8px' }}>Color change: 3-4, Bleed: 4-5</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center', color: COLORS.green, fontWeight: 900 }}>PASS</td>
-                    </tr>
-                    <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
-                      <td style={{ padding: '6px 8px', fontWeight: 700 }}>Color Fastness to Water</td>
-                      <td style={{ padding: '6px 8px', color: COLORS.grey }}>ISO 105-E01:2013</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center' }}>4-5</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center' }}>4-5</td>
-                      <td style={{ padding: '6px 8px' }}>Color change: 4, Bleed: 4-5</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center', color: COLORS.green, fontWeight: 900 }}>PASS</td>
-                    </tr>
-                    <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
-                      <td style={{ padding: '6px 8px', fontWeight: 700 }}>Color Fastness to Perspiration (Acid/Alk)</td>
-                      <td style={{ padding: '6px 8px', color: COLORS.grey }}>ISO 105-E04:2013</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center' }}>4-5 / 4-5</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center' }}>4-5 / 4-5</td>
-                      <td style={{ padding: '6px 8px' }}>Color change: 4, Bleed: 4-5</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center', color: COLORS.green, fontWeight: 900 }}>PASS</td>
-                    </tr>
-                    <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
-                      <td style={{ padding: '6px 8px', fontWeight: 700 }}>Color Fastness to Rubbing (Dry / Wet)</td>
-                      <td style={{ padding: '6px 8px', color: COLORS.grey }}>ISO 105-X12:2016</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center' }}>Dry: 4-5 / Wet: 4</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center' }}>Dry: 4-5 / Wet: 4-5</td>
-                      <td style={{ padding: '6px 8px' }}>Medium: Dry 4, Wet 3-4</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center', color: COLORS.green, fontWeight: 900 }}>PASS</td>
-                    </tr>
-                    <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
-                      <td style={{ padding: '6px 8px', fontWeight: 700 }}>ICI Pilling Resistance (10,800 revs)</td>
-                      <td style={{ padding: '6px 8px', color: COLORS.grey }}>ISO 12945-1:2020</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center' }}>Grade 4</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center' }}>Grade 4</td>
-                      <td style={{ padding: '6px 8px' }}>Min Grade 3-4</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center', color: COLORS.green, fontWeight: 900 }}>PASS</td>
-                    </tr>
-                    <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
-                      <td style={{ padding: '6px 8px', fontWeight: 700 }}>Bursting Strength</td>
-                      <td style={{ padding: '6px 8px', color: COLORS.grey }}>ISO 13938-2 (50.0 cm²)</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 750 }}>144.7 KPa</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 750 }}>143.1 KPa</td>
-                      <td style={{ padding: '6px 8px' }}>Min. 140 KPa</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center', color: COLORS.green, fontWeight: 900 }}>PASS</td>
-                    </tr>
-                    <tr>
-                      <td style={{ padding: '6px 8px', fontWeight: 700 }}>Stretch &amp; Recovery Test</td>
-                      <td style={{ padding: '6px 8px', color: COLORS.grey }}>BS EN ISO 20932-1</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center' }}>85.5% (Length)</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center' }}>85.6% (Width)</td>
-                      <td style={{ padding: '6px 8px' }}>Min 80.0% Recovery</td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center', color: COLORS.green, fontWeight: 900 }}>PASS</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Sign-Off Authorization */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', background: '#F8FAFC', padding: '14px', borderRadius: '8px', border: `1px solid ${COLORS.border}` }}>
-                <div>
-                  <div style={{ fontSize: '11px', fontWeight: 700, color: COLORS.grey }}>OVERALL CERTIFICATE VERDICT</div>
-                  <div style={{ fontSize: '20px', fontWeight: 900, color: COLORS.green, margin: '2px 0' }}>100% PASS</div>
-                  <div style={{ fontSize: '11px', color: COLORS.grey }}>Meets all buyer technical and physical quality standards</div>
-                </div>
-                <div style={{ textAlign: 'right', fontSize: '11px', color: COLORS.navy }}>
-                  <div style={{ fontWeight: 800 }}>S.M. Hasibul Alam</div>
-                  <div style={{ color: COLORS.grey }}>Manager, Testing Laboratory</div>
-                  <div style={{ fontSize: '10px', color: COLORS.blue, fontWeight: 700 }}>For Northern Fashion Ltd. Testing Laboratory</div>
-                </div>
+              {/* Certificate Footer */}
+              <div style={{ padding: '12px 20px', background: '#F8FAFC', borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'flex-end', borderBottomLeftRadius: '12px', borderBottomRightRadius: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setActiveTestModal(false)}
+                  style={{
+                    background: COLORS.navy,
+                    color: '#FFFFFF',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '8px 18px',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Close Certificate
+                </button>
               </div>
             </div>
           </div>
@@ -2096,9 +2621,9 @@ function Job360Content() {
   );
 }
 
-export default function MasterJob360LandingPage() {
+export default function Job360Page() {
   return (
-    <Suspense fallback={<div style={{ padding: '60px', textAlign: 'center' }}>Loading Job 360 Workspace...</div>}>
+    <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>Loading Job 360...</div>}>
       <Job360Content />
     </Suspense>
   );

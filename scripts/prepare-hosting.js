@@ -34,6 +34,14 @@ function copyHtml(dir, targetSub) {
       const destPath = path.join(outDir, targetSub, item.name);
       fs.mkdirSync(path.dirname(destPath), { recursive: true });
       fs.copyFileSync(full, destPath);
+
+      // Also create folder/index.html for cleanUrls / trailing-slash compatibility
+      if (item.name !== 'index.html' && !item.name.startsWith('_')) {
+        const folderName = item.name.replace(/\.html$/, '');
+        const folderIndex = path.join(outDir, targetSub, folderName, 'index.html');
+        fs.mkdirSync(path.dirname(folderIndex), { recursive: true });
+        fs.copyFileSync(full, folderIndex);
+      }
     }
   }
 }
