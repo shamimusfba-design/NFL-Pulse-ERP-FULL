@@ -1,5 +1,8 @@
 'use client';
-import { MerchFrame } from '../sample-merch-frame';
+
+import React from 'react';
+import MerchandisingSamplePage from '../modules/sample-merchandising/page';
+
 export default function SampleMerchandisingPage() {
-  return <MerchFrame title="Sample Merchandising" eyebrow="Merchandising · Sample" app="sample" />;
+  return <MerchandisingSamplePage />;
 }

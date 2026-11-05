@@ -1,16 +1,18 @@
 'use client';
 
 import React from 'react';
-import NosShell from '../../components/NosShell';
+import Shell from '../../components/Shell';
 import BulkMerchandisingDashboard from '../../components/BulkMerchandisingDashboard';
 
 export default function BulkMerchandisingPage() {
   return (
-    <NosShell
-      title="Bulk Merchandising Dashboard"
-      subtitle="Operational Control Center · Authorized Buyer Data Isolation · Live Production & Exceptions"
+    <Shell
+      title="Sales & Merchandising"
+      eyebrow="NOS / MERCHANDISING · BULK PRODUCTION CONTROL"
     >
-      <BulkMerchandisingDashboard />
-    </NosShell>
+      <div style={{ maxWidth: '100%', margin: '0 auto' }}>
+        <BulkMerchandisingDashboard />
+      </div>
+    </Shell>
   );
 }

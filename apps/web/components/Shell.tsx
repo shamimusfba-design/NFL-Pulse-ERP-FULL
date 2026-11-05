@@ -39,7 +39,7 @@ const MAIN_NAVIGATION_ITEMS: SidebarItem[] = [
 
 // Exactly the 18 Department Navigation items in exact requested order
 const DEPARTMENT_NAVIGATION_ITEMS: SidebarItem[] = [
-  { id: 'merchandising', name: 'Sales & Merchandising', href: '/merchandising-bulk', matchPrefixes: ['/merchandising-bulk', '/merchandising-sample', '/modules/merchandising-overview', '/modules/merchandising', '/merchandising'] },
+  { id: 'merchandising', name: 'Sales & Merchandising', href: '/merchandising', matchPrefixes: ['/merchandising', '/modules/merchandising', '/merchandising-bulk', '/merchandising-sample', '/modules/sample-merchandising'] },
   { id: 'sample-room', name: 'Sample Room', href: '/modules/sample-room', matchPrefixes: ['/modules/sample-room'] },
   { id: 'trims', name: 'Trims & Accessories Store', href: '/modules/trims', matchPrefixes: ['/modules/trims'] },
   { id: 'central-planning', name: 'Central Planning', href: '/modules/planning-approvals', matchPrefixes: ['/modules/central-planning', '/modules/ta', '/modules/planning-approvals', '/modules/capacity', '/modules/sewing-planning', '/modules/subcontract'] },
@@ -68,11 +68,18 @@ const DEPARTMENT_TOP_NAVS: DepartmentNavConfig[] = [
   {
     deptId: 'merchandising',
     deptName: 'Sales & Merchandising',
-    matchPrefixes: ['/merchandising-bulk', '/merchandising-sample', '/modules/merchandising-overview', '/modules/merchandising', '/merchandising'],
+    matchPrefixes: ['/merchandising', '/modules/merchandising', '/merchandising-bulk', '/merchandising-sample', '/modules/sample-merchandising'],
     subItems: [
-      { name: 'Dashboard', href: '/modules/merchandising-overview' },
-      { name: 'Bulk Merchandising', href: '/merchandising-bulk' },
-      { name: 'Sample Merchandising', href: '/merchandising-sample' },
+      { name: 'Bulk Merchandising', href: '/merchandising' },
+      { name: 'Sample Merchandising', href: '/modules/sample-merchandising' },
+      { name: 'Pre-Order Costing', href: '/merchandising/costing' },
+      { name: 'Order & PO Management', href: '/merchandising/order-po' },
+      { name: 'T&A Milestones', href: '/merchandising/ta' },
+      { name: 'BOM & Materials', href: '/merchandising/bom-material' },
+      { name: 'Sample Approval', href: '/merchandising/sample-approval' },
+      { name: 'Production Tracking', href: '/merchandising/production' },
+      { name: 'Shipment Closing', href: '/merchandising/shipment-closing' },
+      { name: 'Reports & Docs', href: '/merchandising/reports-docs' },
     ]
   },
   {

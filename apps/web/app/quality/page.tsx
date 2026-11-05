@@ -203,6 +203,46 @@ const GARMENT_DEFECT_LIBRARY = [
   { code: 'FIN-03', section: 'Finishing', name: 'AQL 1.5 / 2.5 Critical Defect Exceeded', severity: 'Critical', action: '100% re-inspection of the entire production lot' }
 ];
 
+function GlassmorphismChartTooltip({ active, payload, label }: any) {
+  if (active && payload && payload.length) {
+    return (
+      <div
+        style={{
+          background: 'rgba(15, 23, 42, 0.94)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.16)',
+          borderRadius: '8px',
+          padding: '8px 12px',
+          boxShadow: '0 12px 28px -4px rgba(0, 0, 0, 0.45)',
+          color: '#FFFFFF',
+          fontSize: '12px',
+          minWidth: '140px',
+          zIndex: 100,
+          pointerEvents: 'none'
+        }}
+      >
+        {label && (
+          <div style={{ fontWeight: 800, color: '#38BDF8', marginBottom: '6px', borderBottom: '1px solid rgba(255,255,255,0.12)', paddingBottom: '3px' }}>
+            {label}
+          </div>
+        )}
+        {payload.map((entry: any, index: number) => (
+          <div key={`item-${index}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginTop: '3px' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#CBD5E1', fontSize: '11.5px' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: entry.color || entry.fill || '#38BDF8' }} />
+              {entry.name || 'Value'}:
+            </span>
+            <span style={{ fontWeight: 800, color: '#FFFFFF', fontSize: '12px' }}>
+              {typeof entry.value === 'number' ? entry.value.toLocaleString() : entry.value}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
+}
+
 export default function GarmentsQualityPage() {
   const [activeSection, setActiveSection] = useState<GarmentSection>('overview');
   const [searchQuery, setSearchQuery] = useState('');
@@ -625,8 +665,8 @@ export default function GarmentsQualityPage() {
 
         {/* Charts: Section DHU & Defect Pareto (shown on Overview) */}
         {activeSection === 'overview' && (
-          <section style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '14px' }}>
-            <div className="card" style={{ padding: '16px' }}>
+          <section className="management-grid-row equal" style={{ gap: '14px', marginBottom: '16px' }}>
+            <div className="card erp-card-animated" style={{ padding: '16px' }}>
               <div style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>
                 Section-wise DHU (%) vs Target Benchmark
               </div>
@@ -639,7 +679,7 @@ export default function GarmentsQualityPage() {
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="section" tick={{ fontSize: 12, fill: '#64748b' }} />
                     <YAxis tick={{ fontSize: 12, fill: '#64748b' }} unit="%" />
-                    <Tooltip />
+                    <Tooltip content={<GlassmorphismChartTooltip />} cursor={{ fill: 'rgba(37, 99, 235, 0.08)', radius: 4 }} />
                     <Legend wrapperStyle={{ fontSize: '12px' }} />
                     <Bar {...FX_BAR} dataKey="dhu" name="Actual DHU (%)" fill="#2563eb" radius={[4, 4, 0, 0]} />
                     <Bar {...FX_BAR} dataKey="target" name="Target Benchmark (%)" fill="#94a3b8" radius={[4, 4, 0, 0]} />
@@ -648,7 +688,7 @@ export default function GarmentsQualityPage() {
               </div>
             </div>
 
-            <div className="card" style={{ padding: '16px' }}>
+            <div className="card erp-card-animated" style={{ padding: '16px' }}>
               <div style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>
                 Top Recurring Garment Defects (%)
               </div>
@@ -672,7 +712,7 @@ export default function GarmentsQualityPage() {
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip content={<GlassmorphismChartTooltip />} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
