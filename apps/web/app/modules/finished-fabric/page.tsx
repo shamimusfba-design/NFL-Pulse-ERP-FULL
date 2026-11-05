@@ -46,6 +46,9 @@ import {
   Tooltip,
 } from 'recharts';
 import { FX_SERIES, FX_BAR, FxResponsiveContainer as ResponsiveContainer } from '../../../components/fx';
+import FabricRackLocation, { RackLocations, seedRackLocations, shelfLabel } from '../../../components/fabric/FabricRackLocation';
+
+const RACK_STORE_KEY = 'nos-finished-fabric-rack-locations-v1';
 
 // ============================================================================
 // DATA TYPES & INTERFACES
@@ -174,7 +177,10 @@ export interface LeftoverReturnRecord {
 
 export default function FinishedFabricPage() {
   // Navigation tabs
-  const [activeTab, setActiveTab] = useState<'stock' | 'receive' | 'issue' | 'reuse'>('stock');
+  const [activeTab, setActiveTab] = useState<'stock' | 'receive' | 'issue' | 'reuse' | 'location'>('stock');
+  const [stockView, setStockView] = useState<'job' | 'color'>('job');
+  const [rackLoc, setRackLoc] = useState<RackLocations>({});
+  const [locFocus, setLocFocus] = useState<{ sub: 'racks' | 'tracking'; q: string; n: number }>({ sub: 'racks', q: '', n: 0 });
 
   // Master Data & Loading State
   const [rawLines, setRawLines] = useState<FabricColorLine[]>([]);
@@ -367,6 +373,31 @@ export default function FinishedFabricPage() {
   ]);
 
   // Show toast helper
+  // Rack & shelf locations — saved in this browser; first visit gets a seeded layout from current stock
+  useEffect(() => {
+    if (!rawLines.length) return;
+    let stored: RackLocations | null = null;
+    try { stored = JSON.parse(localStorage.getItem(RACK_STORE_KEY) || 'null'); } catch { stored = null; }
+    if (stored && typeof stored === 'object' && Object.keys(stored).length) { setRackLoc(stored); return; }
+    const seeded = seedRackLocations(rawLines);
+    setRackLoc(seeded);
+    try { localStorage.setItem(RACK_STORE_KEY, JSON.stringify(seeded)); } catch { /* ignore */ }
+  }, [rawLines]);
+  const saveRackLoc = (next: RackLocations, message: string) => {
+    setRackLoc(next);
+    try { localStorage.setItem(RACK_STORE_KEY, JSON.stringify(next)); } catch { /* storage full or blocked */ }
+    showToast(message);
+  };
+  const lineShelf = useMemo(() => {
+    const m: Record<string, string> = {};
+    Object.entries(rackLoc).forEach(([sid, a]) => (m[a.lineId] = sid));
+    return m;
+  }, [rackLoc]);
+  const openLocation = (q: string, sub: 'racks' | 'tracking' = 'tracking') => {
+    setLocFocus(f => ({ sub, q, n: f.n + 1 }));
+    setActiveTab('location');
+  };
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
@@ -1120,6 +1151,25 @@ export default function FinishedFabricPage() {
               {returnLedger.length} Rolls
             </span>
           </button>
+
+          <button
+            onClick={() => openLocation('', 'racks')}
+            className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${
+              activeTab === 'location'
+                ? 'bg-slate-900 text-white shadow-sm'
+                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+            }`}
+          >
+            <MapPin className="w-4 h-4 text-sky-500" />
+            Rack & Location
+            <span
+              className={`px-2 py-0.5 rounded-full text-[10px] ${
+                activeTab === 'location' ? 'bg-slate-800 text-sky-300' : 'bg-slate-100 text-slate-600'
+              }`}
+            >
+              {Object.keys(rackLoc).length}/180 Shelves
+            </span>
+          </button>
         </div>
 
         {/* Global Action Buttons */}
@@ -1508,6 +1558,21 @@ export default function FinishedFabricPage() {
 
             {/* Toggle All Colors Button & Record Count */}
             <div className="flex items-center gap-3">
+              <div className="inline-flex rounded-lg border border-slate-300 overflow-hidden" role="tablist" aria-label="Table view">
+                <button
+                  onClick={() => setStockView('job')}
+                  className={`px-3 py-1.5 text-xs font-bold ${stockView === 'job' ? 'nos-tab-on' : 'bg-white text-slate-800 hover:bg-slate-50'}`}
+                >
+                  Job-wise view
+                </button>
+                <button
+                  onClick={() => setStockView('color')}
+                  className={`px-3 py-1.5 text-xs font-bold border-l border-slate-300 ${stockView === 'color' ? 'nos-tab-on' : 'bg-white text-slate-800 hover:bg-slate-50'}`}
+                >
+                  Color-wise view
+                </button>
+              </div>
+              {stockView === 'job' && (
               <button
                 onClick={toggleAllExpanded}
                 className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-md flex items-center gap-1.5 transition-colors"
@@ -1515,6 +1580,7 @@ export default function FinishedFabricPage() {
                 <Palette className="w-3.5 h-3.5 text-indigo-600" />
                 {showAllColors ? 'Collapse Color Breakdown' : 'Expand All Colorways'}
               </button>
+              )}
               <span className="text-xs font-semibold text-slate-500">
                 Showing <strong className="text-slate-900">{filteredJobGroups.length.toLocaleString()}</strong> jobs (
                 {rawLines.length.toLocaleString()} colorways)
@@ -1601,6 +1667,66 @@ export default function FinishedFabricPage() {
                       No matching jobs found with the applied filters.
                     </td>
                   </tr>
+                ) : stockView === 'color' ? (
+                  paginatedGroups.flatMap((job) =>
+                    job.colors.map((c) => {
+                      const sid = lineShelf[c.id];
+                      const pct = c.totalReq > 0 ? Math.round((c.totalRecv / c.totalReq) * 100) : 0;
+                      return (
+                        <tr key={c.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="sticky left-0 z-10 bg-white px-3 py-2.5 border-r border-slate-200">
+                            <span className="text-[11px] text-slate-600 block font-semibold leading-none">{job.buyer}</span>
+                            <span className="font-bold text-slate-900">{job.jobNo}</span>
+                          </td>
+                          <td className="px-3 py-2.5 font-semibold text-slate-800">{job.style || '—'}</td>
+                          <td className="px-3 py-2.5 font-bold text-slate-900">{c.color}</td>
+                          <td className="px-3 py-2.5 font-semibold text-slate-800">{c.fabric} ({c.construction})</td>
+                          <td className="px-3 py-2.5 font-semibold text-slate-800">{c.gsm}</td>
+                          <td className="px-3 py-2.5 font-semibold text-slate-800">{c.dia}</td>
+                          <td className="px-3 py-2.5 text-right font-semibold text-slate-900">{Math.round(c.totalReq).toLocaleString()} kg</td>
+                          <td className="px-3 py-2.5 text-right font-semibold text-emerald-800">{Math.round(c.totalRecv).toLocaleString()} kg</td>
+                          <td className="px-3 py-2.5 text-right font-semibold">
+                            {c.dyeingBalance > 0.5 ? (
+                              <span className="text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded">{Math.round(c.dyeingBalance).toLocaleString()} kg</span>
+                            ) : (
+                              <span className="text-emerald-800">0 kg</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2.5 text-right font-semibold text-slate-900">{pct}%</td>
+                          <td className="px-3 py-2.5 text-right font-semibold text-purple-800">{Math.round(c.totalIssued).toLocaleString()} kg</td>
+                          <td className="px-3 py-2.5 text-right font-bold text-sky-800">{Math.round(c.stockBalance).toLocaleString()} kg</td>
+                          <td className="px-3 py-2.5 text-center">
+                            <div className="flex flex-col items-center gap-1">
+                              <span className="text-[11px] px-1.5 py-0.5 rounded bg-white border border-slate-300 text-slate-800 font-semibold">{c.stockState}</span>
+                              {sid ? (
+                                <button onClick={() => openLocation(job.jobNo, 'racks')} className="text-[11px] px-1.5 py-0.5 rounded border border-sky-300 bg-sky-50 text-sky-900 font-bold inline-flex items-center gap-1" title="Show on rack">
+                                  <MapPin className="w-3 h-3" /> {shelfLabel(sid)}
+                                </button>
+                              ) : c.stockBalance > 0.5 ? (
+                                <button onClick={() => openLocation(job.jobNo, 'tracking')} className="text-[11px] px-1.5 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-900 font-bold" title="Assign a shelf">
+                                  Not on a rack
+                                </button>
+                              ) : null}
+                            </div>
+                          </td>
+                          <td className="px-3 py-2.5 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button onClick={() => handleOpenReceive(c)} className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-bold flex items-center gap-1">
+                                <Plus className="w-3 h-3" /> Receive
+                              </button>
+                              <button
+                                onClick={() => handleOpenIssue(c)}
+                                disabled={c.stockBalance <= 0}
+                                className={`px-2 py-1 rounded text-[11px] font-bold flex items-center gap-1 ${c.stockBalance > 0 ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-slate-200 text-slate-600 cursor-not-allowed'}`}
+                              >
+                                <Scissors className="w-3 h-3" /> Issue
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )
                 ) : (
                   paginatedGroups.map((job) => {
                     const isExpanded = expandedJobs[job.key] || showAllColors;
@@ -1622,9 +1748,11 @@ export default function FinishedFabricPage() {
                             <div className="flex items-center gap-1.5">
                               <button
                                 onClick={() => toggleJobExpanded(job.key)}
-                                className="w-5 h-5 flex items-center justify-center rounded hover:bg-slate-200 text-slate-500 transition-colors"
+                                className="w-7 h-7 flex items-center justify-center rounded-md border border-indigo-300 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 transition-colors shrink-0"
+                                title={isExpanded ? 'Hide colours' : `Show ${job.colorCount} colours`}
+                                aria-expanded={isExpanded}
                               >
-                                {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                                {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                               </button>
                               <div>
                                 <span className="text-[10px] text-slate-400 block font-normal leading-none">{job.buyer}</span>
@@ -1816,6 +1944,11 @@ export default function FinishedFabricPage() {
                                 <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-white border border-slate-200 text-slate-600 font-medium">
                                   {c.stockState}
                                 </span>
+                                {lineShelf[c.id] && (
+                                  <button onClick={() => openLocation(job.jobNo, 'racks')} className="block mx-auto mt-1 text-[11px] px-1.5 py-0.5 rounded border border-sky-300 bg-sky-50 text-sky-900 font-bold" title="Show on rack">
+                                    {shelfLabel(lineShelf[c.id])}
+                                  </button>
+                                )}
                               </td>
 
                               {/* Color Direct Actions: Receive / Issue */}
@@ -2272,6 +2405,19 @@ export default function FinishedFabricPage() {
       {/* ===================================================================== */}
       {/* TAB 4: REUSE & LEFTOVER FABRIC */}
       {/* ===================================================================== */}
+      {activeTab === 'location' && (
+        <div className="bg-white rounded-xl border border-slate-200 p-4 mb-5">
+          <FabricRackLocation
+            key={locFocus.n}
+            lines={rawLines}
+            locations={rackLoc}
+            onChange={saveRackLoc}
+            initialSub={locFocus.sub}
+            initialQuery={locFocus.q}
+          />
+        </div>
+      )}
+
       {activeTab === 'reuse' && (
         <div className="space-y-6 mb-8">
           {/* Top Form: Return leftover roll from Cutting Floor */}
