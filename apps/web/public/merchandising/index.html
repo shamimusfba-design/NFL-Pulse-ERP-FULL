@@ -337,45 +337,6 @@ tr.clk{cursor:pointer}
 
 .kpi .n{white-space:nowrap;overflow:hidden;display:block;max-width:100%}
 
-header.top {
-  display: none !important;
-}
-#mainnav {
-  display: none !important;
-}
-#subnav {
-  top: 0 !important;
-  background: #ffffff !important;
-  border-bottom: 1px solid #e2e8f0 !important;
-  padding: 8px 14px !important;
-  gap: 8px !important;
-  display: flex !important;
-  align-items: center !important;
-  position: sticky !important;
-  z-index: 25 !important;
-}
-#subnav button {
-  border: 1px solid #e2e8f0 !important;
-  border-radius: 6px !important;
-  background: #f8fafc !important;
-  color: #334155 !important;
-  font-weight: 700 !important;
-  font-size: 12px !important;
-  padding: 6px 14px !important;
-  transition: all 0.15s ease !important;
-  cursor: pointer !important;
-}
-#subnav button:hover {
-  background: #f1f5f9 !important;
-  color: #0F274E !important;
-}
-#subnav button.on {
-  background: #0F274E !important;
-  color: #ffffff !important;
-  border-color: #0284c7 !important;
-  box-shadow: 0 2px 4px rgba(15,39,78,0.15) !important;
-}
-
 </style>
 </head>
 <body>
@@ -2132,7 +2093,7 @@ function decorate(j){const o=OWN[j.id]||{};const h1=hash('l'+j.id),h2=hash('t'+j
  j.tFile=R&&done?R.file.s:(j.demo?'':j.handover);j.tTrims=R&&done?R.trims.e:'';j.tPP=R&&done?R.pp.s:'';j.tFab=R&&done?R.dye.e:'';j.tCut=R&&done?R.cut.s:'';j.tSewS=R&&done?R.sew.s:(j.demo?'':j.sewTA);j.tSewE=R&&done?R.sew.e:'';
  j.risk=j.cargo&&j.cargo>=TODAY&&days(TODAY,j.cargo)<=30&&!/ok|apv/i.test(j.pp||'')&&(j.pp||'')!==''}
 // ---------- state ----------
-let VIEW='entry',railMode='tasks',railOpen=false,formType='',selId=null,pageN=0,sort={k:'cargo',dir:1},REVIEW=null;const PER=50;
+let VIEW='follow',railMode='tasks',railOpen=false,formType='',selId=null,pageN=0,sort={k:'cargo',dir:1},REVIEW=null;const PER=50;
 const F={q:'',buyer:'',merch:'',stage:'',lab:'',bom:'',quick:'',tst:'',month:'',from:'',to:'',pstat:''};
 const QUICK={order:{l:'Order entry review',f:j=>j.wf.order==='review'},cad:{l:'CAD consumption',f:j=>j.wf.cad==='ready'},ie:{l:'IE bulletin',f:j=>j.wf.ie==='ready'},thread:{l:'Thread consumption',f:j=>j.wf.thread==='ready'},fabric:{l:'Fabric order sheet',f:j=>j.wf.fabric==='ready'},tna:{l:'Planning pending',f:j=>j.wf.tna==='ready'||j.wf.tna==='sent'},file:{l:'File handover due',f:j=>j.wf.file==='ready'},preprod:{l:'Pre-production in progress',f:j=>j.wf.preprod==='ready'},sizeset:{l:'Size set in progress',f:j=>j.wf.sizeset==='ready'},ppm:{l:'PP meeting to call',f:j=>j.wf.ppm==='ready'},delay:{l:'Shipment date passed',f:j=>!!j.cargo&&j.cargo<TODAY}};
 function match(j,skip){const q=F.q.toLowerCase();return seeJob(j)&&(!q||(j.jobCode+' '+j.style+' '+j.merch+' '+j.buyerName+' '+(j.styleName||'')).toLowerCase().includes(q))&&(skip==='buyer'||!F.buyer||j.buyerName===F.buyer)&&(!F.merch||j.merch===F.merch)&&(!F.stage||j.stage===F.stage)&&(!F.lab||({'Pending':j.labS.k==='wait'||j.labS.k==='late','All approved':j.labS.k==='done','Not started':j.labS.k==='none'})[F.lab])&&(!F.bom||j.bomV===F.bom)&&(!F.month||(j.cargo||'').slice(0,7)===F.month)&&(!F.from||(j.cargo&&j.cargo>=F.from))&&(!F.to||(j.cargo&&j.cargo<=F.to))&&(!F.pstat||j.pstat===F.pstat)&&(skip==='quick'||!F.quick||QUICK[F.quick].f(j))}
@@ -2699,7 +2660,7 @@ function valueView(m){const all=JOBS;const q=VF.q.toLowerCase();
 }
 // ---------- wiring ----------
 G('whoSel').onchange=e=>{me=USERS.find(u=>u.id===e.target.value);VIEW=VIEW==='value'?'value':'follow';Object.assign(VF,{month:'',from:'',to:'',buyer:'',merch:'',itype:'',q:'',page:0});Object.keys(F).forEach(k=>F[k]='');selId=null;railMode='tasks';railOpen=false;REVIEW=null;pageN=0;render();toast('Now viewing as '+me.name)};
-const BVIEWS=[['entry','1. Order entry'],['bom','2. Trims & accessories checklist'],['trims','3. Trims & accessories ordering'],['print','4. Print'],['follow','5. Bulk order follow-up'],['value','6. Order value'],['rates','7. Cost rates']];
+const BVIEWS=[['follow','Bulk order follow-up'],['value','Order value'],['entry','Order entry'],['bom','Trims & accessories checklist'],['trims','Trims & accessories ordering'],['print','Print'],['rates','Cost rates']];
 function setView(v){VIEW=v;TRIMJOB=null;PRINTJOB=null;COSTOPEN=false;selId=null;railMode='tasks';formType='';railOpen=false;REVIEW=null;pageN=0;Object.keys(F).forEach(k=>F[k]='');render()}
 function resetAll(){try{localStorage.removeItem(SKEY)}catch(e){}load();Object.keys(F).forEach(k=>F[k]='');selId=null;railMode='tasks';REVIEW=null;railOpen=false;render();toast('Demo data reset')}
 load();render();
