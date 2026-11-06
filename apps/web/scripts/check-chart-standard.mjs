@@ -18,7 +18,7 @@ function walk(dir) {
     if (name === 'node_modules' || name === '.next' || name === 'fx') continue;
     const p = join(dir, name);
     if (statSync(p).isDirectory()) walk(p);
-    else if (/\.(tsx|jsx)$/.test(name) && !/Icon\.tsx$/.test(name) && !p.includes('/app/login/')) check(p); // icons / login art are not charts
+    else if (/\.(tsx|jsx)$/.test(name) && !/Icon\.tsx$/.test(name) && !/[\\/]app[\\/]login[\\/]/.test(p)) check(p); // icons / login art are not charts
   }
 }
 
