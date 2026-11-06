@@ -32,11 +32,6 @@
     ],
     "redirects": [
       {
-        "source": "/merchandising",
-        "destination": "/merchandising-bulk",
-        "type": 301
-      },
-      {
         "regex": "^/merchandising/(dashboard|order-po|bom-material|costing|production|reports-docs|sample-approval|shipment-closing|styles|ta)(/.*)?$",
         "destination": "/merchandising-bulk",
         "type": 301
