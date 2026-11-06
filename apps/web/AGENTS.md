@@ -24,3 +24,12 @@ Every page must stay usable on a phone (≤760px) without changing desktop: foll
 (responsive grids, card layout for floor-used tables, no fixed-width sections, pop-ups as `fixed inset-0` overlays).
 Never cache data or API responses in `public/sw.js`.
 <!-- END NOS MOBILE STANDARD -->
+
+<!-- NOS UX STANDARD -->
+## NOS UX standard (mandatory)
+Follow `docs/UX-STANDARD.md` for every page: compact header (title only), one hamburger menu, no duplicate buttons,
+no Bengali / teaching / demo text on screens, main table full width with only its header frozen, Excel-style column
+filters, right-side edit panel, calm chart hover (never dim other marks), chart colours blue/green/red, Day + Night mode
+both readable (prefer Tailwind or CSS variables over inline colours). Run `npm run check:ux` before committing.
+Verify under Firebase rules (hosting emulator) before calling anything fixed.
+<!-- END NOS UX STANDARD -->

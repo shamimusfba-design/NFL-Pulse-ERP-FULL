@@ -447,15 +447,6 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
             <div className="brand" title="Northern Fashion Limited">Northern Fashion Limited</div>
             <div className="brand-sub">NFL Pulse ERP · Operations Control</div>
           </div>
-          <button
-            type="button"
-            className="sidebar-hamburger-btn"
-            onClick={toggleSidebar}
-            title="Collapse Sidebar"
-            aria-label="Collapse Sidebar"
-          >
-            ☰
-          </button>
         </div>
 
         {/* Module Quick Find */}

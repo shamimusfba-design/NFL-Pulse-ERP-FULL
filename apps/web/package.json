@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "check:charts": "node scripts/check-chart-standard.mjs",
-    "prebuild": "node scripts/clean-stale-types.mjs && node scripts/check-chart-standard.mjs"
+    "prebuild": "node scripts/clean-stale-types.mjs && node scripts/check-chart-standard.mjs && node scripts/check-ux-standard.mjs",
+    "check:ux": "node scripts/check-ux-standard.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.66.0",
