@@ -2588,7 +2588,7 @@ export default function OrderEntryWorkspace() {
                       <td style={{ padding: '8px 10px', textAlign: 'right' }}>
                         <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
                           <Link
-                            href="/merchandising"
+                            href="/merchandising-bulk"
                             style={{
                               padding: '3px 8px',
                               borderRadius: '4px',

@@ -41,7 +41,7 @@ export default function FormsPrintPage(){
   const canApprove=Boolean(user?.roles?.some((r:string)=>['ADMIN','MERCH_HEAD'].includes(r)));
 
   return <Shell title="Forms & Print Documents" eyebrow="Locked company formats · job-wise dynamic data · A4 print">
-    <section className="module-hero forms-hero"><div><span className="status-pill">Company standard</span><h2>Merchandising Forms & Print Documents</h2><p>The three approved formats stay locked. Buyer/job/style/PO/qty/breakdown data comes from ERP; only document-specific missing information is entered here. Print layout does not change job to job.</p></div><div className="module-actions"><a className="btn btn-secondary" href="/modules/merchandising">Bulk Merchandising</a><a className="btn btn-secondary" href="/modules/ta">T&A Planning</a></div></section>
+    <section className="module-hero forms-hero"><div><span className="status-pill">Company standard</span><h2>Merchandising Forms & Print Documents</h2><p>The three approved formats stay locked. Buyer/job/style/PO/qty/breakdown data comes from ERP; only document-specific missing information is entered here. Print layout does not change job to job.</p></div><div className="module-actions"><a className="btn btn-secondary" href="/merchandising-bulk">Bulk Merchandising</a><a className="btn btn-secondary" href="/modules/ta">T&A Planning</a></div></section>
     {error&&<div className="notice">{error}</div>}{saved&&<div className="notice success-notice">{saved}</div>}
 
     <div className="company-forms-layout">

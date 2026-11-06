@@ -108,7 +108,7 @@ function TasksContent() {
             </p>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <Link href="/merchandising/order-po" className="btn btn-primary" style={{ fontSize: '12px', padding: '6px 14px', textDecoration: 'none' }}>
+            <Link href="/merchandising-bulk" className="btn btn-primary" style={{ fontSize: '12px', padding: '6px 14px', textDecoration: 'none' }}>
               + Import Another PO
             </Link>
             <Link href="/jobs?tab=preproduction" className="btn btn-secondary" style={{ fontSize: '12px', padding: '6px 14px', textDecoration: 'none' }}>

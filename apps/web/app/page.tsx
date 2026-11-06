@@ -1135,7 +1135,7 @@ export default function Dashboard() {
           </div>
         </div>
         <div className="quick-grid">
-          <Link href="/modules/merchandising" className="quick-card"><span className="quick-icon">ME</span><div><strong>Merchandising</strong><span>Follow-up & production status</span></div></Link>
+          <Link href="/merchandising-bulk" className="quick-card"><span className="quick-icon">ME</span><div><strong>Merchandising</strong><span>Follow-up & production status</span></div></Link>
           <Link href="/modules/ta" className="quick-card"><span className="quick-icon">CP</span><div><strong>Central Planning</strong><span>T&A → heatmap → Gantt</span></div></Link>
           <Link href="/modules/job-360" className="quick-card"><span className="quick-icon">J3</span><div><strong>Job 360</strong><span>Production, testing, quality & lead time</span></div></Link>
           <Link href="/modules/yarn" className="quick-card"><span className="quick-icon">YM</span><div><strong>Yarn Management</strong><span>Stock, pipeline & risk</span></div></Link>

@@ -29,6 +29,23 @@
         "source": "**",
         "destination": "/index.html"
       }
+    ],
+    "redirects": [
+      {
+        "regex": "^/merchandising/(dashboard|order-po|bom-material|costing|production|reports-docs|sample-approval|shipment-closing|styles|ta)(/.*)?$",
+        "destination": "/merchandising-bulk",
+        "type": 301
+      },
+      {
+        "source": "/modules/merchandising",
+        "destination": "/merchandising-bulk",
+        "type": 301
+      },
+      {
+        "source": "/modules/sample-merchandising",
+        "destination": "/merchandising-sample",
+        "type": 301
+      }
     ]
   }
 }
