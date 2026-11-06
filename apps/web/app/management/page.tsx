@@ -61,48 +61,6 @@ function money(num: number | null | undefined, decimals = 2): string {
   return `$${num.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 }
 
-
-// Premium World-Class Glassmorphism Tooltip with dynamic badges & values
-function GlassmorphismChartTooltip({ active, payload, label }: any) {
-  if (active && payload && payload.length) {
-    return (
-      <div
-        style={{
-          background: 'rgba(15, 23, 42, 0.94)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.16)',
-          borderRadius: '8px',
-          padding: '8px 12px',
-          boxShadow: '0 12px 28px -4px rgba(0, 0, 0, 0.45)',
-          color: '#FFFFFF',
-          fontSize: '12px',
-          minWidth: '140px',
-          zIndex: 100,
-          pointerEvents: 'none'
-        }}
-      >
-        {label && (
-          <div style={{ fontWeight: 800, color: '#38BDF8', marginBottom: '6px', borderBottom: '1px solid rgba(255,255,255,0.12)', paddingBottom: '3px' }}>
-            {label}
-          </div>
-        )}
-        {payload.map((entry: any, index: number) => (
-          <div key={`item-${index}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginTop: '3px' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#CBD5E1', fontSize: '11.5px' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: entry.color || entry.fill || '#38BDF8' }} />
-              {entry.name || 'Value'}:
-            </span>
-            <span style={{ fontWeight: 800, color: '#FFFFFF', fontSize: '12px' }}>
-              {typeof entry.value === 'number' ? entry.value.toLocaleString() : entry.value}
-            </span>
-          </div>
-        ))}
-      </div>
-    );
-  }
-  return null;
-}
-
 // Enhanced Readable KPI Card (Target 28px value, 13px label, min-height 88px)
 function CompactKpiCard({
   label,
@@ -135,7 +93,6 @@ function CompactKpiCard({
   return (
     <div
       onClick={onClick}
-      className="compact-kpi-card-root erp-card-animated"
       style={{
         background: COLORS.cardBg,
         border: `1px solid ${COLORS.border}`,
@@ -144,7 +101,7 @@ function CompactKpiCard({
         padding: '10px 14px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
         cursor: onClick ? 'pointer' : 'default',
-        transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+        transition: 'transform 0.12s, box-shadow 0.12s',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
@@ -247,8 +204,6 @@ export default function ManagementDashboardPage() {
 
   // Subcontract process filter tab (default to Knitting Mills)
   const [subcontractSectionTab, setSubcontractSectionTab] = useState<'Knitting' | 'Dyeing' | 'Printing' | 'Embroidery'>('Knitting');
-  const [activeDonutIndex, setActiveDonutIndex] = useState<number | null>(null);
-  const [activeRftIndex, setActiveRftIndex] = useState<number | null>(null);
   const [showOnlyFilteredQuotas, setShowOnlyFilteredQuotas] = useState<boolean>(false);
   const [drillModal, setDrillModal] = useState<{ title: string; rows: any[] } | null>(null);
 
@@ -1029,7 +984,7 @@ export default function ManagementDashboardPage() {
         />
 
         {/* 8 Compact KPI Cards */}
-        <div className="management-kpi-grid">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px', marginBottom: '14px' }}>
           <CompactKpiCard label="Active Orders" value={overviewStats.activeOrdersCount} unit="orders" trend="In-plant" trendType="neutral" color={COLORS.navy} />
           <CompactKpiCard label="Total Order Qty" value={overviewStats.totalOrderQty} unit="pcs" trend={`${fmt(overviewStats.totalJobs)} Jobs`} trendType="positive" color={COLORS.blue} />
           <CompactKpiCard label="Total Shipped" value={overviewStats.totalShippedQty} unit="pcs" trend="Delivered" trendType="positive" color={COLORS.green} />
@@ -1041,22 +996,22 @@ export default function ManagementDashboardPage() {
         </div>
 
         {/* 2 Compact Charts Side-by-Side */}
-        <div className="management-grid-row equal">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '8px', marginBottom: '12px' }}>
           {/* Chart 1: Monthly Export Trend */}
           <div style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '5px', padding: '7px 9px' }}>
             <div style={{ fontSize: '14px', fontWeight: 800, color: COLORS.navy, marginBottom: '8px' }}>
               Monthly Export &amp; Plan Runway (1,000 pcs)
             </div>
             <ResponsiveContainer width="100%" height={260}>
-              <ComposedChart data={overviewStats.monthlyTrendData}>
+              <BarChart data={overviewStats.monthlyTrendData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                 <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} unit="K" />
-                <Tooltip content={<GlassmorphismChartTooltip />} cursor={{ fill: 'rgba(37, 99, 235, 0.08)', radius: 4 }} />
+                <Tooltip formatter={(val: any) => [`${val}K pcs`, '']} />
                 <Legend wrapperStyle={{ fontSize: '12.5px' }} />
                 <Bar {...FX_BAR} dataKey="exported" fill={COLORS.blue} name="Exported (pcs)" radius={[2, 2, 0, 0]} />
-                <Line {...FX_SERIES} type="monotone" dataKey="target" stroke={COLORS.green} strokeWidth={2.5} name="Target (pcs)" />
-              </ComposedChart>
+                <Line {...FX_SERIES} type="monotone" dataKey="target" stroke={COLORS.green} strokeWidth={2} name="Target (pcs)" />
+              </BarChart>
             </ResponsiveContainer>
           </div>
 
@@ -1072,30 +1027,16 @@ export default function ManagementDashboardPage() {
                     data={overviewStats.donutData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={52}
-                    outerRadius={86}
+                    innerRadius={55}
+                    outerRadius={88}
                     paddingAngle={2}
                     dataKey="value"
-                    onMouseEnter={(_, index) => setActiveDonutIndex(index)}
-                    onMouseLeave={() => setActiveDonutIndex(null)}
                   >
                     {overviewStats.donutData.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={entry.color}
-                        stroke={activeDonutIndex === index ? '#FFFFFF' : 'none'}
-                        strokeWidth={activeDonutIndex === index ? 3 : 0}
-                        style={{
-                          cursor: 'pointer',
-                          filter: activeDonutIndex === index ? 'drop-shadow(0 4px 10px rgba(0,0,0,0.35))' : 'none',
-                          transform: activeDonutIndex === index ? 'scale(1.04)' : 'scale(1)',
-                          transformOrigin: 'center center',
-                          transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)'
-                        }}
-                      />
+                      <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip content={<GlassmorphismChartTooltip />} />
+                  <Tooltip formatter={(val: any) => [`${val} orders`, 'Count']} />
                 </PieChart>
               </ResponsiveContainer>
 
@@ -1121,7 +1062,7 @@ export default function ManagementDashboardPage() {
         {/* ========================================================================= */}
         {/* ROW 2: SIDE-BY-SIDE — Section 02 (Quota Matrix) & Section 03 (Buyer Delivery) */}
         {/* ========================================================================= */}
-        <div className="management-grid-row">
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.25fr) minmax(0, 0.75fr)', gap: '14px', marginBottom: '16px' }}>
           
           {/* LEFT: Section 02 — Merchandising Team & Buyer Quota Matrix */}
           <div style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', overflow: 'hidden' }}>
@@ -1146,8 +1087,7 @@ export default function ManagementDashboardPage() {
               </div>
             </div>
 
-            <div className="mobile-swipe-indicator">📱 Touch &amp; swipe horizontally to view all columns</div>
-            <div className="management-table-scroll" style={{ maxHeight: '380px' }}>
+            <div style={{ overflowX: 'auto', maxHeight: '380px' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13.5px', textAlign: 'left' }}>
                 <thead style={{ position: 'sticky', top: 0, background: '#F8FAFC', zIndex: 10 }}>
                   <tr style={{ borderBottom: `1px solid ${COLORS.border}`, color: COLORS.grey }}>
@@ -1276,7 +1216,7 @@ export default function ManagementDashboardPage() {
         </div>
 
         {/* Section 02 & 03 Visual Performance Charts */}
-        <div className="management-grid-row equal">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '8px', marginBottom: '16px' }}>
           {/* Chart 2A: Quota vs Confirmed */}
           <div className="erp-chart-card" style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', padding: '8px 10px' }}>
             <div style={{ fontSize: '13px', fontWeight: 800, color: COLORS.navy, marginBottom: '6px' }}>
@@ -1287,7 +1227,7 @@ export default function ManagementDashboardPage() {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                 <XAxis dataKey="brand" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} unit="K" />
-                <Tooltip content={<GlassmorphismChartTooltip />} cursor={{ fill: 'rgba(37, 99, 235, 0.08)', radius: 4 }} />
+                <Tooltip formatter={(val: any) => [`${val}K pcs`, '']} />
                 <Legend wrapperStyle={{ fontSize: '11.5px' }} />
                 <Bar {...FX_BAR} dataKey="quotaK" fill="#94A3B8" name="Monthly Quota" radius={[2, 2, 0, 0]} />
                 <Bar {...FX_BAR} dataKey="confirmedK" fill={COLORS.blue} name="Confirmed Received" radius={[2, 2, 0, 0]} />
@@ -1305,7 +1245,7 @@ export default function ManagementDashboardPage() {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                 <XAxis dataKey="buyer" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} domain={[70, 100]} unit="%" />
-                <Tooltip content={<GlassmorphismChartTooltip />} cursor={{ fill: 'rgba(22, 163, 74, 0.08)', radius: 4 }} />
+                <Tooltip formatter={(val: any) => [`${val}%`, 'On-Time Rate']} />
                 <Legend wrapperStyle={{ fontSize: '11.5px' }} />
                 <ReferenceLine y={95} stroke={COLORS.green} strokeDasharray="4 4" label={{ value: 'Target 95%', position: 'top', fill: COLORS.green, fontSize: 10 }} />
                 <Bar {...FX_BAR} dataKey="onTimePct" fill={COLORS.green} name="On-Time Delivery %" radius={[2, 2, 0, 0]} />
@@ -1317,7 +1257,7 @@ export default function ManagementDashboardPage() {
         {/* ========================================================================= */}
         {/* ROW 3: SIDE-BY-SIDE — Section 04 (Category Costing) & Cost Structure Visual */}
         {/* ========================================================================= */}
-        <div className="management-grid-row">
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(0, 0.7fr)', gap: '14px', marginBottom: '16px' }}>
           
           {/* LEFT: Section 04 — Product Category Costing & Benchmarks */}
           <div style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', overflow: 'hidden' }}>
@@ -1329,8 +1269,7 @@ export default function ManagementDashboardPage() {
               <span style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>Master Cost Sheet Benchmarks</span>
             </div>
 
-            <div className="mobile-swipe-indicator">📱 Touch &amp; swipe horizontally to view all columns</div>
-            <div className="management-table-scroll" style={{ maxHeight: '340px' }}>
+            <div style={{ overflowX: 'auto', maxHeight: '340px' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13.5px', textAlign: 'left' }}>
                 <thead style={{ position: 'sticky', top: 0, background: '#F8FAFC', zIndex: 10 }}>
                   <tr style={{ borderBottom: `1px solid ${COLORS.border}`, color: COLORS.grey }}>
@@ -1379,7 +1318,7 @@ export default function ManagementDashboardPage() {
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" />
                 <XAxis type="number" tick={{ fontSize: 10 }} unit="$" />
                 <YAxis dataKey="category" type="category" tick={{ fontSize: 11, fontWeight: 700 }} width={70} />
-                <Tooltip content={<GlassmorphismChartTooltip />} cursor={{ fill: 'rgba(37, 99, 235, 0.08)', radius: 4 }} />
+                <Tooltip formatter={(val: any) => [`${Number(val).toFixed(2)}`, '']} />
                 <Legend wrapperStyle={{ fontSize: '10.5px' }} />
                 <Bar {...FX_BAR} dataKey="fabricCostPc" stackId="a" fill={COLORS.cyan} name="Fabric" />
                 <Bar {...FX_BAR} dataKey="cmPc" stackId="a" fill={COLORS.green} name="CM Earning" />
@@ -1397,7 +1336,7 @@ export default function ManagementDashboardPage() {
         {/* Yarn: Stock, Pipeline, Requisition, MOQ | Grey: Stock, Allocated, Available, Rolls */}
         {/* Finish Fabric: Current Stock, Per Day Receive, Per Day Delivery, Shortage (NO RELAXATION!) */}
         {/* ========================================================================= */}
-        <div className="management-grid-row equal">
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '14px', marginBottom: '16px' }}>
           
           {/* LEFT: Section 05 & 06A — Yarn Stock & Grey Fabric Inventory */}
           <div style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', padding: '7px 9px' }}>
@@ -1499,7 +1438,7 @@ export default function ManagementDashboardPage() {
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
               <XAxis dataKey="stage" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} unit="T" />
-              <Tooltip content={<GlassmorphismChartTooltip />} cursor={{ fill: 'rgba(13, 148, 136, 0.08)', radius: 4 }} />
+              <Tooltip formatter={(val: any) => [`${val} Tons`, 'Volume']} />
               <Legend wrapperStyle={{ fontSize: '11.5px' }} />
               <Bar {...FX_BAR} dataKey="volume" fill={COLORS.teal} name="Inventory & Flow Volume (Tons)" radius={[2, 2, 0, 0]} />
             </BarChart>
@@ -1509,7 +1448,7 @@ export default function ManagementDashboardPage() {
         {/* ========================================================================= */}
         {/* ROW 5: SIDE-BY-SIDE — Section 07 Operational Table & Clean Efficiency/DHU Scorecard */}
         {/* ========================================================================= */}
-        <div className="management-grid-row">
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.25fr) minmax(0, 0.75fr)', gap: '14px', marginBottom: '16px' }}>
           
           {/* LEFT: Section 07 — Department-wise Production Run-Rate Table */}
           <div style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', overflow: 'hidden' }}>
@@ -1521,8 +1460,7 @@ export default function ManagementDashboardPage() {
               <span style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>Total Plan · Daily Req vs Daily Ach</span>
             </div>
 
-            <div className="mobile-swipe-indicator">📱 Touch &amp; swipe horizontally to view all columns</div>
-            <div className="management-table-scroll" style={{ maxHeight: '440px' }}>
+            <div style={{ overflowX: 'auto', maxHeight: '440px' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13.5px', textAlign: 'left' }}>
                 <thead style={{ position: 'sticky', top: 0, background: '#F8FAFC', zIndex: 10 }}>
                   <tr style={{ borderBottom: `1px solid ${COLORS.border}`, color: COLORS.grey }}>
@@ -1658,7 +1596,7 @@ export default function ManagementDashboardPage() {
         </div>
 
         {/* Section 07 & 07B Visual Production Run-Rate & Quality Audit Charts */}
-        <div className="management-grid-row equal">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '8px', marginBottom: '16px' }}>
           {/* Chart 7A: Run-Rate */}
           <div className="erp-chart-card" style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', padding: '8px 10px' }}>
             <div style={{ fontSize: '13px', fontWeight: 800, color: COLORS.navy, marginBottom: '6px' }}>
@@ -1669,7 +1607,7 @@ export default function ManagementDashboardPage() {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                 <XAxis dataKey="dept" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} domain={[80, 105]} unit="%" />
-                <Tooltip content={<GlassmorphismChartTooltip />} cursor={{ fill: 'rgba(37, 99, 235, 0.08)', radius: 4 }} />
+                <Tooltip formatter={(val: any) => [`${val}%`, 'Achievement']} />
                 <Legend wrapperStyle={{ fontSize: '11.5px' }} />
                 <ReferenceLine y={100} stroke="#64748B" strokeDasharray="3 3" label={{ value: '100% Target', position: 'top', fill: '#64748B', fontSize: 10 }} />
                 <Bar {...FX_BAR} dataKey="actual" fill={COLORS.blue} name="Daily Output Achieved %" radius={[2, 2, 0, 0]} />
@@ -1687,7 +1625,7 @@ export default function ManagementDashboardPage() {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                 <XAxis dataKey="checkpoint" tick={{ fontSize: 10 }} />
                 <YAxis tick={{ fontSize: 11 }} unit="%" />
-                <Tooltip content={<GlassmorphismChartTooltip />} cursor={{ fill: 'rgba(217, 119, 6, 0.08)', radius: 4 }} />
+                <Tooltip formatter={(val: any) => [`${val}%`, '']} />
                 <Legend wrapperStyle={{ fontSize: '11.5px' }} />
                 <Bar {...FX_BAR} dataKey="dhuRate" fill={COLORS.amber} name="Defect / DHU %" radius={[2, 2, 0, 0]} />
                 <Line {...FX_SERIES} type="monotone" dataKey="passRate" stroke={COLORS.green} strokeWidth={2.5} name="Quality Pass %" />
@@ -1699,7 +1637,7 @@ export default function ManagementDashboardPage() {
         {/* ========================================================================= */}
         {/* ROW 6: SIDE-BY-SIDE — Section 08A (Dyeing Reprocess) & Section 08B (Multi-Factory Subcontracts) */}
         {/* ========================================================================= */}
-        <div className="management-grid-row reverse">
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 0.75fr) minmax(0, 1.25fr)', gap: '14px' }}>
           
           {/* LEFT: Section 08A — Dyeing Reprocess & First-Time-Pass (RFT) */}
           <div style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', padding: '7px 9px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
@@ -1744,30 +1682,16 @@ export default function ManagementDashboardPage() {
                     data={dyeingRftPieData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={34}
-                    outerRadius={56}
+                    innerRadius={36}
+                    outerRadius={58}
                     paddingAngle={2}
                     dataKey="value"
-                    onMouseEnter={(_, index) => setActiveRftIndex(index)}
-                    onMouseLeave={() => setActiveRftIndex(null)}
                   >
                     {dyeingRftPieData.map((entry, index) => (
-                      <Cell
-                        key={`cell-rft-${index}`}
-                        fill={entry.color}
-                        stroke={activeRftIndex === index ? '#FFFFFF' : 'none'}
-                        strokeWidth={activeRftIndex === index ? 3 : 0}
-                        style={{
-                          cursor: 'pointer',
-                          filter: activeRftIndex === index ? 'drop-shadow(0 4px 8px rgba(0,0,0,0.35))' : 'none',
-                          transform: activeRftIndex === index ? 'scale(1.05)' : 'scale(1)',
-                          transformOrigin: 'center center',
-                          transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)'
-                        }}
-                      />
+                      <Cell key={`cell-rft-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip content={<GlassmorphismChartTooltip />} />
+                  <Tooltip formatter={(val: any) => [`${val}%`, 'Share']} />
                   <Legend wrapperStyle={{ fontSize: '10.5px' }} />
                 </PieChart>
               </ResponsiveContainer>
@@ -1816,8 +1740,7 @@ export default function ManagementDashboardPage() {
               </div>
             </div>
 
-            <div className="mobile-swipe-indicator">📱 Touch &amp; swipe horizontally to view all columns</div>
-            <div className="management-table-scroll" style={{ maxHeight: '280px' }}>
+            <div style={{ overflowX: 'auto', maxHeight: '280px' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13.5px', textAlign: 'left' }}>
                 <thead style={{ position: 'sticky', top: 0, background: '#F8FAFC', zIndex: 10 }}>
                   <tr style={{ borderBottom: `1px solid ${COLORS.border}`, color: COLORS.grey }}>

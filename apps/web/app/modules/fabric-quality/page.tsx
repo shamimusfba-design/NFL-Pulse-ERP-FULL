@@ -254,46 +254,6 @@ const DEFECT_LIBRARY = [
   { code: 'DYE-04', stage: 'Dyeing', name: 'Shrinkage & Spirality Failure (> 5%)', severity: 'Major', action: 'Compactor re-feed with overfeed control' }
 ];
 
-function GlassmorphismChartTooltip({ active, payload, label }: any) {
-  if (active && payload && payload.length) {
-    return (
-      <div
-        style={{
-          background: 'rgba(15, 23, 42, 0.94)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.16)',
-          borderRadius: '8px',
-          padding: '8px 12px',
-          boxShadow: '0 12px 28px -4px rgba(0, 0, 0, 0.45)',
-          color: '#FFFFFF',
-          fontSize: '12px',
-          minWidth: '140px',
-          zIndex: 100,
-          pointerEvents: 'none'
-        }}
-      >
-        {label && (
-          <div style={{ fontWeight: 800, color: '#38BDF8', marginBottom: '6px', borderBottom: '1px solid rgba(255,255,255,0.12)', paddingBottom: '3px' }}>
-            {label}
-          </div>
-        )}
-        {payload.map((entry: any, index: number) => (
-          <div key={`item-${index}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginTop: '3px' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#CBD5E1', fontSize: '11.5px' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: entry.color || entry.fill || '#38BDF8' }} />
-              {entry.name || 'Value'}:
-            </span>
-            <span style={{ fontWeight: 800, color: '#FFFFFF', fontSize: '12px' }}>
-              {typeof entry.value === 'number' ? entry.value.toLocaleString() : entry.value}
-            </span>
-          </div>
-        ))}
-      </div>
-    );
-  }
-  return null;
-}
-
 export default function FabricQualityPage() {
   const [activeTab, setActiveTab] = useState<'all' | 'knitting' | 'greige' | 'dyeing' | 'defects'>('all');
   const [stageFilter, setStageFilter] = useState<'ALL' | 'knitting' | 'greige' | 'dyeing'>('ALL');
@@ -687,9 +647,9 @@ export default function FabricQualityPage() {
 
         {/* Visual Charts: Stage Performance & Defect Breakdown */}
         {activeTab !== 'defects' && (
-          <section className="management-grid-row equal" style={{ gap: '14px', marginBottom: '16px' }}>
+          <section style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '14px' }}>
             {/* Chart 1: Stage Volume Comparison */}
-            <div className="card erp-card-animated" style={{ padding: '16px' }}>
+            <div className="card" style={{ padding: '16px' }}>
               <div style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>
                 Stage-wise Fabric Inspection: Passed vs Defect (Kg)
               </div>
@@ -702,7 +662,7 @@ export default function FabricQualityPage() {
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#64748b' }} />
                     <YAxis tick={{ fontSize: 12, fill: '#64748b' }} unit=" kg" />
-                    <Tooltip content={<GlassmorphismChartTooltip />} cursor={{ fill: 'rgba(37, 99, 235, 0.08)', radius: 4 }} />
+                    <Tooltip />
                     <Legend wrapperStyle={{ fontSize: '12px' }} />
                     <Bar {...FX_BAR} dataKey="passedKg" name="Passed Volume (Kg)" fill="#16a34a" radius={[4, 4, 0, 0]} />
                     <Bar {...FX_BAR} dataKey="defectKg" name="Defect / Hold (Kg)" fill="#dc2626" radius={[4, 4, 0, 0]} />
@@ -712,7 +672,7 @@ export default function FabricQualityPage() {
             </div>
 
             {/* Chart 2: Top Fabric Defect Breakdown */}
-            <div className="card erp-card-animated" style={{ padding: '16px' }}>
+            <div className="card" style={{ padding: '16px' }}>
               <div style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>
                 Defect Category Breakdown (%)
               </div>
@@ -736,7 +696,7 @@ export default function FabricQualityPage() {
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip content={<GlassmorphismChartTooltip />} />
+                    <Tooltip />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
