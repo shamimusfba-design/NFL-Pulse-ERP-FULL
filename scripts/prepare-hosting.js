@@ -24,6 +24,22 @@ if (fs.existsSync(staticSrc)) {
 }
 
 // 3. Copy html files from .next/server/app
+// Never overwrite a file that came from apps/web/public: e.g. public/merchandising/index.html is the real
+// Sales & Merchandising module, and a page route named /merchandising used to replace it (the module then showed
+// another page inside its own frame).
+const fromPublic = new Set();
+(function collect(dir, sub) {
+  if (!fs.existsSync(dir)) return;
+  for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (item.isDirectory()) collect(path.join(dir, item.name), path.join(sub, item.name));
+    else fromPublic.add(path.join(outDir, sub, item.name));
+  }
+})(pubDir, '');
+const safeCopy = (src, dest) => {
+  if (fromPublic.has(dest)) { console.log(`[prepare-hosting] kept public file ${path.relative(outDir, dest)} (not overwritten by a page)`); return; }
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  fs.copyFileSync(src, dest);
+};
 const serverApp = path.resolve('apps/web/.next/server/app');
 function copyHtml(dir, targetSub) {
   for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -32,15 +48,13 @@ function copyHtml(dir, targetSub) {
       copyHtml(full, path.join(targetSub, item.name));
     } else if (item.isFile() && item.name.endsWith('.html')) {
       const destPath = path.join(outDir, targetSub, item.name);
-      fs.mkdirSync(path.dirname(destPath), { recursive: true });
-      fs.copyFileSync(full, destPath);
+      safeCopy(full, destPath);
 
       // Also create folder/index.html for cleanUrls / trailing-slash compatibility
       if (item.name !== 'index.html' && !item.name.startsWith('_')) {
         const folderName = item.name.replace(/\.html$/, '');
         const folderIndex = path.join(outDir, targetSub, folderName, 'index.html');
-        fs.mkdirSync(path.dirname(folderIndex), { recursive: true });
-        fs.copyFileSync(full, folderIndex);
+        safeCopy(full, folderIndex);
       }
     }
   }
