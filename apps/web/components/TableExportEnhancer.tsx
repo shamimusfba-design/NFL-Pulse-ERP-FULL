@@ -48,6 +48,8 @@ export default function TableExportEnhancer() {
 
     const enhance = () => {
       document.querySelectorAll<HTMLTableElement>('table').forEach((table) => {
+        // the shared DataGrid carries its own Export CSV — don't add a second one
+        if (table.closest('.nos-dg')) return;
         if (table.dataset.noExport === 'true' || table.dataset.exportEnhanced === 'true') return;
         table.dataset.exportEnhanced = 'true';
 

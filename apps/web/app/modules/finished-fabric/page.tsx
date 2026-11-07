@@ -45,6 +45,7 @@ import {
   YAxis,
   Tooltip,
 } from 'recharts';
+import DataGrid, { GridColumn } from '../../../components/ui/DataGrid';
 import { FX_SERIES, FX_BAR, FxResponsiveContainer as ResponsiveContainer } from '../../../components/fx';
 import FabricRackLocation, { RackLocations, LocationPicker, LocationPick, emptyPick, pickIsValid, pickLabel, assignLocation, locLabel, isShelfKey } from '../../../components/fabric/FabricRackLocation';
 
@@ -180,6 +181,7 @@ export default function FinishedFabricPage() {
   // Navigation tabs
   const [activeTab, setActiveTab] = useState<'stock' | 'receive' | 'issue' | 'reuse' | 'location'>('stock');
   const [stockView, setStockView] = useState<'job' | 'color'>('job');
+  const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
   const [rackLoc, setRackLoc] = useState<RackLocations>({});
   const [locFocus, setLocFocus] = useState<{ sub: 'racks' | 'tracking'; q: string; n: number }>({ sub: 'racks', q: '', n: 0 });
 
@@ -604,6 +606,80 @@ export default function FinishedFabricPage() {
   }, [filteredJobGroups, currentPage, itemsPerPage]);
 
   const totalPages = Math.max(1, Math.ceil(filteredJobGroups.length / itemsPerPage));
+
+  /* ---- Color-wise rows for the shared DataGrid (all filtered colorways, not a page slice) ---- */
+  type ColorGridRow = {
+    id: string; buyerJob: string; buyer: string; jobNo: string; style: string; color: string;
+    pantone: string; fabric: string; gsm: string; dia: string; process: string;
+    totalReq: number; totalRecv: number; dyeingBalance: number; receivedPct: number;
+    totalIssued: number; stockBalance: number; location: string; month: string; fabricType: string;
+  };
+
+  const colorGridRows: ColorGridRow[] = useMemo(
+    () =>
+      filteredJobGroups.flatMap((job) =>
+        job.colors.map((c) => ({
+          id: c.id,
+          buyerJob: `${job.buyer} ${job.jobNo}`,
+          buyer: job.buyer,
+          jobNo: job.jobNo,
+          style: job.style || '—',
+          color: c.color,
+          pantone: c.pantone || '—',
+          fabric: `${c.fabric}${c.construction ? ` (${c.construction})` : ''}`,
+          gsm: c.gsm,
+          dia: c.dia,
+          process: c.process || '—',
+          totalReq: Math.round(c.totalReq),
+          totalRecv: Math.round(c.totalRecv),
+          dyeingBalance: Math.round(c.dyeingBalance),
+          receivedPct: c.totalReq > 0 ? Math.round((c.totalRecv / c.totalReq) * 100) : 0,
+          totalIssued: Math.round(c.totalIssued),
+          stockBalance: Math.round(c.stockBalance),
+          location: lineShelf[c.id] ? locLabel(lineShelf[c.id], rackLoc) : 'Not placed',
+          month: job.month,
+          fabricType: job.fabricType,
+        })),
+      ),
+    [filteredJobGroups, lineShelf],
+  );
+
+  const colorGridColumns: GridColumn<ColorGridRow>[] = useMemo(
+    () => [
+      { key: 'buyerJob', header: 'Buyer - Job No', width: 150 },
+      { key: 'style', header: 'Style No', width: 110 },
+      { key: 'color', header: 'Colorway', width: 170 },
+      { key: 'pantone', header: 'Pantone', width: 110, hiddenByDefault: true },
+      { key: 'fabric', header: 'Fabric Type', width: 180 },
+      { key: 'gsm', header: 'GSM', width: 70 },
+      { key: 'dia', header: 'Dia', width: 65 },
+      { key: 'process', header: 'Process', width: 110, hiddenByDefault: true },
+      { key: 'month', header: 'Month', width: 90, hiddenByDefault: true },
+      { key: 'totalReq', header: 'Total Req (kg)', width: 115, numeric: true, total: true, unit: 'kg' },
+      { key: 'totalRecv', header: 'Received (kg)', width: 115, numeric: true, total: true, unit: 'kg' },
+      {
+        key: 'dyeingBalance', header: 'Dyeing Bal (kg)', width: 125, numeric: true, total: true, unit: 'kg',
+        render: (r) => (
+          <span style={{ color: r.dyeingBalance > 0 ? 'var(--nos-balance)' : 'var(--nos-done)', fontWeight: 500 }}>
+            {r.dyeingBalance.toLocaleString()}
+          </span>
+        ),
+      },
+      { key: 'receivedPct', header: 'Received %', width: 100, numeric: true, render: (r) => `${r.receivedPct}%` },
+      { key: 'totalIssued', header: 'Issued (kg)', width: 110, numeric: true, total: true, unit: 'kg' },
+      {
+        key: 'stockBalance', header: 'Stock Bal (kg)', width: 120, numeric: true, total: true, unit: 'kg',
+        render: (r) => (
+          <span style={{ color: r.stockBalance > 0 ? 'var(--nos-done)' : 'var(--nos-ink-3)', fontWeight: 500 }}>
+            {r.stockBalance.toLocaleString()}
+          </span>
+        ),
+      },
+      { key: 'location', header: 'Rack / Location', width: 150 },
+    ],
+    [],
+  );
+
 
   // Toggle expanded state for a single job
   const toggleJobExpanded = (key: string) => {
@@ -1594,7 +1670,21 @@ export default function FinishedFabricPage() {
           </div>
 
           {/* MASTER DATA TABLE CONTAINER (STICKY HEADER + FROZEN BUYER-JOB COLUMN) */}
-          <div className="overflow-auto max-h-[580px] rounded-lg border border-slate-200 bg-white shadow-xs relative">
+          {stockView === 'color' ? (
+            <DataGrid
+              rows={colorGridRows}
+              columns={colorGridColumns}
+              rowKey={(r) => r.id}
+              frozenColumns={2}
+              stickyTop={0}
+              storageKey="finished-fabric-stock"
+              exportName="finished-fabric-stock"
+              emptyText="No colorways match the filters"
+              onRowClick={(r) => setSelectedLineId(r.id)}
+              selectedRowKey={selectedLineId}
+            />
+          ) : (
+          <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-xs relative">
             <table className="w-full text-left text-xs border-collapse">
               {/* STICKY THEAD - FROZEN AT TOP WHILE SCROLLING */}
               <thead className="sticky top-0 z-20 bg-slate-900 text-white shadow-md">
@@ -1672,66 +1762,6 @@ export default function FinishedFabricPage() {
                       No matching jobs found with the applied filters.
                     </td>
                   </tr>
-                ) : stockView === 'color' ? (
-                  paginatedGroups.flatMap((job) =>
-                    job.colors.map((c) => {
-                      const sid = lineShelf[c.id];
-                      const pct = c.totalReq > 0 ? Math.round((c.totalRecv / c.totalReq) * 100) : 0;
-                      return (
-                        <tr key={c.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="sticky left-0 z-10 bg-white px-3 py-2.5 border-r border-slate-200">
-                            <span className="text-[11px] text-slate-600 block font-semibold leading-none">{job.buyer}</span>
-                            <span className="font-bold text-slate-900">{job.jobNo}</span>
-                          </td>
-                          <td className="px-3 py-2.5 font-semibold text-slate-800">{job.style || '—'}</td>
-                          <td className="px-3 py-2.5 font-bold text-slate-900">{c.color}</td>
-                          <td className="px-3 py-2.5 font-semibold text-slate-800">{c.fabric} ({c.construction})</td>
-                          <td className="px-3 py-2.5 font-semibold text-slate-800">{c.gsm}</td>
-                          <td className="px-3 py-2.5 font-semibold text-slate-800">{c.dia}</td>
-                          <td className="px-3 py-2.5 text-right font-semibold text-slate-900">{Math.round(c.totalReq).toLocaleString()} kg</td>
-                          <td className="px-3 py-2.5 text-right font-semibold text-emerald-800">{Math.round(c.totalRecv).toLocaleString()} kg</td>
-                          <td className="px-3 py-2.5 text-right font-semibold">
-                            {c.dyeingBalance > 0.5 ? (
-                              <span className="text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded">{Math.round(c.dyeingBalance).toLocaleString()} kg</span>
-                            ) : (
-                              <span className="text-emerald-800">0 kg</span>
-                            )}
-                          </td>
-                          <td className="px-3 py-2.5 text-right font-semibold text-slate-900">{pct}%</td>
-                          <td className="px-3 py-2.5 text-right font-semibold text-purple-800">{Math.round(c.totalIssued).toLocaleString()} kg</td>
-                          <td className="px-3 py-2.5 text-right font-bold text-sky-800">{Math.round(c.stockBalance).toLocaleString()} kg</td>
-                          <td className="px-3 py-2.5 text-center">
-                            <div className="flex flex-col items-center gap-1">
-                              <span className="text-[11px] px-1.5 py-0.5 rounded bg-white border border-slate-300 text-slate-800 font-semibold">{c.stockState}</span>
-                              {sid ? (
-                                <button onClick={() => openLocation(job.jobNo, isShelfKey(sid) ? 'racks' : 'tracking')} className="text-[11px] px-1.5 py-0.5 rounded border border-sky-300 bg-sky-50 text-sky-900 font-bold inline-flex items-center gap-1" title="Show on rack">
-                                  <MapPin className="w-3 h-3" /> {locLabel(sid, rackLoc)}
-                                </button>
-                              ) : c.stockBalance > 0.5 ? (
-                                <button onClick={() => openLocation(job.jobNo, 'tracking')} className="text-[11px] px-1.5 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-900 font-bold" title="Enter the location">
-                                  Location not entered
-                                </button>
-                              ) : null}
-                            </div>
-                          </td>
-                          <td className="px-3 py-2.5 text-center">
-                            <div className="flex items-center justify-center gap-1.5">
-                              <button onClick={() => handleOpenReceive(c)} className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-bold flex items-center gap-1">
-                                <Plus className="w-3 h-3" /> Receive
-                              </button>
-                              <button
-                                onClick={() => handleOpenIssue(c)}
-                                disabled={c.stockBalance <= 0}
-                                className={`px-2 py-1 rounded text-[11px] font-bold flex items-center gap-1 ${c.stockBalance > 0 ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-slate-200 text-slate-600 cursor-not-allowed'}`}
-                              >
-                                <Scissors className="w-3 h-3" /> Issue
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )
                 ) : (
                   paginatedGroups.map((job) => {
                     const isExpanded = expandedJobs[job.key] || showAllColors;
@@ -1991,6 +2021,7 @@ export default function FinishedFabricPage() {
               </tbody>
             </table>
           </div>
+          )}
 
           {/* TABLE FOOTER & PAGINATION */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 pt-3 border-t border-slate-100 text-xs text-slate-500 font-medium">
