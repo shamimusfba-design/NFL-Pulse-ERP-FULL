@@ -1569,9 +1569,11 @@ html:not([data-theme="dark"]) .main :is(th,thead td)[class*="bg-cyan-9"]{backgro
   .topbar h1{font-size:20px !important;line-height:1.2 !important;overflow-wrap:anywhere}
   .topbar .page-eyebrow{font-size:10.5px;line-height:1.3}
   .top-actions{width:100%;display:flex;flex-wrap:wrap;gap:6px !important;align-items:center}
-  .top-actions > div:first-child{flex:1 1 100%;min-width:0}
-  .top-actions > div:first-child > div:first-child{width:100%;box-sizing:border-box}
-  .top-actions > div:first-child input{flex:1;min-width:0;width:100% !important}
+  .top-actions .topbar-search{flex:1 1 100%;min-width:0}
+  .top-actions .topbar-search > div:first-child{width:100%;box-sizing:border-box}
+  .top-actions .topbar-search input{flex:1;min-width:0;width:100% !important}
+  /* the pending button sits on its own line, never over the page title */
+  .top-actions .topbar-pending-btn{order:-1;flex:0 0 auto;white-space:nowrap}
   .top-actions .topbar-signout-label{display:none}
   .top-actions .user-badge{max-width:58vw;overflow:hidden}
   .global-dept-subnav{overflow-x:auto;flex-wrap:nowrap !important;-webkit-overflow-scrolling:touch;scrollbar-width:none}

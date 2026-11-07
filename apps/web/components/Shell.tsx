@@ -718,9 +718,10 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
             {/* Compact "My pending tasks" top button with count badge (Task 3e) */}
             <Link
               href="/my-pending-work"
-              className="btn btn-secondary"
+              className="btn btn-secondary topbar-pending-btn"
               style={{
                 display: 'inline-flex',
+                flexShrink: 0,
                 alignItems: 'center',
                 gap: '6px',
                 padding: '6px 10px',
@@ -749,7 +750,7 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
 
 
             {/* Global Jump To Job Search Box */}
-            <div ref={searchContainerRef} style={{ position: 'relative' }}>
+            <div ref={searchContainerRef} className="topbar-search" style={{ position: 'relative' }}>
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
