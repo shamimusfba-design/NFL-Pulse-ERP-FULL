@@ -1,0 +1,43 @@
+# Builds the app and publishes it to Firebase Hosting on every push to main,
+# so the owner can see changes at https://nfl-erp.web.app without a PC.
+# Needs one repository secret: FIREBASE_SERVICE_ACCOUNT (the Firebase service-account JSON).
+name: Deploy to Firebase Hosting
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # lets the owner re-run it by hand from the Actions tab
+
+concurrency:
+  group: hosting-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # prebuild runs check-chart-standard and check-ux-standard, so a rule break stops the deploy
+      - name: Build
+        run: npm run build
+
+      - name: Prepare the hosting bundle
+        run: node scripts/prepare-hosting.js
+
+      - name: Deploy to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: nfl-erp
+          channelId: live
