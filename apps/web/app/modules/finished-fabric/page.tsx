@@ -45,8 +45,9 @@ import {
   YAxis,
   Tooltip,
 } from 'recharts';
-import { DataGrid, GridColumn } from '../../../components/ui';
+import { DataGrid, GridColumn, DrillPopup, DrillTarget, CrossFilterProvider, CrossFilterBar, useCrossFilter } from '../../../components/ui';
 import { FX_SERIES, FX_BAR, FxResponsiveContainer as ResponsiveContainer } from '../../../components/fx';
+import { fmtNum } from '../../../lib/format';
 import FabricRackLocation, { RackLocations, LocationPicker, LocationPick, emptyPick, pickIsValid, pickLabel, assignLocation, locLabel, isShelfKey } from '../../../components/fabric/FabricRackLocation';
 
 // v2: starts empty — only real placements entered by the store (v1 held an invented demo layout)
@@ -178,10 +179,20 @@ export interface LeftoverReturnRecord {
 // ============================================================================
 
 export default function FinishedFabricPage() {
+  return (
+    <CrossFilterProvider>
+      <FinishedFabricPageInner />
+    </CrossFilterProvider>
+  );
+}
+
+function FinishedFabricPageInner() {
+  const { filters: cfFilters, toggle: cfToggle } = useCrossFilter();
   // Navigation tabs
   const [activeTab, setActiveTab] = useState<'stock' | 'receive' | 'issue' | 'reuse' | 'location'>('stock');
   const [stockView, setStockView] = useState<'job' | 'color'>('job');
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
+  const [drillTarget, setDrillTarget] = useState<DrillTarget | null>(null);
   const [rackLoc, setRackLoc] = useState<RackLocations>({});
   const [locFocus, setLocFocus] = useState<{ sub: 'racks' | 'tracking'; q: string; n: number }>({ sub: 'racks', q: '', n: 0 });
 
@@ -581,6 +592,10 @@ export default function FinishedFabricPage() {
       if (selectedStatus !== 'ALL' && job.primaryStatus !== selectedStatus) return false;
       if (selectedFabricType !== 'ALL' && job.fabricType !== selectedFabricType) return false;
       if (selectedSlot !== 'ALL' && job.slot !== selectedSlot) return false;
+      const cfBuyer = cfFilters.find((f) => f.key === 'buyer')?.value;
+      if (cfBuyer && job.buyer !== cfBuyer) return false;
+      const cfFactory = cfFilters.find((f) => f.key === 'factory')?.value;
+      if (cfFactory && !job.colors.some((c) => c.dyeingFactory === cfFactory)) return false;
 
       if (!q) return true;
 
@@ -679,6 +694,197 @@ export default function FinishedFabricPage() {
     ],
     [],
   );
+
+  const jobGridColumns: GridColumn<JobFabricGroup>[] = useMemo(
+    () => [
+      {
+        key: 'buyerJob',
+        header: 'Buyer - Job No',
+        width: 165,
+        value: (j) => `${j.buyer} ${j.jobNo}`,
+        render: (j) => (
+          <div>
+            <span className="text-[10px] text-slate-500 block leading-none">{j.buyer}</span>
+            <strong className="text-slate-900">{j.jobNo}</strong>
+          </div>
+        ),
+      },
+      { key: 'style', header: 'Style No', width: 115, value: (j) => j.style || '—' },
+      {
+        key: 'colors',
+        header: 'Colorways & Shades',
+        width: 195,
+        value: (j) => j.colors.map((c) => c.color).join(', '),
+        render: (j) => (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+              {j.colorCount} {j.colorCount === 1 ? 'Color' : 'Colors'}
+            </span>
+            <span className="text-slate-600 truncate max-w-[125px]" title={j.colors.map((c) => c.color).join(', ')}>
+              {j.colors.map((c) => c.color).slice(0, 2).join(', ')}
+              {j.colorCount > 2 ? ` +${j.colorCount - 2}` : ''}
+            </span>
+          </div>
+        ),
+      },
+      { key: 'fabricType', header: 'Fabric Type', width: 120, value: (j) => j.fabricType },
+      { key: 'dyeingFactory', header: 'Dyeing Mill', width: 145, value: (j) => j.dyeingFactory },
+      { key: 'gsm', header: 'GSM', width: 70, value: (j) => j.gsm || '—' },
+      { key: 'dia', header: 'Dia', width: 65, value: (j) => j.dia || '—' },
+      {
+        key: 'totalReq',
+        header: 'Total Req (kg)',
+        width: 115,
+        numeric: true,
+        total: true,
+        unit: 'kg',
+        value: (j) => Math.round(j.totalReq),
+        render: (j) => <strong>{fmtNum(Math.round(j.totalReq))} kg</strong>,
+      },
+      {
+        key: 'totalRecv',
+        header: 'Received (kg)',
+        width: 115,
+        numeric: true,
+        total: true,
+        unit: 'kg',
+        value: (j) => Math.round(j.totalRecv),
+        render: (j) => <strong className="text-emerald-700">{fmtNum(Math.round(j.totalRecv))} kg</strong>,
+      },
+      {
+        key: 'totalBalance',
+        header: 'Still to Come (kg)',
+        width: 130,
+        numeric: true,
+        total: true,
+        unit: 'kg',
+        value: (j) => Math.round(j.totalBalance),
+        render: (j) =>
+          j.totalBalance > 0.5 ? (
+            <span className="text-amber-700 font-bold">{fmtNum(Math.round(j.totalBalance))} kg</span>
+          ) : (
+            <span className="text-emerald-600 font-semibold">0 kg</span>
+          ),
+      },
+      {
+        key: 'deliveredPct',
+        header: 'Delivered %',
+        width: 95,
+        numeric: true,
+        value: (j) => (j.totalReq > 0 ? Math.round((j.totalRecv / j.totalReq) * 100) : 0),
+        render: (j) => {
+          const pct = j.totalReq > 0 ? Math.round((j.totalRecv / j.totalReq) * 100) : 0;
+          return <strong>{pct}%</strong>;
+        },
+      },
+      {
+        key: 'totalIssued',
+        header: 'Issued Cut (kg)',
+        width: 115,
+        numeric: true,
+        total: true,
+        unit: 'kg',
+        value: (j) => Math.round(j.totalIssued),
+      },
+      {
+        key: 'totalStock',
+        header: 'In Stock Bal (kg)',
+        width: 125,
+        numeric: true,
+        total: true,
+        unit: 'kg',
+        value: (j) => Math.round(j.totalStock),
+        render: (j) => <strong className="text-sky-700">{fmtNum(Math.round(j.totalStock))} kg</strong>,
+      },
+      {
+        key: 'primaryStatus',
+        header: 'Stock Status',
+        width: 120,
+        value: (j) => j.primaryStatus,
+      },
+    ],
+    [],
+  );
+
+  const openFinishedDrill = (
+    ev: React.MouseEvent,
+    mode: 'received' | 'balance' | 'stock',
+    scopeFilter?: (l: FabricColorLine) => boolean,
+    labelPrefix?: string,
+  ) => {
+    const rect = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+    const lines = scopeFilter ? rawLines.filter(scopeFilter) : rawLines;
+    const metricOf = (l: FabricColorLine) =>
+      mode === 'received' ? l.totalRecv : mode === 'balance' ? l.dyeingBalance : l.stockBalance;
+    const activeLines = lines.filter((l) => metricOf(l) > 0);
+    const totalKg = activeLines.reduce((s, l) => s + metricOf(l), 0);
+    const uniqueJobs = new Set(activeLines.map((l) => `${l.buyer}|${l.jobNo}`)).size;
+
+    const buyerMap = new Map<string, { value: number; jobs: Set<string> }>();
+    const factoryMap = new Map<string, { value: number; jobs: Set<string> }>();
+    activeLines.forEach((l) => {
+      const val = metricOf(l);
+      const b = buyerMap.get(l.buyer) || { value: 0, jobs: new Set<string>() };
+      b.value += val;
+      b.jobs.add(l.jobNo);
+      buyerMap.set(l.buyer, b);
+
+      const mill = l.dyeingFactory || 'Northern Dyeing';
+      const f = factoryMap.get(mill) || { value: 0, jobs: new Set<string>() };
+      f.value += val;
+      f.jobs.add(l.jobNo);
+      factoryMap.set(mill, f);
+    });
+
+    const tone: 'done' | 'balance' | 'req' = mode === 'received' ? 'done' : mode === 'balance' ? 'balance' : 'req';
+    const byBuyer = Array.from(buyerMap.entries())
+      .sort((a, b) => b[1].value - a[1].value)
+      .map(([key, v]) => ({
+        key,
+        label: key,
+        value: Number((v.value / 1000).toFixed(1)),
+        jobs: v.jobs.size,
+        tone,
+        filter: { key: 'buyer', label: 'Buyer', value: key },
+      }));
+
+    const byFactory = Array.from(factoryMap.entries())
+      .sort((a, b) => b[1].value - a[1].value)
+      .map(([key, v]) => ({
+        key,
+        label: key,
+        value: Number((v.value / 1000).toFixed(1)),
+        jobs: v.jobs.size,
+        tone,
+        filter: { key: 'factory', label: 'Dyeing Mill', value: key },
+      }));
+
+    const jobs = activeLines
+      .slice()
+      .sort((a, b) => metricOf(b) - metricOf(a))
+      .slice(0, 20)
+      .map((l) => ({
+        jobNo: l.jobNo,
+        buyer: l.buyer,
+        style: `${l.style} · ${l.color}`,
+        qty: Math.round(metricOf(l)),
+        unit: 'kg' as const,
+        status: l.dyeingFactory || l.stockState,
+      }));
+
+    setDrillTarget({
+      title: `${labelPrefix ? `${labelPrefix} · ` : ''}${mode === 'received' ? 'Received from Dyeing' : mode === 'balance' ? 'Still to Come (Dyeing Balance)' : 'In-Store Stock Balance'}`,
+      subtitle: 'Breakdown by Buyer and by Dyeing Mill (Tons)',
+      anchorRect: rect,
+      total: Number((totalKg / 1000).toFixed(1)),
+      unit: 't',
+      totalJobs: uniqueJobs,
+      tone,
+      byBuyer,
+      byFactory,
+      jobs,
+    });
+  };
 
 
   // Toggle expanded state for a single job
@@ -951,12 +1157,12 @@ export default function FinishedFabricPage() {
     const totalIssueKg = bKg + rKg;
 
     if (totalIssueKg <= 0) {
-      alert('Please enter a valid issue quantity.');
+      showToast('Please enter a valid issue quantity.');
       return;
     }
 
     if (totalIssueKg > issueModalTarget.stockBalance) {
-      alert(`Cannot issue ${totalIssueKg} kg. Only ${issueModalTarget.stockBalance} kg available in store stock!`);
+      showToast(`Cannot issue ${totalIssueKg} kg. Only ${issueModalTarget.stockBalance} kg available in store stock.`);
       return;
     }
 
@@ -1021,7 +1227,7 @@ export default function FinishedFabricPage() {
     e.preventDefault();
     const retKg = Number(returnForm.returnedKg) || 0;
     if (retKg <= 0 || !returnForm.jobNo) {
-      alert('Please fill out the Job No and valid Returned Kg.');
+      showToast('Please fill out the Job No and valid Returned Kg.');
       return;
     }
 
@@ -1301,7 +1507,11 @@ export default function FinishedFabricPage() {
         </div>
 
         {/* Card 2: Received */}
-        <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-all">
+        <div
+          onDoubleClick={(ev) => openFinishedDrill(ev, 'received')}
+          title="Double-click to drill down by Buyer and Dyeing Mill"
+          className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-all cursor-pointer"
+        >
           <div className="flex items-center justify-between text-slate-500 text-xs font-semibold mb-1">
             <span>Received from Dyeing</span>
             <Truck className="w-4 h-4 text-emerald-600" />
@@ -1318,7 +1528,11 @@ export default function FinishedFabricPage() {
         </div>
 
         {/* Card 3: Dyeing Balance (Still to come) */}
-        <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-all">
+        <div
+          onDoubleClick={(ev) => openFinishedDrill(ev, 'balance')}
+          title="Double-click to drill down by Buyer and Dyeing Mill"
+          className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-all cursor-pointer"
+        >
           <div className="flex items-center justify-between text-slate-500 text-xs font-semibold mb-1">
             <span>Still to Come (Balance)</span>
             <AlertTriangle className="w-4 h-4 text-amber-500" />
@@ -1333,7 +1547,11 @@ export default function FinishedFabricPage() {
         </div>
 
         {/* Card 4: Store Stock in Hand */}
-        <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-all">
+        <div
+          onDoubleClick={(ev) => openFinishedDrill(ev, 'stock')}
+          title="Double-click to drill down by Buyer and Dyeing Mill"
+          className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-all cursor-pointer"
+        >
           <div className="flex items-center justify-between text-slate-500 text-xs font-semibold mb-1">
             <span>In-Store Stock Balance</span>
             <Warehouse className="w-4 h-4 text-sky-600" />
@@ -1383,20 +1601,31 @@ export default function FinishedFabricPage() {
       {/* ===================================================================== */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
         {/* CHART 1: Top Buyers: Received vs Dyeing Balance */}
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex flex-col">
+        <div
+          onDoubleClick={(ev) => openFinishedDrill(ev, 'balance')}
+          title="Single-click bar to cross-filter · Double-click to drill down by Buyer and Dyeing Mill"
+          className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex flex-col cursor-pointer"
+        >
           <div className="flex items-center justify-between mb-2">
             <div>
               <h4 className="text-xs font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                 Top Buyers: Received vs Balance
               </h4>
-              <p className="text-[10px] text-slate-500">Delivered (Tons) vs still to come from mills</p>
+              <p className="text-[10px] text-slate-500">Delivered (Tons) vs still to come · Double-click to drill</p>
             </div>
             <span className="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded">Tons</span>
           </div>
           <div className="w-full h-44">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={buyerChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <BarChart
+                data={buyerChartData}
+                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                onClick={(state: any) => {
+                  const full = state?.activePayload?.[0]?.payload?.fullName;
+                  if (full) cfToggle({ key: 'buyer', label: 'Buyer', value: full });
+                }}
+              >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
                 <XAxis dataKey="buyer" tick={{ fill: '#64748B', fontSize: 9, fontWeight: 600 }} tickLine={false} axisLine={{ stroke: '#E2E8F0' }} />
                 <YAxis tick={{ fill: '#64748B', fontSize: 9 }} tickLine={false} axisLine={false} />
@@ -1405,23 +1634,27 @@ export default function FinishedFabricPage() {
                   contentStyle={{ background: '#0F274E', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '11px' }}
                   formatter={(val: any, name: any) => [`${val} Tons`, name === 'received' ? 'Received from Dyeing' : 'Still to Come (Balance)']}
                 />
-                <Bar {...FX_SERIES} {...FX_BAR} dataKey="received" stackId="a" fill="#10B981" radius={[0, 0, 0, 0]} maxBarSize={28} />
-                <Bar {...FX_SERIES} {...FX_BAR} dataKey="balance" stackId="a" fill="#F59E0B" radius={[3, 3, 0, 0]} maxBarSize={28} />
+                <Bar {...FX_SERIES} {...FX_BAR} dataKey="received" stackId="a" fill="#16A34A" radius={[0, 0, 0, 0]} maxBarSize={28} />
+                <Bar {...FX_SERIES} {...FX_BAR} dataKey="balance" stackId="a" fill="#DC2626" radius={[3, 3, 0, 0]} maxBarSize={28} />
               </BarChart>
             </ResponsiveContainer>
           </div>
           <div className="flex items-center justify-center gap-4 mt-1 text-[10px] text-slate-500 font-semibold border-t border-slate-100 pt-2">
             <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 bg-emerald-500 rounded-sm"></span> Received
+              <span className="w-2.5 h-2.5 bg-emerald-600 rounded-sm"></span> Received
             </span>
             <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 bg-amber-500 rounded-sm"></span> Still to Come (Balance)
+              <span className="w-2.5 h-2.5 bg-red-600 rounded-sm"></span> Still to Come (Balance)
             </span>
           </div>
         </div>
 
         {/* CHART 2: Monthly Demand vs Actual Delivery Run-Rate */}
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex flex-col">
+        <div
+          onDoubleClick={(ev) => openFinishedDrill(ev, 'received')}
+          title="Double-click to drill down by Buyer and Dyeing Mill"
+          className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex flex-col cursor-pointer"
+        >
           <div className="flex items-center justify-between mb-2">
             <div>
               <h4 className="text-xs font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
@@ -1443,8 +1676,8 @@ export default function FinishedFabricPage() {
                   contentStyle={{ background: '#0F274E', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '11px' }}
                   formatter={(val: any, name: any) => [`${val} Tons`, name === 'required' ? 'Required Demand' : 'Delivered to Store']}
                 />
-                <Bar {...FX_SERIES} {...FX_BAR} dataKey="required" fill="#0F274E" radius={[3, 3, 0, 0]} maxBarSize={18} />
-                <Bar {...FX_SERIES} {...FX_BAR} dataKey="received" fill="#0284C7" radius={[3, 3, 0, 0]} maxBarSize={18} />
+                <Bar {...FX_SERIES} {...FX_BAR} dataKey="required" fill="#2563EB" radius={[3, 3, 0, 0]} maxBarSize={18} />
+                <Bar {...FX_SERIES} {...FX_BAR} dataKey="received" fill="#16A34A" radius={[3, 3, 0, 0]} maxBarSize={18} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -1669,6 +1902,8 @@ export default function FinishedFabricPage() {
             </div>
           </div>
 
+          <CrossFilterBar />
+
           {/* MASTER DATA TABLE CONTAINER (STICKY HEADER + FROZEN BUYER-JOB COLUMN) */}
           {stockView === 'color' ? (
             <DataGrid
@@ -1682,6 +1917,19 @@ export default function FinishedFabricPage() {
               emptyText="No colorways match the filters"
               onRowClick={(r) => setSelectedLineId(r.id)}
               selectedRowKey={selectedLineId}
+            />
+          ) : !showAllColors && Object.keys(expandedJobs).every((k) => !expandedJobs[k]) ? (
+            <DataGrid
+              rows={filteredJobGroups}
+              columns={jobGridColumns}
+              rowKey={(r) => r.key}
+              frozenColumns={2}
+              stickyTop={0}
+              storageKey="finished-fabric-stock-jobs"
+              exportName="finished-fabric-stock-jobs"
+              emptyText="No jobs match the filters"
+              onRowClick={(r) => setSelectedJobDetail(r)}
+              selectedRowKey={selectedJobDetail?.key ?? null}
             />
           ) : (
           <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-xs relative">
@@ -2069,6 +2317,16 @@ export default function FinishedFabricPage() {
           </div>
         </div>
       )}
+
+      <DrillPopup
+        target={drillTarget}
+        onClose={() => setDrillTarget(null)}
+        onApplyFilter={(f) => cfToggle(f)}
+        onShowJobsInTable={(jobs) => {
+          if (jobs.length > 0) setSearchQuery(jobs[0].jobNo);
+          setActiveTab('stock');
+        }}
+      />
 
       {/* ===================================================================== */}
       {/* TAB 2: RECEIVE FROM DYEING (CHALLAN RECEIVING & WEIGHING) */}

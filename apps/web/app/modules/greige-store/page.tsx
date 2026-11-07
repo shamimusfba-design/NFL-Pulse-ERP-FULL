@@ -2,7 +2,19 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Shell from '../../../components/Shell';
-import { Badge, CommandBar, DataGrid, GridColumn, KpiCard, RecordPanel, RecordSection } from '../../../components/ui';
+import {
+  ActiveFiltersBar,
+  Badge,
+  CommandBar,
+  CrossFilterProvider,
+  DataGrid,
+  DrillPopup,
+  DrillPopupSpec,
+  GridColumn,
+  KpiCard,
+  RecordPanel,
+  RecordSection
+} from '../../../components/ui';
 import { fmtDate, fmtNum, fmtQty } from '../../../lib/format';
 
 export interface GreigeRollLotRecord {
@@ -39,18 +51,31 @@ const INITIAL_GREIGE_LOTS: GreigeRollLotRecord[] = [
   { id: 'GR-2608', lotNo: 'GL-48061-H', jobNo: '48061', buyer: 'Name It', styleNo: '13251509', fabricType: 'Pique / Lacoste Cotton', gsm: 200, diaWidth: '70" Open', yarnLot: 'LOT-BD-188 (24/1 Slub)', knittingMachine: 'KM-04 Mayer & Cie', binRack: 'Bin A-12', rollsCount: 78, receivedKg: 1950, allocatedDyeingKg: 1950, availableKg: 0, fourPointPassPct: 99.1, receivedDate: '2026-10-30', agingDays: 2, status: 'ALLOCATED_WINCH' }
 ];
 
+function classifyFabricGroup(fabricType: string): string {
+  const f = fabricType.toLowerCase();
+  if (f.includes('jersey')) return 'Single Jersey';
+  if (f.includes('rib')) return 'Cotton / Lycra Rib';
+  if (f.includes('fleece') || f.includes('terry')) return 'Fleece & French Terry';
+  return 'Interlock & Pique';
+}
+
 export default function GreigeStorePage() {
   const [lots, setLots] = useState<GreigeRollLotRecord[]>(INITIAL_GREIGE_LOTS);
   const [viewMode, setViewMode] = useState<'LEDGER' | 'SHEET'>('LEDGER');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [fabricGroupFilter, setFabricGroupFilter] = useState<string>('ALL');
   const [selectedLot, setSelectedLot] = useState<GreigeRollLotRecord | null>(null);
   const [lastDeletedLot, setLastDeletedLot] = useState<GreigeRollLotRecord | null>(null);
+  const [drill, setDrill] = useState<{ spec: DrillPopupSpec; anchor: DOMRect | null } | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   const filteredLots = useMemo(() => {
-    if (statusFilter === 'ALL') return lots;
-    return lots.filter((l) => l.status === statusFilter);
-  }, [lots, statusFilter]);
+    return lots.filter((l) => {
+      if (statusFilter !== 'ALL' && l.status !== statusFilter) return false;
+      if (fabricGroupFilter !== 'ALL' && classifyFabricGroup(l.fabricType) !== fabricGroupFilter && l.buyer !== fabricGroupFilter) return false;
+      return true;
+    });
+  }, [lots, statusFilter, fabricGroupFilter]);
 
   const totals = useMemo(() => {
     const totalReceived = lots.reduce((s, r) => s + r.receivedKg, 0);
@@ -59,6 +84,98 @@ export default function GreigeStorePage() {
     const totalRolls = lots.reduce((s, r) => s + r.rollsCount, 0);
     return { totalReceived, totalAllocated, totalAvailable, totalRolls };
   }, [lots]);
+
+  // 4 Fabric Groups so inner chart automatically renders as a Donut (2-5 parts -> donut)
+  const fabricGroupStats = useMemo(() => {
+    const map = new Map<string, { receivedKg: number; availableKg: number; allocatedKg: number; jobs: number }>();
+    lots.forEach((l) => {
+      const grp = classifyFabricGroup(l.fabricType);
+      const cur = map.get(grp) || { receivedKg: 0, availableKg: 0, allocatedKg: 0, jobs: 0 };
+      cur.receivedKg += l.receivedKg;
+      cur.availableKg += l.availableKg;
+      cur.allocatedKg += l.allocatedDyeingKg;
+      cur.jobs += 1;
+      map.set(grp, cur);
+    });
+    return Array.from(map.entries())
+      .map(([group, v]) => ({ group, ...v }))
+      .sort((a, b) => b.receivedKg - a.receivedKg);
+  }, [lots]);
+
+  const openGreigeDrill = (
+    title: string,
+    mode: 'RECEIVED' | 'ALLOCATED' | 'AVAILABLE',
+    anchor: DOMRect,
+    groupFilter?: string
+  ) => {
+    const subset = groupFilter ? lots.filter((l) => classifyFabricGroup(l.fabricType) === groupFilter) : lots;
+    const byFabricType = Array.from(
+      subset.reduce((acc, l) => {
+        const grp = classifyFabricGroup(l.fabricType);
+        const cur = acc.get(grp) || { value: 0, jobs: 0 };
+        const val = mode === 'ALLOCATED' ? l.allocatedDyeingKg : mode === 'AVAILABLE' ? l.availableKg : l.receivedKg;
+        if (val > 0) {
+          cur.value += val;
+          cur.jobs += 1;
+          acc.set(grp, cur);
+        }
+        return acc;
+      }, new Map<string, { value: number; jobs: number }>())
+    ).map(([key, v]) => ({
+      key,
+      label: key,
+      value: v.value,
+      jobs: v.jobs,
+      tone: mode === 'AVAILABLE' ? ('done' as const) : mode === 'ALLOCATED' ? ('plan' as const) : ('plan' as const)
+    }));
+
+    const byBuyer = Array.from(
+      subset.reduce((acc, l) => {
+        const cur = acc.get(l.buyer) || { value: 0, jobs: 0 };
+        const val = mode === 'ALLOCATED' ? l.allocatedDyeingKg : mode === 'AVAILABLE' ? l.availableKg : l.receivedKg;
+        if (val > 0) {
+          cur.value += val;
+          cur.jobs += 1;
+          acc.set(l.buyer, cur);
+        }
+        return acc;
+      }, new Map<string, { value: number; jobs: number }>())
+    ).map(([key, v]) => ({
+      key,
+      label: key,
+      value: v.value,
+      jobs: v.jobs,
+      tone: 'plan' as const
+    }));
+
+    const jobItems = subset.map((l) => ({
+      jobNo: l.jobNo,
+      buyer: l.buyer,
+      style: `${l.lotNo} · ${l.fabricType}`,
+      qty: mode === 'ALLOCATED' ? l.allocatedDyeingKg : mode === 'AVAILABLE' ? l.availableKg : l.receivedKg,
+      unit: 'kg' as const,
+      status: l.status.replace('_', ' '),
+      tone: l.status === 'AVAILABLE' ? ('done' as const) : l.status === 'QUALITY_HOLD' ? ('balance' as const) : ('plan' as const)
+    }));
+
+    setDrill({
+      anchor,
+      spec: {
+        title: `${title} — By Fabric Type (Donut)`,
+        filterKey: 'fabricType',
+        filterValue: groupFilter || 'ALL',
+        unit: 'kg',
+        totalValue: byFabricType.reduce((s, x) => s + x.value, 0),
+        totalJobs: subset.length,
+        defaultDimension: 'factory',
+        dimensions: [
+          { dimension: 'factory', label: 'Fabric Type', items: byFabricType },
+          { dimension: 'buyer', label: 'Buyer', items: byBuyer },
+          { dimension: 'job', label: 'Jobs / Lots', jobs: jobItems }
+        ]
+      }
+    });
+  };
 
   const syncThemeToIframe = () => {
     try {
@@ -199,115 +316,190 @@ export default function GreigeStorePage() {
   );
 
   return (
-    <Shell title="Greige Fabric Store" eyebrow="Knitted Rolls Receiving, Weight Audit, Bin Location & Dyeing Allocation">
-      <div className="nos-stack">
-        <div className="nos-grid nos-grid-4">
-          <KpiCard label="Total Greige Received" value={fmtNum(totals.totalReceived)} unit="kg" delta="124.50 Tons plant total" />
-          <KpiCard label="Allocated to Dyeing" value={fmtNum(totals.totalAllocated)} unit="kg" delta="Issued to 23 winches" deltaDirection="up" />
-          <KpiCard label="Available Greige Stock" value={fmtNum(totals.totalAvailable)} unit="kg" delta="Ready for batching" />
-          <KpiCard label="Active Greige Rolls" value={fmtNum(totals.totalRolls)} unit="rolls" delta={`${lots.length} active roll lots`} />
-        </div>
-
-        <CommandBar
-          left={
-            <div className="nos-seg" role="tablist">
-              <button type="button" aria-selected={viewMode === 'LEDGER'} onClick={() => setViewMode('LEDGER')}>
-                Greige Roll &amp; Lot Register ({filteredLots.length})
-              </button>
-              <button type="button" aria-selected={viewMode === 'SHEET'} onClick={() => setViewMode('SHEET')}>
-                Floor Receiving Sheet
-              </button>
+    <Shell title="Greige Fabric Store">
+      <CrossFilterProvider>
+        <div className="nos-stack">
+          <div className="nos-grid nos-grid-4">
+            <div onDoubleClick={(e) => openGreigeDrill('Total Greige Received', 'RECEIVED', e.currentTarget.getBoundingClientRect())} style={{ cursor: 'pointer' }} title="Double-click for Fabric Type Donut breakdown">
+              <KpiCard label="Total Greige Received" value={fmtNum(totals.totalReceived)} unit="kg" delta="124.50 t plant total · Double-click" />
             </div>
-          }
-          right={
-            viewMode === 'LEDGER' ? (
-              <select className="nos-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                <option value="ALL">All Statuses</option>
-                <option value="AVAILABLE">Available</option>
-                <option value="ALLOCATED_WINCH">Allocated to Winch</option>
-                <option value="AGING_ALERT">Aging Alert</option>
-                <option value="QUALITY_HOLD">Quality Hold</option>
-              </select>
-            ) : null
-          }
-        />
+            <div onDoubleClick={(e) => openGreigeDrill('Allocated to Dyeing', 'ALLOCATED', e.currentTarget.getBoundingClientRect())} style={{ cursor: 'pointer' }} title="Double-click for Fabric Type Donut breakdown">
+              <KpiCard label="Allocated to Dyeing" value={fmtNum(totals.totalAllocated)} unit="kg" delta="Issued to 23 winches · Double-click" deltaDirection="up" />
+            </div>
+            <div onDoubleClick={(e) => openGreigeDrill('Available Greige Stock', 'AVAILABLE', e.currentTarget.getBoundingClientRect())} style={{ cursor: 'pointer' }} title="Double-click for Fabric Type Donut breakdown">
+              <KpiCard label="Available Greige Stock" value={fmtNum(totals.totalAvailable)} unit="kg" delta="Ready for batching · Double-click" />
+            </div>
+            <div onDoubleClick={(e) => openGreigeDrill('Active Greige Rolls', 'RECEIVED', e.currentTarget.getBoundingClientRect())} style={{ cursor: 'pointer' }} title="Double-click for Fabric Type Donut breakdown">
+              <KpiCard label="Active Greige Rolls" value={fmtNum(totals.totalRolls)} unit="rolls" delta={`${lots.length} active roll lots · Double-click`} />
+            </div>
+          </div>
 
-        {viewMode === 'LEDGER' ? (
-          <DataGrid<GreigeRollLotRecord>
-            storageKey="greige-store-lots"
-            exportName="greige-store-lots"
-            rows={filteredLots}
-            columns={columns}
-            frozenColumns={2}
-            rowKey={(r) => r.id}
-            selectedRowKey={selectedLot?.id ?? null}
-            onRowClick={(r) => setSelectedLot(r)}
+          <ActiveFiltersBar />
+
+          {/* Stock by Fabric Type Strip (Single-click cross-filters, Double-click opens Donut DrillPopup) */}
+          <div style={{ background: '#fff', border: '1px solid var(--nos-line)', borderRadius: 10, padding: '12px 16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+              <div>
+                <strong style={{ fontSize: 13, color: '#0f172a' }}>Greige Stock by Fabric Type</strong>
+                <div style={{ fontSize: 11.5, color: '#64748b' }}>Single-click to filter register · Double-click to open Fabric Type Donut breakdown</div>
+              </div>
+              {fabricGroupFilter !== 'ALL' && (
+                <button type="button" className="btn btn-secondary" style={{ fontSize: 11, padding: '3px 9px' }} onClick={() => setFabricGroupFilter('ALL')}>
+                  Clear ({fabricGroupFilter})
+                </button>
+              )}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
+              {fabricGroupStats.map((g) => {
+                const isSelected = fabricGroupFilter === g.group;
+                const pct = Math.min(100, Math.round((g.receivedKg / Math.max(1, totals.totalReceived)) * 100));
+                return (
+                  <div
+                    key={g.group}
+                    onClick={() => setFabricGroupFilter((prev) => (prev === g.group ? 'ALL' : g.group))}
+                    onDoubleClick={(e) => {
+                      e.stopPropagation();
+                      openGreigeDrill(`Greige Stock: ${g.group}`, 'RECEIVED', e.currentTarget.getBoundingClientRect());
+                    }}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: 8,
+                      border: isSelected ? '2px solid #2563eb' : '1px solid #e2e8f0',
+                      background: isSelected ? '#eff6ff' : '#f8fafc',
+                      opacity: fabricGroupFilter !== 'ALL' && !isSelected ? 0.3 : 1,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                      <strong>{g.group}</strong>
+                      <span style={{ fontWeight: 800, color: '#2563eb' }}>{fmtNum(g.receivedKg)} kg ({pct}%)</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
+                      Available: <strong style={{ color: '#16a34a' }}>{fmtNum(g.availableKg)} kg</strong> · {g.jobs} lots
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <CommandBar
+            left={
+              <div className="nos-seg" role="tablist">
+                <button type="button" aria-selected={viewMode === 'LEDGER'} onClick={() => setViewMode('LEDGER')}>
+                  Greige Roll &amp; Lot Register ({filteredLots.length})
+                </button>
+                <button type="button" aria-selected={viewMode === 'SHEET'} onClick={() => setViewMode('SHEET')}>
+                  Floor Receiving Sheet
+                </button>
+              </div>
+            }
+            right={
+              viewMode === 'LEDGER' ? (
+                <select className="nos-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                  <option value="ALL">All Statuses</option>
+                  <option value="AVAILABLE">Available</option>
+                  <option value="ALLOCATED_WINCH">Allocated to Winch</option>
+                  <option value="AGING_ALERT">Aging Alert</option>
+                  <option value="QUALITY_HOLD">Quality Hold</option>
+                </select>
+              ) : null
+            }
           />
-        ) : (
-          <iframe
-            ref={iframeRef}
-            src="/greige-store/index.html"
-            title="Greige Fabric Store"
-            onLoad={syncThemeToIframe}
-            style={{
-              width: '100%',
-              height: 'calc(100vh - 220px)',
-              border: '1px solid var(--nos-line)',
-              borderRadius: 12,
-              background: 'var(--nos-surface)'
+
+          {viewMode === 'LEDGER' ? (
+            <DataGrid<GreigeRollLotRecord>
+              storageKey="greige-store-lots"
+              exportName="greige-store-lots"
+              rows={filteredLots}
+              columns={columns}
+              frozenColumns={2}
+              rowKey={(r) => r.id}
+              selectedRowKey={selectedLot?.id ?? null}
+              onRowClick={(r) => setSelectedLot(r)}
+            />
+          ) : (
+            <iframe
+              ref={iframeRef}
+              src="/greige-store/index.html"
+              title="Greige Fabric Store"
+              onLoad={syncThemeToIframe}
+              style={{
+                width: '100%',
+                height: 'calc(100vh - 220px)',
+                border: '1px solid var(--nos-line)',
+                borderRadius: 12,
+                background: 'var(--nos-surface)'
+              }}
+            />
+          )}
+
+          <RecordPanel
+            open={Boolean(selectedLot)}
+            onClose={() => setSelectedLot(null)}
+            title={selectedLot ? `${selectedLot.lotNo} · Job ${selectedLot.jobNo}` : ''}
+            subtitle={selectedLot ? `${selectedLot.buyer} · ${selectedLot.fabricType} (${selectedLot.gsm} GSM) · ${selectedLot.binRack}` : undefined}
+            onPrev={selectedIdx > 0 ? () => setSelectedLot(filteredLots[selectedIdx - 1]) : undefined}
+            onNext={selectedIdx >= 0 && selectedIdx < filteredLots.length - 1 ? () => setSelectedLot(filteredLots[selectedIdx + 1]) : undefined}
+            sections={recordSections}
+            onSave={(updated) => {
+              if (!selectedLot) return;
+              const receivedKg = Number(updated.receivedKg ?? selectedLot.receivedKg);
+              const allocatedDyeingKg = Number(updated.allocatedDyeingKg ?? selectedLot.allocatedDyeingKg);
+              const recomputed: GreigeRollLotRecord = {
+                ...selectedLot,
+                lotNo: String(updated.lotNo ?? selectedLot.lotNo),
+                fabricType: String(updated.fabricType ?? selectedLot.fabricType),
+                gsm: Number(updated.gsm ?? selectedLot.gsm),
+                diaWidth: String(updated.diaWidth ?? selectedLot.diaWidth),
+                binRack: String(updated.binRack ?? selectedLot.binRack),
+                rollsCount: Number(updated.rollsCount ?? selectedLot.rollsCount),
+                receivedKg,
+                allocatedDyeingKg,
+                availableKg: Math.max(0, receivedKg - allocatedDyeingKg),
+                receivedDate: String(updated.receivedDate ?? selectedLot.receivedDate),
+                status: (updated.status as GreigeRollLotRecord['status']) ?? selectedLot.status,
+                remarks: String(updated.remarks ?? selectedLot.remarks ?? '')
+              };
+              setLots((prev) => prev.map((x) => (x.id === recomputed.id ? recomputed : x)));
+              setSelectedLot(recomputed);
             }}
+            onDelete={
+              selectedLot
+                ? () => {
+                    setLastDeletedLot(selectedLot);
+                    setLots((prev) => prev.filter((x) => x.id !== selectedLot.id));
+                    setSelectedLot(null);
+                  }
+                : undefined
+            }
+            onUndoDelete={
+              lastDeletedLot
+                ? () => {
+                    setLots((prev) => [lastDeletedLot, ...prev]);
+                    setLastDeletedLot(null);
+                  }
+                : undefined
+            }
           />
-        )}
 
-        <RecordPanel
-          open={Boolean(selectedLot)}
-          onClose={() => setSelectedLot(null)}
-          title={selectedLot ? `${selectedLot.lotNo} · Job ${selectedLot.jobNo}` : ''}
-          subtitle={selectedLot ? `${selectedLot.buyer} · ${selectedLot.fabricType} (${selectedLot.gsm} GSM) · ${selectedLot.binRack}` : undefined}
-          onPrev={selectedIdx > 0 ? () => setSelectedLot(filteredLots[selectedIdx - 1]) : undefined}
-          onNext={selectedIdx >= 0 && selectedIdx < filteredLots.length - 1 ? () => setSelectedLot(filteredLots[selectedIdx + 1]) : undefined}
-          sections={recordSections}
-          onSave={(updated) => {
-            if (!selectedLot) return;
-            const receivedKg = Number(updated.receivedKg ?? selectedLot.receivedKg);
-            const allocatedDyeingKg = Number(updated.allocatedDyeingKg ?? selectedLot.allocatedDyeingKg);
-            const recomputed: GreigeRollLotRecord = {
-              ...selectedLot,
-              lotNo: String(updated.lotNo ?? selectedLot.lotNo),
-              fabricType: String(updated.fabricType ?? selectedLot.fabricType),
-              gsm: Number(updated.gsm ?? selectedLot.gsm),
-              diaWidth: String(updated.diaWidth ?? selectedLot.diaWidth),
-              binRack: String(updated.binRack ?? selectedLot.binRack),
-              rollsCount: Number(updated.rollsCount ?? selectedLot.rollsCount),
-              receivedKg,
-              allocatedDyeingKg,
-              availableKg: Math.max(0, receivedKg - allocatedDyeingKg),
-              receivedDate: String(updated.receivedDate ?? selectedLot.receivedDate),
-              status: (updated.status as GreigeRollLotRecord['status']) ?? selectedLot.status,
-              remarks: String(updated.remarks ?? selectedLot.remarks ?? '')
-            };
-            setLots((prev) => prev.map((x) => (x.id === recomputed.id ? recomputed : x)));
-            setSelectedLot(recomputed);
-          }}
-          onDelete={
-            selectedLot
-              ? () => {
-                  setLastDeletedLot(selectedLot);
-                  setLots((prev) => prev.filter((x) => x.id !== selectedLot.id));
-                  setSelectedLot(null);
+          {drill && (
+            <DrillPopup
+              spec={drill.spec}
+              anchorRect={drill.anchor}
+              onClose={() => setDrill(null)}
+              onShowInTable={(_key, val) => {
+                setViewMode('LEDGER');
+                if (val && val !== 'ALL') {
+                  setFabricGroupFilter(val);
+                } else {
+                  setFabricGroupFilter('ALL');
                 }
-              : undefined
-          }
-          onUndoDelete={
-            lastDeletedLot
-              ? () => {
-                  setLots((prev) => [lastDeletedLot, ...prev]);
-                  setLastDeletedLot(null);
-                }
-              : undefined
-          }
-        />
-      </div>
+              }}
+            />
+          )}
+        </div>
+      </CrossFilterProvider>
     </Shell>
   );
 }

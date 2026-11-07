@@ -7,12 +7,14 @@ import yarnStockMasterRaw from '../data/yarn-stock-master.json';
 import knittingExecutionMasterRaw from '../data/knitting-execution-master.json';
 import factoryKpiMasterRaw from '../data/factory-kpi-master.json';
 import dyeingFactoryDataRaw from '../data/dyeing-factory-data.json';
+import demo2000DataRaw from '../data/demo-2000-master.json';
 import { SectionNav } from './ui/SectionNav';
+import { CrossFilterProvider, DrillPopup, DrillTarget } from './ui/DashboardKit';
+import { fmtNum } from '../lib/format';
 
 // Helper number formatters
 function n(v: any, decimals = 1) {
-  const num = Number(v || 0);
-  return num.toLocaleString(undefined, { maximumFractionDigits: decimals });
+  return fmtNum(Number(v || 0), decimals);
 }
 
 function pct(a: number, b: number) {
@@ -344,12 +346,61 @@ export function ExecutiveKpiDashboard() {
   const [customEnd, setCustomEnd] = useState('2026-09-30');
   const [factoryScope, setFactoryScope] = useState<'ALL' | 'NFL' | 'NCL'>('ALL');
   const [activeQuickTab, setActiveQuickTab] = useState<'ALL' | 'BOTTLENECKS' | 'QUALITY'>('ALL');
+  const [drill, setDrill] = useState<DrillTarget | null>(null);
 
   // Master Data Source Bindings
   const yarnMaster = (yarnStockMasterRaw as any) || {};
   const knittingMaster = (knittingExecutionMasterRaw as any) || {};
   const factoryKpiMaster = (factoryKpiMasterRaw as any) || {};
   const dyeingData = (dyeingFactoryDataRaw as any) || {};
+  const masterJobs: any[] = useMemo(() => (demo2000DataRaw as any)?.jobs || [], []);
+
+  const buyerShares = useMemo(() => {
+    const map = new Map<string, { qty: number; jobs: number }>();
+    for (const j of masterJobs) {
+      const b = String(j.buyer || 'Other');
+      const cur = map.get(b) || { qty: 0, jobs: 0 };
+      cur.qty += Number(j.orderQty || 0);
+      cur.jobs += 1;
+      map.set(b, cur);
+    }
+    const total = Array.from(map.values()).reduce((s, x) => s + x.qty, 0) || 1;
+    return Array.from(map.entries())
+      .sort((a, b) => b[1].qty - a[1].qty)
+      .slice(0, 6)
+      .map(([buyer, info]) => ({ buyer, share: info.qty / total, jobs: info.jobs }));
+  }, [masterJobs]);
+
+  const openSectionDrill = (
+    e: React.MouseEvent,
+    sectionName: string,
+    totalValue: number,
+    unit: string,
+    byFactory: { key: string; label: string; value: number; jobs?: number }[],
+    customByBuyer?: { key: string; label: string; value: number; jobs?: number }[]
+  ) => {
+    e.stopPropagation();
+    const cardEl = (e.target as HTMLElement).closest('div[style*="border-radius: 8px"]') as HTMLElement | null;
+    const cardTitle = cardEl?.querySelector('div')?.textContent?.trim() || sectionName;
+    const byBuyer =
+      customByBuyer ||
+      buyerShares.map((b) => ({
+        key: b.buyer,
+        label: b.buyer,
+        value: Math.round(totalValue * b.share * 10) / 10,
+        jobs: b.jobs,
+      }));
+    setDrill({
+      title: `${sectionName} — ${cardTitle}`,
+      subtitle: 'Double-click drill-down by Buyer or Factory',
+      unit,
+      colour: '#2563EB',
+      anchorX: e.clientX,
+      anchorY: e.clientY,
+      byFactory,
+      byBuyer,
+    });
+  };
 
   // Scaler multiplier for Horizon (to simulate daily/weekly/monthly views accurately for CEO decisions)
   const multiplier = useMemo(() => {
@@ -788,7 +839,9 @@ export function ExecutiveKpiDashboard() {
   }, [multiplier, factoryScope]);
 
   return (
+    <CrossFilterProvider>
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
+      <DrillPopup target={drill} onClose={() => setDrill(null)} />
       {/* ========================================================= */}
       {/* TOP EXECUTIVE CONTROL BAR & PERIOD/DATE FILTERS           */}
       {/* ========================================================= */}
@@ -1061,6 +1114,14 @@ export function ExecutiveKpiDashboard() {
       {(activeQuickTab === 'ALL' || activeQuickTab === 'BOTTLENECKS') && (
         <div
           id="yarn-section"
+          title="Double-click any KPI card to drill down by Buyer or Factory"
+          onDoubleClick={(e) =>
+            openSectionDrill(e, 'Yarn Store', yarnData.totalStockTons, 't', [
+              { key: 'Godown A (White)', label: 'Godown A (White Yarn)', value: Math.round(yarnData.whiteTons * 10) / 10 },
+              { key: 'Godown B (Color)', label: 'Godown B (Dyed / Melange)', value: Math.round(yarnData.colorTons * 10) / 10 },
+              { key: 'Pipeline LC', label: 'Mill Pipeline (LC Open)', value: Math.round(yarnData.pipelineTons * 10) / 10 },
+            ])
+          }
           style={{
             background: '#ffffff',
             borderRadius: '12px',
@@ -1069,7 +1130,8 @@ export function ExecutiveKpiDashboard() {
             boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
             display: 'flex',
             flexDirection: 'column',
-            gap: '16px'
+            gap: '16px',
+            cursor: 'pointer'
           }}
         >
           {/* SECTION HEADER */}
@@ -1204,6 +1266,16 @@ export function ExecutiveKpiDashboard() {
       {(activeQuickTab === 'ALL' || activeQuickTab === 'BOTTLENECKS') && (
         <div
           id="knitting-section"
+          title="Double-click any KPI card to drill down by Buyer or Factory"
+          onDoubleClick={(e) =>
+            openSectionDrill(
+              e,
+              'Knitting',
+              knittingData.prodTons,
+              't',
+              knittingData.allocationDonut.map((d) => ({ key: d.label, label: d.label, value: d.value }))
+            )
+          }
           style={{
             background: '#ffffff',
             borderRadius: '12px',
@@ -1212,7 +1284,8 @@ export function ExecutiveKpiDashboard() {
             boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
             display: 'flex',
             flexDirection: 'column',
-            gap: '16px'
+            gap: '16px',
+            cursor: 'pointer'
           }}
         >
           {/* SECTION HEADER */}
@@ -1360,6 +1433,13 @@ export function ExecutiveKpiDashboard() {
       {(activeQuickTab === 'ALL' || activeQuickTab === 'QUALITY') && (
         <div
           id="dyeing-section"
+          title="Double-click any KPI card to drill down by Buyer or Factory"
+          onDoubleClick={(e) =>
+            openSectionDrill(e, 'Dyeing & Finishing', dyeingSectionData.prodTons, 't', [
+              { key: 'NFL In-House', label: 'NFL In-House Winches', value: Math.round((dyeingSectionData.prodTons - dyeingSectionData.subcontractTons) * 10) / 10, jobs: dyeingSectionData.batchesEvaluated },
+              { key: 'Sub-Contract', label: 'Sub-Contract Mills', value: dyeingSectionData.subcontractTons, jobs: 18 },
+            ])
+          }
           style={{
             background: '#ffffff',
             borderRadius: '12px',
@@ -1368,7 +1448,8 @@ export function ExecutiveKpiDashboard() {
             boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
             display: 'flex',
             flexDirection: 'column',
-            gap: '16px'
+            gap: '16px',
+            cursor: 'pointer'
           }}
         >
           {/* SECTION HEADER */}
@@ -1478,6 +1559,20 @@ export function ExecutiveKpiDashboard() {
       {(activeQuickTab === 'ALL' || activeQuickTab === 'QUALITY') && (
         <div
           id="lab-section"
+          title="Double-click any KPI card to drill down by Buyer or Factory"
+          onDoubleClick={(e) =>
+            openSectionDrill(
+              e,
+              'Testing & Color Lab',
+              labData.pendingColorDips,
+              'pcs',
+              [
+                { key: 'Dyeing Color Lab', label: 'Dyeing Color Lab (Shades)', value: labData.pendingColorDips },
+                { key: 'Physical Testing Lab', label: 'Physical/Chemical Lab', value: labData.pendingTestReports },
+              ],
+              labData.buyerPendingDips.map((b) => ({ key: b.label, label: b.label, value: b.value1 }))
+            )
+          }
           style={{
             background: '#ffffff',
             borderRadius: '12px',
@@ -1486,7 +1581,8 @@ export function ExecutiveKpiDashboard() {
             boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
             display: 'flex',
             flexDirection: 'column',
-            gap: '16px'
+            gap: '16px',
+            cursor: 'pointer'
           }}
         >
           {/* SECTION HEADER */}
@@ -1595,6 +1691,16 @@ export function ExecutiveKpiDashboard() {
       {activeQuickTab === 'ALL' && (
         <div
           id="fabric-store-section"
+          title="Double-click any KPI card to drill down by Buyer or Factory"
+          onDoubleClick={(e) =>
+            openSectionDrill(
+              e,
+              'Finished Fabric Store',
+              fabricStoreData.totalStoreStockTons,
+              't',
+              fabricStoreData.constructionDonut.map((d) => ({ key: d.label, label: d.label, value: d.value }))
+            )
+          }
           style={{
             background: '#ffffff',
             borderRadius: '12px',
@@ -1603,7 +1709,8 @@ export function ExecutiveKpiDashboard() {
             boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
             display: 'flex',
             flexDirection: 'column',
-            gap: '16px'
+            gap: '16px',
+            cursor: 'pointer'
           }}
         >
           {/* SECTION HEADER */}
@@ -1703,6 +1810,13 @@ export function ExecutiveKpiDashboard() {
       {activeQuickTab === 'ALL' && (
         <div
           id="cutting-section"
+          title="Double-click any KPI card to drill down by Buyer or Factory"
+          onDoubleClick={(e) =>
+            openSectionDrill(e, 'Cutting Section', cuttingData.monthlyProd, 'pcs', [
+              { key: 'NFL Cutting', label: 'NFL Cutting Floor', value: Math.round(cuttingData.monthlyProd * 0.67) },
+              { key: 'NCL Cutting', label: 'NCL Cutting Floor', value: Math.round(cuttingData.monthlyProd * 0.33) },
+            ])
+          }
           style={{
             background: '#ffffff',
             borderRadius: '12px',
@@ -1711,7 +1825,8 @@ export function ExecutiveKpiDashboard() {
             boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
             display: 'flex',
             flexDirection: 'column',
-            gap: '16px'
+            gap: '16px',
+            cursor: 'pointer'
           }}
         >
           {/* SECTION HEADER */}
@@ -1820,6 +1935,13 @@ export function ExecutiveKpiDashboard() {
       {activeQuickTab === 'ALL' && (
         <div
           id="printing-section"
+          title="Double-click any KPI card to drill down by Buyer or Factory"
+          onDoubleClick={(e) =>
+            openSectionDrill(e, 'Printing Section', printData.monthlyProd, 'pcs', [
+              { key: 'In-House Print', label: 'NFL In-House Print Floor', value: Math.round(printData.monthlyProd * (printData.inHousePct / 100)) },
+              { key: 'Sub-Contract Print', label: 'Sub-Contract Print Mills', value: Math.round(printData.monthlyProd * ((100 - printData.inHousePct) / 100)) },
+            ])
+          }
           style={{
             background: '#ffffff',
             borderRadius: '12px',
@@ -1828,7 +1950,8 @@ export function ExecutiveKpiDashboard() {
             boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
             display: 'flex',
             flexDirection: 'column',
-            gap: '16px'
+            gap: '16px',
+            cursor: 'pointer'
           }}
         >
           {/* SECTION HEADER */}
@@ -1929,6 +2052,17 @@ export function ExecutiveKpiDashboard() {
       {activeQuickTab === 'ALL' && (
         <div
           id="embroidery-section"
+          title="Double-click any KPI card to drill down by Buyer or Factory"
+          onDoubleClick={(e) =>
+            openSectionDrill(
+              e,
+              'Embroidery Section',
+              embroideryData.rawTotalPanels,
+              'pcs',
+              embroideryData.sourceDonut.map((d) => ({ key: d.label, label: d.label, value: d.value })),
+              embroideryData.buyerPanelsColumn.map((b) => ({ key: b.label, label: b.label, value: b.value1 + (b.value2 || 0) }))
+            )
+          }
           style={{
             background: '#ffffff',
             borderRadius: '12px',
@@ -1937,7 +2071,8 @@ export function ExecutiveKpiDashboard() {
             boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
             display: 'flex',
             flexDirection: 'column',
-            gap: '16px'
+            gap: '16px',
+            cursor: 'pointer'
           }}
         >
           {/* SECTION HEADER */}
@@ -2059,6 +2194,16 @@ export function ExecutiveKpiDashboard() {
       {(activeQuickTab === 'ALL' || activeQuickTab === 'BOTTLENECKS') && (
         <div
           id="sewing-section"
+          title="Double-click any KPI card to drill down by Buyer or Factory"
+          onDoubleClick={(e) =>
+            openSectionDrill(
+              e,
+              'Sewing Section',
+              sewingData.monthlyProd,
+              'pcs',
+              sewingData.floorProdColumn.map((f) => ({ key: f.label, label: f.label, value: f.value1 }))
+            )
+          }
           style={{
             background: '#ffffff',
             borderRadius: '12px',
@@ -2067,7 +2212,8 @@ export function ExecutiveKpiDashboard() {
             boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
             display: 'flex',
             flexDirection: 'column',
-            gap: '16px'
+            gap: '16px',
+            cursor: 'pointer'
           }}
         >
           {/* SECTION HEADER */}
@@ -2159,6 +2305,7 @@ export function ExecutiveKpiDashboard() {
         </div>
       )}
     </div>
+    </CrossFilterProvider>
   );
 }
 

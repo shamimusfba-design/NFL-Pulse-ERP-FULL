@@ -16,7 +16,17 @@ import {
   Cell
 } from 'recharts';
 import { FX_SERIES, FX_BAR, FX_PIE, FxResponsiveContainer as ResponsiveContainer } from '../../../components/fx';
-import { DataGrid, GridColumn, RecordPanel } from '../../../components/ui';
+import {
+  ActiveFiltersBar,
+  CrossFilterProvider,
+  DataGrid,
+  DrillBreakdown,
+  DrillPopup,
+  DrillTarget,
+  GridColumn,
+  RecordPanel,
+  useChartDrillGesture,
+} from '../../../components/ui';
 import { fmtDate, fmtNum } from '../../../lib/format';
 
 type InspectionStage = 'knitting' | 'greige' | 'dyeing';
@@ -257,6 +267,14 @@ const DEFECT_LIBRARY = [
 ];
 
 export default function FabricQualityPage() {
+  return (
+    <CrossFilterProvider>
+      <FabricQualityPageContent />
+    </CrossFilterProvider>
+  );
+}
+
+function FabricQualityPageContent() {
   const [activeTab, setActiveTab] = useState<'all' | 'knitting' | 'greige' | 'dyeing' | 'defects'>('all');
   const [stageFilter, setStageFilter] = useState<'ALL' | 'knitting' | 'greige' | 'dyeing'>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | InspectionStatus>('ALL');
@@ -264,6 +282,7 @@ export default function FabricQualityPage() {
   const [inspections, setInspections] = useState<FabricInspectionRecord[]>(INITIAL_INSPECTIONS);
   const [showEntryModal, setShowEntryModal] = useState(false);
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
+  const [drillTarget, setDrillTarget] = useState<DrillTarget | null>(null);
 
   // Form states for new inspection entry
   const [formStage, setFormStage] = useState<InspectionStage>('knitting');
@@ -373,70 +392,84 @@ export default function FabricQualityPage() {
     setShowEntryModal(false);
   };
 
+  function openDefectDrill(label: string, statusFocus?: 'Hold' | 'Rejected', anchorRect?: DOMRect) {
+    const scope = inspections.filter((r) =>
+      statusFocus ? r.status === statusFocus : r.status === 'Hold' || r.status === 'Rejected' || r.status === 'Rework'
+    );
+    const byDefect = new Map<string, { kg: number; jobs: Set<string> }>();
+    const byBuyer = new Map<string, { kg: number; jobs: Set<string> }>();
+    for (const r of scope) {
+      const def = r.defects || 'Other Defect';
+      const dc = byDefect.get(def) || { kg: 0, jobs: new Set<string>() };
+      dc.kg += r.inspectedKg;
+      dc.jobs.add(r.jobNo);
+      byDefect.set(def, dc);
+
+      const bc = byBuyer.get(r.buyer) || { kg: 0, jobs: new Set<string>() };
+      bc.kg += r.inspectedKg;
+      bc.jobs.add(r.jobNo);
+      byBuyer.set(r.buyer, bc);
+    }
+
+    const defectSlices = [
+      ...Array.from(byDefect.entries()).map(([k, v]) => ({
+        key: k,
+        label: k,
+        value: Math.round(v.kg * 10) / 10,
+        jobs: v.jobs.size,
+        filterValue: k,
+      })),
+      ...defectParetoData.map((d) => ({
+        key: `pareto-${d.name}`,
+        label: d.name,
+        value: d.value,
+        jobs: 2,
+        filterValue: d.name,
+      })),
+    ].sort((a, b) => b.value - a.value);
+
+    const buyerSlices = Array.from(byBuyer.entries())
+      .sort((a, b) => b[1].kg - a[1].kg)
+      .map(([k, v]) => ({
+        key: k,
+        label: k,
+        value: Math.round(v.kg * 10) / 10,
+        jobs: v.jobs.size,
+        filterValue: k,
+      }));
+
+    setDrillTarget({
+      title: `Fabric Quality — ${label}`,
+      subtitle: 'Reject / Hold breakdown by Defect Type (Sorted Bar)',
+      anchorRect,
+      sourceFilter: { field: 'status', value: statusFocus || 'Hold', label },
+      breakdowns: [
+        {
+          dimension: 'reason',
+          label: 'By Defect Type',
+          chart: 'bar',
+          unit: 'kg',
+          color: statusFocus === 'Hold' ? 'amber' : 'red',
+          filterField: 'defects',
+          slices: defectSlices,
+        },
+        {
+          dimension: 'buyer',
+          label: 'By Buyer',
+          chart: 'bar',
+          unit: 'kg',
+          color: statusFocus === 'Hold' ? 'amber' : 'red',
+          filterField: 'buyer',
+          slices: buyerSlices,
+        },
+      ],
+    });
+  }
+
   return (
-    <Shell
-      title="Fabric Quality — Centralized Quality Management"
-      eyebrow="Quality Department · Centralized Inspection Across Knitting, Greige & Dyeing"
-    >
+    <Shell title="Fabric Quality — Centralized Quality Management">
       <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-        {/* Top Department Action Bar */}
-        <section
-          style={{
-            background: 'linear-gradient(135deg, #071F42 0%, #0c2d5e 100%)',
-            color: '#ffffff',
-            borderRadius: '12px',
-            padding: '18px 24px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            boxShadow: '0 4px 16px rgba(7, 31, 66, 0.2)'
-          }}
-        >
-          <div>
-            <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#93c5fd', fontWeight: 800 }}>
-              Centralized Quality Governance
-            </div>
-            <h1 style={{ fontSize: '24px', fontWeight: 850, margin: '4px 0', letterSpacing: '-0.02em', color: '#ffffff' }}>
-              Fabric Quality Management
-            </h1>
-</div>
-
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button
-              type="button"
-              onClick={() => setShowEntryModal(true)}
-              className="btn btn-primary"
-              style={{
-                background: '#16a34a',
-                borderColor: '#15803d',
-                padding: '9px 16px',
-                fontSize: '13px',
-                fontWeight: 700,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}
-            >
-              <span>+</span>
-              <span>Log Quality Inspection</span>
-            </button>
-            <Link
-              href="/modules/finished-fabric"
-              className="btn btn-secondary"
-              style={{
-                fontSize: '13px',
-                fontWeight: 700,
-                background: 'rgba(255,255,255,0.12)',
-                color: '#ffffff',
-                border: '1px solid rgba(255,255,255,0.2)'
-              }}
-            >
-              Finished Fabric Store Clearance →
-            </Link>
-          </div>
-        </section>
-
-        {/* Stage Navigation Pills (Top Sub-navigation per UX Standard) */}
+        {/* Single Top Sub-navigation & Actions Row (Task D2) */}
         <div
           style={{
             display: 'flex',
@@ -523,12 +556,31 @@ export default function FabricQualityPage() {
               border: 'none',
               background: activeTab === 'defects' ? '#0f172a' : '#f1f5f9',
               color: activeTab === 'defects' ? '#ffffff' : '#475569',
-              marginLeft: 'auto'
             }}
           >
             📖 Fabric Defect Library
           </button>
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={() => setShowEntryModal(true)}
+              className="btn btn-primary"
+              style={{
+                background: '#16a34a',
+                borderColor: '#15803d',
+                padding: '7px 14px',
+                fontSize: '12.5px',
+                fontWeight: 700,
+              }}
+            >
+              + Log Quality Inspection
+            </button>
+            <Link href="/modules/finished-fabric" className="btn btn-secondary" style={{ fontSize: '12.5px', fontWeight: 700 }}>
+              Finished Fabric Clearance →
+            </Link>
+          </div>
         </div>
+        <ActiveFiltersBar />
 
         {/* Finished Fabric Store Quality Gate Rule Notice */}
         <div
@@ -610,7 +662,12 @@ export default function FabricQualityPage() {
           </div>
 
           {/* KPI 3: Quality Hold */}
-          <div className="card" style={{ padding: '16px', borderLeft: '4px solid #d97706' }}>
+          <div
+            className="card"
+            style={{ padding: '16px', borderLeft: '4px solid #d97706', cursor: 'pointer' }}
+            title="Double-click to drill down Hold by Defect Type"
+            onDoubleClick={(e) => openDefectDrill('Quality Hold', 'Hold', (e.currentTarget as HTMLElement).getBoundingClientRect())}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '13px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
                 Quality Hold
@@ -628,7 +685,12 @@ export default function FabricQualityPage() {
           </div>
 
           {/* KPI 4: Rejected Quantity */}
-          <div className="card" style={{ padding: '16px', borderLeft: '4px solid #dc2626' }}>
+          <div
+            className="card"
+            style={{ padding: '16px', borderLeft: '4px solid #dc2626', cursor: 'pointer' }}
+            title="Double-click to drill down Reject by Defect Type"
+            onDoubleClick={(e) => openDefectDrill('Defect Rejection', 'Rejected', (e.currentTarget as HTMLElement).getBoundingClientRect())}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '13px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
                 Defect Rejection
@@ -650,11 +712,16 @@ export default function FabricQualityPage() {
         {activeTab !== 'defects' && (
           <section style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '14px' }}>
             {/* Chart 1: Stage Volume Comparison */}
-            <div className="card" style={{ padding: '16px' }}>
+            <div
+              className="card"
+              style={{ padding: '16px', cursor: 'pointer' }}
+              title="Double-click to drill down Reject / Hold by Defect Type"
+              onDoubleClick={(e) => openDefectDrill('Stage Defect / Hold', undefined, (e.currentTarget as HTMLElement).getBoundingClientRect())}
+            >
               <div style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>
-                Stage-wise Fabric Inspection: Passed vs Defect (Kg)
+                Stage-wise Fabric Inspection: Passed vs Defect (Kg) (Double-click for Defect Breakdown)
               </div>
-<div style={{ height: '240px' }}>
+              <div style={{ height: '240px' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={stageChartData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -670,7 +737,12 @@ export default function FabricQualityPage() {
             </div>
 
             {/* Chart 2: Top Fabric Defect Breakdown */}
-            <div className="card" style={{ padding: '16px' }}>
+            <div
+              className="card"
+              style={{ padding: '16px', cursor: 'pointer' }}
+              title="Double-click to drill down by Defect Type"
+              onDoubleClick={(e) => openDefectDrill('Defect Category Breakdown', undefined, (e.currentTarget as HTMLElement).getBoundingClientRect())}
+            >
               <div style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>
                 Defect Category Breakdown (%)
               </div>
@@ -709,56 +781,42 @@ export default function FabricQualityPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div>
                 <h2 style={{ fontSize: '16px', fontWeight: 800, margin: 0, color: '#0f172a' }}>
-                  Fabric Defect Library & Corrective Action Master
+                  Fabric Defect Library &amp; Corrective Action Master
                 </h2>
-</div>
+              </div>
               <span className="badge">{DEFECT_LIBRARY.length} Standard Defect Codes</span>
             </div>
 
-            <div style={{ overflowX: 'auto' }}>
-              <table className="table" style={{ width: '100%' }}>
-                <thead>
-                  <tr>
-                    <th>Defect Code</th>
-                    <th>Stage</th>
-                    <th>Defect Name</th>
-                    <th>Severity</th>
-                    <th>Standard Corrective Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {DEFECT_LIBRARY.map((d) => (
-                    <tr key={d.code} style={{ height: '42px' }}>
-                      <td>
-                        <strong style={{ color: '#2563eb' }}>{d.code}</strong>
-                      </td>
-                      <td>
-                        <span className="badge">{d.stage}</span>
-                      </td>
-                      <td>
-                        <strong style={{ color: '#0f172a' }}>{d.name}</strong>
-                      </td>
-                      <td>
-                        <span
-                          className={`badge ${
-                            d.severity === 'Critical' ? 'status-pill' : d.severity === 'Major' ? 'status-pill neutral' : ''
-                          }`}
-                          style={{
-                            background:
-                              d.severity === 'Critical' ? '#fee2e2' : d.severity === 'Major' ? '#fef3c7' : '#f1f5f9',
-                            color:
-                              d.severity === 'Critical' ? '#b91c1c' : d.severity === 'Major' ? '#b45309' : '#475569'
-                          }}
-                        >
-                          {d.severity}
-                        </span>
-                      </td>
-                      <td style={{ color: '#334155', fontSize: '13px' }}>{d.action}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DataGrid<(typeof DEFECT_LIBRARY)[number]>
+              storageKey="fabric-quality-defect-library"
+              exportName="fabric-quality-defect-library"
+              rows={DEFECT_LIBRARY}
+              frozenColumns={2}
+              rowKey={(d) => d.code}
+              columns={[
+                { key: 'code', header: 'Defect Code', width: 110, value: (d) => d.code, render: (d) => <strong style={{ color: '#2563eb' }}>{d.code}</strong> },
+                { key: 'stage', header: 'Stage', width: 110, value: (d) => d.stage, render: (d) => <span className="badge">{d.stage}</span> },
+                { key: 'name', header: 'Defect Name', width: 220, value: (d) => d.name, render: (d) => <strong style={{ color: '#0f172a' }}>{d.name}</strong> },
+                {
+                  key: 'severity',
+                  header: 'Severity',
+                  width: 115,
+                  value: (d) => d.severity,
+                  render: (d) => (
+                    <span
+                      className="badge"
+                      style={{
+                        background: d.severity === 'Critical' ? '#fee2e2' : d.severity === 'Major' ? '#fef3c7' : '#f1f5f9',
+                        color: d.severity === 'Critical' ? '#b91c1c' : d.severity === 'Major' ? '#b45309' : '#475569',
+                      }}
+                    >
+                      {d.severity}
+                    </span>
+                  ),
+                },
+                { key: 'action', header: 'Standard Corrective Action', width: 320, value: (d) => d.action },
+              ] satisfies GridColumn<(typeof DEFECT_LIBRARY)[number]>[]}
+            />
           </div>
         ) : (
           /* Inspection Register View */
@@ -1012,6 +1070,15 @@ export default function FabricQualityPage() {
             />
           </div>
         )}
+        <DrillPopup
+          target={drillTarget}
+          onClose={() => setDrillTarget(null)}
+          onShowInTable={(f) => {
+            setActiveTab('all');
+            setSearchQuery(f.value);
+            setDrillTarget(null);
+          }}
+        />
       </div>
 
       {/* RecordPanel for row click */}

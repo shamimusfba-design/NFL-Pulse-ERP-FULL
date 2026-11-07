@@ -1,11 +1,14 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import Shell from '../../../components/Shell';
+import { DataGrid, DrillPopup } from '../../../components/ui';
+import type { GridColumn, DrillTarget } from '../../../components/ui';
 import { api } from '../../../lib/api';
-import { KPI_DEPARTMENTS, KPI_METRICS_BY_DEPARTMENT, MONTH_OPTIONS } from '../../../lib/factoryKpiMaster';
+import { fmtNum } from '../../../lib/format';
+import { KPI_DEPARTMENTS, KPI_METRICS_BY_DEPARTMENT } from '../../../lib/factoryKpiMaster';
 
 const now = new Date();
-const num = (v: any) => (v === null || v === undefined || v === '' ? '—' : Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 }));
+const num = (v: any) => (v === null || v === undefined || v === '' ? '—' : fmtNum(Number(v), 2));
 
 const SECTIONS = ['ALL', ...KPI_DEPARTMENTS];
 
@@ -18,6 +21,8 @@ export default function KpiBoardPage() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
   const [error, setError] = useState('');
+  const [drill, setDrill] = useState<DrillTarget | null>(null);
+  const [lineFilter, setLineFilter] = useState<string>('');
 
   // Manual entry form with synchronized dropdowns
   const [formDept, setFormDept] = useState<string>('Production');
@@ -46,7 +51,7 @@ export default function KpiBoardPage() {
 
   function handleParticularChange(part: string) {
     setFormParticular(part);
-    const m = deptMetrics.find(x => x.particular === part);
+    const m = deptMetrics.find((x) => x.particular === part);
     if (m) {
       setForm((prev: any) => ({
         ...prev,
@@ -141,19 +146,88 @@ export default function KpiBoardPage() {
     return m;
   }, [data]);
 
-  return (
-    <Shell title="KPI Board & Data Entry" eyebrow="Factory Central Board · Automated Section Pull + IE Entry">
-      {/* Hero section */}
-      <section className="module-hero">
-        <div>
-          <span className="status-pill good">Factory Live Board</span>
-          <h2>Central KPI Board & Data Entry</h2>
-</div>
-        <div className="module-actions">
-          <button className="btn btn-secondary" onClick={() => window.print()}>Print Physical Board</button>
-        </div>
-      </section>
+  function openEfficiencyDrill(e: React.MouseEvent, kpiTitle?: string) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const lines = yearly.lines || [];
+    const byLine = lines
+      .map((r: any) => ({
+        label: r.lineCode,
+        value: Number(Number(r.avgEfficiency || 0).toFixed(1)),
+        filterValue: r.lineCode
+      }))
+      .sort((a: any, b: any) => b.value - a.value);
+    const floorMap = new Map<string, { sum: number; count: number }>();
+    for (const r of lines) {
+      const f = r.floorCode || 'Unassigned';
+      const cur = floorMap.get(f) || { sum: 0, count: 0 };
+      cur.sum += Number(r.avgEfficiency || 0);
+      cur.count += 1;
+      floorMap.set(f, cur);
+    }
+    const byFloor = [...floorMap.entries()].map(([label, v]) => ({
+      label,
+      value: Number((v.sum / Math.max(1, v.count)).toFixed(1)),
+      filterValue: label
+    }));
+    setDrill({
+      title: `${kpiTitle || 'Sewing Efficiency'} — By Line`,
+      subtitle: `${lines.length} sewing lines (double-click drill)`,
+      unit: '%',
+      tone: 'blue',
+      anchorRect: rect,
+      chartType: 'bar',
+      byFactory: byLine,
+      byBuyer: byFloor,
+      filterLabel: 'Show these lines in the table →'
+    });
+  }
 
+  const filteredYearlyLines = useMemo(() => {
+    const list = yearly.lines || [];
+    if (!lineFilter) return list;
+    return list.filter((r: any) => r.lineCode === lineFilter || (r.floorCode || 'Unassigned') === lineFilter);
+  }, [yearly, lineFilter]);
+
+  const yearlyLineColumns = useMemo<GridColumn<any>[]>(
+    () => [
+      { key: 'lineCode', header: 'Line', value: (r) => r.lineCode, render: (r) => <strong>{r.lineCode}</strong> },
+      { key: 'floorCode', header: 'Floor', value: (r) => r.floorCode || '—' },
+      { key: 'avgSmv', header: 'Avg SMV', numeric: true, decimals: 2, value: (r) => Number(r.avgSmv || 0) },
+      {
+        key: 'avgEfficiency',
+        header: 'Avg Efficiency',
+        numeric: true,
+        decimals: 1,
+        unit: '%',
+        value: (r) => Number(r.avgEfficiency || 0),
+        render: (r) => `${num(r.avgEfficiency)}%`
+      },
+      {
+        key: 'avgPerformance',
+        header: 'Avg Performance',
+        numeric: true,
+        decimals: 1,
+        unit: '%',
+        value: (r) => Number(r.avgPerformance || 0),
+        render: (r) => `${num(r.avgPerformance)}%`
+      },
+      {
+        key: 'production',
+        header: 'Production',
+        numeric: true,
+        total: true,
+        unit: 'pcs',
+        value: (r) => Number(r.production || 0)
+      },
+      { key: 'avgManpower', header: 'Avg MP', numeric: true, decimals: 1, value: (r) => Number(r.avgManpower || 0) },
+      { key: 'otHours', header: 'OT Hr', numeric: true, total: true, decimals: 1, value: (r) => Number(r.otHours || 0) },
+      { key: 'productivity', header: 'Productivity', numeric: true, decimals: 2, value: (r) => Number(r.productivity || 0) }
+    ],
+    []
+  );
+
+  return (
+    <Shell title="KPI Board & Data Entry">
       {msg && <div className="notice success-notice" style={{ margin: '10px 0' }}>✓ {msg}</div>}
       {error && <div className="notice" style={{ margin: '10px 0', background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca' }}>⚠ {error}</div>}
 
@@ -166,7 +240,7 @@ export default function KpiBoardPage() {
               <input
                 type="number"
                 value={year}
-                onChange={e => setYear(Number(e.target.value))}
+                onChange={(e) => setYear(Number(e.target.value))}
                 style={{ width: '80px', padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
               />
             </label>
@@ -174,7 +248,7 @@ export default function KpiBoardPage() {
               Month:
               <select
                 value={month}
-                onChange={e => setMonth(Number(e.target.value))}
+                onChange={(e) => setMonth(Number(e.target.value))}
                 style={{ padding: '4px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontWeight: 600 }}
               >
                 {Array.from({ length: 12 }, (_, i) => (
@@ -187,12 +261,15 @@ export default function KpiBoardPage() {
             <button className="btn btn-primary btn-compact" onClick={load} disabled={loading}>
               {loading ? 'Loading…' : 'Refresh Data'}
             </button>
+            <button className="btn btn-secondary btn-compact" onClick={() => window.print()}>
+              Print Physical Board
+            </button>
           </div>
 
           {/* Section Filter Pills */}
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
             <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Section:</span>
-            {SECTIONS.map(s => {
+            {SECTIONS.map((s) => {
               const active = activeSection === s;
               const count = s === 'ALL' ? (data.auto?.length || 0) + (data.manual?.length || 0) : sectionCounts.get(s)?.total || 0;
               return (
@@ -229,10 +306,11 @@ export default function KpiBoardPage() {
           { label: 'Printing', autoCount: sectionCounts.get('Printing')?.auto || 3, manualCount: sectionCounts.get('Printing')?.manual || 0, tone: '#f59e0b', icon: '🎨' },
           { label: 'Quality', autoCount: sectionCounts.get('Quality')?.auto || 3, manualCount: sectionCounts.get('Quality')?.manual || 0, tone: '#ef4444', icon: '🔍' },
           { label: 'HR', autoCount: sectionCounts.get('HR')?.auto || 2, manualCount: sectionCounts.get('HR')?.manual || 0, tone: '#64748b', icon: '👥' },
-        ].map(sc => (
+        ].map((sc) => (
           <div
             key={sc.label}
             onClick={() => setActiveSection(sc.label)}
+            onDoubleClick={(e) => sc.label === 'Sewing' && openEfficiencyDrill(e, 'Sewing Efficiency')}
             style={{
               background: '#fff',
               border: activeSection === sc.label ? `2px solid ${sc.tone}` : '1px solid #e2e8f0',
@@ -263,7 +341,7 @@ export default function KpiBoardPage() {
           <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a', margin: 0 }}>
             {activeSection === 'ALL' ? 'Factory Overall KPI Board' : `${activeSection} Section KPIs`} ({allKpis.length} Metrics)
           </h3>
-          <span style={{ fontSize: '11px', color: '#64748b' }}>Auto pulled live from section databases · Click Manual Entry below to add</span>
+          <span style={{ fontSize: '11px', color: '#64748b' }}>Double-click any efficiency / sewing KPI to drill down by line</span>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '10px' }}>
@@ -275,6 +353,8 @@ export default function KpiBoardPage() {
             return (
               <div
                 key={`${kpi.section}-${kpi.kpiKey}-${idx}`}
+                onDoubleClick={(e) => openEfficiencyDrill(e, kpi.kpiName)}
+                title="Double-click to drill down by line"
                 style={{
                   background: '#fff',
                   border: '1px solid #e2e8f0',
@@ -283,6 +363,7 @@ export default function KpiBoardPage() {
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '6px',
+                  cursor: 'pointer',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
                 }}
               >
@@ -332,17 +413,17 @@ export default function KpiBoardPage() {
           <h3 style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a', margin: '0 0 4px' }}>
             IE Manual KPI Data Entry
           </h3>
-</div>
+        </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px', alignItems: 'end' }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '11px', fontWeight: 700, color: '#334155' }}>
             Department / Section *
             <select
               value={formDept}
-              onChange={e => handleDeptChange(e.target.value)}
+              onChange={(e) => handleDeptChange(e.target.value)}
               style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff' }}
             >
-              {KPI_DEPARTMENTS.map(s => (
+              {KPI_DEPARTMENTS.map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>
@@ -352,10 +433,10 @@ export default function KpiBoardPage() {
             Particular / Metric Name *
             <select
               value={formParticular}
-              onChange={e => handleParticularChange(e.target.value)}
+              onChange={(e) => handleParticularChange(e.target.value)}
               style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff' }}
             >
-              {deptMetrics.map(m => (
+              {deptMetrics.map((m) => (
                 <option key={m.particular} value={m.particular}>
                   {m.particular} ({m.unit})
                 </option>
@@ -370,7 +451,7 @@ export default function KpiBoardPage() {
               step="0.01"
               placeholder="Numeric value"
               value={form.value}
-              onChange={e => setForm({ ...form, value: e.target.value })}
+              onChange={(e) => setForm({ ...form, value: e.target.value })}
               style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff' }}
             />
           </label>
@@ -379,7 +460,7 @@ export default function KpiBoardPage() {
             Unit
             <select
               value={form.unit}
-              onChange={e => setForm({ ...form, unit: e.target.value })}
+              onChange={(e) => setForm({ ...form, unit: e.target.value })}
               style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff' }}
             >
               <option value="%">% (Percentage)</option>
@@ -399,7 +480,7 @@ export default function KpiBoardPage() {
               step="0.01"
               placeholder="Target value"
               value={form.target}
-              onChange={e => setForm({ ...form, target: e.target.value })}
+              onChange={(e) => setForm({ ...form, target: e.target.value })}
               style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff' }}
             />
           </label>
@@ -410,7 +491,7 @@ export default function KpiBoardPage() {
               type="text"
               placeholder="Source or note"
               value={form.remarks}
-              onChange={e => setForm({ ...form, remarks: e.target.value })}
+              onChange={(e) => setForm({ ...form, remarks: e.target.value })}
               style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff' }}
             />
           </label>
@@ -433,41 +514,35 @@ export default function KpiBoardPage() {
             <div className="panel-title">Yearly Line-wise KPI Performance</div>
             <div className="panel-sub">Aggregated from daily line production, SMV and efficiency</div>
           </div>
-          <span className="status-pill neutral">{year} Cumulative</span>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {lineFilter && (
+              <button className="btn btn-secondary" onClick={() => setLineFilter('')}>
+                Clear Line Filter: {lineFilter} ×
+              </button>
+            )}
+            <span className="status-pill neutral">{year} Cumulative</span>
+          </div>
         </div>
-        <div className="table-scroll">
-          <table className="data-table compact-table">
-            <thead>
-              <tr>
-                <th>Line</th>
-                <th>Floor</th>
-                <th>Avg SMV</th>
-                <th>Avg Efficiency</th>
-                <th>Avg Performance</th>
-                <th>Production</th>
-                <th>Avg MP</th>
-                <th>OT Hr</th>
-                <th>Productivity</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(yearly.lines || []).map((r: any) => (
-                <tr key={r.lineCode}>
-                  <td><strong>{r.lineCode}</strong></td>
-                  <td>{r.floorCode || '—'}</td>
-                  <td>{num(r.avgSmv)}</td>
-                  <td>{num(r.avgEfficiency)}%</td>
-                  <td>{num(r.avgPerformance)}%</td>
-                  <td>{num(r.production)}</td>
-                  <td>{num(r.avgManpower)}</td>
-                  <td>{num(r.otHours)}</td>
-                  <td>{num(r.productivity)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataGrid
+          rows={filteredYearlyLines}
+          columns={yearlyLineColumns}
+          rowKey={(r) => r.lineCode}
+          storageKey="kpi-board-yearly-lines-v1"
+          exportName="kpi-board-yearly-lines"
+          frozenColumns={2}
+          emptyMessage="No yearly line performance records available."
+        />
       </section>
+
+      <DrillPopup
+        target={drill}
+        onClose={() => setDrill(null)}
+        onApplyFilter={(val) => {
+          setLineFilter(val);
+          setDrill(null);
+        }}
+      />
     </Shell>
   );
 }
+

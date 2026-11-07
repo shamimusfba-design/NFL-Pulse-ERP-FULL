@@ -3,7 +3,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Shell from '../../../components/Shell';
+import { DataGrid } from '../../../components/ui';
+import type { GridColumn } from '../../../components/ui';
 import { api } from '../../../lib/api';
+import { fmtDate, fmtNum } from '../../../lib/format';
 
 export type Row = {
   id?: string;
@@ -30,7 +33,7 @@ export type LineSetting = {
   source: string;
 };
 
-const num = (v: any) => Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 1 });
+const num = (v: any) => fmtNum(Number(v || 0), 1);
 
 function today() {
   const d = new Date();
@@ -277,13 +280,16 @@ export default function TargetGivingPage() {
   }
 
   const activeRows = useMemo(() => {
-    return (Object.entries(rows) as [string, Row[]][]).flatMap(([line, rs]) => rs.filter((r) => r.jobNo).map((r) => ({ line, ...r })));
-  }, [rows]);
+    return (Object.entries(rows) as [string, Row[]][]).flatMap(([line, rs]) =>
+      rs.filter((r) => r.jobNo).map((r) => {
+        const ls = lineSettings[line] || { manpower: 28, targetEfficiency: 75, actualManpower: 0, source: '' };
+        const c = calcTarget(r, Number(ls.manpower || 28), Number(ls.targetEfficiency || 75));
+        return { line, ...r, mp: ls.manpower, eff: ls.targetEfficiency, tph: c.tph, finalTarget: c.finalTarget };
+      })
+    );
+  }, [rows, lineSettings]);
 
-  const todayTarget = activeRows.reduce((s, r) => {
-    const ls = lineSettings[r.line];
-    return s + calcTarget(r, Number(ls?.manpower || 28), Number(ls?.targetEfficiency || 75)).finalTarget;
-  }, 0);
+  const todayTarget = activeRows.reduce((s, r) => s + r.finalTarget, 0);
 
   const producedMin = activeRows.reduce((s, r) => {
     const ls = lineSettings[r.line];
@@ -294,24 +300,33 @@ export default function TargetGivingPage() {
   const totalPlannedMp = (Object.values(lineSettings) as LineSetting[]).reduce((s, x) => s + Number(x.manpower || 0), 0);
   const totalActualMp = (Object.values(lineSettings) as LineSetting[]).reduce((s, x) => s + Number(x.actualManpower || 0), 0);
 
-  return (
-    <Shell title="IE Target Giving & Setting" eyebrow="Industrial Production Engineering · Daily Production Target Module">
-      {/* Header Hero */}
-      <section className="dashboard-hero">
-        <div>
-          <div className="hero-kicker">IE Operations · Official Daily Targets</div>
-          <h2>Sewing Line &amp; Style Target Setting</h2>
-</div>
-        <div className="hero-actions">
-          <Link href="/modules/ie-line-performance" className="btn btn-primary">
-            Floor Line Performance &rarr;
-          </Link>
-          <Link href="/modules/ie-overview" className="btn btn-ghost">
-            Central IE Hub
-          </Link>
-        </div>
-      </section>
+  const summaryColumns = useMemo<GridColumn<any>[]>(
+    () => [
+      { key: 'line', header: 'Line', value: (r) => r.line, render: (r) => <strong>{r.line}</strong> },
+      { key: 'jobNo', header: 'Job No', value: (r) => r.jobNo },
+      { key: 'styleNo', header: 'Style', value: (r) => r.styleNo || '—' },
+      { key: 'buyer', header: 'Buyer', value: (r) => r.buyer || 'Northern' },
+      { key: 'targetType', header: 'Type', value: (r) => r.targetType },
+      { key: 'smv', header: 'SMV', numeric: true, decimals: 2, value: (r) => Number(r.smv || 0) },
+      { key: 'mp', header: 'MP', numeric: true, total: true, value: (r) => Number(r.mp || 0) },
+      { key: 'eff', header: 'Target Eff %', numeric: true, decimals: 1, unit: '%', value: (r) => Number(r.eff || 0) },
+      { key: 'tph', header: 'Target/Hr', numeric: true, total: true, unit: 'pcs', value: (r) => Number(r.tph || 0) },
+      {
+        key: 'finalTarget',
+        header: 'Final Target',
+        numeric: true,
+        total: true,
+        unit: 'pcs',
+        value: (r) => Number(r.finalTarget || 0),
+        render: (r) => <strong>{fmtNum(r.finalTarget)}</strong>
+      },
+      { key: 'status', header: 'Status', value: (r) => r.status || 'DRAFT' }
+    ],
+    []
+  );
 
+  return (
+    <Shell title="IE Target Giving & Setting">
       {/* Notifications */}
       {msg && (
         <div style={{ background: '#dcfce7', border: '1px solid #86efac', color: '#166534', padding: '10px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: 700, margin: '14px 0' }}>
@@ -364,6 +379,9 @@ export default function TargetGivingPage() {
           <div style={{ fontSize: '11px', color: '#1e40af' }}>
             <strong>IE Formula:</strong> Target/Hr = (60 × MP × Eff%) ÷ SMV · <strong>Short/Balance:</strong> WIP &lt; 200 pcs &rarr; 2× Effective SMV
           </div>
+          <Link href="/modules/ie-line-performance" className="btn btn-secondary" style={{ marginLeft: 8 }}>
+            Floor Line Performance &rarr;
+          </Link>
         </div>
       </section>
 
@@ -371,7 +389,7 @@ export default function TargetGivingPage() {
       <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', margin: '16px 0' }}>
         <div style={{ background: '#fff', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
           <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Target Date</div>
-          <div style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>{date}</div>
+          <div style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>{fmtDate(date)}</div>
           <div style={{ fontSize: '10px', color: '#16a34a', fontWeight: 600 }}>Floor: {section}</div>
         </div>
 
@@ -404,6 +422,25 @@ export default function TargetGivingPage() {
           <div style={{ fontSize: '18px', fontWeight: 800, color: '#16a34a' }}>{num(ctx?.summary?.previousDay?.efficiency || 74.7)}%</div>
           <div style={{ fontSize: '10px', color: '#16a34a', fontWeight: 600 }}>Floor Benchmark</div>
         </div>
+      </section>
+
+      {/* Active Target Summary Grid */}
+      <section className="panel" style={{ margin: '16px 0' }}>
+        <div className="panel-head">
+          <div>
+            <div className="panel-title">Floor Target Summary ({section})</div>
+            <div className="panel-sub">Consolidated view of all active line targets with totals and CSV export.</div>
+          </div>
+        </div>
+        <DataGrid
+          rows={activeRows}
+          columns={summaryColumns}
+          rowKey={(r) => `${r.line}-${r.jobNo}-${r.id || 'draft'}`}
+          storageKey="ie-daily-target-summary-v1"
+          exportName={`ie-daily-targets-${section}`}
+          frozenColumns={2}
+          emptyMessage="No active line targets scheduled for this floor yet."
+        />
       </section>
 
       {/* Target Lines List */}
@@ -786,3 +823,4 @@ export default function TargetGivingPage() {
     </Shell>
   );
 }
+

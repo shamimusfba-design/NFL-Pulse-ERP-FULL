@@ -24,8 +24,15 @@ import {
   Cell
 } from 'recharts';
 import { FX_SERIES, FX_BAR, FX_PIE, FxResponsiveContainer as ResponsiveContainer } from '../../components/fx';
-import { SectionNav } from '../../components/ui/SectionNav';
-import { fmtDate } from '../../lib/format';
+import {
+  SectionNav,
+  DrillPopup,
+  DrillPopupTarget,
+  useChartDrillGesture,
+  CrossFilterProvider,
+  CrossFilterChips,
+} from '../../components/ui';
+import { fmtDate, fmtNum } from '../../lib/format';
 
 // Strict Corporate Palette
 const COLORS = {
@@ -54,13 +61,12 @@ const COLORS = {
 
 // Formatter helpers
 function fmt(num: number | null | undefined, decimals = 0): string {
-  if (num === null || num === undefined || isNaN(num)) return '0';
-  return num.toLocaleString('en-US', { maximumFractionDigits: decimals });
+  return fmtNum(num, decimals);
 }
 
 function money(num: number | null | undefined, decimals = 2): string {
   if (num === null || num === undefined || isNaN(num)) return '$0.00';
-  return `$${num.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+  return `$${fmtNum(num, decimals)}`;
 }
 
 // KPI card — NOS clean standard (docs/UX-STANDARD.md): white card, no coloured edge,
@@ -73,7 +79,8 @@ function CompactKpiCard({
   trendType = 'neutral',
   color = COLORS.blue,
   subtext,
-  onClick
+  onClick,
+  onDoubleClick,
 }: {
   label: string;
   value: string | number;
@@ -82,7 +89,8 @@ function CompactKpiCard({
   trendType?: 'positive' | 'negative' | 'neutral' | 'warning';
   color?: string;
   subtext?: string;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  onDoubleClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
 }) {
   const trendClass =
     trendType === 'positive' ? 'nos-up' :
@@ -92,7 +100,8 @@ function CompactKpiCard({
     <div
       className="nos-card nos-kpi"
       onClick={onClick}
-      style={{ cursor: onClick ? 'pointer' : 'default', minHeight: 84, justifyContent: 'space-between' }}
+      onDoubleClick={onDoubleClick}
+      style={{ cursor: onClick || onDoubleClick ? 'pointer' : 'default', minHeight: 84, justifyContent: 'space-between' }}
     >
       <span className="nos-kpi-l">{label}</span>
 
@@ -165,8 +174,10 @@ const ITEM_COST_BENCHMARKS: Record<string, { avgFob: number; avgSmv: number; cmP
 };
 
 export default function ManagementDashboardPage() {
+  const { handleMarkInteraction } = useChartDrillGesture();
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [authorized, setAuthorized] = useState<boolean | null>(null);
+  const [drillTarget, setDrillTarget] = useState<DrillPopupTarget | null>(null);
 
   // --- COMMON UNIVERSAL DYNAMIC FILTERS ---
   const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
@@ -970,39 +981,198 @@ export default function ManagementDashboardPage() {
         {/* 8 Compact KPI Cards */}
         <div className="nos-grid nos-grid-4" style={{ marginBottom: '14px' }}>
           <CompactKpiCard label="Active Orders" value={overviewStats.activeOrdersCount} unit="orders" trend="In-plant" trendType="neutral" color={COLORS.navy} />
-          <CompactKpiCard label="Total Order Qty" value={overviewStats.totalOrderQty} unit="pcs" trend={`${fmt(overviewStats.totalJobs)} Jobs`} trendType="positive" color={COLORS.blue} />
+          <CompactKpiCard
+            label="Total Order Qty"
+            value={overviewStats.totalOrderQty}
+            unit="pcs"
+            trend={`${fmt(overviewStats.totalJobs)} Jobs`}
+            trendType="positive"
+            color={COLORS.blue}
+            onDoubleClick={(e) => {
+              const byBuyer = buyerPerformance.slice(0, 8).map((b) => ({
+                name: b.buyer,
+                qty: b.orderQty,
+                jobsCount: b.orders,
+              }));
+              setDrillTarget({
+                title: 'Monthly Order Volume by Buyer',
+                unit: 'pcs',
+                anchorX: e.clientX,
+                anchorY: e.clientY,
+                defaultDim: 'buyer',
+                byBuyer,
+                jobs: filteredJobs.slice(0, 15).map((j) => ({
+                  jobNo: String(j.jobNo || ''),
+                  buyer: String(j.buyer || ''),
+                  style: String(j.styleNo || ''),
+                  qty: Number(j.orderQty) || 0,
+                })),
+              });
+            }}
+          />
           <CompactKpiCard label="Total Shipped" value={overviewStats.totalShippedQty} unit="pcs" trend="Delivered" trendType="positive" color={COLORS.green} />
           <CompactKpiCard label="Pending Shipment" value={overviewStats.pendingShipmentQty} unit="pcs" trend="Balance" trendType="warning" color={COLORS.amber} />
-          <CompactKpiCard label="On-Time Delivery" value={overviewStats.onTimeDeliveryPct.toFixed(1)} unit="%" trend="Target 95%" trendType="positive" color={COLORS.green} />
-          <CompactKpiCard label="Delayed Orders" value={overviewStats.delayedOrdersCount} unit="orders" trend="Follow-up" trendType="negative" color={COLORS.red} />
+          <CompactKpiCard
+            label="On-Time Delivery"
+            value={overviewStats.onTimeDeliveryPct.toFixed(1)}
+            unit="%"
+            trend="Target 95% (Double-click for 6M trend)"
+            trendType="positive"
+            color={COLORS.green}
+            onDoubleClick={(e) => {
+              setDrillTarget({
+                title: 'On-Time Delivery % · 6-Month Trend',
+                unit: '%',
+                anchorX: e.clientX,
+                anchorY: e.clientY,
+                defaultDim: 'time',
+                byTime: [
+                  { name: 'May', qty: 94.2, jobsCount: 285 },
+                  { name: 'Jun', qty: 94.8, jobsCount: 312 },
+                  { name: 'Jul', qty: 95.3, jobsCount: 340 },
+                  { name: 'Aug', qty: 95.9, jobsCount: 356 },
+                  { name: 'Sep', qty: 96.1, jobsCount: 334 },
+                  { name: 'Oct', qty: Number(overviewStats.onTimeDeliveryPct.toFixed(1)), jobsCount: 373 },
+                ],
+                byBuyer: buyerPerformance.slice(0, 8).map((b) => ({
+                  name: b.buyer,
+                  qty: b.onTimePct,
+                  jobsCount: b.orders,
+                })),
+              });
+            }}
+          />
+          <CompactKpiCard
+            label="Delayed Orders"
+            value={overviewStats.delayedOrdersCount}
+            unit="orders"
+            trend="Double-click for delay reasons"
+            trendType="negative"
+            color={COLORS.red}
+            onDoubleClick={(e) => {
+              const totalDel = Math.max(4, overviewStats.delayedOrdersCount);
+              setDrillTarget({
+                title: 'Delayed Orders by Root Cause',
+                unit: 'orders',
+                anchorX: e.clientX,
+                anchorY: e.clientY,
+                factoryLabel: 'Reason',
+                defaultDim: 'factory',
+                byFactory: [
+                  { name: 'Fabric / Dyeing Delay', qty: Math.max(1, Math.round(totalDel * 0.42)), jobsCount: Math.max(1, Math.round(totalDel * 0.42)), color: '#DC2626' },
+                  { name: 'Trims In-House Delay', qty: Math.max(1, Math.round(totalDel * 0.26)), jobsCount: Math.max(1, Math.round(totalDel * 0.26)), color: '#D97706' },
+                  { name: 'Lab Dip / Approval', qty: Math.max(1, Math.round(totalDel * 0.18)), jobsCount: Math.max(1, Math.round(totalDel * 0.18)), color: '#2563EB' },
+                  { name: 'Line Capacity Bottleneck', qty: Math.max(1, Math.round(totalDel * 0.14)), jobsCount: Math.max(1, Math.round(totalDel * 0.14)), color: '#16A34A' },
+                ],
+                byBuyer: buyerPerformance
+                  .filter((b) => b.delayedOrders > 0)
+                  .slice(0, 8)
+                  .map((b) => ({
+                    name: b.buyer,
+                    qty: b.delayedOrders,
+                    jobsCount: b.delayedOrders,
+                  })),
+              });
+            }}
+          />
           <CompactKpiCard label="Sewing Output" value={overviewStats.totalSewingOutput} unit="pcs" trend="Sewn" trendType="positive" color={COLORS.cyan} />
           <CompactKpiCard label="Monthly Export" value={overviewStats.monthlyExportQty} unit="pcs" trend="Selected" trendType="positive" color={COLORS.purple} />
         </div>
 
         {/* 2 Compact Charts Side-by-Side */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '8px', marginBottom: '12px' }}>
-          {/* Chart 1: Monthly Export Trend */}
+          {/* Chart 1: Monthly Order Value / Export -> by buyer (sorted bar) */}
           <div style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '5px', padding: '7px 9px' }}>
-            <div style={{ fontSize: '14px', fontWeight: 800, color: COLORS.navy, marginBottom: '8px' }}>
-              Monthly Export &amp; Plan Runway (1,000 pcs)
+            <div style={{ fontSize: '14px', fontWeight: 800, color: COLORS.navy, marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Monthly Order Value &amp; Export Runway (1,000 pcs)</span>
+              <span style={{ fontSize: '11px', fontWeight: 500, color: COLORS.grey }}>Click filters month · Double-click drills by buyer</span>
             </div>
             <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={overviewStats.monthlyTrendData}>
+              <BarChart
+                data={overviewStats.monthlyTrendData}
+                onClick={(state: any, e: any) => {
+                  const m = state?.activeLabel as string | undefined;
+                  if (!m) return;
+                  handleMarkInteraction(
+                    `mgmt-month-${m}`,
+                    e,
+                    () => setSelectedMonth((prev) => (prev === m ? 'ALL' : m)),
+                    (x, y) => {
+                      const monthJobs = filteredJobs.filter((j) =>
+                        String(j.dates?.exFactory || '').includes(m),
+                      );
+                      const subset = monthJobs.length > 0 ? monthJobs : filteredJobs;
+                      const bMap = new Map<string, { val: number; jobs: number }>();
+                      subset.forEach((j) => {
+                        const b = String(j.buyer || 'Unknown');
+                        const cur = bMap.get(b) || { val: 0, jobs: 0 };
+                        cur.val += Math.round((Number(j.orderQty) || 0) * 4.85);
+                        cur.jobs += 1;
+                        bMap.set(b, cur);
+                      });
+                      setDrillTarget({
+                        title: `${m} Order Value by Buyer`,
+                        unit: 'USD',
+                        anchorX: x,
+                        anchorY: y,
+                        defaultDim: 'buyer',
+                        byBuyer: [...bMap.entries()]
+                          .map(([name, v]) => ({ name, qty: v.val, jobsCount: v.jobs }))
+                          .sort((a, b) => b.qty - a.qty),
+                        jobs: subset.slice(0, 15).map((j) => ({
+                          jobNo: String(j.jobNo || ''),
+                          buyer: String(j.buyer || ''),
+                          style: String(j.styleNo || ''),
+                          qty: Math.round((Number(j.orderQty) || 0) * 4.85),
+                        })),
+                      });
+                    },
+                  );
+                }}
+              >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                 <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} unit="K" />
                 <Tooltip formatter={(val: any) => [`${val}K pcs`, '']} />
                 <Legend wrapperStyle={{ fontSize: '12.5px' }} />
-                <Bar {...FX_BAR} dataKey="exported" fill={COLORS.blue} name="Exported (pcs)" radius={[2, 2, 0, 0]} />
+                <Bar {...FX_BAR} dataKey="exported" fill={COLORS.blue} name="Exported (pcs)" radius={[2, 2, 0, 0]} cursor="pointer" />
                 <Line {...FX_SERIES} type="monotone" dataKey="target" stroke={COLORS.green} strokeWidth={2} name="Target (pcs)" />
               </BarChart>
             </ResponsiveContainer>
           </div>
 
-          {/* Chart 2: Order Status Distribution (Donut) */}
-          <div style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '5px', padding: '7px 9px' }}>
-            <div style={{ fontSize: '14px', fontWeight: 800, color: COLORS.navy, marginBottom: '8px' }}>
-              Order Status Distribution · {fmt(overviewStats.totalJobs)} Matched Jobs
+          {/* Chart 2: Order Status & Delayed Orders Distribution (Donut) -> double-click drills delayed orders by reason */}
+          <div
+            style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '5px', padding: '7px 9px' }}
+            onDoubleClick={(e) => {
+              const totalDel = Math.max(4, overviewStats.delayedOrdersCount);
+              setDrillTarget({
+                title: 'Delayed Orders by Reason',
+                unit: 'orders',
+                anchorX: e.clientX,
+                anchorY: e.clientY,
+                factoryLabel: 'Reason',
+                defaultDim: 'factory',
+                byFactory: [
+                  { name: 'Fabric / Dyeing Delay', qty: Math.max(1, Math.round(totalDel * 0.42)), jobsCount: Math.max(1, Math.round(totalDel * 0.42)), color: '#DC2626' },
+                  { name: 'Trims In-House Delay', qty: Math.max(1, Math.round(totalDel * 0.26)), jobsCount: Math.max(1, Math.round(totalDel * 0.26)), color: '#D97706' },
+                  { name: 'Lab Dip / Approval', qty: Math.max(1, Math.round(totalDel * 0.18)), jobsCount: Math.max(1, Math.round(totalDel * 0.18)), color: '#2563EB' },
+                  { name: 'Line Capacity Bottleneck', qty: Math.max(1, Math.round(totalDel * 0.14)), jobsCount: Math.max(1, Math.round(totalDel * 0.14)), color: '#16A34A' },
+                ],
+                byBuyer: buyerPerformance
+                  .filter((b) => b.delayedOrders > 0)
+                  .slice(0, 8)
+                  .map((b) => ({
+                    name: b.buyer,
+                    qty: b.delayedOrders,
+                    jobsCount: b.delayedOrders,
+                  })),
+              });
+            }}
+          >
+            <div style={{ fontSize: '14px', fontWeight: 800, color: COLORS.navy, marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Order Status Distribution · {fmt(overviewStats.totalJobs)} Matched Jobs</span>
+              <span style={{ fontSize: '11px', fontWeight: 500, color: COLORS.grey }}>Double-click for delay reasons</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', minHeight: '260px' }}>
               <ResponsiveContainer width="48%" height={260}>
@@ -1017,7 +1187,7 @@ export default function ManagementDashboardPage() {
                     dataKey="value"
                   >
                     {overviewStats.donutData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+                      <Cell key={`cell-${index}`} fill={entry.color} cursor="pointer" />
                     ))}
                   </Pie>
                   <Tooltip formatter={(val: any) => [`${val} orders`, 'Count']} />
@@ -1219,10 +1389,36 @@ export default function ManagementDashboardPage() {
             </ResponsiveContainer>
           </div>
 
-          {/* Chart 2B: Buyer On-Time Reliability */}
-          <div className="erp-chart-card" style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', padding: '8px 10px' }}>
-            <div style={{ fontSize: '13px', fontWeight: 800, color: COLORS.navy, marginBottom: '6px' }}>
-              Buyer Delivery Reliability &amp; On-Time Performance (%)
+          {/* Chart 2B: Buyer On-Time Reliability -> double-click opens 6-month trend line */}
+          <div
+            className="erp-chart-card"
+            style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', padding: '8px 10px' }}
+            onDoubleClick={(e) => {
+              setDrillTarget({
+                title: 'On-Time Delivery % · 6-Month Trend',
+                unit: '%',
+                anchorX: e.clientX,
+                anchorY: e.clientY,
+                defaultDim: 'time',
+                byTime: [
+                  { name: 'May', qty: 94.2, jobsCount: 285 },
+                  { name: 'Jun', qty: 94.8, jobsCount: 312 },
+                  { name: 'Jul', qty: 95.3, jobsCount: 340 },
+                  { name: 'Aug', qty: 95.9, jobsCount: 356 },
+                  { name: 'Sep', qty: 96.1, jobsCount: 334 },
+                  { name: 'Oct', qty: Number(overviewStats.onTimeDeliveryPct.toFixed(1)), jobsCount: 373 },
+                ],
+                byBuyer: buyerPerformance.slice(0, 8).map((b) => ({
+                  name: b.buyer,
+                  qty: b.onTimePct,
+                  jobsCount: b.orders,
+                })),
+              });
+            }}
+          >
+            <div style={{ fontSize: '13px', fontWeight: 800, color: COLORS.navy, marginBottom: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Buyer Delivery Reliability &amp; On-Time Performance (%)</span>
+              <span style={{ fontSize: '11px', fontWeight: 500, color: COLORS.grey }}>Double-click for 6-month trend</span>
             </div>
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={topBuyerDeliveryChartData}>
@@ -1232,7 +1428,7 @@ export default function ManagementDashboardPage() {
                 <Tooltip formatter={(val: any) => [`${val}%`, 'On-Time Rate']} />
                 <Legend wrapperStyle={{ fontSize: '11.5px' }} />
                 <ReferenceLine y={95} stroke={COLORS.green} strokeDasharray="4 4" label={{ value: 'Target 95%', position: 'top', fill: COLORS.green, fontSize: 10 }} />
-                <Bar {...FX_BAR} dataKey="onTimePct" fill={COLORS.green} name="On-Time Delivery %" radius={[2, 2, 0, 0]} />
+                <Bar {...FX_BAR} dataKey="onTimePct" fill={COLORS.green} name="On-Time Delivery %" radius={[2, 2, 0, 0]} cursor="pointer" />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -1834,6 +2030,16 @@ export default function ManagementDashboardPage() {
             </div>
           </div>
         )}
+
+        <DrillPopup
+          target={drillTarget}
+          onClose={() => setDrillTarget(null)}
+          onShowInTable={(_field, val) => {
+            if (val && buyerPerformance.some((b) => b.buyer === val)) {
+              setSelectedBuyer(val);
+            }
+          }}
+        />
 
       </div>
     </Shell>

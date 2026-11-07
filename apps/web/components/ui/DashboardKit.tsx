@@ -1,6 +1,6 @@
 'use client';
 // NOS DashboardKit — CrossFilterProvider, SlicerBar, DrillPopup & standardized 180/260 chart boxes (docs/UX-STANDARD.md §6, §7)
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BarChart,
   Bar,
@@ -27,7 +27,7 @@ export const NOS_CHART_COLORS = {
   balance: 'var(--nos-balance)',   // #DC2626 red
   mid: 'var(--nos-mid)',           // #D97706 amber
   ink: 'var(--nos-ink-2)',
-  palette: ['#2563EB', '#16A34A', '#D97706', '#DC2626', '#0284C7', '#4F46E5'],
+  palette: ['#2563EB', '#16A34A', '#D97706', '#DC2626'],
 };
 
 export function ChartBox({
@@ -37,6 +37,7 @@ export function ChartBox({
   qty,
   unit,
   legend,
+  onDoubleClick,
 }: {
   size?: 'sm' | 'lg';
   children: React.ReactNode;
@@ -44,9 +45,10 @@ export function ChartBox({
   qty?: number;
   unit?: string;
   legend?: { label: string; color: string }[];
+  onDoubleClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
 }) {
   return (
-    <div>
+    <div onDoubleClick={onDoubleClick}>
       <div className={size === 'lg' ? 'nos-chart-lg' : 'nos-chart-sm'}>{children}</div>
       {(legend || (jobsCount !== undefined && qty !== undefined && unit)) && (
         <div className="nos-chart-meta">
@@ -85,7 +87,7 @@ interface CrossFilterContextValue {
   isSelected: (field: string, value: string) => boolean;
   /** Returns 1 if no filter is active on `field` OR if `value` is selected; returns 0.3 on click-dimmed marks (never on hover) */
   getMarkOpacity: (field: string, value: string) => number;
-  matches: (row: Record<string, any>) => boolean;
+  matches: (row: Record<string, unknown>) => boolean;
 }
 
 const CrossFilterCtx = createContext<CrossFilterContextValue>({
@@ -116,7 +118,6 @@ export function CrossFilterProvider({
     setFilters((prev) => {
       const exists = prev.some((f) => f.field === field && f.value === value);
       if (exists) return prev.filter((f) => !(f.field === field && f.value === value));
-      // Replace existing filter on same field or add
       return [...prev.filter((f) => f.field !== field), { field, value, label }];
     });
   }, []);
@@ -145,13 +146,13 @@ export function CrossFilterProvider({
     (field: string, value: string) => {
       const fieldFilters = filters.filter((f) => f.field === field);
       if (fieldFilters.length === 0) return 1;
-      return fieldFilters.some((f) => f.value === value) ? 1 : 0.3;
+      return fieldFilters.some((f) => String(f.value).toLowerCase() === String(value).toLowerCase()) ? 1 : 0.3;
     },
     [filters],
   );
 
   const matches = useCallback(
-    (row: Record<string, any>) => {
+    (row: Record<string, unknown>) => {
       if (filters.length === 0) return true;
       return filters.every((f) => {
         const rv = row[f.field];
@@ -371,15 +372,20 @@ export function SlicerBar({
 }
 
 /* ============================================================================
- * 2c. DrillPopup (Square bubble ABOVE clicked mark, auto chart type, 2-3 breakdown switchers)
+ * 2c. DrillPopup (Square bubble ABOVE clicked mark, opens on DOUBLE-CLICK,
+ *     auto chart type: 2-5 donut, >=6 sorted horizontal bar, time -> trend line,
+ *     last level -> job list; 2-3 breakdown switchers; outside click + Esc + ×)
  * ============================================================================ */
-export type DrillBreakdownDimension = 'factory' | 'buyer' | 'job' | 'time';
+export type DrillBreakdownDimension = 'factory' | 'buyer' | 'time' | 'job';
 
 export interface DrillDatum {
   name: string;
   qty: number;
   jobsCount?: number;
   style?: string;
+  color?: string;
+  filterField?: string;
+  filterValue?: string;
 }
 
 export interface DrillPopupTarget {
@@ -389,10 +395,55 @@ export interface DrillPopupTarget {
   anchorY: number;
   filterField?: string;
   filterValue?: string;
+  factoryLabel?: string;
+  buyerLabel?: string;
+  timeLabel?: string;
   byFactory?: DrillDatum[];
   byBuyer?: DrillDatum[];
   byTime?: DrillDatum[];
   jobs?: { jobNo: string; buyer: string; style?: string; qty: number }[];
+  defaultDim?: DrillBreakdownDimension;
+}
+
+/**
+ * Helper hook for charts: single-click triggers cross-filter (`onSingleClick`),
+ * double-click (two clicks within 260ms OR native dblclick) opens `DrillPopup` (`onDoubleClick`).
+ */
+export function useChartDrillGesture() {
+  const clickTimerRef = useRef<{ time: number; key: string; x: number; y: number } | null>(null);
+
+  const handleMarkInteraction = useCallback(
+    (
+      key: string,
+      event: { clientX?: number; clientY?: number } | React.MouseEvent | undefined,
+      onSingleClick: () => void,
+      onDoubleClick: (anchorX: number, anchorY: number) => void,
+    ) => {
+      const now = Date.now();
+      const x =
+        event && typeof event.clientX === 'number' && event.clientX > 0
+          ? event.clientX
+          : typeof window !== 'undefined'
+          ? window.innerWidth / 2
+          : 640;
+      const y =
+        event && typeof event.clientY === 'number' && event.clientY > 0
+          ? event.clientY
+          : 340;
+
+      const prev = clickTimerRef.current;
+      if (prev && prev.key === key && now - prev.time < 320) {
+        clickTimerRef.current = null;
+        onDoubleClick(x, y);
+      } else {
+        clickTimerRef.current = { time: now, key, x, y };
+        onSingleClick();
+      }
+    },
+    [],
+  );
+
+  return { handleMarkInteraction };
 }
 
 export function DrillPopup({
@@ -404,22 +455,56 @@ export function DrillPopup({
   onClose: () => void;
   onShowInTable?: (filterField?: string, filterValue?: string) => void;
 }) {
-  const [dim, setDim] = useState<'factory' | 'buyer' | 'job'>('factory');
+  const { setFilter } = useCrossFilter();
+  const bubbleRef = useRef<HTMLDivElement>(null);
+  const [dim, setDim] = useState<DrillBreakdownDimension>('factory');
+
+  const availableDims = useMemo(() => {
+    if (!target) return [] as { id: DrillBreakdownDimension; label: string }[];
+    const list: { id: DrillBreakdownDimension; label: string }[] = [];
+    if (target.byFactory && target.byFactory.length > 0) {
+      list.push({ id: 'factory', label: target.factoryLabel || 'Factory' });
+    }
+    if (target.byBuyer && target.byBuyer.length > 0) {
+      list.push({ id: 'buyer', label: target.buyerLabel || 'Buyer' });
+    }
+    if (target.byTime && target.byTime.length > 0) {
+      list.push({ id: 'time', label: target.timeLabel || 'Time' });
+    }
+    if (target.jobs && target.jobs.length > 0) {
+      list.push({ id: 'job', label: 'Job' });
+    }
+    return list;
+  }, [target]);
 
   useEffect(() => {
     if (!target) return;
-    if (target.byFactory && target.byFactory.length > 0) setDim('factory');
-    else if (target.byBuyer && target.byBuyer.length > 0) setDim('buyer');
-    else setDim('job');
-  }, [target]);
+    if (target.defaultDim && availableDims.some((d) => d.id === target.defaultDim)) {
+      setDim(target.defaultDim);
+    } else if (availableDims.length > 0) {
+      setDim(availableDims[0].id);
+    } else {
+      setDim('job');
+    }
+  }, [target, availableDims]);
 
+  // Close on Escape and outside click
   useEffect(() => {
     if (!target) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
+    const onMouseDown = (e: MouseEvent) => {
+      if (bubbleRef.current && !bubbleRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onMouseDown);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onMouseDown);
+    };
   }, [target, onClose]);
 
   if (!target) return null;
@@ -429,30 +514,77 @@ export function DrillPopup({
       ? target.byFactory || []
       : dim === 'buyer'
       ? target.byBuyer || []
+      : dim === 'time'
+      ? target.byTime || []
       : (target.jobs || []).map((j) => ({
           name: `${j.buyer} ${j.jobNo}`,
           qty: j.qty,
           jobsCount: 1,
           style: j.style,
+          filterField: 'jobNo',
+          filterValue: j.jobNo,
         }));
 
   const totalQty = currentItems.reduce((s, d) => s + (Number(d.qty) || 0), 0);
   const totalJobs =
     (target.jobs && target.jobs.length) ||
-    currentItems.reduce((s, d) => s + (d.jobsCount || 1), 0);
+    currentItems.reduce((s, d) => s + (d.jobsCount ?? 0), 0);
 
-  // Position bubble directly ABOVE clicked mark unless anchorY < 290
-  const bubbleWidth = 340;
-  const bubbleHeight = 270;
-  const vw = typeof window !== 'undefined' ? window.innerWidth : 1200;
-  const placeAbove = target.anchorY > bubbleHeight + 24;
-  const left = Math.max(12, Math.min(vw - bubbleWidth - 12, target.anchorX - bubbleWidth / 2));
-  const top = placeAbove ? Math.max(12, target.anchorY - bubbleHeight - 12) : target.anchorY + 14;
-  const arrowLeft = Math.max(18, Math.min(bubbleWidth - 24, target.anchorX - left - 5));
+  // Square bubble directly ABOVE clicked mark unless there is no room at the top of the page
+  const bubbleSize = 330;
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 1366;
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 768;
+  const placeAbove = target.anchorY >= bubbleSize + 18;
+  const left = Math.max(12, Math.min(vw - bubbleSize - 12, target.anchorX - bubbleSize / 2));
+  const top = placeAbove
+    ? Math.max(12, target.anchorY - bubbleSize - 12)
+    : Math.min(vh - bubbleSize - 12, target.anchorY + 14);
+  const arrowLeft = Math.max(18, Math.min(bubbleSize - 24, target.anchorX - left - 5));
+
+  const formatDatumSummary = (d: DrillDatum) => {
+    const valStr = `${fmtNum(Number(d.qty.toFixed(1)))} ${target.unit}`;
+    if (d.jobsCount !== undefined && d.jobsCount > 0) {
+      return `${ fmtJobsQty(d.jobsCount, Number(d.qty.toFixed(1)), target.unit) }`;
+    }
+    return valStr;
+  };
+
+  // Never a popup inside a popup: clicking inside the popup filters the table and closes
+  const handleInnerItemClick = (item: DrillDatum) => {
+    const fField =
+      item.filterField ||
+      (dim === 'buyer' ? 'buyer' : dim === 'factory' ? target.filterField || 'factory' : target.filterField);
+    const fVal = item.filterValue || item.name;
+    if (fField && fVal) {
+      setFilter(fField, fVal, item.name);
+      onShowInTable?.(fField, fVal);
+    } else if (target.filterField && target.filterValue) {
+      setFilter(target.filterField, target.filterValue, target.title);
+      onShowInTable?.(target.filterField, target.filterValue);
+    } else {
+      onShowInTable?.(fField, fVal);
+    }
+    onClose();
+  };
+
+  const handleShowInTableClick = () => {
+    if (target.filterField && target.filterValue) {
+      setFilter(target.filterField, target.filterValue, target.title);
+    }
+    onShowInTable?.(target.filterField, target.filterValue);
+    if (typeof document !== 'undefined') {
+      const gridEl = document.querySelector('.nos-grid-wrap');
+      if (gridEl) gridEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    onClose();
+  };
+
+  const sortedBars = [...currentItems].sort((a, b) => b.qty - a.qty).slice(0, 8);
 
   return (
     <div className="nos-drill-backdrop" onClick={onClose}>
       <div
+        ref={bubbleRef}
         className={`nos-drill-bubble ${placeAbove ? 'above' : 'below'}`}
         style={{ left, top }}
         onClick={(e) => e.stopPropagation()}
@@ -464,7 +596,11 @@ export function DrillPopup({
         <div className="nos-drill-hd">
           <div>
             <div className="nos-drill-title">{target.title}</div>
-            <div className="nos-drill-sub">{fmtJobsQty(totalJobs, Math.round(totalQty), target.unit)}</div>
+            <div className="nos-drill-sub">
+              {totalJobs > 0
+                ? fmtJobsQty(totalJobs, Number(totalQty.toFixed(1)), target.unit)
+                : `${fmtNum(Number(totalQty.toFixed(1)))} ${target.unit}`}
+            </div>
           </div>
           <button
             type="button"
@@ -476,6 +612,7 @@ export function DrillPopup({
               cursor: 'pointer',
               fontSize: 16,
               lineHeight: 1,
+              padding: '2px 4px',
             }}
             aria-label="Close popup"
           >
@@ -483,108 +620,188 @@ export function DrillPopup({
           </button>
         </div>
 
-        {/* 2-3 Breakdown Switcher Buttons */}
-        <div className="nos-drill-switch" role="tablist">
-          {target.byFactory && target.byFactory.length > 0 && (
-            <button
-              type="button"
-              className={dim === 'factory' ? 'active' : ''}
-              onClick={() => setDim('factory')}
-            >
-              Factory
-            </button>
-          )}
-          {target.byBuyer && target.byBuyer.length > 0 && (
-            <button
-              type="button"
-              className={dim === 'buyer' ? 'active' : ''}
-              onClick={() => setDim('buyer')}
-            >
-              Buyer
-            </button>
-          )}
-          <button
-            type="button"
-            className={dim === 'job' ? 'active' : ''}
-            onClick={() => setDim('job')}
-          >
-            Job
-          </button>
-        </div>
-
-        {/* Auto-selected chart inside popup:
-            - dim === 'job' -> job list (last level)
-            - 2..5 parts -> donut
-            - >5 items -> sorted bar */}
-        {dim === 'job' ? (
-          <div className="nos-drill-jobs">
-            {(target.jobs || currentItems).slice(0, 12).map((j: any, i) => (
-              <div key={i} className="nos-drill-job-row">
-                <div>
-                  <strong>{j.jobNo ? `${j.buyer} · ${j.jobNo}` : j.name}</strong>
-                  {j.style && (
-                    <span style={{ color: 'var(--nos-ink-3)', marginLeft: 6 }}>{j.style}</span>
-                  )}
-                </div>
-                <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
-                  {fmtNum(Math.round(j.qty))} {target.unit}
-                </span>
-              </div>
+        {/* 2-3 small buttons at the top switch the breakdown (only showing ones that have data) */}
+        {availableDims.length > 1 && (
+          <div className="nos-drill-switch" role="tablist">
+            {availableDims.map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                className={dim === d.id ? 'active' : ''}
+                onClick={() => setDim(d.id)}
+              >
+                {d.label}
+              </button>
             ))}
           </div>
-        ) : currentItems.length >= 2 && currentItems.length <= 5 ? (
-          <div style={{ width: '100%', height: 150 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  {...FX_PIE}
-                  data={currentItems}
-                  dataKey="qty"
-                  nameKey="name"
-                  innerRadius={36}
-                  outerRadius={58}
-                >
-                  {currentItems.map((_, idx) => (
-                    <Cell
-                      key={idx}
-                      fill={NOS_CHART_COLORS.palette[idx % NOS_CHART_COLORS.palette.length]}
-                    />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(v: any, n: any) => [`${fmtNum(Math.round(Number(v)))} ${target.unit}`, n]}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        ) : (
-          <div style={{ width: '100%', height: 150 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={[...currentItems].sort((a, b) => b.qty - a.qty).slice(0, 8)}
-                layout="vertical"
-                margin={{ top: 4, right: 12, left: 8, bottom: 4 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 10 }} />
-                <YAxis type="category" dataKey="name" width={72} tick={{ fontSize: 10 }} />
-                <Tooltip
-                  formatter={(v: any) => [`${fmtNum(Math.round(Number(v)))} ${target.unit}`, 'Qty']}
-                />
-                <Bar {...FX_SERIES} {...FX_BAR} dataKey="qty" fill="#2563EB" radius={[0, 3, 3, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
         )}
+
+        {/* Inner chart chosen by shape of the data:
+            - dim === 'job' -> short job list
+            - dim === 'time' -> trend line
+            - 2..5 parts -> donut
+            - 6 or more parts (or 1 part) -> sorted horizontal bar, biggest first */}
+        <div className="nos-drill-body">
+          {dim === 'job' ? (
+            <div className="nos-drill-jobs">
+              {(target.jobs || []).slice(0, 12).map((j, i) => (
+                <button
+                  key={`${j.jobNo}-${i}`}
+                  type="button"
+                  className="nos-drill-job-row"
+                  onClick={() => {
+                    setFilter('jobNo', j.jobNo, `${j.buyer} ${j.jobNo}`);
+                    onShowInTable?.('jobNo', j.jobNo);
+                    onClose();
+                  }}
+                >
+                  <div style={{ textAlign: 'left', minWidth: 0 }}>
+                    <strong>
+                      {j.buyer} · {j.jobNo}
+                    </strong>
+                    {j.style && (
+                      <span style={{ color: 'var(--nos-ink-3)', marginLeft: 6 }}>{j.style}</span>
+                    )}
+                  </div>
+                  <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    1 job · {fmtNum(Number(j.qty.toFixed(1)))} {target.unit}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : dim === 'time' ? (
+            <div style={{ width: '100%', height: 185 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={currentItems}
+                  margin={{ top: 8, right: 12, left: -12, bottom: 4 }}
+                  onClick={(state: { activePayload?: { payload?: DrillDatum }[] }) => {
+                    const p = state?.activePayload?.[0]?.payload;
+                    if (p) handleInnerItemClick(p);
+                  }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <Tooltip
+                    formatter={(_v: unknown, _n: unknown, item: { payload?: DrillDatum }) => [
+                      item?.payload ? formatDatumSummary(item.payload) : '',
+                      target.title,
+                    ]}
+                  />
+                  <Line
+                    {...FX_SERIES}
+                    type="monotone"
+                    dataKey="qty"
+                    stroke="#2563EB"
+                    strokeWidth={2.2}
+                    dot={{ r: 3.5, fill: '#2563EB' }}
+                    activeDot={{ r: 5, fill: '#2563EB' }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          ) : currentItems.length >= 2 && currentItems.length <= 5 ? (
+            <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr', gap: 8, alignItems: 'center', height: 185 }}>
+              <div style={{ width: '100%', height: 150 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      {...FX_PIE}
+                      data={currentItems}
+                      dataKey="qty"
+                      nameKey="name"
+                      innerRadius={32}
+                      outerRadius={54}
+                      onClick={(data: DrillDatum) => {
+                        if (data) handleInnerItemClick(data);
+                      }}
+                    >
+                      {currentItems.map((entry, idx) => (
+                        <Cell
+                          key={entry.name}
+                          fill={entry.color || NOS_CHART_COLORS.palette[idx % NOS_CHART_COLORS.palette.length]}
+                          cursor="pointer"
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(_v: unknown, n: unknown, item: { payload?: DrillDatum }) => [
+                        item?.payload ? formatDatumSummary(item.payload) : '',
+                        String(n),
+                      ]}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5, overflowY: 'auto', maxHeight: 175 }}>
+                {currentItems.map((item, idx) => (
+                  <button
+                    key={item.name}
+                    type="button"
+                    className="nos-drill-job-row"
+                    onClick={() => handleInnerItemClick(item)}
+                    style={{ padding: '4px 6px' }}
+                  >
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+                      <span
+                        className="nos-chart-swatch"
+                        style={{
+                          background: item.color || NOS_CHART_COLORS.palette[idx % NOS_CHART_COLORS.palette.length],
+                          flexShrink: 0,
+                        }}
+                      />
+                      <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {item.name}
+                      </span>
+                    </span>
+                    <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11, color: 'var(--nos-ink-2)', whiteSpace: 'nowrap' }}>
+                      {formatDatumSummary(item)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div style={{ width: '100%', height: 185 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={sortedBars}
+                  layout="vertical"
+                  margin={{ top: 4, right: 12, left: 6, bottom: 4 }}
+                  onClick={(state: { activePayload?: { payload?: DrillDatum }[] }) => {
+                    const p = state?.activePayload?.[0]?.payload;
+                    if (p) handleInnerItemClick(p);
+                  }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10 }} />
+                  <YAxis type="category" dataKey="name" width={84} tick={{ fontSize: 10 }} />
+                  <Tooltip
+                    formatter={(_v: unknown, _n: unknown, item: { payload?: DrillDatum }) => [
+                      item?.payload ? formatDatumSummary(item.payload) : '',
+                      'Breakdown',
+                    ]}
+                  />
+                  <Bar
+                    {...FX_SERIES}
+                    {...FX_BAR}
+                    dataKey="qty"
+                    fill="#2563EB"
+                    radius={[0, 3, 3, 0]}
+                    cursor="pointer"
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
 
         <div className="nos-drill-ft">
           <button
             type="button"
             className="nos-drill-link"
-            onClick={() => {
-              onShowInTable?.(target.filterField, target.filterValue);
-              onClose();
-            }}
+            onClick={handleShowInTableClick}
           >
             Show these jobs in the table →
           </button>

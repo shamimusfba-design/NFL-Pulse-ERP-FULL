@@ -3,11 +3,12 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import factoryDataRaw from '../data/dyeing-factory-data.json';
+import { fmtNum } from '../lib/format';
 
 function num(v: any) {
   if (v === null || v === undefined || v === '') return '—';
   const n = Number(v);
-  return Number.isFinite(n) ? (Number.isInteger(n) ? n.toLocaleString() : n.toLocaleString(undefined, { maximumFractionDigits: 1 })) : String(v);
+  return Number.isFinite(n) ? fmtNum(n, Number.isInteger(n) ? 0 : 1) : String(v);
 }
 
 type MeetingTab = 
@@ -252,46 +253,72 @@ export function FabricManagementMeetingReview() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      {/* Executive Meeting Header Banner */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          background: 'linear-gradient(135deg, #0f172a, #1e293b)',
-          color: '#fff',
-          borderRadius: '12px',
-          padding: '16px 20px',
-          flexWrap: 'wrap',
-          gap: '12px',
-          boxShadow: '0 4px 16px rgba(15, 23, 42, 0.25)'
-        }}
-      >
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '22px' }}>🧵</span>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <strong style={{ fontSize: '17px', letterSpacing: '0.01em', fontWeight: 800 }}>
-                  Fabric &amp; Dyeing Management Executive Review
-                </strong>
-                <span style={{ fontSize: '10px', background: '#38bdf8', color: '#0f172a', padding: '2px 8px', borderRadius: '12px', fontWeight: 800 }}>
-                  WEEKLY EXECUTIVE DOCKET
-                </span>
-              </div>
-              <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
-                Northern Fashion Ltd. · Kashimpur, Gazipur · Greige Store → 23 Dyeing Winches → Multi-Process → 3-Stage Testing Lab → Cutting Handover
-              </div>
-            </div>
-          </div>
+      {/* MEETING SUB-TABS AT TOP POSITION (Single unified top bar per Task D2) */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className={activeTab === 'EXECUTIVE' ? 'mini-tab active' : 'mini-tab'}
+            onClick={() => setActiveTab('EXECUTIVE')}
+          >
+            📊 Executive Overview
+          </button>
+          <button
+            type="button"
+            className={activeTab === 'YARN_MANAGEMENT' ? 'mini-tab active' : 'mini-tab'}
+            onClick={() => setActiveTab('YARN_MANAGEMENT')}
+          >
+            🧶 Yarn Management &amp; SCM (148,200 kg)
+          </button>
+          <button
+            type="button"
+            className={activeTab === 'GREIGE_STORE' ? 'mini-tab active' : 'mini-tab'}
+            onClick={() => setActiveTab('GREIGE_STORE')}
+          >
+            🏬 Greige Fabric Store Inventory (124,500 kg)
+          </button>
+          <button
+            type="button"
+            className={activeTab === 'WINCH_STATUS' ? 'mini-tab active' : 'mini-tab'}
+            onClick={() => setActiveTab('WINCH_STATUS')}
+          >
+            ⚙️ 23 Dyeing Winches ({fmtNum(totalWinchCapacity)} kg)
+          </button>
+          <button
+            type="button"
+            className={activeTab === 'TESTING_LAB' ? 'mini-tab active' : 'mini-tab'}
+            onClick={() => setActiveTab('TESTING_LAB')}
+          >
+            🧪 3-Stage Testing Lab Pipeline
+          </button>
+          <button
+            type="button"
+            className={activeTab === 'BOTTLENECKS' ? 'mini-tab active' : 'mini-tab'}
+            onClick={() => setActiveTab('BOTTLENECKS')}
+          >
+            ⚠️ RFT Quality &amp; Toppings ({rftLogs.length})
+          </button>
+          <button
+            type="button"
+            className={activeTab === 'BUYER_POSITION' ? 'mini-tab active' : 'mini-tab'}
+            onClick={() => setActiveTab('BUYER_POSITION')}
+          >
+            👔 Buyer-Wise Position ({buyerPositions.length} Brands)
+          </button>
+          <button
+            type="button"
+            className={activeTab === 'MEETING_MINUTES' ? 'mini-tab active' : 'mini-tab'}
+            onClick={() => setActiveTab('MEETING_MINUTES')}
+          >
+            📝 Action Items ({actionItems.length})
+          </button>
         </div>
-
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <button
             type="button"
             className="btn btn-secondary"
             onClick={() => window.print()}
-            style={{ fontSize: '11px', padding: '6px 12px', background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}
+            style={{ fontSize: '11px', padding: '6px 12px' }}
           >
             🖨️ Print Meeting Pack
           </button>
@@ -304,66 +331,6 @@ export function FabricManagementMeetingReview() {
             + Record Action Item
           </button>
         </div>
-      </div>
-
-      {/* MEETING SUB-TABS (MOVED UP TO TOP POSITION) */}
-      <div style={{ display: 'flex', gap: '6px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px', flexWrap: 'wrap' }}>
-        <button
-          type="button"
-          className={activeTab === 'EXECUTIVE' ? 'mini-tab active' : 'mini-tab'}
-          onClick={() => setActiveTab('EXECUTIVE')}
-        >
-          📊 Executive Overview
-        </button>
-        <button
-          type="button"
-          className={activeTab === 'YARN_MANAGEMENT' ? 'mini-tab active' : 'mini-tab'}
-          onClick={() => setActiveTab('YARN_MANAGEMENT')}
-        >
-          🧶 Yarn Management &amp; SCM (148,200 kg)
-        </button>
-        <button
-          type="button"
-          className={activeTab === 'GREIGE_STORE' ? 'mini-tab active' : 'mini-tab'}
-          onClick={() => setActiveTab('GREIGE_STORE')}
-        >
-          🏬 Greige Fabric Store Inventory (124,500 kg)
-        </button>
-        <button
-          type="button"
-          className={activeTab === 'WINCH_STATUS' ? 'mini-tab active' : 'mini-tab'}
-          onClick={() => setActiveTab('WINCH_STATUS')}
-        >
-          ⚙️ 23 Dyeing Winches ({totalWinchCapacity.toLocaleString()} kg)
-        </button>
-        <button
-          type="button"
-          className={activeTab === 'TESTING_LAB' ? 'mini-tab active' : 'mini-tab'}
-          onClick={() => setActiveTab('TESTING_LAB')}
-        >
-          🧪 3-Stage Testing Lab Pipeline
-        </button>
-        <button
-          type="button"
-          className={activeTab === 'BOTTLENECKS' ? 'mini-tab active' : 'mini-tab'}
-          onClick={() => setActiveTab('BOTTLENECKS')}
-        >
-          ⚠️ RFT Quality &amp; Toppings ({rftLogs.length})
-        </button>
-        <button
-          type="button"
-          className={activeTab === 'BUYER_POSITION' ? 'mini-tab active' : 'mini-tab'}
-          onClick={() => setActiveTab('BUYER_POSITION')}
-        >
-          👔 Buyer-Wise Position ({buyerPositions.length} Brands)
-        </button>
-        <button
-          type="button"
-          className={activeTab === 'MEETING_MINUTES' ? 'mini-tab active' : 'mini-tab'}
-          onClick={() => setActiveTab('MEETING_MINUTES')}
-        >
-          📝 Management Meeting Action Items ({actionItems.length})
-        </button>
       </div>
 
       {/* FABRIC FLOW CONVERSION FUNNEL STRIP */}

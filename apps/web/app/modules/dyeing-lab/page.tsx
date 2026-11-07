@@ -3,8 +3,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import Shell from '../../../components/Shell';
-import { DataGrid, GridColumn, RecordPanel } from '../../../components/ui';
-import { fmtDate } from '../../../lib/format';
+import { ActiveFiltersBar, CrossFilterProvider, DataGrid, DrillPopup, DrillPopupSpec, GridColumn, RecordPanel } from '../../../components/ui';
+import { fmtDate, fmtNum } from '../../../lib/format';
 import {
   Palette,
   FlaskConical,
@@ -515,6 +515,83 @@ export default function DyeingLabPage() {
   const reDipRequired = masterRecords.filter(r => r.status === 'RE_DIP_REQUIRED').length;
   const approvalRate = Math.round((approvedDips / totalDips) * 100);
   const pendingRequestsCount = incomingRequests.filter(r => r.status === 'PENDING_ACCEPTANCE').length;
+  const [drill, setDrill] = useState<{ spec: DrillPopupSpec; anchor: DOMRect | null } | null>(null);
+
+  const openLabDipDrill = (
+    title: string,
+    mode: 'ALL' | 'APPROVED' | 'PENDING' | 'REDIP' | 'TENDAY',
+    anchor: DOMRect
+  ) => {
+    const subset = masterRecords.filter((r) => {
+      if (mode === 'APPROVED') return r.status === 'APPROVED';
+      if (mode === 'PENDING') return r.status === 'PENDING_BUYER' || r.status === 'SUBMITTED' || r.status === 'IN_FORMULATION';
+      if (mode === 'REDIP') return r.status === 'RE_DIP_REQUIRED';
+      if (mode === 'TENDAY') return r.inTenDayLoadingPlan && r.status !== 'APPROVED';
+      return true;
+    });
+
+    const byBuyer = Array.from(
+      subset.reduce((acc, r) => {
+        const cur = acc.get(r.buyer) || { value: 0, jobs: 0 };
+        cur.value += 1;
+        cur.jobs += 1;
+        acc.set(r.buyer, cur);
+        return acc;
+      }, new Map<string, { value: number; jobs: number }>())
+    )
+      .map(([key, v]) => ({
+        key,
+        label: key,
+        value: v.value,
+        jobs: v.jobs,
+        tone: mode === 'APPROVED' ? ('done' as const) : mode === 'REDIP' || mode === 'TENDAY' ? ('balance' as const) : ('mid' as const)
+      }))
+      .sort((a, b) => b.value - a.value);
+
+    // Days waiting breakdown for pending / re-dip lab dips
+    const byDaysWaiting = subset
+      .map((r) => {
+        const subTime = new Date(r.submissionDate).getTime();
+        const refTime = new Date('2026-08-25').getTime();
+        const waitDays = Number.isFinite(subTime) ? Math.max(1, Math.round((refTime - subTime) / 86400000)) : 5;
+        return {
+          key: r.buyer,
+          label: `${r.dipNo} · ${r.colorName} (${r.buyer})`,
+          value: waitDays,
+          jobs: 1,
+          tone: waitDays >= 10 ? ('balance' as const) : ('mid' as const)
+        };
+      })
+      .sort((a, b) => b.value - a.value);
+
+    const jobItems = subset.map((r) => ({
+      jobNo: r.jobNo,
+      buyer: r.buyer,
+      style: `${r.dipNo} · ${r.colorName} (Opt ${r.optionCode})`,
+      qty: 1,
+      unit: 'pcs' as const,
+      status: r.status.replace(/_/g, ' '),
+      tone: r.status === 'APPROVED' ? ('done' as const) : r.status === 'RE_DIP_REQUIRED' ? ('balance' as const) : ('mid' as const)
+    }));
+
+    setDrill({
+      anchor,
+      spec: {
+        title: `${title} — By Buyer & Days Waiting`,
+        filterKey: 'buyer',
+        filterValue: mode,
+        unit: 'pcs',
+        totalValue: subset.length,
+        totalJobs: subset.length,
+        defaultDimension: 'buyer',
+        dimensions: [
+          { dimension: 'buyer', label: 'By Buyer', items: byBuyer },
+          { dimension: 'factory', label: 'Days Waiting', items: byDaysWaiting },
+          { dimension: 'job', label: 'Shades / Jobs', jobs: jobItems }
+        ]
+      }
+    });
+  };
 
   // Filter Lists
   const buyersList = useMemo(() => Array.from(new Set(masterRecords.map(r => r.buyer))), [masterRecords]);
@@ -644,153 +721,112 @@ export default function DyeingLabPage() {
   };
 
   const handleResetDefaults = () => {
-    if (confirm('Reset Dyeing Lab records to standard factory default?')) {
-      setMasterRecords(INITIAL_MASTER_RECORDS);
-      setIncomingRequests(INITIAL_INCOMING_REQUESTS);
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('nfl_dyeing_lab_v2');
-        localStorage.removeItem('nfl_dyeing_requests_v2');
-      }
+    setMasterRecords(INITIAL_MASTER_RECORDS);
+    setIncomingRequests(INITIAL_INCOMING_REQUESTS);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('nfl_dyeing_lab_v2');
+      localStorage.removeItem('nfl_dyeing_requests_v2');
     }
+    setEntrySuccessMessage('Dyeing Lab records restored to factory baseline.');
   };
 
   return (
-    <Shell
-      title="Dyeing Lab (Dyeing Lab)"
-      eyebrow="SMS / Sample Stage Shade Approvals, Lab Dip Formulations & 10-Day Machine Loading Gate"
-    >
+    <Shell title="Dyeing Lab">
+      <CrossFilterProvider>
       {/* =========================================================================
-          TOP BANNER & NAVIGATION SUB-MENU
+          SINGLE CLEAN SUB-MENU & HEADER BAR (D2)
          ========================================================================= */}
-      <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 10, padding: '16px 20px', marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ background: '#0F274E', color: '#38BDF8', padding: '3px 8px', borderRadius: 6, fontSize: 11.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                Pre-Dyeing Shade Lab
-              </span>
-              <span style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', padding: '3px 8px', borderRadius: 6, fontSize: 11.5, fontWeight: 700 }}>
-                Datacolor Spectro ΔE Matcher
-              </span>
-              {tenDayAtRiskJobs.length > 0 && (
-                <span style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA', padding: '3px 8px', borderRadius: 6, fontSize: 11.5, fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  <Flame size={13} /> {tenDayAtRiskJobs.length} Machine Loading Alerts!
-                </span>
-              )}
-            </div>
-            <h1 style={{ fontSize: 22, fontWeight: 900, color: '#0F172A', margin: '6px 0 2px 0' }}>
-              Dyeing Laboratory &amp; Lab Dip Approval System
-            </h1>
-            <p style={{ fontSize: 13, color: '#475569', margin: 0 }}>
-              Initiated at SMS (Sales Sample) stage through bulk order recipe clearance · <strong>10-Day Loading Plan Follow-up:</strong> In-house machines cannot load unapproved batches.
-            </p>
+      <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 10, padding: '14px 18px', marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={() => setActiveTab('REGISTER')}
+              style={{
+                padding: '8px 16px',
+                fontSize: 13,
+                fontWeight: 800,
+                borderRadius: 7,
+                border: activeTab === 'REGISTER' ? '1px solid #0F274E' : '1px solid #E2E8F0',
+                background: activeTab === 'REGISTER' ? '#0F274E' : '#F8FAFC',
+                color: activeTab === 'REGISTER' ? '#FFFFFF' : '#475569',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8
+              }}
+            >
+              <Palette size={15} color={activeTab === 'REGISTER' ? '#38BDF8' : '#64748B'} />
+              1. Master Lab Dip Register ({fmtNum(masterRecords.length)})
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('REQUESTS')}
+              style={{
+                padding: '8px 16px',
+                fontSize: 13,
+                fontWeight: 800,
+                borderRadius: 7,
+                border: activeTab === 'REQUESTS' ? '1px solid #0F274E' : '1px solid #E2E8F0',
+                background: activeTab === 'REQUESTS' ? '#0F274E' : '#F8FAFC',
+                color: activeTab === 'REQUESTS' ? '#FFFFFF' : '#475569',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8
+              }}
+            >
+              <Layers size={15} color={activeTab === 'REQUESTS' ? '#38BDF8' : '#64748B'} />
+              2. SMS &amp; Planning Requisitions ({fmtNum(pendingRequestsCount)})
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('ENTRY')}
+              style={{
+                padding: '8px 16px',
+                fontSize: 13,
+                fontWeight: 800,
+                borderRadius: 7,
+                border: activeTab === 'ENTRY' ? '1px solid #0F274E' : '1px solid #E2E8F0',
+                background: activeTab === 'ENTRY' ? '#0F274E' : '#F8FAFC',
+                color: activeTab === 'ENTRY' ? '#FFFFFF' : '#475569',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8
+              }}
+            >
+              <UploadCloud size={15} color={activeTab === 'ENTRY' ? '#38BDF8' : '#64748B'} />
+              3. Lab Dip Formulation &amp; Spectro Entry
+            </button>
           </div>
 
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <Link
               href="/modules/testing-lab"
               style={{
-                fontSize: 13,
+                fontSize: 12.5,
                 fontWeight: 750,
-                padding: '8px 14px',
+                padding: '7px 12px',
                 background: '#F0FDF4',
                 color: '#15803D',
                 border: '1px solid #86EFAC',
-                borderRadius: 8,
-                textDecoration: 'none',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6
+                borderRadius: 7,
+                textDecoration: 'none'
               }}
             >
-              🧪 Testing Lab (Physical &amp; Fastness) →
+              Testing Lab →
             </Link>
             <button
               type="button"
               onClick={handleResetDefaults}
-              style={{ fontSize: 12, fontWeight: 700, padding: '8px 12px', background: '#F8FAFC', border: '1px solid #CBD5E1', color: '#475569', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+              style={{ fontSize: 12, fontWeight: 700, padding: '7px 11px', background: '#F8FAFC', border: '1px solid #CBD5E1', color: '#475569', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
             >
-              <RefreshCw size={13} /> Defaults
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('ENTRY')}
-              style={{ fontSize: 13, fontWeight: 800, padding: '8px 16px', background: '#0F274E', color: '#FFFFFF', border: 'none', borderRadius: 7, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-            >
-              <Plus size={15} color="#38BDF8" /> + Log Lab Dip
+              <RefreshCw size={12} /> Defaults
             </button>
           </div>
-        </div>
-
-        {/* SUB-MENU TABS */}
-        <div style={{ display: 'flex', gap: 8, marginTop: 16, borderTop: '1px solid #F1F5F9', paddingTop: 14 }}>
-          <button
-            type="button"
-            onClick={() => setActiveTab('REGISTER')}
-            style={{
-              padding: '8px 18px',
-              fontSize: 13.5,
-              fontWeight: 800,
-              borderRadius: 7,
-              border: activeTab === 'REGISTER' ? '1px solid #0F274E' : '1px solid #E2E8F0',
-              background: activeTab === 'REGISTER' ? '#0F274E' : '#F8FAFC',
-              color: activeTab === 'REGISTER' ? '#FFFFFF' : '#475569',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8
-            }}
-          >
-            <Palette size={16} color={activeTab === 'REGISTER' ? '#38BDF8' : '#64748B'} />
-            1. Master Lab Dip Register ({masterRecords.length})
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('REQUESTS')}
-            style={{
-              padding: '8px 18px',
-              fontSize: 13.5,
-              fontWeight: 800,
-              borderRadius: 7,
-              border: activeTab === 'REQUESTS' ? '1px solid #0F274E' : '1px solid #E2E8F0',
-              background: activeTab === 'REQUESTS' ? '#0F274E' : '#F8FAFC',
-              color: activeTab === 'REQUESTS' ? '#FFFFFF' : '#475569',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8
-            }}
-          >
-            <Layers size={16} color={activeTab === 'REQUESTS' ? '#38BDF8' : '#64748B'} />
-            2. SMS &amp; Planning Requisitions ({pendingRequestsCount} Pending)
-            {pendingRequestsCount > 0 && (
-              <span style={{ background: '#DC2626', color: '#FFF', fontSize: 11, padding: '1px 6px', borderRadius: 999, fontWeight: 800 }}>
-                {pendingRequestsCount}
-              </span>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('ENTRY')}
-            style={{
-              padding: '8px 18px',
-              fontSize: 13.5,
-              fontWeight: 800,
-              borderRadius: 7,
-              border: activeTab === 'ENTRY' ? '1px solid #0F274E' : '1px solid #E2E8F0',
-              background: activeTab === 'ENTRY' ? '#0F274E' : '#F8FAFC',
-              color: activeTab === 'ENTRY' ? '#FFFFFF' : '#475569',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8
-            }}
-          >
-            <UploadCloud size={16} color={activeTab === 'ENTRY' ? '#38BDF8' : '#64748B'} />
-            3. Lab Dip Formulation &amp; Spectro Entry
-          </button>
         </div>
       </div>
 
@@ -845,38 +881,60 @@ export default function DyeingLabPage() {
         </div>
       )}
 
+      <ActiveFiltersBar />
+
       {/* =========================================================================
-          KEY KPI TILES (COMPACT & PROFESSIONAL)
+          KEY KPI TILES (Double-click to open DrillPopup: by buyer, then days waiting)
          ========================================================================= */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10, marginBottom: 16 }}>
-        <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderLeft: '4px solid #0284C7', borderRadius: 8, padding: '10px 14px' }}>
+        <div
+          onDoubleClick={(e) => openLabDipDrill('Total Lab Dips', 'ALL', e.currentTarget.getBoundingClientRect())}
+          title="Double-click to drill down by Buyer & Days Waiting"
+          style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderLeft: '4px solid #2563EB', borderRadius: 8, padding: '10px 14px', cursor: 'pointer' }}
+        >
           <div style={{ fontSize: 11.5, fontWeight: 750, color: '#64748B', textTransform: 'uppercase' }}>Total Lab Dips</div>
-          <div style={{ fontSize: 24, fontWeight: 900, color: '#0F172A', marginTop: 2 }}>{totalDips} <span style={{ fontSize: 12, fontWeight: 600, color: '#64748B' }}>shades</span></div>
-          <div style={{ fontSize: 11.5, color: '#64748B' }}>SMS &amp; Bulk combined</div>
+          <div style={{ fontSize: 24, fontWeight: 900, color: '#0F172A', marginTop: 2 }}>{fmtNum(totalDips)} <span style={{ fontSize: 12, fontWeight: 600, color: '#64748B' }}>shades</span></div>
+          <div style={{ fontSize: 11.5, color: '#64748B' }}>SMS &amp; Bulk · Double-click</div>
         </div>
 
-        <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderLeft: '4px solid #16A34A', borderRadius: 8, padding: '10px 14px' }}>
+        <div
+          onDoubleClick={(e) => openLabDipDrill('Approved Lab Dip Standards', 'APPROVED', e.currentTarget.getBoundingClientRect())}
+          title="Double-click to drill down by Buyer & Days Waiting"
+          style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderLeft: '4px solid #16A34A', borderRadius: 8, padding: '10px 14px', cursor: 'pointer' }}
+        >
           <div style={{ fontSize: 11.5, fontWeight: 750, color: '#166534', textTransform: 'uppercase' }}>Approved Standards</div>
-          <div style={{ fontSize: 24, fontWeight: 900, color: '#15803D', marginTop: 2 }}>{approvedDips} <span style={{ fontSize: 12, fontWeight: 600 }}>({approvalRate}%)</span></div>
-          <div style={{ fontSize: 11.5, color: '#166534' }}>Bulk production recipe locked</div>
+          <div style={{ fontSize: 24, fontWeight: 900, color: '#15803D', marginTop: 2 }}>{fmtNum(approvedDips)} <span style={{ fontSize: 12, fontWeight: 600 }}>({approvalRate}%)</span></div>
+          <div style={{ fontSize: 11.5, color: '#166534' }}>Bulk recipe locked · Double-click</div>
         </div>
 
-        <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderLeft: '4px solid #F59E0B', borderRadius: 8, padding: '10px 14px' }}>
+        <div
+          onDoubleClick={(e) => openLabDipDrill('Pending Buyer Review', 'PENDING', e.currentTarget.getBoundingClientRect())}
+          title="Double-click to drill down by Buyer & Days Waiting"
+          style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderLeft: '4px solid #D97706', borderRadius: 8, padding: '10px 14px', cursor: 'pointer' }}
+        >
           <div style={{ fontSize: 11.5, fontWeight: 750, color: '#B45309', textTransform: 'uppercase' }}>Pending Buyer Review</div>
-          <div style={{ fontSize: 24, fontWeight: 900, color: '#B45309', marginTop: 2 }}>{pendingBuyerDips} <span style={{ fontSize: 12, fontWeight: 600 }}>shades</span></div>
-          <div style={{ fontSize: 11.5, color: '#B45309' }}>Courier dispatched to buyer</div>
+          <div style={{ fontSize: 24, fontWeight: 900, color: '#B45309', marginTop: 2 }}>{fmtNum(pendingBuyerDips)} <span style={{ fontSize: 12, fontWeight: 600 }}>shades</span></div>
+          <div style={{ fontSize: 11.5, color: '#B45309' }}>By buyer &amp; days waiting · Double-click</div>
         </div>
 
-        <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderLeft: '4px solid #DC2626', borderRadius: 8, padding: '10px 14px' }}>
+        <div
+          onDoubleClick={(e) => openLabDipDrill('Re-Dip Required', 'REDIP', e.currentTarget.getBoundingClientRect())}
+          title="Double-click to drill down by Buyer & Days Waiting"
+          style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderLeft: '4px solid #DC2626', borderRadius: 8, padding: '10px 14px', cursor: 'pointer' }}
+        >
           <div style={{ fontSize: 11.5, fontWeight: 750, color: '#991B1B', textTransform: 'uppercase' }}>Re-Dip Required</div>
-          <div style={{ fontSize: 24, fontWeight: 900, color: '#DC2626', marginTop: 2 }}>{reDipRequired} <span style={{ fontSize: 12, fontWeight: 600 }}>shades</span></div>
-          <div style={{ fontSize: 11.5, color: '#991B1B' }}>Recipe correction in lab</div>
+          <div style={{ fontSize: 24, fontWeight: 900, color: '#DC2626', marginTop: 2 }}>{fmtNum(reDipRequired)} <span style={{ fontSize: 12, fontWeight: 600 }}>shades</span></div>
+          <div style={{ fontSize: 11.5, color: '#991B1B' }}>Recipe correction · Double-click</div>
         </div>
 
-        <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderLeft: '4px solid #DC2626', borderRadius: 8, padding: '10px 14px' }}>
+        <div
+          onDoubleClick={(e) => openLabDipDrill('10-Day Machine Plan Blocked', 'TENDAY', e.currentTarget.getBoundingClientRect())}
+          title="Double-click to drill down by Buyer & Days Waiting"
+          style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderLeft: '4px solid #DC2626', borderRadius: 8, padding: '10px 14px', cursor: 'pointer' }}
+        >
           <div style={{ fontSize: 11.5, fontWeight: 750, color: '#DC2626', textTransform: 'uppercase' }}>10-Day Plan Blocked</div>
-          <div style={{ fontSize: 24, fontWeight: 900, color: '#DC2626', marginTop: 2 }}>{tenDayAtRiskJobs.length} <span style={{ fontSize: 12, fontWeight: 600 }}>machines</span></div>
-          <div style={{ fontSize: 11.5, color: '#991B1B' }}>Urgent follow-up needed</div>
+          <div style={{ fontSize: 24, fontWeight: 900, color: '#DC2626', marginTop: 2 }}>{fmtNum(tenDayAtRiskJobs.length)} <span style={{ fontSize: 12, fontWeight: 600 }}>machines</span></div>
+          <div style={{ fontSize: 11.5, color: '#991B1B' }}>Urgent follow-up · Double-click</div>
         </div>
       </div>
 
@@ -1905,6 +1963,23 @@ export default function DyeingLabPage() {
           />
         );
       })()}
+
+      {drill && (
+        <DrillPopup
+          spec={drill.spec}
+          anchorRect={drill.anchor}
+          onClose={() => setDrill(null)}
+          onShowInTable={(_key, val) => {
+            setActiveTab('REGISTER');
+            if (buyersList.includes(val)) {
+              setSelectedBuyer(val);
+            } else {
+              setSelectedBuyer('ALL');
+            }
+          }}
+        />
+      )}
+      </CrossFilterProvider>
     </Shell>
   );
 }

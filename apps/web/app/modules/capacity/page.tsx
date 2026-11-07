@@ -25,7 +25,17 @@ import {
   Boxes,
 } from 'lucide-react';
 
-import { DataGrid, GridColumn, RecordPanel } from '../../../components/ui';
+import {
+  ActiveFiltersBar,
+  CrossFilterProvider,
+  DataGrid,
+  DrillBreakdown,
+  DrillPopup,
+  DrillTarget,
+  GridColumn,
+  RecordPanel,
+  useChartDrillGesture,
+} from '../../../components/ui';
 import { fmtDate, fmtNum } from '../../../lib/format';
 
 interface CapacitySlotJobRow {
@@ -72,6 +82,14 @@ function statusPill(loadPct: number, thresholds = { greenMax: 85, amberMax: 100 
 }
 
 export default function CapacityPage() {
+  return (
+    <CrossFilterProvider>
+      <CapacityPageContent />
+    </CrossFilterProvider>
+  );
+}
+
+function CapacityPageContent() {
   const [month, setMonth] = useState<string>('');
   const [data, setData] = useState<any>(null);
   const [policies, setPolicies] = useState<any>(null);
@@ -85,7 +103,67 @@ export default function CapacityPage() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [activeChartBar, setActiveChartBar] = useState<number | null>(null);
+  const [drillTarget, setDrillTarget] = useState<DrillTarget | null>(null);
+
+  function openSectionLoadDrill(entry: any, anchorRect?: DOMRect) {
+    const row = (data?.rows || []).find((r: any) => r.label === entry?.name) || (data?.rows || [])[0];
+    if (!row) return;
+    const slotSlices = (row.slots || []).map((sl: any) => ({
+      key: `slot-${sl.slot}`,
+      label: `Slot ${sl.slot} (Plan ${fmt(sl.demand)} / Cap ${fmt(sl.capacity)} ${row.unit})`,
+      value: Number(sl.loadPct || 0),
+      jobs: Number(sl.jobs || (sl.topJobs || []).length || 0),
+      filterValue: String(sl.slot),
+    }));
+    const jobList = (row.slots || []).flatMap((sl: any) =>
+      (sl.topJobs || []).map((j: any) => ({
+        jobNo: String(j.jobNo || ''),
+        buyer: String(j.buyer || ''),
+        style: String(j.styleNo || ''),
+        qty: Number(j.demand || 0),
+        unit: String(row.unit || 'pcs'),
+        status: `Slot ${sl.slot} · ${fmtDate(j.date)}`,
+      }))
+    );
+    const breakdowns: DrillBreakdown[] = [
+      {
+        dimension: 'time',
+        label: 'By 10-Day Slot (Plan vs Cap %)',
+        chart: 'bar',
+        unit: '%',
+        color: row.monthLoadPct > 100 ? 'red' : row.monthLoadPct > 85 ? 'amber' : 'blue',
+        filterField: 'slot',
+        slices: slotSlices,
+      },
+      {
+        dimension: 'job',
+        label: 'Contributing Jobs',
+        chart: 'jobs',
+        unit: row.unit || 'pcs',
+        color: 'blue',
+        filterField: 'jobNo',
+        slices: [],
+        jobRows: jobList,
+      },
+    ];
+    setDrillTarget({
+      title: `${row.label} — Monthly Load ${row.monthLoadPct}%`,
+      subtitle: `Plan ${fmt(row.monthDemand)} vs Capacity ${fmt(row.monthCapacity)} ${row.unit}`,
+      anchorRect,
+      sourceFilter: { field: 'section', value: row.label, label: row.label },
+      breakdowns,
+    });
+  }
+
+  const barGesture = useChartDrillGesture<any>({
+    onSingleClick: (entry) => {
+      const row = (data?.rows || []).find((r: any) => r.label === entry?.name);
+      if (row && row.slots?.[0]) {
+        setSelectedCell({ section: row.label, slot: row.slots[0] });
+      }
+    },
+    onDoubleClick: (entry, rect) => openSectionLoadDrill(entry, rect),
+  });
 
   async function load(targetMonth?: string) {
     setError('');
@@ -557,16 +635,15 @@ export default function CapacityPage() {
                   dataKey="loadPct"
                   radius={[4, 4, 0, 0]}
                   maxBarSize={50}
-                  onMouseEnter={(_, index) => setActiveChartBar(index)}
-                  onMouseLeave={() => setActiveChartBar(null)}
+                  onClick={(entry: any, _idx: number, e: any) => barGesture.handleClick(entry, e)}
                 >
                   {chartData.map((entry: any, index: number) => (
                     <Cell
                       key={`cell-${index}`}
-                      fill={activeChartBar === index ? entry.color : entry.fill}
+                      fill={entry.color}
                       stroke={entry.color}
                       strokeWidth={1.5}
-                      style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
+                      style={{ cursor: 'pointer' }}
                     />
                   ))}
                 </Bar>
@@ -962,6 +1039,17 @@ export default function CapacityPage() {
             })()}
           </div>
         )}
+        <DrillPopup
+          target={drillTarget}
+          onClose={() => setDrillTarget(null)}
+          onShowInTable={(f) => {
+            const row = (data?.rows || []).find((r: any) => r.label === f.value);
+            if (row && row.slots?.[0]) {
+              setSelectedCell({ section: row.label, slot: row.slots[0] });
+            }
+            setDrillTarget(null);
+          }}
+        />
       </div>
     </Shell>
   );

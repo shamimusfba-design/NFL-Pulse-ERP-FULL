@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
 import Shell from '../../../components/Shell';
+import { DataGrid, GridColumn, DrillPopup, DrillTarget } from '../../../components/ui';
+import { fmtDate, fmtNum } from '../../../lib/format';
 
 export default function EmbroideryModulePage() {
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'INHOUSE' | 'OUTSOURCE' | 'DISPATCH'>('OVERVIEW');
   const [vendorFilter, setVendorFilter] = useState('ALL');
+  const [drillTarget, setDrillTarget] = useState<DrillTarget | null>(null);
 
   // In-House Machines
   const [machines] = useState([
@@ -74,46 +76,140 @@ export default function EmbroideryModulePage() {
     setTimeout(() => setFeedbackMsg(''), 4000);
   }
 
+  const openEmbroideryDrill = (ev: React.MouseEvent, mode: 'load' | 'delivered' | 'balance') => {
+    const rect = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+    const inhouseLoad = machines.reduce((s, m) => s + m.targetPanels, 0);
+    const inhouseDone = machines.reduce((s, m) => s + m.donePanels, 0);
+    const inhouseBal = Math.max(0, inhouseLoad - inhouseDone);
+
+    const outLoad = challans.reduce((s, c) => s + c.sentPanels, 0);
+    const outDone = challans.reduce((s, c) => s + c.rcvdPanels, 0);
+    const outBal = Math.max(0, outLoad - outDone);
+
+    const inhouseVal = mode === 'load' ? inhouseLoad : mode === 'delivered' ? inhouseDone : inhouseBal;
+    const outVal = mode === 'load' ? outLoad : mode === 'delivered' ? outDone : outBal;
+    const tone: 'req' | 'done' | 'balance' = mode === 'load' ? 'req' : mode === 'delivered' ? 'done' : 'balance';
+
+    const byFactory = [
+      {
+        key: 'In-House Embroidery Floor',
+        label: 'In-House Embroidery Floor',
+        value: inhouseVal,
+        jobs: new Set(machines.map((m) => m.jobNo)).size,
+        tone,
+        filter: { key: 'tab', label: 'Source', value: 'OVERVIEW' },
+      },
+      {
+        key: 'Sub-Contract (Outsource)',
+        label: 'Sub-Contract (Outsource)',
+        value: outVal,
+        jobs: new Set(challans.map((c) => c.jobNo)).size,
+        tone,
+        filter: { key: 'tab', label: 'Source', value: 'OUTSOURCE' },
+      },
+    ];
+
+    const buyerMap = new Map<string, { value: number; jobs: Set<string> }>();
+    machines.forEach((m) => {
+      const val = mode === 'load' ? m.targetPanels : mode === 'delivered' ? m.donePanels : Math.max(0, m.targetPanels - m.donePanels);
+      const b = buyerMap.get(m.buyer) || { value: 0, jobs: new Set<string>() };
+      b.value += val;
+      b.jobs.add(m.jobNo);
+      buyerMap.set(m.buyer, b);
+    });
+    challans.forEach((c) => {
+      const val = mode === 'load' ? c.sentPanels : mode === 'delivered' ? c.rcvdPanels : Math.max(0, c.sentPanels - c.rcvdPanels);
+      const b = buyerMap.get(c.buyer) || { value: 0, jobs: new Set<string>() };
+      b.value += val;
+      b.jobs.add(c.jobNo);
+      buyerMap.set(c.buyer, b);
+    });
+
+    const byBuyer = Array.from(buyerMap.entries())
+      .sort((a, b) => b[1].value - a[1].value)
+      .map(([key, v]) => ({
+        key,
+        label: key,
+        value: v.value,
+        jobs: v.jobs.size,
+        tone,
+      }));
+
+    const jobs = [
+      ...machines.map((m) => ({
+        jobNo: m.jobNo,
+        buyer: m.buyer,
+        style: `${m.styleNo} · In-House (${m.id})`,
+        qty: mode === 'load' ? m.targetPanels : mode === 'delivered' ? m.donePanels : Math.max(0, m.targetPanels - m.donePanels),
+        unit: 'pcs' as const,
+        status: m.status,
+      })),
+      ...challans.map((c) => ({
+        jobNo: c.jobNo,
+        buyer: c.buyer,
+        style: `${c.styleNo} · ${c.vendor}`,
+        qty: mode === 'load' ? c.sentPanels : mode === 'delivered' ? c.rcvdPanels : Math.max(0, c.sentPanels - c.rcvdPanels),
+        unit: 'pcs' as const,
+        status: c.status,
+      })),
+    ];
+
+    setDrillTarget({
+      title: `Embroidery ${mode === 'load' ? 'Total Load' : mode === 'delivered' ? 'Delivered Panels' : 'Balance Panels'} — In-House vs Sub-Contract`,
+      subtitle: '2-part donut breakdown (In-House vs Sub-Contract)',
+      anchorRect: rect,
+      total: inhouseVal + outVal,
+      unit: 'pcs',
+      totalJobs: new Set(jobs.map((j) => j.jobNo)).size,
+      tone,
+      byFactory,
+      byBuyer,
+      jobs,
+    });
+  };
+
   return (
     <Shell title="Embroidery Operations" eyebrow="In-House Floor & Outsource / Sub-Contract Tracking">
-      {/* Module Hero */}
-      <section className="dashboard-hero">
-        <div>
-          <div className="hero-kicker">Garment Production · Embroidery Division</div>
-          <h2>In-House &amp; Outsource Embroidery Management</h2>
-          <p>
-            Track in-house 88-head embroidery machines, multi-vendor outsource challans, daily stitch counters, and quality rejection.
-          </p>
-        </div>
-        <div className="hero-actions">
-          <Link href="/" className="btn btn-primary">
-            Executive KPI Board
-          </Link>
-          <Link href="/modules/cad" className="btn btn-ghost">
-            Cutting &amp; Panels
-          </Link>
-        </div>
-      </section>
+      <DrillPopup
+        target={drillTarget}
+        onClose={() => setDrillTarget(null)}
+        onApplyFilter={(f) => {
+          if (f.value === 'OVERVIEW' || f.value === 'OUTSOURCE') setActiveTab(f.value);
+        }}
+        onShowJobsInTable={() => setActiveTab('OUTSOURCE')}
+      />
 
-      {/* KPI Highlight Strip */}
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', margin: '16px 0' }}>
-        <div style={{ background: '#fff', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
-          <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Monthly Total Panels</div>
+      {/* KPI Highlight Strip (Double-click for In-House vs Sub-Contract Donut) */}
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', margin: '0 0 16px' }}>
+        <div
+          onDoubleClick={(ev) => openEmbroideryDrill(ev, 'load')}
+          title="Double-click to drill down Load: In-House vs Sub-Contract (Donut)"
+          style={{ background: '#fff', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.03)', cursor: 'pointer' }}
+        >
+          <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Monthly Total Panels (Load)</div>
           <div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', margin: '2px 0' }}>
             410,000 <span style={{ fontSize: '12px', color: '#64748b' }}>Panels</span>
           </div>
-          <div style={{ fontSize: '11px', color: '#475569' }}>284 Million Stitches</div>
+          <div style={{ fontSize: '11px', color: '#475569' }}>284 Million Stitches · Double-click drill</div>
         </div>
 
-        <div style={{ background: '#fff', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
-          <div style={{ fontSize: '10px', fontWeight: 700, color: '#2563eb', textTransform: 'uppercase' }}>In-House Production</div>
+        <div
+          onDoubleClick={(ev) => openEmbroideryDrill(ev, 'delivered')}
+          title="Double-click to drill down Delivered: In-House vs Sub-Contract (Donut)"
+          style={{ background: '#fff', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.03)', cursor: 'pointer' }}
+        >
+          <div style={{ fontSize: '10px', fontWeight: 700, color: '#2563eb', textTransform: 'uppercase' }}>In-House Production (Delivered)</div>
           <div style={{ fontSize: '22px', fontWeight: 800, color: '#2563eb', margin: '2px 0' }}>
             268,000 <span style={{ fontSize: '12px' }}>(65.4%)</span>
           </div>
           <div style={{ fontSize: '11px', color: '#166534' }}>4 Tajima/Barudan Machines (88 Heads) · 88.4% Eff</div>
         </div>
 
-        <div style={{ background: '#fff', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
+        <div
+          onDoubleClick={(ev) => openEmbroideryDrill(ev, 'balance')}
+          title="Double-click to drill down Balance: In-House vs Sub-Contract (Donut)"
+          style={{ background: '#fff', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.03)', cursor: 'pointer' }}
+        >
           <div style={{ fontSize: '10px', fontWeight: 700, color: '#d97706', textTransform: 'uppercase' }}>Outsource / Sub-Contract</div>
           <div style={{ fontSize: '22px', fontWeight: 800, color: '#b45309', margin: '2px 0' }}>
             142,000 <span style={{ fontSize: '12px' }}>(34.6%)</span>
@@ -281,64 +377,84 @@ export default function EmbroideryModulePage() {
             </span>
           </div>
 
-          <div style={{ background: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', overflowX: 'auto' }}>
-            <table className="data-table" style={{ width: '100%', fontSize: '12px' }}>
-              <thead>
-                <tr>
-                  <th>Challan No</th>
-                  <th>Vendor</th>
-                  <th>Job No</th>
-                  <th>Style</th>
-                  <th>Buyer</th>
-                  <th>Sent (Pcs)</th>
-                  <th>Received (Pcs)</th>
-                  <th>Balance</th>
-                  <th>Rejection</th>
-                  <th>Rate/1K</th>
-                  <th>Return ETA</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredChallans.map((c) => {
-                  const balance = c.sentPanels - c.rcvdPanels;
-                  return (
-                    <tr key={c.id}>
-                      <td><strong>{c.id}</strong></td>
-                      <td>{c.vendor}</td>
-                      <td><strong>#{c.jobNo}</strong></td>
-                      <td>{c.styleNo}</td>
-                      <td>{c.buyer}</td>
-                      <td>{c.sentPanels.toLocaleString()}</td>
-                      <td>{c.rcvdPanels.toLocaleString()}</td>
-                      <td style={{ color: balance > 0 ? '#b45309' : '#15803d', fontWeight: 700 }}>
-                        {balance.toLocaleString()}
-                      </td>
-                      <td style={{ color: c.rejPanels > 0 ? '#dc2626' : '#64748b' }}>
-                        {c.rejPanels} pcs
-                      </td>
-                      <td>${c.ratePerK.toFixed(2)}</td>
-                      <td>{c.returnDate}</td>
-                      <td>
-                        <span
-                          style={{
-                            padding: '3px 8px',
-                            borderRadius: '4px',
-                            fontSize: '10px',
-                            fontWeight: 800,
-                            background: c.status === 'RECEIVED' ? '#dcfce7' : c.status === 'IN_PROCESS' ? '#fef3c7' : '#e0f2fe',
-                            color: c.status === 'RECEIVED' ? '#166534' : c.status === 'IN_PROCESS' ? '#b45309' : '#0369a1'
-                          }}
-                        >
-                          {c.status}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <DataGrid
+            storageKey="embroidery-outsource-challans"
+            exportName="embroidery-outsource-challans"
+            rows={filteredChallans}
+            rowKey={(c) => c.id}
+            frozenColumns={2}
+            emptyText="No outsource embroidery challans match filter"
+            columns={[
+              { key: 'id', header: 'Challan No', width: 120, value: (c) => c.id, render: (c) => <strong>{c.id}</strong> },
+              { key: 'vendor', header: 'Vendor', width: 190, value: (c) => c.vendor },
+              { key: 'jobNo', header: 'Job No', width: 95, value: (c) => c.jobNo, render: (c) => <strong>#{c.jobNo}</strong> },
+              { key: 'styleNo', header: 'Style', width: 115, value: (c) => c.styleNo },
+              { key: 'buyer', header: 'Buyer', width: 110, value: (c) => c.buyer },
+              {
+                key: 'sentPanels',
+                header: 'Sent (pcs)',
+                width: 120,
+                numeric: true,
+                total: true,
+                unit: 'pcs',
+                value: (c) => c.sentPanels,
+                render: (c) => <strong>{fmtNum(c.sentPanels)}</strong>,
+              },
+              {
+                key: 'rcvdPanels',
+                header: 'Received (pcs)',
+                width: 125,
+                numeric: true,
+                total: true,
+                unit: 'pcs',
+                value: (c) => c.rcvdPanels,
+                render: (c) => <strong style={{ color: c.rcvdPanels > 0 ? '#166534' : '#64748b' }}>{fmtNum(c.rcvdPanels)}</strong>,
+              },
+              {
+                key: 'balance',
+                header: 'Balance (pcs)',
+                width: 120,
+                numeric: true,
+                total: true,
+                unit: 'pcs',
+                value: (c) => Math.max(0, c.sentPanels - c.rcvdPanels),
+                render: (c) => {
+                  const balance = Math.max(0, c.sentPanels - c.rcvdPanels);
+                  return <strong style={{ color: balance > 0 ? '#dc2626' : '#15803d' }}>{fmtNum(balance)}</strong>;
+                },
+              },
+              {
+                key: 'rejPanels',
+                header: 'Rejection (pcs)',
+                width: 120,
+                numeric: true,
+                total: true,
+                unit: 'pcs',
+                value: (c) => c.rejPanels,
+              },
+              {
+                key: 'ratePerK',
+                header: 'Rate/1K',
+                width: 95,
+                numeric: true,
+                value: (c) => c.ratePerK,
+                render: (c) => `$${c.ratePerK.toFixed(2)}`,
+              },
+              {
+                key: 'returnDate',
+                header: 'Return ETA',
+                width: 115,
+                value: (c) => c.returnDate,
+                render: (c) => fmtDate(c.returnDate),
+              },
+              {
+                key: 'status',
+                header: 'Status',
+                width: 110,
+                value: (c) => c.status,
+              },
+            ] satisfies GridColumn<(typeof challans)[number]>[]}
+          />
         </section>
       )}
 

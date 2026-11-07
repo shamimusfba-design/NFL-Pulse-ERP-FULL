@@ -10,26 +10,18 @@ import { BuyerQuotaBoard } from '../components/BuyerQuotaBoard';
 import { FactoryKpiPhysicalBoard } from '../components/FactoryKpiPhysicalBoard';
 import { FabricManagementMeetingReview } from '../components/FabricManagementMeetingReview';
 import { ExecutiveKpiDashboard } from '../components/ExecutiveKpiDashboard';
+import { DataGrid, GridColumn } from '../components/ui';
+import { CrossFilterProvider, DrillPopup, DrillTarget } from '../components/ui/DashboardKit';
+import { fmtDate, fmtNum } from '../lib/format';
 import demo2000DataRaw from '../data/demo-2000-master.json';
 
 function pct(a: number, b: number) { return b ? Math.round((a / b) * 100) : 0; }
 function heatClass(v: number) { return v > 100 ? 'heat-red' : v > 85 ? 'heat-amber' : 'heat-green'; }
-function n(v: any) { return Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 1 }); }
+function n(v: any) { return fmtNum(Number(v || 0), 1); }
 
-// 2-digit year date formatter (e.g. 10-Aug-2026 -> 10-Aug-26)
+// 2-digit year date formatter via lib/format
 function d2(dateStr: any) {
-  if (!dateStr || dateStr === '—') return '—';
-  const s = String(dateStr).trim();
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
-    const d = new Date(s);
-    if (!isNaN(d.getTime())) {
-      const day = String(d.getDate()).padStart(2, '0');
-      const m = d.toLocaleString('en-US', { month: 'short' });
-      const yr = String(d.getFullYear()).slice(-2);
-      return `${day}-${m}-${yr}`;
-    }
-  }
-  return s.replace(/20(\d{2})/g, '$1');
+  return fmtDate(dateStr);
 }
 
 // Calculate week string from date
@@ -251,6 +243,52 @@ export default function Dashboard() {
   const [selectedJob, setSelectedJob] = useState<any | null>(null);
   const [modalTab, setModalTab] = useState<'sizes' | 'po' | 'material' | 'production' | 'quality' | 'leadtime' | 'reports'>('sizes');
   const [sizeSubView, setSizeSubView] = useState<'both' | 'sizes' | 'po'>('both');
+  const [drill, setDrill] = useState<DrillTarget | null>(null);
+
+  function openKpiDrill(e: React.MouseEvent, title: string, rowsSubset: any[], colour: string = '#2563EB') {
+    e.stopPropagation();
+    const byBuyerMap = new Map<string, { val: number; jobs: number }>();
+    const byFactMap = new Map<string, { val: number; jobs: number }>();
+    for (const r of rowsSubset) {
+      const b = String(r.buyer || 'Other');
+      const f = String(r.floor || r.factory || 'NFL');
+      const q = Number(r.orderQty || 0);
+      const cb = byBuyerMap.get(b) || { val: 0, jobs: 0 };
+      cb.val += q;
+      cb.jobs += 1;
+      byBuyerMap.set(b, cb);
+      const cf = byFactMap.get(f) || { val: 0, jobs: 0 };
+      cf.val += q;
+      cf.jobs += 1;
+      byFactMap.set(f, cf);
+    }
+    setDrill({
+      title,
+      subtitle: `${fmtNum(rowsSubset.length)} jobs · ${fmtNum(rowsSubset.reduce((s, r) => s + Number(r.orderQty || 0), 0))} pcs`,
+      unit: 'pcs',
+      colour,
+      anchorX: e.clientX,
+      anchorY: e.clientY,
+      byFactory: Array.from(byFactMap.entries())
+        .sort((a, b) => b[1].val - a[1].val)
+        .map(([k, v]) => ({ key: k, label: k, value: v.val, jobs: v.jobs })),
+      byBuyer: Array.from(byBuyerMap.entries())
+        .sort((a, b) => b[1].val - a[1].val)
+        .slice(0, 10)
+        .map(([k, v]) => ({ key: k, label: k, value: v.val, jobs: v.jobs })),
+      byJob: rowsSubset.slice(0, 12).map((r) => ({
+        jobNo: String(r.jobNo),
+        buyer: String(r.buyer),
+        style: String(r.styleNo),
+        qty: Number(r.orderQty || 0),
+        status: String(r.presentStatus || 'Active'),
+      })),
+      onShowInTable: () => {
+        const el = document.querySelector('.operational-register');
+        el?.scrollIntoView({ behavior: 'smooth' });
+      },
+    });
+  }
 
   async function refresh() {
     try {
@@ -398,6 +436,8 @@ export default function Dashboard() {
 
   return (
     <Shell title="Executive Dashboard" eyebrow="Daily Operational Factory Execution">
+      <CrossFilterProvider>
+      <DrillPopup target={drill} onClose={() => setDrill(null)} />
       {/* EXECUTIVE TOP VIEW SWITCHER TABS - DIRECTLY AT THE TOP */}
       <section style={{ display: 'flex', gap: '8px', margin: '4px 0 16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px', flexWrap: 'wrap' }}>
         <button
@@ -530,14 +570,15 @@ export default function Dashboard() {
 
       {mainView === 'REGISTER' && (
         <>
-      {/* CLICKABLE KPI STAT CARDS (Click card to filter dashboard in-place) */}
+      {/* CLICKABLE KPI STAT CARDS (Single click to filter dashboard, double-click for breakdown popup) */}
       <section className="kpi-grid">
         {/* Card 1: Confirmed Jobs */}
         <div
           onClick={() => handleSelectCardFilter('ALL', 'All Confirmed Jobs')}
+          onDoubleClick={(e) => openKpiDrill(e, 'Confirmed Jobs Breakdown', filteredRows, '#2563EB')}
           className={`metric-card accent-blue ${selectedFilterType === 'ALL' ? 'selected-kpi-card' : ''}`}
           style={{ cursor: 'pointer', transition: 'all .2s ease', display: 'flex', flexDirection: 'column' }}
-          title="Click to view all confirmed jobs"
+          title="Click to filter · Double-click for Buyer/Factory breakdown"
         >
           <div className="metric-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>Confirmed Jobs</span>
@@ -550,24 +591,26 @@ export default function Dashboard() {
         {/* Card 2: Order Qty */}
         <div
           onClick={() => handleSelectCardFilter('ORDER_QTY', 'Orders by Volume')}
+          onDoubleClick={(e) => openKpiDrill(e, 'Order Volume Breakdown', filteredRows, '#2563EB')}
           className={`metric-card ${selectedFilterType === 'ORDER_QTY' ? 'selected-kpi-card' : ''}`}
           style={{ cursor: 'pointer', transition: 'all .2s ease', display: 'flex', flexDirection: 'column' }}
-          title="Click to sort by order volume"
+          title="Click to sort by order volume · Double-click for Buyer/Factory breakdown"
         >
           <div className="metric-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>Order Qty</span>
             {selectedFilterType === 'ORDER_QTY' && <span style={{ fontSize: '10px', background: '#0284c7', color: '#fff', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>SORTED</span>}
           </div>
-          <div className="metric-value">{loading ? '…' : totalQty.toLocaleString()}</div>
+          <div className="metric-value">{loading ? '…' : fmtNum(totalQty)}</div>
           <div className="metric-foot">Total volume (pcs)</div>
         </div>
 
         {/* Card 3: Pending Work (Click to filter list to pending items) */}
         <div
           onClick={() => handleSelectCardFilter('PENDING_WORK', 'Pending Work & Tasks')}
+          onDoubleClick={(e) => openKpiDrill(e, 'Pending Work Jobs', filteredRows.slice(0, 20), '#D97706')}
           className={`metric-card accent-amber ${selectedFilterType === 'PENDING_WORK' ? 'selected-kpi-card' : ''}`}
           style={{ cursor: 'pointer', transition: 'all .2s ease', display: 'flex', flexDirection: 'column', boxShadow: selectedFilterType === 'PENDING_WORK' ? '0 0 0 2px #d97706' : undefined }}
-          title="Click to filter 5 pending work items"
+          title="Click to filter pending work items · Double-click for breakdown"
         >
           <div className="metric-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>Pending Work</span>
@@ -584,9 +627,10 @@ export default function Dashboard() {
         {/* Card 4: High / Critical Attention */}
         <div
           onClick={() => handleSelectCardFilter('CRITICAL', 'High / Critical Risk Jobs')}
+          onDoubleClick={(e) => openKpiDrill(e, 'Critical Risk Jobs', allManagementRows.filter((r: any) => r.isCritical), '#DC2626')}
           className={`metric-card accent-red ${selectedFilterType === 'CRITICAL' ? 'selected-kpi-card' : ''}`}
           style={{ cursor: 'pointer', transition: 'all .2s ease', display: 'flex', flexDirection: 'column', boxShadow: selectedFilterType === 'CRITICAL' ? '0 0 0 2px #dc2626' : undefined }}
-          title="Click to filter High / Critical Risk Jobs"
+          title="Click to filter High / Critical Risk Jobs · Double-click for breakdown"
         >
           <div className="metric-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>Critical Items</span>
@@ -599,9 +643,10 @@ export default function Dashboard() {
         {/* Card 5: Shipment Risk Jobs */}
         <div
           onClick={() => handleSelectCardFilter('RISK', 'Shipment Delivery Risk Jobs')}
+          onDoubleClick={(e) => openKpiDrill(e, 'Delivery Risk Jobs', allManagementRows.filter((r: any) => r.isCritical || r.isShipmentRisk), '#DC2626')}
           className={`metric-card ${selectedFilterType === 'RISK' ? 'selected-kpi-card' : ''}`}
           style={{ cursor: 'pointer', transition: 'all .2s ease', display: 'flex', flexDirection: 'column', boxShadow: selectedFilterType === 'RISK' ? '0 0 0 2px #ea580c' : undefined }}
-          title="Click to filter delivery risk jobs"
+          title="Click to filter delivery risk jobs · Double-click for breakdown"
         >
           <div className="metric-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>Delivery Risk</span>
@@ -614,15 +659,16 @@ export default function Dashboard() {
         {/* Card 6: Sewing Achievement */}
         <div
           onClick={() => handleSelectCardFilter('SEWING', 'Sewing Running Jobs')}
+          onDoubleClick={(e) => openKpiDrill(e, 'Sewing Output Breakdown', allManagementRows.filter((r: any) => r.isSewingRunning), '#16A34A')}
           className={`metric-card ${selectedFilterType === 'SEWING' ? 'selected-kpi-card' : ''}`}
           style={{ cursor: 'pointer', transition: 'all .2s ease', display: 'flex', flexDirection: 'column', boxShadow: selectedFilterType === 'SEWING' ? '0 0 0 2px #16a34a' : undefined }}
-          title="Click to filter sewing floor jobs"
+          title="Click to filter sewing floor jobs · Double-click for breakdown"
         >
           <div className="metric-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>Sewing Output</span>
             {selectedFilterType === 'SEWING' && <span style={{ fontSize: '10px', background: '#16a34a', color: '#fff', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>ACTIVE</span>}
           </div>
-          <div className="metric-value" style={{ color: '#16a34a' }}>{sewingProd.toLocaleString()} pcs</div>
+          <div className="metric-value" style={{ color: '#16a34a' }}>{fmtNum(sewingProd)} pcs</div>
           <div className="metric-foot">{achievement}% efficiency</div>
         </div>
       </section>
@@ -963,166 +1009,103 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Data Table with Frozen/Sticky Scroll and Sticky Headers */}
-        <div className="register-table-wrap" data-sticky-horizontal-scroll="true" style={{ maxHeight: '62vh', overflowY: 'auto', overflowX: 'auto', position: 'relative' }}>
-          <table className="register-table">
-            <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: '#f8fafc', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-              <tr>
-                <th>Job No</th>
-                <th>Buyer</th>
-                <th>Style & Item</th>
-                <th style={{ textAlign: 'right' }}>Order Qty</th>
-                <th>Floor/Line</th>
-                <th>Merchandiser</th>
-                <th>Week</th>
-                <th>Ex-Factory</th>
-                <th>Present Status</th>
-                <th style={{ textAlign: 'center' }}>Section Status</th>
-                <th style={{ textAlign: 'center' }}>360 View</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageRows.map((r: any, idx: number) => {
+        {/* Standard DataGrid with frozen first 2 columns, column filter, group, totals row & CSV export */}
+        <DataGrid<any>
+          storageKey="executive-order-register"
+          exportName="executive-order-register"
+          rows={filteredRows}
+          rowKey={(r) => String(r.orderId || r.jobNo)}
+          frozenColumns={2}
+          selectedRowKey={selectedJob ? String(selectedJob.orderId || selectedJob.jobNo) : null}
+          onRowClick={(r) => { setSelectedJob(r); setModalTab('sizes'); }}
+          columns={[
+            {
+              key: 'jobNo',
+              header: 'Job No',
+              width: 120,
+              value: (r) => String(displayJobNo(r.jobNo, r.buyerCode || r.buyer)).replace(/\s+(\d)(st|nd|rd|th)/i, ' ($1$2)'),
+              render: (r) => (
+                <span className="job-link" style={{ fontWeight: 800 }}>
+                  {String(displayJobNo(r.jobNo, r.buyerCode || r.buyer)).replace(/\s+(\d)(st|nd|rd|th)/i, ' ($1$2)')}
+                </span>
+              ),
+            },
+            {
+              key: 'buyer',
+              header: 'Buyer',
+              width: 115,
+              value: (r) => r.buyer,
+            },
+            {
+              key: 'styleNo',
+              header: 'Style & Item',
+              width: 200,
+              value: (r) => `${r.styleNo} ${r.itemDescription || ''}`.trim(),
+              render: (r) => (
+                <div>
+                  <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '11px' }}>{r.styleNo}</div>
+                  <div style={{ fontSize: '9.5px', color: '#64748b' }}>{r.itemDescription || '—'}</div>
+                </div>
+              ),
+            },
+            {
+              key: 'orderQty',
+              header: 'Order Qty',
+              width: 120,
+              align: 'right',
+              numeric: true,
+              total: true,
+              unit: 'pcs',
+              value: (r) => Number(r.orderQty || 0),
+            },
+            {
+              key: 'floorLine',
+              header: 'Floor/Line',
+              width: 115,
+              value: (r) => r.floorLine,
+            },
+            {
+              key: 'merchandiser',
+              header: 'Merchandiser',
+              width: 140,
+              value: (r) => r.merchandiser,
+            },
+            {
+              key: 'shipmentWeek',
+              header: 'Week',
+              width: 85,
+              value: (r) => r.shipmentWeek,
+            },
+            {
+              key: 'exFactoryDate',
+              header: 'Ex-Factory',
+              width: 110,
+              value: (r) => d2(r.exFactoryDate),
+            },
+            {
+              key: 'presentStatus',
+              header: 'Present Status',
+              width: 130,
+              value: (r) => r.presentStatus,
+              render: (r) => <span className="register-status-badge neutral">{r.presentStatus}</span>,
+            },
+            {
+              key: 'sectionStatus',
+              header: 'Section Status',
+              width: 140,
+              align: 'center',
+              value: (r) => r.sectionStatus,
+              render: (r) => {
                 const statusCls = /passed|released|shipped|ok|completed/i.test(r.sectionStatus)
                   ? 'ok'
                   : /hold|attention|fail|late/i.test(r.sectionStatus)
                   ? 'attention'
                   : 'running';
-
-                const displayJob = String(displayJobNo(r.jobNo, r.buyerCode || r.buyer)).replace(/\s+(\d)(st|nd|rd|th)/i, ' ($1$2)');
-                const jobUrl = `/jobs/${encodeURIComponent(r.jobNo)}`;
-
-                return (
-                  <tr
-                    key={r.orderId}
-                    style={{ background: idx % 2 === 0 ? '#fff' : '#fcfdfe', cursor: 'pointer' }}
-                    onClick={() => { setSelectedJob(r); setModalTab('sizes'); }}
-                    title={`Click to open 360 View for Job ${r.jobNo}`}
-                  >
-                    <td style={{ whiteSpace: 'nowrap' }} onClick={e => { e.stopPropagation(); setSelectedJob(r); setModalTab('sizes'); }}>
-                      <button
-                        type="button"
-                        className="job-link"
-                        style={{ background: 'none', border: 0, padding: 0, font: 'inherit', cursor: 'pointer', textAlign: 'left' }}
-                      >
-                        {displayJob}
-                      </button>
-                    </td>
-                    <td style={{ whiteSpace: 'nowrap', color: '#334155' }}>
-                      {r.buyer}
-                    </td>
-                    <td style={{ maxWidth: '220px', minWidth: '150px' }}>
-                      <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '11px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '1.25' }} title={r.styleNo}>
-                        {r.styleNo}
-                      </div>
-                      <div style={{ fontSize: '9.5px', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '1.2' }} title={r.itemDescription}>
-                        {r.itemDescription || '—'}
-                      </div>
-                    </td>
-                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap', fontWeight: 600, color: '#0f172a' }}>
-                      {n(r.orderQty)} <span style={{ fontSize: '9.5px', color: '#94a3b8', fontWeight: 400 }}>pcs</span>
-                    </td>
-                    <td style={{ whiteSpace: 'nowrap', fontWeight: 500, color: '#1e40af' }}>
-                      {r.floorLine}
-                    </td>
-                    <td style={{ whiteSpace: 'nowrap', color: '#475569' }}>
-                      {r.merchandiser}
-                    </td>
-                    <td style={{ whiteSpace: 'nowrap', color: '#475569', fontWeight: 600 }}>
-                      {r.shipmentWeek}
-                    </td>
-                    <td style={{ whiteSpace: 'nowrap', color: '#0f172a' }}>
-                      {d2(r.exFactoryDate)}
-                    </td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
-                      <span className="register-status-badge neutral">{r.presentStatus}</span>
-                    </td>
-                    <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                      <span className={`register-status-badge ${statusCls}`}>
-                        {r.sectionStatus}
-                      </span>
-                    </td>
-                    <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
-                      <button
-                        type="button"
-                        onClick={() => { setSelectedJob(r); setModalTab('sizes'); }}
-                        className="btn btn-primary"
-                        style={{ padding: '3px 9px', fontSize: '11px', fontWeight: 800, borderRadius: '5px', whiteSpace: 'nowrap', cursor: 'pointer' }}
-                      >
-                        360 View ↗
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-
-              {pageRows.length === 0 && (
-                <tr>
-                  <td colSpan={11} style={{ textAlign: 'center', padding: '36px', color: '#94a3b8' }}>
-                    <div style={{ fontSize: '24px', marginBottom: '4px' }}>🔍</div>
-                    <div style={{ fontWeight: 700, color: '#475569' }}>No records found matching your filters</div>
-                    <button
-                      onClick={() => {
-                        setSelectedFilterType('ALL'); setSelectedFilterLabel('All Confirmed Jobs');
-                        setSearchQuery(''); setWeekFilter('ALL'); setMonthFilter('ALL');
-                        setFloorUnitFilter('ALL'); setMerchFilter('ALL'); setPresentStatusFilter('ALL'); setBuyerFilter('ALL');
-                      }}
-                      style={{ marginTop: '8px', border: 0, background: 'transparent', color: '#2563eb', fontWeight: 700, cursor: 'pointer', fontSize: '12px' }}
-                    >
-                      Reset all filters
-                    </button>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination Footer with Working 10, 15, 20, 25, 50, 100 Page Sizes */}
-        <div className="register-pagination">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span>
-              Showing <strong>{(currentPage - 1) * pageSize + (filteredRows.length > 0 ? 1 : 0)}</strong> to <strong>{Math.min(currentPage * pageSize, filteredRows.length)}</strong> of <strong>{filteredRows.length.toLocaleString()}</strong> jobs
-            </span>
-            <span style={{ color: '#cbd5e1' }}>|</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ fontSize: '11px', color: '#64748b' }}>Page size:</span>
-              {[10, 15, 20, 25, 50, 100].map(sz => (
-                <button
-                  type="button"
-                  key={sz}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    changePageSize(sz);
-                  }}
-                  className={`size-pill-btn ${pageSize === sz ? 'active' : ''}`}
-                >
-                  {sz}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <button
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="reg-page-btn"
-            >
-              ← Previous
-            </button>
-            <span style={{ padding: '0 8px', fontWeight: 750, color: '#0f172a' }}>
-              Page {currentPage} of {totalPages}
-            </span>
-            <button
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              className="reg-page-btn"
-            >
-              Next →
-            </button>
-          </div>
-        </div>
+                return <span className={`register-status-badge ${statusCls}`}>{r.sectionStatus}</span>;
+              },
+            },
+          ] satisfies GridColumn<any>[]}
+        />
       </section>
       </>)}
 
@@ -1640,6 +1623,7 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+      </CrossFilterProvider>
     </Shell>
   );
 }

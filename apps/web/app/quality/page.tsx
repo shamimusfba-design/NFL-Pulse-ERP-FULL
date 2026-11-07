@@ -18,7 +18,7 @@ import {
   Cell
 } from 'recharts';
 import { FX_SERIES, FX_BAR, FX_PIE, FxResponsiveContainer as ResponsiveContainer } from '../../components/fx';
-import { DataGrid, GridColumn, RecordPanel } from '../../components/ui';
+import { DataGrid, GridColumn, RecordPanel, DrillPopup, DrillTarget } from '../../components/ui';
 import { fmtDate, fmtNum } from '../../lib/format';
 
 type GarmentSection = 'overview' | 'cutting' | 'printing' | 'embroidery' | 'sewing' | 'finishing' | 'defects';
@@ -212,6 +212,7 @@ export default function GarmentsQualityPage() {
   const [inspections, setInspections] = useState<GarmentQualityInspection[]>(INITIAL_GARMENT_INSPECTIONS);
   const [showModal, setShowModal] = useState(false);
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
+  const [drillTarget, setDrillTarget] = useState<DrillTarget | null>(null);
 
   // Form states
   const [formSection, setFormSection] = useState<'cutting' | 'printing' | 'embroidery' | 'sewing' | 'finishing'>('sewing');
@@ -279,6 +280,75 @@ export default function GarmentsQualityPage() {
     { name: 'Shade / Assortment', value: 10, color: '#7c3aed' }
   ];
 
+  const openQualityDrill = (ev: React.MouseEvent, sectionKey?: string) => {
+    const rect = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+    const list = sectionKey
+      ? inspections.filter((r) => r.section.toLowerCase() === sectionKey.toLowerCase())
+      : inspections;
+
+    const lineMap = new Map<string, { defPcs: number; inspPcs: number; jobs: Set<string> }>();
+    const defectMap = new Map<string, { defPcs: number; jobs: Set<string> }>();
+
+    list.forEach((r) => {
+      const l = lineMap.get(r.lineOrTable) || { defPcs: 0, inspPcs: 0, jobs: new Set<string>() };
+      l.defPcs += r.defectivePcs;
+      l.inspPcs += r.inspectedPcs;
+      l.jobs.add(r.jobNo);
+      lineMap.set(r.lineOrTable, l);
+
+      const d = defectMap.get(r.topDefect) || { defPcs: 0, jobs: new Set<string>() };
+      d.defPcs += r.defectivePcs;
+      d.jobs.add(r.jobNo);
+      defectMap.set(r.topDefect, d);
+    });
+
+    const byFactory = Array.from(lineMap.entries())
+      .map(([key, v]) => ({
+        key,
+        label: key,
+        value: v.inspPcs > 0 ? Number(((v.defPcs / v.inspPcs) * 100).toFixed(2)) : 0,
+        jobs: v.jobs.size,
+        tone: 'balance' as const,
+        filter: { key: 'line', label: 'Line / Table', value: key },
+      }))
+      .sort((a, b) => b.value - a.value);
+
+    const byReason = Array.from(defectMap.entries())
+      .map(([key, v]) => ({
+        key,
+        label: key,
+        value: v.defPcs,
+        jobs: v.jobs.size,
+        tone: 'balance' as const,
+        filter: { key: 'defect', label: 'Defect Type', value: key },
+      }))
+      .sort((a, b) => b.value - a.value);
+
+    const totalInsp = list.reduce((s, r) => s + r.inspectedPcs, 0);
+    const totalDef = list.reduce((s, r) => s + r.defectivePcs, 0);
+    const avgDhu = totalInsp > 0 ? Number(((totalDef / totalInsp) * 100).toFixed(2)) : 0;
+
+    setDrillTarget({
+      title: `${sectionKey ? `${sectionKey} ` : 'Plant '}DHU % — By Line & Defect Type`,
+      subtitle: 'Sorted breakdown by Line/Table DHU % and Defect Type',
+      anchorRect: rect,
+      total: avgDhu,
+      unit: '%',
+      totalJobs: new Set(list.map((r) => r.jobNo)).size,
+      tone: 'balance',
+      byFactory,
+      byReason,
+      jobs: list.map((r) => ({
+        jobNo: r.jobNo,
+        buyer: r.buyer,
+        style: `${r.lineOrTable} · ${r.topDefect}`,
+        qty: r.defectivePcs,
+        unit: 'pcs' as const,
+        status: `${r.dhuPercent}% DHU`,
+      })),
+    });
+  };
+
   const handleAddInspection = (e: React.FormEvent) => {
     e.preventDefault();
     const dhu = ((Number(formDefects) / Number(formInspected)) * 100);
@@ -317,64 +387,16 @@ export default function GarmentsQualityPage() {
       eyebrow="Garment Quality Assurance · Cutting, Printing, Embroidery, Sewing & Finishing"
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-        {/* Top Department Action Banner */}
-        <section
-          style={{
-            background: 'linear-gradient(135deg, #071F42 0%, #173b70 100%)',
-            color: '#ffffff',
-            borderRadius: '12px',
-            padding: '18px 24px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            boxShadow: '0 4px 16px rgba(7, 31, 66, 0.2)'
+        <DrillPopup
+          target={drillTarget}
+          onClose={() => setDrillTarget(null)}
+          onApplyFilter={(f) => setSearchQuery(f.value)}
+          onShowJobsInTable={(jobs) => {
+            if (jobs.length > 0) setSearchQuery(jobs[0].jobNo);
           }}
-        >
-          <div>
-            <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#93c5fd', fontWeight: 800 }}>
-              End-to-End Garment Inspection
-            </div>
-            <h1 style={{ fontSize: '24px', fontWeight: 850, margin: '4px 0', letterSpacing: '-0.02em', color: '#ffffff' }}>
-              Garments Quality Department
-            </h1>
-</div>
+        />
 
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button
-              type="button"
-              onClick={() => setShowModal(true)}
-              className="btn btn-primary"
-              style={{
-                background: '#2563eb',
-                borderColor: '#1d4ed8',
-                padding: '9px 16px',
-                fontSize: '13px',
-                fontWeight: 700,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}
-            >
-              <span>+</span>
-              <span>Log Garment Inspection</span>
-            </button>
-            <Link
-              href="/modules/quality-history"
-              className="btn btn-secondary"
-              style={{
-                fontSize: '13px',
-                fontWeight: 700,
-                background: 'rgba(255,255,255,0.12)',
-                color: '#ffffff',
-                border: '1px solid rgba(255,255,255,0.2)'
-              }}
-            >
-              Job Quality History Register →
-            </Link>
-          </div>
-        </section>
-
-        {/* Five Process-Specific Navigation Section Buttons (Top Sub-navigation per UX Standard) */}
+        {/* Process-Specific Navigation Section Buttons + Action Buttons (Single Top Row per UX Standard D2) */}
         <div
           style={{
             display: 'flex',
@@ -382,7 +404,8 @@ export default function GarmentsQualityPage() {
             gap: '8px',
             borderBottom: '2px solid #e2e8f0',
             paddingBottom: '10px',
-            overflowX: 'auto'
+            overflowX: 'auto',
+            flexWrap: 'wrap'
           }}
         >
           <button
@@ -492,12 +515,38 @@ export default function GarmentsQualityPage() {
               cursor: 'pointer',
               border: 'none',
               background: activeSection === 'defects' ? '#0f172a' : '#f1f5f9',
-              color: activeSection === 'defects' ? '#ffffff' : '#475569',
-              marginLeft: 'auto'
+              color: activeSection === 'defects' ? '#ffffff' : '#475569'
             }}
           >
             📖 Defect Register
           </button>
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={() => setShowModal(true)}
+              className="btn btn-primary"
+              style={{
+                background: '#2563eb',
+                borderColor: '#1d4ed8',
+                padding: '7px 14px',
+                fontSize: '12.5px',
+                fontWeight: 700
+              }}
+            >
+              + Log Garment Inspection
+            </button>
+            <Link
+              href="/modules/quality-history"
+              className="btn btn-secondary"
+              style={{
+                fontSize: '12.5px',
+                fontWeight: 700,
+                padding: '7px 14px'
+              }}
+            >
+              Job Quality History →
+            </Link>
+          </div>
         </div>
 
         {/* High-Level Overall Quality KPIs (Large, Legible 28-32px Figures) */}
@@ -540,7 +589,12 @@ export default function GarmentsQualityPage() {
           </div>
 
           {/* KPI 3: Defect Rate / Plant DHU */}
-          <div className="card" style={{ padding: '16px', borderLeft: '4px solid #d97706' }}>
+          <div
+            className="card"
+            onDoubleClick={(ev) => openQualityDrill(ev)}
+            title="Double-click to drill down DHU % by Line and Defect Type"
+            style={{ padding: '16px', borderLeft: '4px solid #d97706', cursor: 'pointer' }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '13px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
                 Average Plant DHU
@@ -553,7 +607,7 @@ export default function GarmentsQualityPage() {
               {stats.dhu}%
             </div>
             <div style={{ fontSize: '13px', color: '#b45309', fontWeight: 600 }}>
-              {stats.defPcs} Defective Pcs Identified
+              {stats.defPcs} Defective Pcs · Double-click drill
             </div>
           </div>
 
@@ -623,11 +677,16 @@ export default function GarmentsQualityPage() {
         {/* Charts: Section DHU & Defect Pareto (shown on Overview) */}
         {activeSection === 'overview' && (
           <section style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '14px' }}>
-            <div className="card" style={{ padding: '16px' }}>
+            <div
+              className="card"
+              onDoubleClick={(ev) => openQualityDrill(ev)}
+              title="Double-click to drill down DHU % by Line and Defect Type"
+              style={{ padding: '16px', cursor: 'pointer' }}
+            >
               <div style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>
                 Section-wise DHU (%) vs Target Benchmark
               </div>
-<div style={{ height: '240px' }}>
+              <div style={{ height: '240px' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={sectionDHUData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -642,12 +701,17 @@ export default function GarmentsQualityPage() {
               </div>
             </div>
 
-            <div className="card" style={{ padding: '16px' }}>
+            <div
+              className="card"
+              onDoubleClick={(ev) => openQualityDrill(ev)}
+              title="Double-click to drill down by Line and Defect Type"
+              style={{ padding: '16px', cursor: 'pointer' }}
+            >
               <div style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>
                 Top Recurring Garment Defects (%)
               </div>
               <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '14px' }}>
-                Pareto distribution across active sewing & finishing lines
+                Pareto distribution across active sewing &amp; finishing lines · Double-click drill
               </div>
               <div style={{ height: '240px', display: 'flex', alignItems: 'center' }}>
                 <ResponsiveContainer width="100%" height="100%">

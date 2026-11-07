@@ -26,7 +26,17 @@ import {
   TrendingUp,
 } from 'lucide-react';
 
-import { DataGrid, GridColumn, RecordPanel } from '../../../components/ui';
+import {
+  ActiveFiltersBar,
+  CrossFilterProvider,
+  DataGrid,
+  DrillBreakdown,
+  DrillPopup,
+  DrillTarget,
+  GridColumn,
+  RecordPanel,
+  useChartDrillGesture,
+} from '../../../components/ui';
 import { fmtDate, fmtNum } from '../../../lib/format';
 
 interface SubcontractWorkOrderRow {
@@ -54,6 +64,14 @@ function fmt(n: number | string | null | undefined) {
 }
 
 export default function SubcontractPage() {
+  return (
+    <CrossFilterProvider>
+      <SubcontractPageContent />
+    </CrossFilterProvider>
+  );
+}
+
+function SubcontractPageContent() {
   const [orders, setOrders] = useState<SubcontractWorkOrderRow[]>([]);
   const [processFilter, setProcessFilter] = useState<string>('ALL');
   const [search, setSearch] = useState<string>('');
@@ -62,7 +80,106 @@ export default function SubcontractPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const [activeChartBar, setActiveChartBar] = useState<number | null>(null);
+  const [drillTarget, setDrillTarget] = useState<DrillTarget | null>(null);
+
+  function openVendorDrill(
+    label: string,
+    metric: 'sentQty' | 'receivedQty' | 'balanceQty',
+    procName?: string,
+    anchorRect?: DOMRect
+  ) {
+    const scope = procName ? orders.filter((o) => o.processType === procName) : orders;
+    const byVendor = new Map<string, { val: number; jobs: Set<string> }>();
+    const byBuyer = new Map<string, { val: number; jobs: Set<string> }>();
+    for (const o of scope) {
+      const v = Number((o as any)[metric] || 0);
+      const vendor = o.vendorName || 'Vendor';
+      const vc = byVendor.get(vendor) || { val: 0, jobs: new Set<string>() };
+      vc.val += v;
+      vc.jobs.add(o.jobNo);
+      byVendor.set(vendor, vc);
+
+      const buyer = o.buyer || 'Buyer';
+      const bc = byBuyer.get(buyer) || { val: 0, jobs: new Set<string>() };
+      bc.val += v;
+      bc.jobs.add(o.jobNo);
+      byBuyer.set(buyer, bc);
+    }
+
+    const vendorSlices = Array.from(byVendor.entries())
+      .sort((a, b) => b[1].val - a[1].val)
+      .map(([k, v]) => ({
+        key: k,
+        label: k,
+        value: v.val,
+        jobs: v.jobs.size,
+        filterValue: k,
+      }));
+    const buyerSlices = Array.from(byBuyer.entries())
+      .sort((a, b) => b[1].val - a[1].val)
+      .map(([k, v]) => ({
+        key: k,
+        label: k,
+        value: v.val,
+        jobs: v.jobs.size,
+        filterValue: k,
+      }));
+    const jobList = scope.map((o) => ({
+      jobNo: o.jobNo,
+      buyer: o.buyer,
+      style: o.styleNo,
+      qty: Number((o as any)[metric] || 0),
+      unit: 'pcs',
+      status: `${o.vendorName} · ${o.status}`,
+    }));
+
+    const colorTone = metric === 'sentQty' ? 'blue' : metric === 'receivedQty' ? 'green' : 'red';
+    setDrillTarget({
+      title: `Subcontract — ${label}${procName ? ` (${procName})` : ''}`,
+      subtitle: `${scope.length} work orders · By Factory / Vendor`,
+      anchorRect,
+      sourceFilter: { field: 'vendorName', value: procName || label, label },
+      breakdowns: [
+        {
+          dimension: 'factory',
+          label: 'By Factory (Sorted Bar)',
+          chart: 'bar',
+          unit: 'pcs',
+          color: colorTone,
+          filterField: 'vendorName',
+          slices: vendorSlices,
+        },
+        {
+          dimension: 'buyer',
+          label: 'By Buyer',
+          chart: 'bar',
+          unit: 'pcs',
+          color: colorTone,
+          filterField: 'buyer',
+          slices: buyerSlices,
+        },
+        {
+          dimension: 'job',
+          label: 'Job List',
+          chart: 'jobs',
+          unit: 'pcs',
+          color: colorTone,
+          filterField: 'jobNo',
+          slices: [],
+          jobRows: jobList,
+        },
+      ],
+    });
+  }
+
+  const barGesture = useChartDrillGesture<any>({
+    onSingleClick: (entry) => {
+      if (entry?.name) {
+        setProcessFilter((prev) => (prev === entry.name ? 'ALL' : entry.name));
+      }
+    },
+    onDoubleClick: (entry, rect) => openVendorDrill('Sent / Received / Balance', 'sentQty', entry?.name, rect),
+  });
 
   async function loadData() {
     setError('');
@@ -332,12 +449,15 @@ export default function SubcontractPage() {
 
           {/* Card 2: Total Sent */}
           <div
+            onDoubleClick={(e) => openVendorDrill('Total Sent to Vendors', 'sentQty', undefined, (e.currentTarget as HTMLElement).getBoundingClientRect())}
+            title="Double-click to drill down by Factory"
             style={{
               background: '#FFFFFF',
               padding: '12px 14px',
               borderRadius: '8px',
               border: '1px solid #E2E8F0',
               boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+              cursor: 'pointer',
             }}
           >
             <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 650, textTransform: 'uppercase' }}>
@@ -353,12 +473,15 @@ export default function SubcontractPage() {
 
           {/* Card 3: Received OK */}
           <div
+            onDoubleClick={(e) => openVendorDrill('Total Received OK', 'receivedQty', undefined, (e.currentTarget as HTMLElement).getBoundingClientRect())}
+            title="Double-click to drill down by Factory"
             style={{
               background: '#FFFFFF',
               padding: '12px 14px',
               borderRadius: '8px',
               border: '1px solid #E2E8F0',
               boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+              cursor: 'pointer',
             }}
           >
             <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 650, textTransform: 'uppercase' }}>
@@ -395,12 +518,15 @@ export default function SubcontractPage() {
 
           {/* Card 5: Balance at Vendor */}
           <div
+            onDoubleClick={(e) => openVendorDrill('Balance at Vendor', 'balanceQty', undefined, (e.currentTarget as HTMLElement).getBoundingClientRect())}
+            title="Double-click to drill down by Factory"
             style={{
               background: '#FFFFFF',
               padding: '12px 14px',
               borderRadius: '8px',
               border: '1px solid #E2E8F0',
               boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+              cursor: 'pointer',
             }}
           >
             <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 650, textTransform: 'uppercase' }}>
@@ -478,16 +604,15 @@ export default function SubcontractPage() {
                   dataKey="sent"
                   radius={[4, 4, 0, 0]}
                   maxBarSize={45}
-                  onMouseEnter={(_, index) => setActiveChartBar(index)}
-                  onMouseLeave={() => setActiveChartBar(null)}
+                  onClick={(entry: any, _idx: number, e: any) => barGesture.handleClick(entry, e)}
                 >
                   {chartData.map((entry: any, index: number) => (
                     <Cell
                       key={`cell-${index}`}
-                      fill={activeChartBar === index ? entry.color : '#BAE6FD'}
+                      fill={entry.color}
                       stroke={entry.color}
                       strokeWidth={1.5}
-                      style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
+                      style={{ cursor: 'pointer' }}
                     />
                   ))}
                 </Bar>
@@ -933,6 +1058,14 @@ export default function SubcontractPage() {
             </div>
           </div>
         )}
+        <DrillPopup
+          target={drillTarget}
+          onClose={() => setDrillTarget(null)}
+          onShowInTable={(f) => {
+            setSearch(f.value);
+            setDrillTarget(null);
+          }}
+        />
       </div>
     </Shell>
   );

@@ -20,10 +20,10 @@ export function Card({ title, action, children, className = '', style }: {
 }
 
 /* ---------------- KPI card: label, big number, delta, sparkline ---------------- */
-export function KpiCard({ label, value, unit, delta, deltaDirection, series = [], onClick }: {
+export function KpiCard({ label, value, unit, delta, deltaDirection, series = [], onClick, onDoubleClick }: {
   label: string; value: string | number; unit?: string;
   delta?: string; deltaDirection?: 'up' | 'down' | 'flat';
-  series?: number[]; onClick?: () => void;
+  series?: number[]; onClick?: (e: React.MouseEvent<HTMLDivElement>) => void; onDoubleClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
 }) {
   const dir = deltaDirection ?? 'flat';
   const colour = dir === 'up' ? 'var(--nos-done)' : dir === 'down' ? 'var(--nos-balance)' : 'var(--nos-ink-3)';
@@ -33,7 +33,12 @@ export function KpiCard({ label, value, unit, delta, deltaDirection, series = []
     return series.map((v, i) => `${(i / (series.length - 1)) * 76 + 2},${22 - ((v - min) / span) * 18}`).join(' ');
   }, [series]);
   return (
-    <div className="nos-card nos-kpi" onClick={onClick} style={onClick ? { cursor: 'pointer' } : undefined}>
+    <div
+      className="nos-card nos-kpi"
+      onClick={onClick}
+      onDoubleClick={onDoubleClick}
+      style={onClick || onDoubleClick ? { cursor: 'pointer' } : undefined}
+    >
       <span className="nos-kpi-l">{label}</span>
       <span className="nos-kpi-v">{value}{unit ? <span className="u">{unit}</span> : null}</span>
       <span className="nos-kpi-f">
@@ -144,6 +149,7 @@ export {
   SlicerBar,
   getDefaultSlicerState,
   DrillPopup,
+  useChartDrillGesture,
   ChartBox,
   NOS_CHART_COLORS,
 } from './DashboardKit';
@@ -151,6 +157,7 @@ export type {
   CrossFilterItem,
   SlicerState,
   SlicerBarProps,
+  DrillBreakdownDimension,
   DrillDatum,
   DrillPopupTarget,
 } from './DashboardKit';

@@ -116,11 +116,7 @@ const DEPARTMENT_TOP_NAVS: DepartmentNavConfig[] = [
     deptId: 'dyeing',
     deptName: 'Dyeing',
     matchPrefixes: ['/modules/dyeing', '/modules/dyeing-machine-loading', '/modules/fabric-finishing'],
-    subItems: [
-      { name: 'Dyeing Planning', href: '/modules/dyeing' },
-      { name: 'Machine Loading Plan', href: '/modules/dyeing-machine-loading' },
-      { name: 'Finish Fabric Plan', href: '/modules/fabric-finishing' },
-    ]
+    subItems: []
   },
   {
     deptId: 'testing-lab',
@@ -158,20 +154,7 @@ const DEPARTMENT_TOP_NAVS: DepartmentNavConfig[] = [
       '/modules/ie-qco', '/modules/ie-line-performance', '/modules/ie-responsibility',
       '/modules/ie-skill-matrix', '/modules/ie-production-checkpoints', '/modules/ie-reports'
     ],
-    subItems: [
-      { name: 'Overview', href: '/modules/ie-overview' },
-      { name: 'KPI Board', href: '/modules/kpi-board' },
-      { name: 'IE Bulletin', href: '/modules/ie-bulletin' },
-      { name: 'Daily Targets', href: '/modules/ie-daily-target' },
-      { name: 'Daily MIS Import', href: '/modules/ie-mis-import' },
-      { name: 'NPT Loss', href: '/modules/ie-npt' },
-      { name: 'QCO', href: '/modules/ie-qco' },
-      { name: 'Line Performance', href: '/modules/ie-line-performance' },
-      { name: 'Responsibility', href: '/modules/ie-responsibility' },
-      { name: 'Skill Matrix', href: '/modules/ie-skill-matrix' },
-      { name: 'Checkpoints', href: '/modules/ie-production-checkpoints' },
-      { name: 'IE Reports', href: '/modules/ie-reports' },
-    ]
+    subItems: []
   },
   {
     deptId: 'mis-it',
@@ -231,6 +214,24 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
   const isPhone = () => typeof window !== 'undefined' && window.matchMedia('(max-width: 760px)').matches;
 
   // Day / Night mode & personal appearance settings
+  const syncThemeToFrames = (t: 'light' | 'dark') => {
+    if (typeof document === 'undefined') return;
+    document.documentElement.dataset.theme = t;
+    document.documentElement.classList.toggle('dark', t === 'dark');
+    document.querySelectorAll('iframe').forEach((frame) => {
+      try {
+        frame.contentWindow?.postMessage({ type: 'nos-theme', theme: t }, '*');
+        const doc = frame.contentDocument;
+        if (doc?.documentElement) {
+          doc.documentElement.dataset.theme = t;
+          doc.documentElement.classList.toggle('dark', t === 'dark');
+          doc.body?.classList.toggle('night', t === 'dark');
+          doc.body?.classList.toggle('dark', t === 'dark');
+        }
+      } catch {}
+    });
+  };
+
   useEffect(() => {
     let t: 'light' | 'dark' = 'light';
     try {
@@ -239,23 +240,27 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
       applyUserSettingsToDocument({ ...usrSettings, theme: t });
     } catch {}
     setTheme(t);
-    document.documentElement.dataset.theme = t;
+    syncThemeToFrames(t);
+    const timer = setTimeout(() => syncThemeToFrames(t), 600);
 
     const handleStorage = (e: StorageEvent) => {
       if (e.key === 'nos-theme') {
         const val = e.newValue === 'dark' ? 'dark' : 'light';
         setTheme(val);
-        document.documentElement.dataset.theme = val;
+        syncThemeToFrames(val);
       }
     };
     window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, []);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, [pathname]);
 
   const toggleTheme = () => {
     const t = theme === 'dark' ? 'light' : 'dark';
     setTheme(t);
-    document.documentElement.dataset.theme = t;
+    syncThemeToFrames(t);
     try {
       localStorage.setItem('nos-theme', t);
     } catch {}
@@ -675,7 +680,7 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
             </button>
 
             <div>
-              {drillBreadcrumb ? (
+              {drillBreadcrumb && (
                 <div className="page-eyebrow" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   {drillBreadcrumb.map((bc, idx) => (
                     <span key={bc.href} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -686,8 +691,6 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
                     </span>
                   ))}
                 </div>
-              ) : (
-                eyebrow && <div className="page-eyebrow">{eyebrow}</div>
               )}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <h1>{title}</h1>

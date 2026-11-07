@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import Shell from '../../../components/Shell';
-import { Badge, DataGrid, GridColumn, RecordPanel } from '../../../components/ui';
+import { Badge, DataGrid, GridColumn, RecordPanel, DrillPopup, DrillTarget } from '../../../components/ui';
 import { fmtDate, fmtNum } from '../../../lib/format';
 import {
   Package,
@@ -894,6 +894,7 @@ export default function TrimsStorePage() {
   // CHECKLIST | RECEIVE | STOCK | DELIVERY | LOCATION | REUSE | TV
   const [activeTab, setActiveTab] = useState<'CHECKLIST' | 'RECEIVE' | 'STOCK' | 'DELIVERY' | 'LOCATION' | 'REUSE' | 'TV'>('CHECKLIST');
   const [recordJob, setRecordJob] = useState<TrimsChecklistRecord | null>(null);
+  const [drillTarget, setDrillTarget] = useState<DrillTarget | null>(null);
 
   // Master State with LocalStorage Persistence
   const [checklists, setChecklists] = useState<TrimsChecklistRecord[]>(() => {
@@ -1240,6 +1241,91 @@ export default function TrimsStorePage() {
     };
   }, [checklists]);
 
+  const openTrimsPendingDrill = (ev: React.MouseEvent, mode: 'CHECKLIST_PENDING' | 'PARTIAL' | 'FAIL' = 'CHECKLIST_PENDING') => {
+    const rect = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+    const targetJobs = checklists.filter((j) => {
+      if (mode === 'CHECKLIST_PENDING') return j.checklistStatus !== 'ACCEPTED';
+      if (mode === 'PARTIAL') return computeJobStatus(j) === 'Partial Received Due';
+      return j.items.some((it) => it.qualityStatus === 'FAIL');
+    });
+
+    const buyerMap = new Map<string, { value: number; jobs: Set<string> }>();
+    const itemMap = new Map<string, { value: number; jobs: Set<string> }>();
+
+    targetJobs.forEach((j) => {
+      const relevantItems = j.items.filter((it) =>
+        mode === 'FAIL'
+          ? it.qualityStatus === 'FAIL'
+          : mode === 'PARTIAL'
+          ? it.balanceQty > 0
+          : true
+      );
+      const b = buyerMap.get(j.buyer) || { value: 0, jobs: new Set<string>() };
+      b.value += relevantItems.length;
+      b.jobs.add(j.jobNo);
+      buyerMap.set(j.buyer, b);
+
+      relevantItems.forEach((it) => {
+        const key = `${it.category}: ${it.itemName}`;
+        const m = itemMap.get(key) || { value: 0, jobs: new Set<string>() };
+        m.value += mode === 'PARTIAL' ? it.balanceQty : it.totalOrderQty;
+        m.jobs.add(j.jobNo);
+        itemMap.set(key, m);
+      });
+    });
+
+    const tone: 'balance' | 'mid' = mode === 'FAIL' ? 'balance' : 'mid';
+    const byBuyer = Array.from(buyerMap.entries())
+      .sort((a, b) => b[1].value - a[1].value)
+      .map(([key, v]) => ({
+        key,
+        label: key,
+        value: v.value,
+        jobs: v.jobs.size,
+        tone,
+        filter: { key: 'buyer', label: 'Buyer', value: key },
+      }));
+
+    const byReason = Array.from(itemMap.entries())
+      .sort((a, b) => b[1].value - a[1].value)
+      .slice(0, 12)
+      .map(([key, v]) => ({
+        key,
+        label: key,
+        value: v.value,
+        jobs: v.jobs.size,
+        tone,
+        filter: { key: 'item', label: 'Item', value: key },
+      }));
+
+    const jobs = targetJobs.map((j) => ({
+      jobNo: j.jobNo,
+      buyer: j.buyer,
+      style: j.styleNo,
+      qty: j.items.length,
+      unit: 'pcs' as const,
+      status: j.checklistStatus === 'ACCEPTED' ? computeJobStatus(j) : j.checklistStatus,
+    }));
+
+    setDrillTarget({
+      title:
+        mode === 'CHECKLIST_PENDING'
+          ? 'Pending Trims Checklists — By Buyer & Item'
+          : mode === 'PARTIAL'
+          ? 'Partial Received Trims — Balance by Buyer & Item'
+          : 'Quality Failed Trims — By Buyer & Item',
+      subtitle: 'Double-click breakdown (Buyer / Item / Jobs)',
+      anchorRect: rect,
+      total: targetJobs.reduce((s, j) => s + j.items.length, 0),
+      unit: 'pcs',
+      totalJobs: targetJobs.length,
+      tone,
+      byBuyer,
+      byReason,
+      jobs,
+    });
+  };
+
   const filteredStockJobs = useMemo(() => {
     return checklists.filter(j => {
       if (kpiCardFilter === 'HIGH_ORDER' && j.orderQty < 4000) return false;
@@ -1478,7 +1564,7 @@ export default function TrimsStorePage() {
     if (!allocateModalItem || !allocateTargetJob.trim() || allocateQty <= 0) return;
 
     if (allocateQty > allocateModalItem.availableQty) {
-      alert('Allocation quantity cannot exceed available surplus quantity.');
+      showNotification('danger', 'Allocation quantity cannot exceed available surplus quantity.');
       return;
     }
 
@@ -1729,6 +1815,8 @@ export default function TrimsStorePage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* Header Info Banner */}
           <div
+            onDoubleClick={(ev) => openTrimsPendingDrill(ev, 'CHECKLIST_PENDING')}
+            title="Double-click to drill down pending checklists by Buyer and Item"
             style={{
               background: 'linear-gradient(135deg, #0F274E 0%, #1E3A8A 100%)',
               color: '#FFFFFF',
@@ -1738,7 +1826,8 @@ export default function TrimsStorePage() {
               flexWrap: 'wrap',
               justifyContent: 'space-between',
               alignItems: 'center',
-              gap: '12px'
+              gap: '12px',
+              cursor: 'pointer'
             }}
           >
             <div>
@@ -2570,6 +2659,7 @@ export default function TrimsStorePage() {
             {/* Card 5: Quality Fail (Clickable filter) */}
             <div
               onClick={() => setKpiCardFilter(prev => prev === 'QUALITY_FAIL' ? 'ALL' : 'QUALITY_FAIL')}
+              onDoubleClick={(ev) => openTrimsPendingDrill(ev, 'FAIL')}
               style={{
                 background: kpiCardFilter === 'QUALITY_FAIL' ? '#FEF2F2' : '#FFFFFF',
                 padding: '12px 14px',
@@ -2578,7 +2668,7 @@ export default function TrimsStorePage() {
                 cursor: 'pointer',
                 boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
               }}
-              title="Click to filter table to failed/rejected jobs"
+              title="Click to filter · Double-click to drill down by Buyer and Item"
             >
               <div style={{ fontSize: '11px', color: '#DC2626', fontWeight: 700, textTransform: 'uppercase' }}>Quality Fail (Click Filter)</div>
               <div style={{ fontSize: '22px', fontWeight: 900, color: '#DC2626', margin: '2px 0' }}>{stockKpis.totalInspectionFail} Items</div>
@@ -2606,6 +2696,7 @@ export default function TrimsStorePage() {
             {/* Card 7: Partial Received */}
             <div
               onClick={() => setKpiCardFilter(prev => prev === 'PARTIAL' ? 'ALL' : 'PARTIAL')}
+              onDoubleClick={(ev) => openTrimsPendingDrill(ev, 'PARTIAL')}
               style={{
                 background: kpiCardFilter === 'PARTIAL' ? '#FFFBEB' : '#FFFFFF',
                 padding: '12px 14px',
@@ -2614,7 +2705,7 @@ export default function TrimsStorePage() {
                 boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
                 cursor: 'pointer'
               }}
-              title="Click to filter partially received jobs"
+              title="Click to filter · Double-click to drill down by Buyer and Item"
             >
               <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 650, textTransform: 'uppercase' }}>Partial Received</div>
               <div style={{ fontSize: '22px', fontWeight: 900, color: '#D97706', margin: '2px 0' }}>{stockKpis.partialReceivedJobsCount} Jobs</div>
@@ -2624,6 +2715,7 @@ export default function TrimsStorePage() {
             {/* Card 8: Order Confirmed vs Checklist Received */}
             <div
               onClick={() => setKpiCardFilter(prev => prev === 'CHECKLIST_PENDING' ? 'ALL' : 'CHECKLIST_PENDING')}
+              onDoubleClick={(ev) => openTrimsPendingDrill(ev, 'CHECKLIST_PENDING')}
               style={{
                 background: kpiCardFilter === 'CHECKLIST_PENDING' ? '#F0FDF4' : '#FFFFFF',
                 padding: '12px 14px',
@@ -2632,7 +2724,7 @@ export default function TrimsStorePage() {
                 boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
                 cursor: 'pointer'
               }}
-              title="Click to filter jobs pending checklist acceptance"
+              title="Click to filter · Double-click to drill down pending checklists by Buyer and Item"
             >
               <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 650, textTransform: 'uppercase' }}>Confirmed vs Checklist</div>
               <div style={{ fontSize: '18px', fontWeight: 900, color: '#0F274E', margin: '3px 0' }}>
@@ -2778,6 +2870,20 @@ export default function TrimsStorePage() {
               </button>
             )}
           </div>
+
+          <DrillPopup
+            target={drillTarget}
+            onClose={() => setDrillTarget(null)}
+            onApplyFilter={(f) => {
+              if (f.key === 'buyer') setStockBuyerFilter(f.value);
+              else setStockSearchQuery(f.value);
+              setActiveTab('STOCK');
+            }}
+            onShowJobsInTable={(jobs) => {
+              if (jobs.length > 0) setStockSearchQuery(jobs[0].jobNo);
+              setActiveTab('STOCK');
+            }}
+          />
 
           {/* Master Stock Table with DataGrid + RecordPanel */}
           <DataGrid<TrimsChecklistRecord>

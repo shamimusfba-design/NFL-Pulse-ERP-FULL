@@ -7,8 +7,9 @@ import Shell from '../../components/Shell';
 import demo2000DataRaw from '../../data/demo-2000-master.json';
 import { displayJobNo } from '../../lib/display';
 import { api } from '../../lib/api';
-import { DataGrid, GridColumn, RecordPanel } from '../../components/ui';
-import { fmtDate } from '../../lib/format';
+import { DataGrid, GridColumn, RecordPanel, SectionNav } from '../../components/ui';
+import { CrossFilterProvider, DrillPopup, DrillTarget } from '../../components/ui/DashboardKit';
+import { fmtDate, fmtNum } from '../../lib/format';
 
 interface MasterPipelineStageRow {
   section: string;
@@ -88,18 +89,11 @@ const COLORS = {
 
 function fmt(num: any, decimals = 0): string {
   if (num === null || num === undefined || isNaN(num) || num === '') return '0';
-  return Number(num).toLocaleString('en-US', { maximumFractionDigits: decimals });
+  return fmtNum(Number(num), decimals);
 }
 
 function d2(dateStr: any) {
-  if (!dateStr || dateStr === '—') return '—';
-  const s = String(dateStr).trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-    const [y, m, d] = s.split('-');
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return `${d}-${months[parseInt(m, 10) - 1]}-${y}`;
-  }
-  return s;
+  return fmtDate(dateStr);
 }
 
 // 11 Official Sub-Sections of Job 360
@@ -143,6 +137,71 @@ export function Job360Content({ initialJobId }: Job360Props) {
   const [knitLoadError, setKnitLoadError] = useState<boolean>(false);
   const [labRecords, setLabRecords] = useState<any[]>([]);
   const [activePipelineStage, setActivePipelineStage] = useState<string | null>(null);
+  const [drill, setDrill] = useState<DrillTarget | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+
+  // Status counts across all masterJobs (for Task B2: Jobs status counts -> by buyer sorted bar)
+  const statusSummary = useMemo(() => {
+    const groups: Record<string, { label: string; count: number; qty: number; color: string; jobs: any[] }> = {
+      ALL: { label: 'All Factory Jobs', count: 0, qty: 0, color: '#2563EB', jobs: [] },
+      RUNNING: { label: 'In Production', count: 0, qty: 0, color: '#2563EB', jobs: [] },
+      SHIPPED: { label: 'Shipped & Closed', count: 0, qty: 0, color: '#16A34A', jobs: [] },
+      HOLD: { label: 'Critical / Hold', count: 0, qty: 0, color: '#DC2626', jobs: [] },
+    };
+    for (const j of masterJobs) {
+      const q = Number(j.orderQty || 0);
+      groups.ALL.count += 1;
+      groups.ALL.qty += q;
+      groups.ALL.jobs.push(j);
+      const st = String(j.presentStatus || '').toLowerCase();
+      if (st.includes('shipped') || j.overallStage === 'Shipment') {
+        groups.SHIPPED.count += 1;
+        groups.SHIPPED.qty += q;
+        groups.SHIPPED.jobs.push(j);
+      } else if (st.includes('hold') || j.riskStatus === 'CRITICAL' || j.riskStatus === 'HIGH') {
+        groups.HOLD.count += 1;
+        groups.HOLD.qty += q;
+        groups.HOLD.jobs.push(j);
+      } else {
+        groups.RUNNING.count += 1;
+        groups.RUNNING.qty += q;
+        groups.RUNNING.jobs.push(j);
+      }
+    }
+    return groups;
+  }, [masterJobs]);
+
+  const openStatusBuyerDrill = (e: React.MouseEvent, statusKey: string) => {
+    e.stopPropagation();
+    const grp = statusSummary[statusKey] || statusSummary.ALL;
+    const byBuyerMap = new Map<string, { count: number; qty: number }>();
+    for (const j of grp.jobs) {
+      const b = String(j.buyer || 'Other');
+      const cur = byBuyerMap.get(b) || { count: 0, qty: 0 };
+      cur.count += 1;
+      cur.qty += Number(j.orderQty || 0);
+      byBuyerMap.set(b, cur);
+    }
+    setDrill({
+      title: `${grp.label} — By Buyer`,
+      subtitle: `${fmt(grp.count)} jobs · ${fmt(grp.qty)} pcs`,
+      unit: 'pcs',
+      colour: grp.color,
+      anchorX: e.clientX,
+      anchorY: e.clientY,
+      byBuyer: Array.from(byBuyerMap.entries())
+        .sort((a, b) => b[1].qty - a[1].qty)
+        .slice(0, 10)
+        .map(([k, v]) => ({ key: k, label: k, value: v.qty, jobs: v.count })),
+      byJob: grp.jobs.slice(0, 12).map((j) => ({
+        jobNo: String(j.jobNo),
+        buyer: String(j.buyer),
+        style: String(j.styleNo),
+        qty: Number(j.orderQty || 0),
+        status: String(j.presentStatus || 'Active'),
+      })),
+    });
+  };
 
   // Match Job based on selectedJobNo
   const job = useMemo(() => {
@@ -635,9 +694,85 @@ export function Job360Content({ initialJobId }: Job360Props) {
   // Quick jump jobs
   const quickJobs = ['46755', '48092', '48085', '48061', '22041', '44025', '47658'];
 
+  // Double-click any figure in Job 360 -> breakdown by that job's Colour and Size (Task B2)
+  const openJobFigureDrill = (e: React.MouseEvent, title: string, totalVal: number, unit: string = 'pcs', colour: string = '#2563EB') => {
+    e.stopPropagation();
+    const scale = oq > 0 ? totalVal / oq : 1;
+    const byColour = colorSizeBreakdown.map((c) => ({
+      key: c.color,
+      label: `${c.color} (${c.ratio})`,
+      value: Math.round(c.totalPcs * scale),
+      jobs: 1,
+    }));
+    const sizeTotals = [
+      { key: 'XS', label: 'Size XS', value: Math.round(560 * scale) },
+      { key: 'S', label: 'Size S', value: Math.round(1140 * scale) },
+      { key: 'M', label: 'Size M', value: Math.round(1690 * scale) },
+      { key: 'L', label: 'Size L', value: Math.round(1850 * scale) },
+      { key: 'XL', label: 'Size XL', value: Math.round(930 * scale) },
+      { key: 'XXL', label: 'Size XXL', value: Math.round(331 * scale) },
+    ];
+    setDrill({
+      title: `Job #${job.jobNo} · ${title}`,
+      subtitle: `Colour & Size breakdown · ${fmt(totalVal)} ${unit}`,
+      unit,
+      colour,
+      anchorX: e.clientX,
+      anchorY: e.clientY,
+      byFactory: byColour,
+      byBuyer: sizeTotals,
+      onShowInTable: () => scrollToSection('section-job-info'),
+    });
+  };
+
   return (
     <Shell title="Job 360" eyebrow={`Single Job Life-Cycle Intelligence · Order to Shipment · #${job.jobNo}`}>
-      <div style={{ maxWidth: '1440px', margin: '0 auto', color: '#1E293B', paddingBottom: '80px' }}>
+      <CrossFilterProvider>
+      <DrillPopup target={drill} onClose={() => setDrill(null)} />
+      <div
+        style={{ maxWidth: '1440px', margin: '0 auto', color: '#1E293B', paddingBottom: '80px' }}
+        onDoubleClick={(e) => {
+          const card = (e.target as HTMLElement).closest('div[style*="background: rgb(248, 250, 252)"], div[style*="background: #F8FAFC"]') as HTMLElement | null;
+          if (card) {
+            const label = card.querySelector('div')?.textContent?.trim() || 'Figure Breakdown';
+            openJobFigureDrill(e, label, oq, 'pcs', '#2563EB');
+          }
+        }}
+      >
+        {/* ========================================================================= */}
+        {/* FACTORY JOB STATUS COUNTS BAR (Double-click status card -> by Buyer bar) */}
+        {/* ========================================================================= */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '10px', marginBottom: '12px' }}>
+          {(['ALL', 'RUNNING', 'SHIPPED', 'HOLD'] as const).map((stKey) => {
+            const grp = statusSummary[stKey];
+            const active = statusFilter === stKey;
+            return (
+              <div
+                key={stKey}
+                onClick={() => setStatusFilter(active ? null : stKey)}
+                onDoubleClick={(e) => openStatusBuyerDrill(e, stKey)}
+                title="Click to filter · Double-click for Buyer breakdown"
+                style={{
+                  background: '#FFFFFF',
+                  border: active ? `2px solid ${grp.color}` : `1px solid ${COLORS.border}`,
+                  borderRadius: '10px',
+                  padding: '10px 14px',
+                  cursor: 'pointer',
+                  opacity: statusFilter && !active ? 0.45 : 1,
+                  transition: 'opacity 140ms ease',
+                }}
+              >
+                <div style={{ fontSize: '11px', fontWeight: 700, color: COLORS.grey, textTransform: 'uppercase' }}>{grp.label}</div>
+                <div style={{ fontSize: '22px', fontWeight: 900, color: grp.color, margin: '2px 0' }}>
+                  {fmt(grp.count)} <span style={{ fontSize: '12px', fontWeight: 700, color: COLORS.grey }}>jobs</span>
+                </div>
+                <div style={{ fontSize: '11px', color: COLORS.grey }}>
+                  {fmt(grp.qty)} pcs · Double-click for buyer bar
+                </div>
+              </div>
+            );
+          })}
+        </div>
 
         {/* ========================================================================= */}
         {/* TOP CONTROL BAR: SEARCH & JOB JUMP (PROMINENT & INTUITIVE) */}
@@ -861,51 +996,17 @@ export function Job360Content({ initialJobId }: Job360Props) {
         </div>
 
         {/* ========================================================================= */}
-        {/* STICKY SUB-SECTIONS NAVIGATION BAR (11 SECTIONS WITH AUTO SCROLL-SPY) */}
+        {/* STICKY SUB-SECTIONS NAVIGATION BAR (11 SECTIONS VIA SECTIONNAV)           */}
         {/* ========================================================================= */}
-        <div style={{
-          position: 'sticky',
-          top: '0',
-          zIndex: 40,
-          background: '#FFFFFF',
-          borderBottom: `2px solid ${COLORS.navy}`,
-          padding: '8px 12px',
-          marginBottom: '18px',
-          boxShadow: '0 4px 12px rgba(15,39,78,0.06)',
-          display: 'flex',
-          gap: '6px',
-          overflowX: 'auto',
-          whiteSpace: 'nowrap',
-          borderRadius: '8px'
-        }}>
-          {SUB_SECTIONS.map((sec) => {
-            const IconComponent = sec.icon;
-            const isActive = activeSectionId === sec.id;
-            return (
-              <button
-                key={sec.id}
-                type="button"
-                onClick={() => scrollToSection(sec.id)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '7px 12px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  fontSize: '12px',
-                  fontWeight: isActive ? 800 : 600,
-                  background: isActive ? COLORS.navy : 'transparent',
-                  color: isActive ? '#FFFFFF' : '#475569',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <IconComponent size={14} />
-                <span>{sec.name}</span>
-              </button>
-            );
-          })}
+        <div style={{ marginBottom: '16px' }}>
+          <SectionNav
+            stickyTop={0}
+            sections={SUB_SECTIONS.map((sec, idx) => ({
+              id: sec.id,
+              code: String(idx + 1).padStart(2, '0'),
+              label: sec.name.replace(/^\d+\.\s*/, ''),
+            }))}
+          />
         </div>
 
         {/* ========================================================================= */}
@@ -2534,6 +2635,7 @@ export function Job360Content({ initialJobId }: Job360Props) {
 
 
       </div>
+      </CrossFilterProvider>
     </Shell>
   );
 }

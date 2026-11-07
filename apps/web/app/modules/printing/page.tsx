@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
 import Shell from '../../../components/Shell';
+import { DataGrid, GridColumn, DrillPopup, DrillTarget } from '../../../components/ui';
+import { fmtDate, fmtNum } from '../../../lib/format';
 
 export default function PrintingModulePage() {
   const [activeTab, setActiveTab] = useState<'INHOUSE' | 'OUTSOURCE' | 'DISPATCH' | 'QUALITY'>('INHOUSE');
   const [vendorFilter, setVendorFilter] = useState('ALL');
+  const [drillTarget, setDrillTarget] = useState<DrillTarget | null>(null);
 
   // In-House Printing Floor Machines & Tables
   const [machines] = useState([
@@ -186,43 +188,140 @@ export default function PrintingModulePage() {
     setTimeout(() => setFeedbackMsg(''), 4000);
   }
 
+  const openPrintingDrill = (ev: React.MouseEvent, mode: 'load' | 'delivered' | 'balance') => {
+    const rect = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+    const inhouseLoad = machines.reduce((s, m) => s + m.targetPanels, 0);
+    const inhouseDone = machines.reduce((s, m) => s + m.donePanels, 0);
+    const inhouseBal = Math.max(0, inhouseLoad - inhouseDone);
+
+    const outLoad = challans.reduce((s, c) => s + c.sentPanels, 0);
+    const outDone = challans.reduce((s, c) => s + c.rcvdPanels, 0);
+    const outBal = Math.max(0, outLoad - outDone);
+
+    const inhouseVal = mode === 'load' ? inhouseLoad : mode === 'delivered' ? inhouseDone : inhouseBal;
+    const outVal = mode === 'load' ? outLoad : mode === 'delivered' ? outDone : outBal;
+    const tone: 'req' | 'done' | 'balance' = mode === 'load' ? 'req' : mode === 'delivered' ? 'done' : 'balance';
+
+    const byFactory = [
+      {
+        key: 'In-House Printing Floor',
+        label: 'In-House Printing Floor',
+        value: inhouseVal,
+        jobs: new Set(machines.map((m) => m.jobNo)).size,
+        tone,
+        filter: { key: 'tab', label: 'Source', value: 'INHOUSE' },
+      },
+      {
+        key: 'Sub-Contract (Outsource)',
+        label: 'Sub-Contract (Outsource)',
+        value: outVal,
+        jobs: new Set(challans.map((c) => c.jobNo)).size,
+        tone,
+        filter: { key: 'tab', label: 'Source', value: 'OUTSOURCE' },
+      },
+    ];
+
+    const buyerMap = new Map<string, { value: number; jobs: Set<string> }>();
+    machines.forEach((m) => {
+      const val = mode === 'load' ? m.targetPanels : mode === 'delivered' ? m.donePanels : Math.max(0, m.targetPanels - m.donePanels);
+      const b = buyerMap.get(m.buyer) || { value: 0, jobs: new Set<string>() };
+      b.value += val;
+      b.jobs.add(m.jobNo);
+      buyerMap.set(m.buyer, b);
+    });
+    challans.forEach((c) => {
+      const val = mode === 'load' ? c.sentPanels : mode === 'delivered' ? c.rcvdPanels : Math.max(0, c.sentPanels - c.rcvdPanels);
+      const b = buyerMap.get(c.buyer) || { value: 0, jobs: new Set<string>() };
+      b.value += val;
+      b.jobs.add(c.jobNo);
+      buyerMap.set(c.buyer, b);
+    });
+
+    const byBuyer = Array.from(buyerMap.entries())
+      .sort((a, b) => b[1].value - a[1].value)
+      .map(([key, v]) => ({
+        key,
+        label: key,
+        value: v.value,
+        jobs: v.jobs.size,
+        tone,
+      }));
+
+    const jobs = [
+      ...machines.map((m) => ({
+        jobNo: m.jobNo,
+        buyer: m.buyer,
+        style: `${m.styleNo} · In-House (${m.id})`,
+        qty: mode === 'load' ? m.targetPanels : mode === 'delivered' ? m.donePanels : Math.max(0, m.targetPanels - m.donePanels),
+        unit: 'pcs' as const,
+        status: m.status,
+      })),
+      ...challans.map((c) => ({
+        jobNo: c.jobNo,
+        buyer: c.buyer,
+        style: `${c.styleNo} · ${c.vendor}`,
+        qty: mode === 'load' ? c.sentPanels : mode === 'delivered' ? c.rcvdPanels : Math.max(0, c.sentPanels - c.rcvdPanels),
+        unit: 'pcs' as const,
+        status: c.status,
+      })),
+    ];
+
+    setDrillTarget({
+      title: `Printing ${mode === 'load' ? 'Total Load' : mode === 'delivered' ? 'Delivered Panels' : 'Balance Panels'} — In-House vs Sub-Contract`,
+      subtitle: '2-part donut breakdown (In-House vs Sub-Contract)',
+      anchorRect: rect,
+      total: inhouseVal + outVal,
+      unit: 'pcs',
+      totalJobs: new Set(jobs.map((j) => j.jobNo)).size,
+      tone,
+      byFactory,
+      byBuyer,
+      jobs,
+    });
+  };
+
   return (
     <Shell title="Printing Operations" eyebrow="In-House Print Floor & Outsource / Sub-Contract Tracking">
-      {/* Module Hero */}
-      <section className="dashboard-hero">
-        <div>
-          <div className="hero-kicker">Garment Production · Printing Division</div>
-          <h2>In-House &amp; Outsource Printing Management</h2>
-</div>
-        <div className="hero-actions">
-          <Link href="/" className="btn btn-primary">
-            Executive KPI Board
-          </Link>
-          <Link href="/modules/embroidery" className="btn btn-ghost">
-            Embroidery Operations &rarr;
-          </Link>
-        </div>
-      </section>
+      <DrillPopup
+        target={drillTarget}
+        onClose={() => setDrillTarget(null)}
+        onApplyFilter={(f) => {
+          if (f.value === 'INHOUSE' || f.value === 'OUTSOURCE') setActiveTab(f.value);
+        }}
+        onShowJobsInTable={() => setActiveTab('OUTSOURCE')}
+      />
 
-      {/* KPI Highlight Strip */}
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', margin: '16px 0' }}>
-        <div style={{ background: '#fff', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
-          <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Monthly Total Panels</div>
+      {/* KPI Highlight Strip (Double-click for In-House vs Sub-Contract Donut) */}
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', margin: '0 0 16px' }}>
+        <div
+          onDoubleClick={(ev) => openPrintingDrill(ev, 'load')}
+          title="Double-click to drill down Load: In-House vs Sub-Contract (Donut)"
+          style={{ background: '#fff', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.03)', cursor: 'pointer' }}
+        >
+          <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Monthly Total Panels (Load)</div>
           <div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', margin: '2px 0' }}>
             826,632 <span style={{ fontSize: '12px', color: '#64748b' }}>Panels</span>
           </div>
-          <div style={{ fontSize: '11px', color: '#475569' }}>Avg. 31,793 Panels/Day</div>
+          <div style={{ fontSize: '11px', color: '#475569' }}>Avg. 31,793 Panels/Day · Double-click drill</div>
         </div>
 
-        <div style={{ background: '#fff', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
-          <div style={{ fontSize: '10px', fontWeight: 700, color: '#2563eb', textTransform: 'uppercase' }}>In-House Production</div>
+        <div
+          onDoubleClick={(ev) => openPrintingDrill(ev, 'delivered')}
+          title="Double-click to drill down Delivered: In-House vs Sub-Contract (Donut)"
+          style={{ background: '#fff', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.03)', cursor: 'pointer' }}
+        >
+          <div style={{ fontSize: '10px', fontWeight: 700, color: '#2563eb', textTransform: 'uppercase' }}>In-House Production (Delivered)</div>
           <div style={{ fontSize: '22px', fontWeight: 800, color: '#2563eb', margin: '2px 0' }}>
             681,145 <span style={{ fontSize: '12px' }}>(82.4%)</span>
           </div>
           <div style={{ fontSize: '11px', color: '#166534' }}>2 Automatic Ovals + 4 Tables · 91.7% Eff</div>
         </div>
 
-        <div style={{ background: '#fff', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
+        <div
+          onDoubleClick={(ev) => openPrintingDrill(ev, 'balance')}
+          title="Double-click to drill down Balance: In-House vs Sub-Contract (Donut)"
+          style={{ background: '#fff', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.03)', cursor: 'pointer' }}
+        >
           <div style={{ fontSize: '10px', fontWeight: 700, color: '#d97706', textTransform: 'uppercase' }}>Outsource / Sub-Contract</div>
           <div style={{ fontSize: '22px', fontWeight: 800, color: '#b45309', margin: '2px 0' }}>
             145,487 <span style={{ fontSize: '12px' }}>(17.6%)</span>
@@ -414,65 +513,91 @@ export default function PrintingModulePage() {
             </div>
           </div>
 
-          {/* Challans Table */}
-          <div style={{ background: '#fff', borderRadius: '10px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-              <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', textAlign: 'left' }}>
-                  <th style={{ padding: '10px 14px', fontWeight: 700 }}>Challan No</th>
-                  <th style={{ padding: '10px 14px', fontWeight: 700 }}>Vendor</th>
-                  <th style={{ padding: '10px 14px', fontWeight: 700 }}>Job / Style</th>
-                  <th style={{ padding: '10px 14px', fontWeight: 700 }}>Print Technique</th>
-                  <th style={{ padding: '10px 14px', fontWeight: 700 }}>Sent &rarr; Return</th>
-                  <th style={{ padding: '10px 14px', fontWeight: 700, textAlign: 'right' }}>Sent Panels</th>
-                  <th style={{ padding: '10px 14px', fontWeight: 700, textAlign: 'right' }}>Received</th>
-                  <th style={{ padding: '10px 14px', fontWeight: 700, textAlign: 'right' }}>Rejections</th>
-                  <th style={{ padding: '10px 14px', fontWeight: 700 }}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredChallans.map((c) => {
-                  const balance = c.sentPanels - c.rcvdPanels;
-                  return (
-                    <tr key={c.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '12px 14px', fontWeight: 800, color: '#0f172a' }}>{c.id}</td>
-                      <td style={{ padding: '12px 14px', fontWeight: 600, color: '#334155' }}>{c.vendor}</td>
-                      <td style={{ padding: '12px 14px' }}>
-                        <strong>#{c.jobNo}</strong> <br />
-                        <span style={{ fontSize: '11px', color: '#64748b' }}>{c.styleNo} ({c.buyer})</span>
-                      </td>
-                      <td style={{ padding: '12px 14px', color: '#475569' }}>{c.printType}</td>
-                      <td style={{ padding: '12px 14px', fontSize: '11px', color: '#475569' }}>
-                        {c.sentDate} &rarr; <strong style={{ color: '#0f172a' }}>{c.returnDate}</strong>
-                      </td>
-                      <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 700 }}>{c.sentPanels.toLocaleString()}</td>
-                      <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 700, color: c.rcvdPanels > 0 ? '#166534' : '#64748b' }}>
-                        {c.rcvdPanels.toLocaleString()}
-                        {balance > 0 && c.rcvdPanels > 0 && <div style={{ fontSize: '10px', color: '#d97706' }}>Bal: {balance.toLocaleString()}</div>}
-                      </td>
-                      <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 700, color: c.rejPanels > 0 ? '#dc2626' : '#64748b' }}>
-                        {c.rejPanels}
-                      </td>
-                      <td style={{ padding: '12px 14px' }}>
-                        <span
-                          style={{
-                            padding: '3px 8px',
-                            borderRadius: '999px',
-                            fontSize: '10px',
-                            fontWeight: 800,
-                            background: c.status === 'RECEIVED' ? '#dcfce7' : c.status === 'IN_PROCESS' ? '#fef3c7' : '#e0e7ff',
-                            color: c.status === 'RECEIVED' ? '#166534' : c.status === 'IN_PROCESS' ? '#b45309' : '#3730a3'
-                          }}
-                        >
-                          {c.status}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          {/* Challans DataGrid */}
+          <DataGrid
+            storageKey="printing-outsource-challans"
+            exportName="printing-outsource-challans"
+            rows={filteredChallans}
+            rowKey={(c) => c.id}
+            frozenColumns={2}
+            emptyText="No outsource print challans match filter"
+            columns={[
+              { key: 'id', header: 'Challan No', width: 120, value: (c) => c.id, render: (c) => <strong>{c.id}</strong> },
+              { key: 'vendor', header: 'Vendor', width: 190, value: (c) => c.vendor },
+              {
+                key: 'jobStyle',
+                header: 'Job / Style',
+                width: 150,
+                value: (c) => `${c.jobNo} ${c.styleNo} ${c.buyer}`,
+                render: (c) => (
+                  <div>
+                    <strong>#{c.jobNo}</strong>
+                    <div style={{ fontSize: '11px', color: '#64748b' }}>{c.styleNo} ({c.buyer})</div>
+                  </div>
+                ),
+              },
+              { key: 'printType', header: 'Print Technique', width: 165, value: (c) => c.printType },
+              {
+                key: 'dates',
+                header: 'Sent → Return',
+                width: 185,
+                value: (c) => `${c.sentDate} ${c.returnDate}`,
+                render: (c) => (
+                  <span>
+                    {fmtDate(c.sentDate)} → <strong>{fmtDate(c.returnDate)}</strong>
+                  </span>
+                ),
+              },
+              {
+                key: 'sentPanels',
+                header: 'Sent Panels (pcs)',
+                width: 135,
+                numeric: true,
+                total: true,
+                unit: 'pcs',
+                value: (c) => c.sentPanels,
+                render: (c) => <strong>{fmtNum(c.sentPanels)}</strong>,
+              },
+              {
+                key: 'rcvdPanels',
+                header: 'Received (pcs)',
+                width: 135,
+                numeric: true,
+                total: true,
+                unit: 'pcs',
+                value: (c) => c.rcvdPanels,
+                render: (c) => <strong style={{ color: c.rcvdPanels > 0 ? '#166534' : '#64748b' }}>{fmtNum(c.rcvdPanels)}</strong>,
+              },
+              {
+                key: 'balance',
+                header: 'Balance (pcs)',
+                width: 125,
+                numeric: true,
+                total: true,
+                unit: 'pcs',
+                value: (c) => Math.max(0, c.sentPanels - c.rcvdPanels),
+                render: (c) => {
+                  const bal = Math.max(0, c.sentPanels - c.rcvdPanels);
+                  return <strong style={{ color: bal > 0 ? '#dc2626' : '#166534' }}>{fmtNum(bal)}</strong>;
+                },
+              },
+              {
+                key: 'rejPanels',
+                header: 'Rejections (pcs)',
+                width: 125,
+                numeric: true,
+                total: true,
+                unit: 'pcs',
+                value: (c) => c.rejPanels,
+              },
+              {
+                key: 'status',
+                header: 'Status',
+                width: 115,
+                value: (c) => c.status,
+              },
+            ] satisfies GridColumn<(typeof challans)[number]>[]}
+          />
         </section>
       )}
 

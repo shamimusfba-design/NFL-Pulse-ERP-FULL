@@ -4,14 +4,50 @@ import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import Shell from '../../components/Shell';
+import { Badge, DataGrid, GridColumn, RecordPanel, RecordSection } from '../../components/ui';
 import { api } from '../../lib/api';
 import { buyerShortCode, displayJobNo } from '../../lib/display';
+import { fmtDate, fmtNum } from '../../lib/format';
+
+interface WorkflowTaskRow {
+  id: string;
+  jobNo?: string;
+  title: string;
+  description?: string;
+  module: string;
+  department?: string;
+  priority: string;
+  status: string;
+  dueDate?: string;
+  order?: {
+    jobNo?: string;
+    buyer?: {
+      code?: string;
+      name?: string;
+    };
+  };
+}
+
+function resolveTaskDepartment(t: WorkflowTaskRow): string {
+  return (
+    t.department ||
+    (t.module === 'cad'
+      ? 'CAD Section'
+      : t.module === 'ie-bulletin'
+      ? 'Central IE'
+      : t.module === 'lab'
+      ? 'Dyeing Lab'
+      : t.module === 'sewing-planning'
+      ? 'Central Planning'
+      : 'Merchandising')
+  );
+}
 
 function TasksContent() {
   const searchParams = useSearchParams();
   const initialJobNo = searchParams.get('jobNo') || '';
 
-  const [tasks, setTasks] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<WorkflowTaskRow[]>([]);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [query, setQuery] = useState(initialJobNo);
@@ -20,6 +56,7 @@ function TasksContent() {
   const [priorityFilter, setPriorityFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [busyTaskId, setBusyTaskId] = useState<string | null>(null);
+  const [selectedTask, setSelectedTask] = useState<WorkflowTaskRow | null>(null);
 
   const loadTasks = () => {
     api('/tasks/my')
@@ -32,7 +69,7 @@ function TasksContent() {
   }, []);
 
   const departments = useMemo(
-    () => Array.from(new Set(tasks.map((t) => String(t.department || '')).filter(Boolean))).sort(),
+    () => Array.from(new Set(tasks.map((t) => resolveTaskDepartment(t)).filter(Boolean))).sort(),
     [tasks]
   );
   const modules = useMemo(
@@ -44,14 +81,13 @@ function TasksContent() {
     [tasks]
   );
 
-  // Section-wise pending tasks aggregation and grand total sum
   const sectionPendingStats = useMemo(() => {
     const stats: Record<string, number> = {};
     let totalPending = 0;
     tasks.forEach((t) => {
       const isPending = t.status === 'PENDING' || !t.status;
       if (isPending) {
-        const sec = t.department || (t.module === 'cad' ? 'CAD Section' : t.module === 'ie-bulletin' ? 'Central IE' : t.module === 'lab' ? 'Dyeing Lab' : t.module === 'sewing-planning' ? 'Central Planning' : 'Merchandising');
+        const sec = resolveTaskDepartment(t);
         stats[sec] = (stats[sec] || 0) + 1;
         totalPending++;
       }
@@ -61,19 +97,20 @@ function TasksContent() {
 
   const rows = useMemo(() => {
     return tasks.filter((t) => {
+      const dept = resolveTaskDepartment(t);
       if (moduleFilter !== 'ALL' && String(t.module) !== moduleFilter) return false;
-      if (departmentFilter !== 'ALL' && String(t.department || '') !== departmentFilter) return false;
+      if (departmentFilter !== 'ALL' && dept !== departmentFilter) return false;
       if (priorityFilter !== 'ALL' && String(t.priority) !== priorityFilter) return false;
       if (statusFilter !== 'ALL' && String(t.status) !== statusFilter) return false;
       const q = query.trim().toLowerCase();
       if (!q) return true;
       const jobStr = String(t.jobNo || t.order?.jobNo || '');
-      const searchTarget = `${t.title} ${t.module} ${t.department || ''} ${jobStr} ${displayJobNo(t.order?.jobNo, t.order?.buyer)} ${buyerShortCode(t.order?.buyer?.code || t.order?.buyer?.name)}`.toLowerCase();
+      const searchTarget = `${t.title} ${t.module} ${dept} ${jobStr} ${displayJobNo(t.order?.jobNo, t.order?.buyer)} ${buyerShortCode(t.order?.buyer?.code || t.order?.buyer?.name)}`.toLowerCase();
       return searchTarget.includes(q);
     });
   }, [tasks, moduleFilter, departmentFilter, priorityFilter, statusFilter, query]);
 
-  const handleCompleteTask = async (task: any) => {
+  const handleCompleteTask = async (task: WorkflowTaskRow) => {
     setBusyTaskId(task.id);
     setSuccessMsg('');
     try {
@@ -86,24 +123,196 @@ function TasksContent() {
       });
       setSuccessMsg(`✓ Task "${task.title}" marked as COMPLETED and workflow advanced.`);
       loadTasks();
-    } catch (err: any) {
-      setError(err.message || 'Failed to update task');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to update task');
     } finally {
       setBusyTaskId(null);
     }
   };
 
+  const columns = useMemo<GridColumn<WorkflowTaskRow>[]>(
+    () => [
+      {
+        key: 'jobNo',
+        header: 'Job No',
+        width: 130,
+        value: (t) => t.jobNo || t.order?.jobNo || '—',
+        render: (t) => {
+          const jobNum = t.jobNo || t.order?.jobNo;
+          return (
+            <div>
+              {jobNum ? (
+                <Link
+                  href={`/jobs/${jobNum}`}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    fontWeight: 900,
+                    color: '#2563eb',
+                    textDecoration: 'none',
+                    background: '#eff6ff',
+                    padding: '2px 7px',
+                    borderRadius: '4px',
+                    border: '1px solid #bfdbfe',
+                    fontSize: '12px'
+                  }}
+                >
+                  #{jobNum}
+                </Link>
+              ) : (
+                <span style={{ color: '#94a3b8' }}>—</span>
+              )}
+              <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+                {t.order?.buyer?.name || t.order?.buyer?.code || ''}
+              </div>
+            </div>
+          );
+        }
+      },
+      {
+        key: 'department',
+        header: 'Department',
+        width: 150,
+        value: (t) => resolveTaskDepartment(t),
+        render: (t) => (
+          <span style={{ background: '#f1f5f9', padding: '3px 8px', borderRadius: '4px', fontWeight: 700, color: '#334155', fontSize: '12px' }}>
+            {resolveTaskDepartment(t)}
+          </span>
+        )
+      },
+      {
+        key: 'title',
+        header: 'Task Title & Workflow Objective',
+        width: 340,
+        value: (t) => `${t.title} ${t.description || ''}`,
+        render: (t) => (
+          <div>
+            <strong style={{ fontSize: '12.5px', color: '#0f172a' }}>{t.title}</strong>
+            {t.description && (
+              <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', lineHeight: 1.35 }}>
+                {t.description}
+              </div>
+            )}
+          </div>
+        )
+      },
+      {
+        key: 'module',
+        header: 'Module',
+        width: 130,
+        value: (t) => t.module,
+        render: (t) => (
+          <Link
+            href={`/modules/${t.module}`}
+            onClick={(e) => e.stopPropagation()}
+            style={{ color: '#0369a1', textDecoration: 'none', fontWeight: 600, fontSize: '12px' }}
+          >
+            {t.module} ↗
+          </Link>
+        )
+      },
+      {
+        key: 'priority',
+        header: 'Priority',
+        width: 110,
+        value: (t) => t.priority,
+        render: (t) => (
+          <Badge tone={t.priority === 'CRITICAL' ? 'balance' : t.priority === 'HIGH' ? 'mid' : 'neutral'}>
+            {t.priority}
+          </Badge>
+        )
+      },
+      {
+        key: 'status',
+        header: 'Status',
+        width: 130,
+        value: (t) => t.status,
+        render: (t) => {
+          const isCompleted = t.status === 'COMPLETED';
+          return (
+            <Badge tone={isCompleted ? 'done' : t.status === 'IN_PROGRESS' ? 'mid' : 'info'}>
+              {isCompleted ? '✓ COMPLETED' : t.status}
+            </Badge>
+          );
+        }
+      },
+      {
+        key: 'actions',
+        header: 'Actions',
+        width: 170,
+        align: 'right',
+        filterable: false,
+        value: (t) => t.status,
+        render: (t) => {
+          const jobNum = t.jobNo || t.order?.jobNo;
+          const isCompleted = t.status === 'COMPLETED';
+          return (
+            <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }} onClick={(e) => e.stopPropagation()}>
+              {jobNum && (
+                <Link
+                  href={`/jobs/${jobNum}`}
+                  className="btn btn-secondary"
+                  style={{ fontSize: '11px', padding: '4px 8px', textDecoration: 'none' }}
+                >
+                  Job Details
+                </Link>
+              )}
+              {!isCompleted && (
+                <button
+                  type="button"
+                  onClick={() => handleCompleteTask(t)}
+                  disabled={busyTaskId === t.id}
+                  style={{
+                    background: '#16a34a',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '4px',
+                    padding: '4px 10px',
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    cursor: 'pointer'
+                  }}
+                >
+                  {busyTaskId === t.id ? 'Saving...' : '✓ Complete'}
+                </button>
+              )}
+            </div>
+          );
+        }
+      }
+    ],
+    [busyTaskId]
+  );
+
+  const recordSections = useMemo<RecordSection[]>(() => {
+    if (!selectedTask) return [];
+    const jobNum = selectedTask.jobNo || selectedTask.order?.jobNo || '—';
+    return [
+      {
+        name: 'Workflow Task Details',
+        fields: [
+          { key: 'jobNo', label: 'Job No', value: jobNum, readOnly: true },
+          { key: 'department', label: 'Department', value: resolveTaskDepartment(selectedTask), readOnly: true },
+          { key: 'module', label: 'Module', value: selectedTask.module, readOnly: true },
+          { key: 'priority', label: 'Priority', value: selectedTask.priority, readOnly: true },
+          { key: 'status', label: 'Status', value: selectedTask.status, readOnly: true },
+          { key: 'dueDate', label: 'Due Date', value: fmtDate(selectedTask.dueDate), readOnly: true },
+          { key: 'title', label: 'Task Title', value: selectedTask.title, readOnly: true, fullWidth: true },
+          { key: 'description', label: 'Objective / Notes', value: selectedTask.description || '—', readOnly: true, fullWidth: true }
+        ]
+      }
+    ];
+  }, [selectedTask]);
+
   return (
-    <Shell title="Department Task Engine" eyebrow="Operational Workflows · Central IE, CAD, Merchandising & Planning">
+    <Shell title="My Pending Tasks">
       <div className="card" style={{ padding: '20px' }}>
         {error && <div className="notice" style={{ background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', padding: '10px 14px', borderRadius: '8px', marginBottom: '12px' }}>{error}</div>}
         {successMsg && <div style={{ background: '#ecfdf5', color: '#065f46', border: '1px solid #6ee7b7', padding: '10px 14px', borderRadius: '8px', marginBottom: '12px', fontSize: '13px', fontWeight: 700 }}>{successMsg}</div>}
 
-        {/* Header & Quick Filter bar */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
           <div>
-            <h2 style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a', margin: 0 }}>Active Workflow Tasks</h2>
-</div>
+            <h2 style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a', margin: 0 }}>My Pending Work &amp; Department Tasks</h2>
+          </div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <Link href="/merchandising-bulk" className="btn btn-primary" style={{ fontSize: '12px', padding: '6px 14px', textDecoration: 'none' }}>
               + Import Another PO
@@ -114,19 +323,15 @@ function TasksContent() {
           </div>
         </div>
 
-        {/* Section-wise Pending Tasks Summary & Total Sum Card */}
         <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px 16px', marginBottom: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '20px' }}>📊</span>
-              <div>
-                <strong style={{ fontSize: '13px', color: '#0f172a' }}>Section-wise Pending Tasks Summary</strong>
-                <div style={{ fontSize: '11px', color: '#64748b' }}>Individual pending task count by department and overall total sum</div>
-              </div>
+            <div>
+              <strong style={{ fontSize: '13px', color: '#0f172a' }}>Section-wise Pending Tasks Summary</strong>
+              <div style={{ fontSize: '11px', color: '#64748b' }}>Click a section below to filter its pending queue</div>
             </div>
             <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', padding: '5px 14px', borderRadius: '7px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '11px', fontWeight: 800, color: '#991b1b', textTransform: 'uppercase' }}>Total Pending Across All Sections:</span>
-              <strong style={{ fontSize: '17px', fontWeight: 900, color: '#dc2626' }}>{sectionPendingStats.totalPending}</strong>
+              <span style={{ fontSize: '11px', fontWeight: 800, color: '#991b1b', textTransform: 'uppercase' }}>Total Pending:</span>
+              <strong style={{ fontSize: '17px', fontWeight: 900, color: '#dc2626' }}>{fmtNum(sectionPendingStats.totalPending)}</strong>
             </div>
           </div>
 
@@ -142,11 +347,11 @@ function TasksContent() {
               }}
             >
               <div>
-                <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#1e293b' }}>All Sections Combined</div>
+                <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#1e293b' }}>All Sections</div>
                 <div style={{ fontSize: '9.5px', color: '#64748b' }}>Total Sum</div>
               </div>
               <span style={{ background: '#dc2626', color: '#fff', fontSize: '11.5px', fontWeight: 800, padding: '2px 8px', borderRadius: '5px' }}>
-                {sectionPendingStats.totalPending}
+                {fmtNum(sectionPendingStats.totalPending)}
               </span>
             </button>
 
@@ -168,8 +373,8 @@ function TasksContent() {
                     <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{secName}</div>
                     <div style={{ fontSize: '9.5px', color: '#64748b' }}>Pending tasks</div>
                   </div>
-                  <span style={{ background: '#f59e0b', color: '#000', fontSize: '11.5px', fontWeight: 800, padding: '2px 7px', borderRadius: '5px', marginLeft: '6px' }}>
-                    {count}
+                  <span style={{ background: '#d97706', color: '#fff', fontSize: '11.5px', fontWeight: 800, padding: '2px 7px', borderRadius: '5px', marginLeft: '6px' }}>
+                    {fmtNum(count)}
                   </span>
                 </button>
               );
@@ -241,137 +446,25 @@ function TasksContent() {
           </label>
         </div>
 
-        <div className="table-scroll">
-          <table className="table compact-table" style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1' }}>
-                <th style={{ padding: '10px 12px' }}>Job No</th>
-                <th style={{ padding: '10px 12px' }}>Department</th>
-                <th style={{ padding: '10px 12px' }}>Task Title &amp; Workflow Objective</th>
-                <th style={{ padding: '10px 12px' }}>Module</th>
-                <th style={{ padding: '10px 12px' }}>Priority</th>
-                <th style={{ padding: '10px 12px' }}>Status</th>
-                <th style={{ padding: '10px 12px', textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((t) => {
-                const jobNum = t.jobNo || t.order?.jobNo;
-                const isCompleted = t.status === 'COMPLETED';
-                return (
-                  <tr key={t.id} style={{ borderBottom: '1px solid #e2e8f0', background: isCompleted ? '#fafafa' : '#fff' }}>
-                    <td style={{ padding: '10px 12px' }}>
-                      {jobNum ? (
-                        <Link
-                          href={`/jobs/${jobNum}`}
-                          style={{
-                            fontWeight: 900,
-                            color: '#2563eb',
-                            textDecoration: 'none',
-                            background: '#eff6ff',
-                            padding: '3px 8px',
-                            borderRadius: '4px',
-                            border: '1px solid #bfdbfe',
-                            fontSize: '12.5px'
-                          }}
-                        >
-                          #{jobNum}
-                        </Link>
-                      ) : (
-                        <span style={{ color: '#94a3b8' }}>—</span>
-                      )}
-                      <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
-                        {t.order?.buyer?.name || t.order?.buyer?.code || ''}
-                      </div>
-                    </td>
-                    <td style={{ padding: '10px 12px', fontWeight: 700, color: '#334155', fontSize: '12.5px' }}>
-                      <span style={{ background: '#f1f5f9', padding: '3px 8px', borderRadius: '4px' }}>
-                        {t.department || (t.module === 'cad' ? 'CAD Section' : t.module === 'ie-bulletin' ? 'Central IE' : t.module === 'lab' ? 'Dyeing Lab' : t.module === 'sewing-planning' ? 'Central Planning' : 'Merchandising')}
-                      </span>
-                    </td>
-                    <td style={{ padding: '10px 12px' }}>
-                      <strong style={{ fontSize: '13px', color: '#0f172a' }}>{t.title}</strong>
-                      {t.description && (
-                        <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '3px', maxWidth: '420px', lineHeight: 1.4 }}>
-                          {t.description}
-                        </div>
-                      )}
-                    </td>
-                    <td style={{ padding: '10px 12px', fontSize: '12px', color: '#475569' }}>
-                      <Link href={`/modules/${t.module}`} style={{ color: '#0369a1', textDecoration: 'none', fontWeight: 600 }}>
-                        {t.module} ↗
-                      </Link>
-                    </td>
-                    <td style={{ padding: '10px 12px' }}>
-                      <span
-                        className="badge"
-                        style={{
-                          background: t.priority === 'CRITICAL' ? '#fee2e2' : t.priority === 'HIGH' ? '#ffedd5' : '#f1f5f9',
-                          color: t.priority === 'CRITICAL' ? '#991b1b' : t.priority === 'HIGH' ? '#9a3412' : '#475569',
-                          fontWeight: 800,
-                          fontSize: '10.5px'
-                        }}
-                      >
-                        {t.priority}
-                      </span>
-                    </td>
-                    <td style={{ padding: '10px 12px' }}>
-                      <span
-                        style={{
-                          fontSize: '11.5px',
-                          fontWeight: 800,
-                          color: isCompleted ? '#059669' : t.status === 'IN_PROGRESS' ? '#d97706' : '#64748b',
-                          background: isCompleted ? '#ecfdf5' : t.status === 'IN_PROGRESS' ? '#fef3c7' : '#f8fafc',
-                          padding: '3px 8px',
-                          borderRadius: '12px',
-                          border: `1px solid ${isCompleted ? '#a7f3d0' : '#e2e8f0'}`
-                        }}
-                      >
-                        {isCompleted ? '✓ COMPLETED' : t.status}
-                      </span>
-                    </td>
-                    <td style={{ padding: '10px 12px', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
-                        {jobNum && (
-                          <Link
-                            href={`/jobs/${jobNum}`}
-                            className="btn btn-secondary"
-                            style={{ fontSize: '11px', padding: '4px 8px', textDecoration: 'none' }}
-                          >
-                            Job Details
-                          </Link>
-                        )}
-                        {!isCompleted && (
-                          <button
-                            onClick={() => handleCompleteTask(t)}
-                            disabled={busyTaskId === t.id}
-                            style={{
-                              background: '#059669',
-                              color: '#fff',
-                              border: 'none',
-                              borderRadius: '4px',
-                              padding: '4px 10px',
-                              fontSize: '11px',
-                              fontWeight: 800,
-                              cursor: 'pointer'
-                            }}
-                          >
-                            {busyTaskId === t.id ? 'Saving...' : '✓ Complete'}
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        {!rows.length && !error && (
-          <div style={{ textAlign: 'center', padding: '30px', color: '#64748b' }}>
-            No pending tasks found for this filter.
-          </div>
-        )}
+        <DataGrid<WorkflowTaskRow>
+          storageKey="department-tasks-grid"
+          exportName="department-tasks"
+          rows={rows}
+          columns={columns}
+          frozenColumns={2}
+          rowKey={(t) => t.id}
+          selectedRowKey={selectedTask?.id ?? null}
+          onRowClick={(t) => setSelectedTask(t)}
+          emptyMessage="No pending tasks found for this filter."
+        />
+
+        <RecordPanel
+          open={Boolean(selectedTask)}
+          onClose={() => setSelectedTask(null)}
+          title={selectedTask ? selectedTask.title : ''}
+          subtitle={selectedTask ? `${resolveTaskDepartment(selectedTask)} · ${selectedTask.module}` : undefined}
+          sections={recordSections}
+        />
       </div>
     </Shell>
   );

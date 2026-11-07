@@ -3,7 +3,16 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import Shell from '../../../components/Shell';
-import { DataGrid, GridColumn, RecordPanel } from '../../../components/ui';
+import {
+  ActiveFiltersBar,
+  CrossFilterProvider,
+  DataGrid,
+  DrillBreakdown,
+  DrillPopup,
+  DrillTarget,
+  GridColumn,
+  RecordPanel,
+} from '../../../components/ui';
 import { fmtDate, fmtNum } from '../../../lib/format';
 import {
   FlaskConical,
@@ -555,8 +564,17 @@ const INITIAL_MASTER_RECORDS: LabJobMasterRecord[] = [
 // ============================================================================
 
 export default function TestingLabModulePage() {
+  return (
+    <CrossFilterProvider>
+      <TestingLabModuleContent />
+    </CrossFilterProvider>
+  );
+}
+
+function TestingLabModuleContent() {
   // Navigation Tabs
   const [activeTab, setActiveTab] = useState<'REGISTER' | 'REQUESTS' | 'ENTRY'>('REGISTER');
+  const [drillTarget, setDrillTarget] = useState<DrillTarget | null>(null);
 
   // Master State with LocalStorage Persistence
   const [masterRecords, setMasterRecords] = useState<LabJobMasterRecord[]>(() => {
@@ -886,15 +904,95 @@ export default function TestingLabModulePage() {
 
   // Reset to Factory Default Data
   const handleResetDefaults = () => {
-    if (confirm('Reset Lab data to standard factory default records?')) {
-      setMasterRecords(INITIAL_MASTER_RECORDS);
-      setPlanningRequests(INITIAL_PLANNING_REQUESTS);
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('nfl_testing_lab_v2');
-        localStorage.removeItem('nfl_lab_requests_v2');
+    setMasterRecords(INITIAL_MASTER_RECORDS);
+    setPlanningRequests(INITIAL_PLANNING_REQUESTS);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('nfl_testing_lab_v2');
+      localStorage.removeItem('nfl_lab_requests_v2');
+    }
+    setEntrySuccessMessage('Lab data reset to standard factory default records.');
+    setTimeout(() => setEntrySuccessMessage(''), 4000);
+  };
+
+  function openFailedTestsDrill(ev: React.MouseEvent, label: string) {
+    const rect = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+    const testKeys: Array<{ key: keyof LabJobMasterRecord; label: string }> = [
+      { key: 'dimensionalStability', label: 'Dimensional Stability' },
+      { key: 'washTest5x', label: '5-Time Wash' },
+      { key: 'rubbingFastness', label: 'Rubbing Fastness' },
+      { key: 'perspirationFastness', label: 'Perspiration Fastness' },
+      { key: 'salivaFastness', label: 'Saliva Fastness' },
+      { key: 'pillingStretch', label: 'Pilling / Stretch' },
+      { key: 'garmentAccessories', label: 'Accessories Pull' },
+    ];
+    const byType = new Map<string, { count: number; jobs: Set<string> }>();
+    const byBuyer = new Map<string, { count: number; jobs: Set<string> }>();
+    for (const r of masterRecords) {
+      let rowFailed = false;
+      for (const tk of testKeys) {
+        const evObj = r[tk.key] as SingleTestEvaluation;
+        if (evObj && (evObj.status === 'FAIL' || evObj.status === 'TEST_RUNNING')) {
+          const cur = byType.get(tk.label) || { count: 0, jobs: new Set<string>() };
+          cur.count += 1;
+          cur.jobs.add(r.jobNo);
+          byType.set(tk.label, cur);
+          rowFailed = true;
+        }
+      }
+      if (rowFailed || r.deliveryGate === 'BLOCKED') {
+        const bc = byBuyer.get(r.buyer) || { count: 0, jobs: new Set<string>() };
+        bc.count += 1;
+        bc.jobs.add(r.jobNo);
+        byBuyer.set(r.buyer, bc);
       }
     }
-  };
+
+    const typeSlices = Array.from(byType.entries())
+      .sort((a, b) => b[1].count - a[1].count)
+      .map(([k, v]) => ({
+        key: k,
+        label: k,
+        value: v.count,
+        jobs: v.jobs.size,
+        filterValue: k,
+      }));
+    const buyerSlices = Array.from(byBuyer.entries())
+      .sort((a, b) => b[1].count - a[1].count)
+      .map(([k, v]) => ({
+        key: k,
+        label: k,
+        value: v.count,
+        jobs: v.jobs.size,
+        filterValue: k,
+      }));
+
+    setDrillTarget({
+      title: `Testing Lab — ${label}`,
+      subtitle: 'Failed / Running tests by Test Type, then Buyer (Sorted Bar)',
+      anchorRect: rect,
+      sourceFilter: { field: 'deliveryGate', value: 'BLOCKED', label },
+      breakdowns: [
+        {
+          dimension: 'reason',
+          label: 'By Test Type',
+          chart: 'bar',
+          unit: 'pcs',
+          color: 'red',
+          filterField: 'testType',
+          slices: typeSlices,
+        },
+        {
+          dimension: 'buyer',
+          label: 'By Buyer',
+          chart: 'bar',
+          unit: 'pcs',
+          color: 'red',
+          filterField: 'buyer',
+          slices: buyerSlices,
+        },
+      ],
+    });
+  }
 
   // Helper Badge Renderer for Individual Test
   const renderTestBadge = (t: SingleTestEvaluation) => {
@@ -937,7 +1035,6 @@ export default function TestingLabModulePage() {
         </div>
       );
     }
-    // PASS
     return (
       <div>
         <span style={{ fontSize: '11px', fontWeight: 800, background: '#DCFCE7', color: '#15803D', padding: '2px 6px', borderRadius: 4, display: 'inline-block' }}>
@@ -951,53 +1048,12 @@ export default function TestingLabModulePage() {
   };
 
   return (
-    <Shell
-      title="Testing Lab (Testing Lab)"
-      eyebrow="Physical & Chemical Fastness Testing · Mandatory Clearance Gate Prior to Fabric Delivery"
-    >
+    <Shell title="Testing Lab">
       {/* =========================================================================
-          TOP BANNER & NAVIGATION SUB-MENU
+          SINGLE TOP SUB-MENU BAR (Task D2)
          ========================================================================= */}
-      <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 10, padding: '16px 20px', marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ background: '#0F274E', color: '#A4D92C', padding: '3px 8px', borderRadius: 6, fontSize: 11.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                Central Lab Facility
-              </span>
-              <span style={{ background: '#F0FDF4', color: '#15803D', border: '1px solid #BBF7D0', padding: '3px 8px', borderRadius: 6, fontSize: 11.5, fontWeight: 700 }}>
-                ISO 17025 Compliant Gatekeeper
-              </span>
-            </div>
-            <h1 style={{ fontSize: 22, fontWeight: 900, color: '#0F172A', margin: '6px 0 2px 0' }}>
-              Textile Testing Laboratory &amp; Delivery Gate Control
-            </h1>
-            <p style={{ fontSize: 13, color: '#475569', margin: 0 }}>
-              Physical (Shrinkage, Spirality, Bursting, Pilling) &amp; Fastness testing (Washing, Crocking, Perspiration, Saliva) · <strong>Gatekeeper Rule:</strong> Finished Fabric Store &amp; Dyeing cannot deliver even 1 kg if test fails.
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <button
-              type="button"
-              onClick={handleResetDefaults}
-              style={{ fontSize: 12, fontWeight: 700, padding: '8px 12px', background: '#F8FAFC', border: '1px solid #CBD5E1', color: '#475569', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-              title="Reset data to default factory records"
-            >
-              <RefreshCw size={13} /> Defaults
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('ENTRY')}
-              style={{ fontSize: 13, fontWeight: 800, padding: '8px 16px', background: '#0F274E', color: '#FFFFFF', border: 'none', borderRadius: 7, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-            >
-              <Plus size={15} color="#A4D92C" /> + Log Test / Upload Result
-            </button>
-          </div>
-        </div>
-
-        {/* SUB-MENU TABS */}
-        <div style={{ display: 'flex', gap: 8, marginTop: 16, borderTop: '1px solid #F1F5F9', paddingTop: 14 }}>
+      <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 10, padding: '12px 16px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button
             type="button"
             onClick={() => setActiveTab('REGISTER')}
@@ -1013,7 +1069,6 @@ export default function TestingLabModulePage() {
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              transition: 'all 0.15s ease'
             }}
           >
             <FlaskConical size={16} color={activeTab === 'REGISTER' ? '#A4D92C' : '#64748B'} />
@@ -1035,7 +1090,6 @@ export default function TestingLabModulePage() {
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              transition: 'all 0.15s ease'
             }}
           >
             <Layers size={16} color={activeTab === 'REQUESTS' ? '#A4D92C' : '#64748B'} />
@@ -1062,20 +1116,36 @@ export default function TestingLabModulePage() {
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              transition: 'all 0.15s ease'
             }}
           >
             <UploadCloud size={16} color={activeTab === 'ENTRY' ? '#A4D92C' : '#64748B'} />
             3. Test Report Entry &amp; Certificate Upload
           </button>
         </div>
+
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <button
+            type="button"
+            onClick={handleResetDefaults}
+            style={{ fontSize: 12, fontWeight: 700, padding: '8px 12px', background: '#F8FAFC', border: '1px solid #CBD5E1', color: '#475569', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+            title="Reset data to default factory records"
+          >
+            <RefreshCw size={13} /> Defaults
+          </button>
+        </div>
       </div>
 
+      <ActiveFiltersBar />
+
       {/* =========================================================================
-          KEY KPI CARDS (COMPACT & PROFESSIONAL)
+          KEY KPI CARDS (DOUBLE-CLICK TO DRILL DOWN)
          ========================================================================= */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10, marginBottom: 16 }}>
-        <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderLeft: '4px solid #0284C7', borderRadius: 8, padding: '10px 14px' }}>
+        <div
+          onDoubleClick={(e) => openFailedTestsDrill(e, 'Total Lab Jobs')}
+          title="Double-click to drill down by Test Type & Buyer"
+          style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderLeft: '4px solid #0284C7', borderRadius: 8, padding: '10px 14px', cursor: 'pointer' }}
+        >
           <div style={{ fontSize: 11.5, fontWeight: 750, color: '#64748B', textTransform: 'uppercase' }}>Total Lab Jobs</div>
           <div style={{ fontSize: 24, fontWeight: 900, color: '#0F172A', marginTop: 2 }}>{kpis.total} <span style={{ fontSize: 12, fontWeight: 600, color: '#64748B' }}>batches</span></div>
           <div style={{ fontSize: 11.5, color: '#64748B' }}>Under laboratory evaluation</div>
@@ -1093,18 +1163,36 @@ export default function TestingLabModulePage() {
           <div style={{ fontSize: 11.5, color: '#166534' }}>Unlocked for store delivery</div>
         </div>
 
-        <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderLeft: '4px solid #DC2626', borderRadius: 8, padding: '10px 14px' }}>
-          <div style={{ fontSize: 11.5, fontWeight: 750, color: '#991B1B', textTransform: 'uppercase' }}>Delivery Blocked</div>
+        <div
+          onDoubleClick={(e) => openFailedTestsDrill(e, 'Failed / Blocked Tests')}
+          title="Double-click to drill down Failed Tests by Test Type & Buyer"
+          style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderLeft: '4px solid #DC2626', borderRadius: 8, padding: '10px 14px', cursor: 'pointer' }}
+        >
+          <div style={{ fontSize: 11.5, fontWeight: 750, color: '#991B1B', textTransform: 'uppercase' }}>Delivery Blocked (Failed)</div>
           <div style={{ fontSize: 24, fontWeight: 900, color: '#DC2626', marginTop: 2 }}>{kpis.blocked} <span style={{ fontSize: 12, fontWeight: 600 }}>batches</span></div>
-          <div style={{ fontSize: 11.5, color: '#991B1B' }}>Zero delivery permitted</div>
+          <div style={{ fontSize: 11.5, color: '#991B1B' }}>Double-click for Test Type breakdown</div>
         </div>
 
-        <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderLeft: '4px solid #6366F1', borderRadius: 8, padding: '10px 14px' }}>
+        <div
+          onDoubleClick={(e) => openFailedTestsDrill(e, 'In-Testing Chamber')}
+          title="Double-click to drill down by Test Type & Buyer"
+          style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderLeft: '4px solid #6366F1', borderRadius: 8, padding: '10px 14px', cursor: 'pointer' }}
+        >
           <div style={{ fontSize: 11.5, fontWeight: 750, color: '#4338CA', textTransform: 'uppercase' }}>In-Testing Chamber</div>
           <div style={{ fontSize: 24, fontWeight: 900, color: '#4338CA', marginTop: 2 }}>{kpis.pending} <span style={{ fontSize: 12, fontWeight: 600 }}>running</span></div>
           <div style={{ fontSize: 11.5, color: '#4338CA' }}>Oven / Crockmeter / Wash cycles</div>
         </div>
       </div>
+
+      <DrillPopup
+        target={drillTarget}
+        onClose={() => setDrillTarget(null)}
+        onShowInTable={(f) => {
+          setActiveTab('REGISTER');
+          setSearchQuery(f.value);
+          setDrillTarget(null);
+        }}
+      />
 
       {/* =========================================================================
           TAB 1: MASTER TEST REPORT REGISTER

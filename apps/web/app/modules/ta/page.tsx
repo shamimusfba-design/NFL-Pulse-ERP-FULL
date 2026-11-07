@@ -15,6 +15,8 @@ import {
   CartesianGrid
 } from 'recharts';
 import { FX_SERIES, FX_BAR, FX_PIE, FxResponsiveContainer as ResponsiveContainer } from '../../../components/fx';
+import { DataGrid, GridColumn, DrillPopup, DrillTarget } from '../../../components/ui';
+import { fmtDate } from '../../../lib/format';
 import {
   Clock,
   CheckCircle2,
@@ -126,7 +128,7 @@ export default function TaPage() {
   const [overrideReason, setOverrideReason] = useState('');
   const [overloadedSlots, setOverloadedSlots] = useState<any[]>([]);
   const [showBaselineCompare, setShowBaselineCompare] = useState(false);
-  const [activeChartBar, setActiveChartBar] = useState<number | null>(null);
+  const [drillTarget, setDrillTarget] = useState<DrillTarget | null>(null);
 
   // Control Tower Data
   const [controlTower, setControlTower] = useState<any>(null);
@@ -527,16 +529,94 @@ export default function TaPage() {
     };
   }, [queue, riskList, shipmentMeetings]);
 
-  // Chart data: Milestone health distribution
+  // Chart data: Milestone health distribution (locked meaning colours)
   const chartData = useMemo(() => {
     return [
-      { name: 'T&A Approved', count: tnaKpis.approved, color: '#10B981', fill: '#A7F3D0', key: 'APPROVED' },
-      { name: 'Draft / In-Prep', count: tnaKpis.pending, color: '#0284C7', fill: '#BAE6FD', key: 'PENDING' },
-      { name: 'On Track Risk', count: Math.max(0, queue.length - tnaKpis.totalRisks), color: '#6366F1', fill: '#C7D2FE', key: 'ON_TRACK' },
-      { name: 'At Risk (Slip)', count: tnaKpis.atRisk, color: '#F59E0B', fill: '#FDE68A', key: 'AT_RISK' },
-      { name: 'Critical Delayed', count: tnaKpis.criticalRisks, color: '#EF4444', fill: '#FECACA', key: 'CRITICAL' },
+      { name: 'T&A Approved', count: tnaKpis.approved, color: '#16A34A', fill: '#16A34A', key: 'APPROVED' },
+      { name: 'Draft / In-Prep', count: tnaKpis.pending, color: '#2563EB', fill: '#2563EB', key: 'PENDING' },
+      { name: 'On Track Risk', count: Math.max(0, queue.length - tnaKpis.totalRisks), color: '#16A34A', fill: '#16A34A', key: 'ON_TRACK' },
+      { name: 'At Risk (Slip)', count: tnaKpis.atRisk, color: '#D97706', fill: '#D97706', key: 'AT_RISK' },
+      { name: 'Critical Delayed', count: tnaKpis.criticalRisks, color: '#DC2626', fill: '#DC2626', key: 'CRITICAL' },
     ];
   }, [tnaKpis, queue]);
+
+  const openTaDrill = (ev: React.MouseEvent) => {
+    const rect = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+    const activityMap = new Map<string, { value: number; jobs: Set<string> }>();
+    const buyerMap = new Map<string, { value: number; jobs: Set<string> }>();
+    const jobRows: { jobNo: string; buyer: string; style: string; qty: number; unit: 'pcs'; status: string }[] = [];
+
+    // Aggregate failed/delayed activities from riskList + active plans
+    riskList.forEach((r: any) => {
+      const actLabel = r.bottleneckActivity || (r.riskLevel === 'CRITICAL' ? 'Critical Path Activity' : 'Delayed Milestone');
+      const a = activityMap.get(actLabel) || { value: 0, jobs: new Set<string>() };
+      a.value += 1;
+      a.jobs.add(String(r.jobNo));
+      activityMap.set(actLabel, a);
+
+      const b = buyerMap.get(r.buyer || 'Buyer') || { value: 0, jobs: new Set<string>() };
+      b.value += 1;
+      b.jobs.add(String(r.jobNo));
+      buyerMap.set(r.buyer || 'Buyer', b);
+
+      jobRows.push({
+        jobNo: String(r.jobNo),
+        buyer: String(r.buyer || '—'),
+        style: String(r.styleNo || '—'),
+        qty: Number(r.orderQty || 0),
+        unit: 'pcs',
+        status: `${r.riskLevel}${r.ccdSlipDays > 0 ? ` (+${r.ccdSlipDays}d)` : ''}`,
+      });
+    });
+
+    Object.values(plans).forEach((p: any) => {
+      const trk = p.activityTracking || {};
+      PROCESS_ROWS.forEach((row) => {
+        const st = trk[row.key]?.status;
+        if (st === 'FAILED' || st === 'DELAYED') {
+          const a = activityMap.get(row.label) || { value: 0, jobs: new Set<string>() };
+          a.value += 1;
+          if (order?.jobNo) a.jobs.add(String(order.jobNo));
+          activityMap.set(row.label, a);
+        }
+      });
+    });
+
+    const byReason = Array.from(activityMap.entries())
+      .sort((a, b) => b[1].value - a[1].value)
+      .map(([key, v]) => ({
+        key,
+        label: key,
+        value: v.value,
+        jobs: v.jobs.size,
+        tone: 'balance' as const,
+        filter: { key: 'activity', label: 'Activity', value: key },
+      }));
+
+    const byBuyer = Array.from(buyerMap.entries())
+      .sort((a, b) => b[1].value - a[1].value)
+      .map(([key, v]) => ({
+        key,
+        label: key,
+        value: v.value,
+        jobs: v.jobs.size,
+        tone: 'balance' as const,
+        filter: { key: 'buyer', label: 'Buyer', value: key },
+      }));
+
+    setDrillTarget({
+      title: 'Failed & Delayed T&A Activities — By Activity & Job',
+      subtitle: 'Critical path & delayed milestones breakdown',
+      anchorRect: rect,
+      total: jobRows.length || tnaKpis.totalRisks,
+      unit: 'pcs',
+      totalJobs: new Set(jobRows.map((j) => j.jobNo)).size || tnaKpis.totalRisks,
+      tone: 'balance',
+      byReason,
+      byBuyer,
+      jobs: jobRows,
+    });
+  };
 
   const CustomChartTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
@@ -781,6 +861,7 @@ export default function TaPage() {
           {/* Card 4: Critical Path & Delay Risks */}
           <div
             onClick={() => setActiveTab('RISK_LIST')}
+            onDoubleClick={(ev) => openTaDrill(ev)}
             style={{
               background: activeTab === 'RISK_LIST' ? '#FEF2F2' : '#FFFFFF',
               padding: '12px 14px',
@@ -790,7 +871,7 @@ export default function TaPage() {
               cursor: 'pointer',
               transition: 'all 0.15s ease-in-out',
             }}
-            title="Click to view Critical Path & Shipment-Risk Alert list"
+            title="Click to view Critical Path list · Double-click to drill down by Activity and Job"
           >
             <div style={{ fontSize: '11px', color: '#DC2626', fontWeight: 700, textTransform: 'uppercase' }}>
               Critical Path Risks
@@ -885,7 +966,11 @@ export default function TaPage() {
             </span>
           </div>
 
-          <div style={{ width: '100%', height: '150px' }}>
+          <div
+            style={{ width: '100%', height: '150px' }}
+            onDoubleClick={(ev) => openTaDrill(ev)}
+            title="Single-click to filter · Double-click to drill down failed/delayed activities by Activity and Job"
+          >
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={chartData}
@@ -915,16 +1000,14 @@ export default function TaPage() {
                   dataKey="count"
                   radius={[4, 4, 0, 0]}
                   maxBarSize={55}
-                  onMouseEnter={(_, index) => setActiveChartBar(index)}
-                  onMouseLeave={() => setActiveChartBar(null)}
                 >
                   {chartData.map((entry: any, index: number) => (
                     <Cell
                       key={`cell-${index}`}
-                      fill={activeChartBar === index ? entry.color : entry.fill}
+                      fill={entry.color}
                       stroke={entry.color}
                       strokeWidth={1.5}
-                      style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
+                      style={{ cursor: 'pointer' }}
                     />
                   ))}
                 </Bar>
@@ -932,6 +1015,19 @@ export default function TaPage() {
             </ResponsiveContainer>
           </div>
         </div>
+
+        <DrillPopup
+          target={drillTarget}
+          onClose={() => setDrillTarget(null)}
+          onApplyFilter={(f) => {
+            setSearch(f.value);
+            setActiveTab('RISK_LIST');
+          }}
+          onShowJobsInTable={(jobs) => {
+            if (jobs.length > 0) setSearch(jobs[0].jobNo);
+            setActiveTab('RISK_LIST');
+          }}
+        />
 
         {/* TAB 1: BULK T&A SCHEDULE */}
         {activeTab === 'TNA' && (
@@ -1532,83 +1628,126 @@ export default function TaPage() {
               boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
             }}
           >
-            <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F274E', marginBottom: '4px' }}>
+            <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F274E', marginBottom: '8px' }}>
               Critical Path &amp; Shipment-Risk Alert List
             </div>
-<div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', minWidth: '950px', borderCollapse: 'collapse', fontSize: '12px' }}>
-                <thead>
-                  <tr style={{ borderBottom: '2px solid #E2E8F0', color: '#64748B', textAlign: 'left' }}>
-                    <th style={{ padding: '8px' }}>Job / Style / Buyer</th>
-                    <th style={{ padding: '8px' }}>Order Qty</th>
-                    <th style={{ padding: '8px' }}>Planned Ex-Factory</th>
-                    <th style={{ padding: '8px' }}>Projected Ex-Factory</th>
-                    <th style={{ padding: '8px' }}>Earliest CCD</th>
-                    <th style={{ padding: '8px' }}>Risk Status</th>
-                    <th style={{ padding: '8px', textAlign: 'right' }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {riskList.map((item: any) => (
-                    <tr key={item.styleId} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                      <td style={{ padding: '8px' }}>
-                        <div style={{ fontWeight: 800, color: '#0284C7' }}>Job #{item.jobNo} · {item.styleNo}</div>
-                        <div style={{ fontSize: '11px', color: '#64748B' }}>{item.buyer}</div>
-                      </td>
-                      <td style={{ padding: '8px', fontFamily: 'monospace' }}>
-                        {Number(item.orderQty || 0).toLocaleString()} pcs
-                      </td>
-                      <td style={{ padding: '8px', fontFamily: 'monospace', color: '#475569' }}>
-                        {item.plannedExFactoryDate}
-                      </td>
-                      <td style={{ padding: '8px', fontFamily: 'monospace', fontWeight: 700, color: '#DC2626' }}>
-                        {item.projectedExFactoryDate}
-                      </td>
-                      <td style={{ padding: '8px', fontFamily: 'monospace', color: '#0284C7', fontWeight: 650 }}>
-                        {item.ccd}
-                        {item.ccdSlipDays > 0 && (
-                          <span style={{ marginLeft: '4px', color: '#DC2626', fontSize: '10.5px' }}>(+{item.ccdSlipDays}d Slip)</span>
-                        )}
-                      </td>
-                      <td style={{ padding: '8px' }}>
-                        <span
-                          style={{
-                            padding: '3px 8px',
-                            borderRadius: '10px',
-                            fontSize: '10.5px',
-                            fontWeight: 700,
-                            background: item.riskLevel === 'CRITICAL' ? '#FEF2F2' : '#FFFBEB',
-                            color: item.riskLevel === 'CRITICAL' ? '#DC2626' : '#D97706',
-                          }}
-                        >
-                          {item.riskLevel}
+            <DataGrid
+              storageKey="ta-critical-path-risks"
+              exportName="ta-critical-path-risks"
+              rows={riskList}
+              rowKey={(item: any) => String(item.styleId || `${item.jobNo}-${item.styleNo}`)}
+              frozenColumns={2}
+              emptyText="No critical path risks identified"
+              columns={[
+                {
+                  key: 'jobNo',
+                  header: 'Job No',
+                  width: 115,
+                  value: (item: any) => item.jobNo,
+                  render: (item: any) => <strong style={{ color: '#0284C7' }}>Job #{item.jobNo}</strong>,
+                },
+                {
+                  key: 'buyerStyle',
+                  header: 'Buyer / Style',
+                  width: 170,
+                  value: (item: any) => `${item.buyer} ${item.styleNo}`,
+                  render: (item: any) => (
+                    <div>
+                      <strong>{item.buyer}</strong>
+                      <div style={{ fontSize: '11px', color: '#64748B' }}>{item.styleNo}</div>
+                    </div>
+                  ),
+                },
+                {
+                  key: 'orderQty',
+                  header: 'Order Qty (pcs)',
+                  width: 130,
+                  numeric: true,
+                  total: true,
+                  unit: 'pcs',
+                  value: (item: any) => Number(item.orderQty || 0),
+                },
+                {
+                  key: 'plannedExFactoryDate',
+                  header: 'Planned Ex-Factory',
+                  width: 140,
+                  value: (item: any) => item.plannedExFactoryDate,
+                  render: (item: any) => fmtDate(item.plannedExFactoryDate),
+                },
+                {
+                  key: 'projectedExFactoryDate',
+                  header: 'Projected Ex-Factory',
+                  width: 145,
+                  value: (item: any) => item.projectedExFactoryDate,
+                  render: (item: any) => (
+                    <strong style={{ color: '#DC2626' }}>{fmtDate(item.projectedExFactoryDate)}</strong>
+                  ),
+                },
+                {
+                  key: 'ccd',
+                  header: 'Earliest CCD',
+                  width: 155,
+                  value: (item: any) => item.ccd,
+                  render: (item: any) => (
+                    <span>
+                      <strong style={{ color: '#0284C7' }}>{fmtDate(item.ccd)}</strong>
+                      {item.ccdSlipDays > 0 && (
+                        <span style={{ marginLeft: '4px', color: '#DC2626', fontSize: '10.5px', fontWeight: 700 }}>
+                          (+{item.ccdSlipDays}d Slip)
                         </span>
-                      </td>
-                      <td style={{ padding: '8px', textAlign: 'right' }}>
-                        <button
-                          onClick={() => {
-                            setActiveTab('TNA');
-                            selectOrder(item.orderId || item.jobNo);
-                          }}
-                          style={{
-                            padding: '4px 10px',
-                            borderRadius: '5px',
-                            border: '1px solid #0284C7',
-                            background: '#F0F9FF',
-                            color: '#0284C7',
-                            fontSize: '11px',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Open T&amp;A
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      )}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'riskLevel',
+                  header: 'Risk Status',
+                  width: 120,
+                  value: (item: any) => item.riskLevel,
+                  render: (item: any) => (
+                    <span
+                      style={{
+                        padding: '3px 8px',
+                        borderRadius: '10px',
+                        fontSize: '10.5px',
+                        fontWeight: 700,
+                        background: item.riskLevel === 'CRITICAL' ? '#FEF2F2' : '#FFFBEB',
+                        color: item.riskLevel === 'CRITICAL' ? '#DC2626' : '#D97706',
+                      }}
+                    >
+                      {item.riskLevel}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'action',
+                  header: 'Action',
+                  width: 115,
+                  filterable: false,
+                  render: (item: any) => (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveTab('TNA');
+                        selectOrder(item.orderId || item.jobNo);
+                      }}
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: '5px',
+                        border: '1px solid #0284C7',
+                        background: '#F0F9FF',
+                        color: '#0284C7',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Open T&amp;A
+                    </button>
+                  ),
+                },
+              ]}
+            />
           </div>
         )}
 
@@ -1623,74 +1762,130 @@ export default function TaPage() {
               boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
             }}
           >
-            <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F274E', marginBottom: '4px' }}>
+            <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F274E', marginBottom: '8px' }}>
               Weekly Fabric &amp; Trims Due vs Received Follow-up
             </div>
-<div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', minWidth: '950px', borderCollapse: 'collapse', fontSize: '12px' }}>
-                <thead>
-                  <tr style={{ borderBottom: '2px solid #E2E8F0', color: '#64748B', textAlign: 'left' }}>
-                    <th style={{ padding: '8px' }}>Job / Style / Buyer</th>
-                    <th style={{ padding: '8px' }}>Fabric Due Date</th>
-                    <th style={{ padding: '8px' }}>Fabric Req / Recv / Bal</th>
-                    <th style={{ padding: '8px' }}>Fabric Status</th>
-                    <th style={{ padding: '8px' }}>Trims Readiness</th>
-                    <th style={{ padding: '8px', textAlign: 'right' }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {fabricTrimsList.map((ft: any) => (
-                    <tr key={ft.styleId} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                      <td style={{ padding: '8px' }}>
-                        <div style={{ fontWeight: 800, color: '#0284C7' }}>Job #{ft.jobNo} · {ft.styleNo}</div>
-                        <div style={{ fontSize: '11px', color: '#64748B' }}>{ft.buyer}</div>
-                      </td>
-                      <td style={{ padding: '8px', fontFamily: 'monospace' }}>{ft.fabricDueDate || '—'}</td>
-                      <td style={{ padding: '8px', fontFamily: 'monospace' }}>
-                        <div>Req: {Number(ft.fabricRequiredKg || 0).toLocaleString()} Kg</div>
-                        <div style={{ color: '#059669' }}>Recv: {Number(ft.fabricReceivedKg || 0).toLocaleString()} Kg</div>
-                        <div style={{ color: '#D97706' }}>Bal: {Number(ft.fabricBalanceKg || 0).toLocaleString()} Kg</div>
-                      </td>
-                      <td style={{ padding: '8px' }}>
-                        <span
-                          style={{
-                            padding: '3px 8px',
-                            borderRadius: '10px',
-                            fontSize: '10.5px',
-                            fontWeight: 700,
-                            background: ft.fabricStatus === 'IN_HOUSE' ? '#ECFDF5' : '#FFFBEB',
-                            color: ft.fabricStatus === 'IN_HOUSE' ? '#059669' : '#D97706',
-                          }}
-                        >
-                          {ft.fabricStatus}
-                        </span>
-                      </td>
-                      <td style={{ padding: '8px', fontSize: '11px' }}>
-                        <div style={{ color: '#0284C7', fontWeight: 600 }}>Due: {ft.trimsDueDate || '—'}</div>
-                        <div>{(ft.trimsItems || []).length} items monitored</div>
-                      </td>
-                      <td style={{ padding: '8px', textAlign: 'right' }}>
-                        <button
-                          onClick={() => setEditingFabTrims({ ...ft })}
-                          style={{
-                            padding: '4px 10px',
-                            borderRadius: '5px',
-                            border: '1px solid #0284C7',
-                            background: '#F0F9FF',
-                            color: '#0284C7',
-                            fontSize: '11px',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Update Tracker
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DataGrid
+              storageKey="ta-fabric-trims-followup"
+              exportName="ta-fabric-trims-followup"
+              rows={fabricTrimsList}
+              rowKey={(ft: any) => String(ft.styleId || `${ft.jobNo}-${ft.styleNo}`)}
+              frozenColumns={2}
+              emptyText="No fabric & trims follow-up rows"
+              columns={[
+                {
+                  key: 'jobNo',
+                  header: 'Job No',
+                  width: 115,
+                  value: (ft: any) => ft.jobNo,
+                  render: (ft: any) => <strong style={{ color: '#0284C7' }}>Job #{ft.jobNo}</strong>,
+                },
+                {
+                  key: 'buyerStyle',
+                  header: 'Buyer / Style',
+                  width: 170,
+                  value: (ft: any) => `${ft.buyer} ${ft.styleNo}`,
+                  render: (ft: any) => (
+                    <div>
+                      <strong>{ft.buyer}</strong>
+                      <div style={{ fontSize: '11px', color: '#64748B' }}>{ft.styleNo}</div>
+                    </div>
+                  ),
+                },
+                {
+                  key: 'fabricDueDate',
+                  header: 'Fabric Due Date',
+                  width: 130,
+                  value: (ft: any) => ft.fabricDueDate || '—',
+                  render: (ft: any) => fmtDate(ft.fabricDueDate),
+                },
+                {
+                  key: 'fabricRequiredKg',
+                  header: 'Fabric Req (kg)',
+                  width: 125,
+                  numeric: true,
+                  total: true,
+                  unit: 'kg',
+                  value: (ft: any) => Number(ft.fabricRequiredKg || 0),
+                },
+                {
+                  key: 'fabricReceivedKg',
+                  header: 'Fabric Recv (kg)',
+                  width: 125,
+                  numeric: true,
+                  total: true,
+                  unit: 'kg',
+                  value: (ft: any) => Number(ft.fabricReceivedKg || 0),
+                },
+                {
+                  key: 'fabricBalanceKg',
+                  header: 'Fabric Bal (kg)',
+                  width: 125,
+                  numeric: true,
+                  total: true,
+                  unit: 'kg',
+                  value: (ft: any) => Number(ft.fabricBalanceKg || 0),
+                },
+                {
+                  key: 'fabricStatus',
+                  header: 'Fabric Status',
+                  width: 120,
+                  value: (ft: any) => ft.fabricStatus,
+                  render: (ft: any) => (
+                    <span
+                      style={{
+                        padding: '3px 8px',
+                        borderRadius: '10px',
+                        fontSize: '10.5px',
+                        fontWeight: 700,
+                        background: ft.fabricStatus === 'IN_HOUSE' ? '#ECFDF5' : '#FFFBEB',
+                        color: ft.fabricStatus === 'IN_HOUSE' ? '#059669' : '#D97706',
+                      }}
+                    >
+                      {ft.fabricStatus}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'trimsDueDate',
+                  header: 'Trims Readiness',
+                  width: 155,
+                  value: (ft: any) => ft.trimsDueDate || '—',
+                  render: (ft: any) => (
+                    <div style={{ fontSize: '11px' }}>
+                      <div style={{ color: '#0284C7', fontWeight: 600 }}>Due: {fmtDate(ft.trimsDueDate)}</div>
+                      <div>{(ft.trimsItems || []).length} items monitored</div>
+                    </div>
+                  ),
+                },
+                {
+                  key: 'action',
+                  header: 'Action',
+                  width: 125,
+                  filterable: false,
+                  render: (ft: any) => (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingFabTrims({ ...ft });
+                      }}
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: '5px',
+                        border: '1px solid #0284C7',
+                        background: '#F0F9FF',
+                        color: '#0284C7',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Update Tracker
+                    </button>
+                  ),
+                },
+              ]}
+            />
           </div>
         )}
 

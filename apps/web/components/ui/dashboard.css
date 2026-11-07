@@ -144,14 +144,15 @@
 .nos-drill-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 65;
+  z-index: 9998;
   background: transparent;
 }
 
 .nos-drill-bubble {
   position: fixed;
-  z-index: 66;
-  width: 340px;
+  z-index: 9999;
+  width: 330px;
+  height: 330px;
   max-width: calc(100vw - 24px);
   background: var(--nos-card);
   color: var(--nos-ink);
@@ -161,7 +162,16 @@
   padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.nos-drill-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .nos-drill-arrow {
@@ -235,7 +245,7 @@
 }
 
 .nos-drill-jobs {
-  max-height: 180px;
+  max-height: 185px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -247,10 +257,18 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  width: 100%;
+  border: 1px solid transparent;
   padding: 5px 8px;
   border-radius: var(--r-sm);
   background: var(--nos-inset);
+  color: var(--nos-ink);
   font-size: var(--fs-small);
+  cursor: pointer;
+}
+
+.nos-drill-job-row:hover {
+  border-color: var(--nos-brand);
 }
 
 .nos-drill-ft {
