@@ -19,6 +19,7 @@ import demo2000DataRaw from '../../../data/demo-2000-master.json';
 import { displayJobNo } from '../../../lib/display';
 import { fmtNum } from '../../../lib/format';
 import { Card, KpiCard, DataGrid, GridColumn } from '../../../components/ui';
+import { useFxScope } from '../../../components/fx';
 
 /* ------------------------------------------------------------------ data */
 
@@ -83,9 +84,10 @@ function StageDonut({
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
   const C = 2 * Math.PI * 30;
   const donePart = total > 0 ? (done / total) * C : 0;
+  const fx = useFxScope();
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+    <div ref={fx.ref} data-fx={fx['data-fx']} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
       <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 500, color: 'var(--nos-ink)' }}>{label}</span>
       <svg width="78" height="78" viewBox="0 0 78 78" role="img" aria-label={`${label} ${pct}% done`}>
         <circle r="30" cx="39" cy="39" fill="none" stroke="var(--nos-balance)" strokeWidth="11" opacity={0.85} />
@@ -96,9 +98,10 @@ function StageDonut({
           fill="none"
           stroke="var(--nos-done)"
           strokeWidth="11"
+          className="fx-donut-seg"
           strokeDasharray={`${donePart} ${C - donePart}`}
           transform="rotate(-90 39 39)"
-          style={{ cursor: 'pointer' }}
+          style={{ cursor: 'pointer', ['--fx-c' as string]: `${C}` } as React.CSSProperties}
           onClick={() => onPick('done')}
         />
         <text x="39" y="38" textAnchor="middle" style={{ fontSize: 15, fontWeight: 500, fill: 'var(--nos-ink)' }}>
