@@ -55,6 +55,8 @@ export type DataGridProps<T> = {
   storageKey?: string;
   exportName?: string;
   emptyText?: string;
+  /** same thing under the name some pages use */
+  emptyMessage?: string;
   /** extra controls shown on the toolbar's left */
   toolbarLeft?: React.ReactNode;
   loading?: boolean;
@@ -77,9 +79,10 @@ const fmtN = (n: number, d = 0) => n.toLocaleString('en-US', { minimumFractionDi
 export function DataGrid<T>({
   columns, rows, rowKey, frozenColumns = 0, stickyTop = 0,
   onRowClick, selectedRowKey, selectable = false, bulkActions,
-  storageKey, exportName = 'export', emptyText = 'No rows match the filters',
+  storageKey, exportName = 'export', emptyText, emptyMessage,
   toolbarLeft, loading = false,
 }: DataGridProps<T>) {
+  const emptyLabel = emptyText ?? emptyMessage ?? 'No rows match the current filters.';
   const [filters, setFilters] = useState<Record<string, ColFilter>>({});
   const [sort, setSort] = useState<SortState>(null);
   const [groupBy, setGroupBy] = useState<string | null>(null);
@@ -464,7 +467,7 @@ export function DataGrid<T>({
 
             {!loading && sorted.length === 0 && (
               <tr><td colSpan={visibleCols.length + (selectable ? 1 : 0)}>
-                <div className="nos-empty"><b>{emptyText}</b><span>Change or clear the column filters above.</span></div>
+                <div className="nos-empty"><b>{emptyLabel}</b><span>Change or clear the column filters above.</span></div>
               </td></tr>
             )}
 

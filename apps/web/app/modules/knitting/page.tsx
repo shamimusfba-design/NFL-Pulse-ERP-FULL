@@ -892,9 +892,9 @@ function KnittingModuleContent() {
       <DrillPopup
         target={drillTarget}
         onClose={() => setDrillTarget(null)}
-        onShowInTable={(f) => {
+        onShowInTable={(_field, drillValue) => {
           setTab('execution');
-          setExecSearch(f.value);
+          setExecSearch(drillValue);
           setDrillTarget(null);
         }}
       />

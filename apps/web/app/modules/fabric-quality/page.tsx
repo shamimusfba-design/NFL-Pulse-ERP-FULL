@@ -1073,9 +1073,9 @@ function FabricQualityPageContent() {
         <DrillPopup
           target={drillTarget}
           onClose={() => setDrillTarget(null)}
-          onShowInTable={(f) => {
+          onShowInTable={(_field, drillValue) => {
             setActiveTab('all');
-            setSearchQuery(f.value);
+            setSearchQuery(drillValue);
             setDrillTarget(null);
           }}
         />

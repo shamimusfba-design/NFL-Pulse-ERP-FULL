@@ -247,7 +247,7 @@ export default function IeOverview() {
         target={drill}
         onClose={() => setDrill(null)}
         onApplyFilter={(val) => {
-          if (val.startsWith('Sewing-')) setFloor(val);
+          if (val.value.startsWith('Sewing-')) setFloor(val.value);
           setDrill(null);
         }}
       />

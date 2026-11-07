@@ -11,7 +11,9 @@ export interface SectionNavItem {
 }
 
 export interface SectionNavProps {
-  sections: SectionNavItem[];
+  /** Either name works; `items` is accepted for pages written against the older shape. */
+  sections?: SectionNavItem[];
+  items?: SectionNavItem[];
   stickyTop?: number;
   activeId?: string;
   onSelect?: (id: string) => void;
@@ -19,12 +21,14 @@ export interface SectionNavProps {
 
 export function SectionNav({
   sections,
+  items,
   stickyTop = 0,
   activeId: controlledActiveId,
   onSelect,
 }: SectionNavProps) {
+  const list: SectionNavItem[] = sections ?? items ?? [];
   const [activeId, setActiveId] = useState<string>(
-    controlledActiveId || (sections[0]?.id ?? ''),
+    controlledActiveId || (list[0]?.id ?? ''),
   );
 
   useEffect(() => {
@@ -34,12 +38,12 @@ export function SectionNav({
   }, [controlledActiveId]);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || sections.length === 0) return;
+    if (typeof window === 'undefined' || list.length === 0) return;
 
     const handleScroll = () => {
       const offset = 140;
-      let current = sections[0].id;
-      for (const sec of sections) {
+      let current = list[0].id;
+      for (const sec of list) {
         const el = document.getElementById(sec.id);
         if (el) {
           const rect = el.getBoundingClientRect();
@@ -54,7 +58,7 @@ export function SectionNav({
     window.addEventListener('scroll', handleScroll, { passive: true });
     handleScroll();
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [sections]);
+  }, [list]);
 
   const handleClick = (id: string) => {
     setActiveId(id);
@@ -66,11 +70,11 @@ export function SectionNav({
     }
   };
 
-  if (sections.length === 0) return null;
+  if (list.length === 0) return null;
 
   return (
     <nav
-      aria-label="Page sections"
+      aria-label="Page list"
       style={{
         position: 'sticky',
         top: stickyTop,
@@ -88,7 +92,7 @@ export function SectionNav({
         whiteSpace: 'nowrap',
       }}
     >
-      {sections.map((sec) => {
+      {list.map((sec) => {
         const isOn = activeId === sec.id;
         return (
           <button

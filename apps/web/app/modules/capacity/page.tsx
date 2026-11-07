@@ -105,7 +105,7 @@ function CapacityPageContent() {
   const [saving, setSaving] = useState(false);
   const [drillTarget, setDrillTarget] = useState<DrillTarget | null>(null);
 
-  function openSectionLoadDrill(entry: any, anchorRect?: DOMRect) {
+  function openSectionLoadDrill(entry: any, anchorRect?: DOMRect | { left: number; top: number; width: number; height: number }) {
     const row = (data?.rows || []).find((r: any) => r.label === entry?.name) || (data?.rows || [])[0];
     if (!row) return;
     const slotSlices = (row.slots || []).map((sl: any) => ({
@@ -1042,8 +1042,8 @@ function CapacityPageContent() {
         <DrillPopup
           target={drillTarget}
           onClose={() => setDrillTarget(null)}
-          onShowInTable={(f) => {
-            const row = (data?.rows || []).find((r: any) => r.label === f.value);
+          onShowInTable={(_field, value) => {
+            const row = (data?.rows || []).find((r: any) => r.label === value);
             if (row && row.slots?.[0]) {
               setSelectedCell({ section: row.label, slot: row.slots[0] });
             }

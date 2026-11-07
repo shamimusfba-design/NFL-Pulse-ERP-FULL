@@ -152,6 +152,10 @@ export {
   useChartDrillGesture,
   ChartBox,
   NOS_CHART_COLORS,
+  ActiveFiltersBar,
+  CrossFilterBar,
+  rechartsClick,
+  rechartsChartClick,
 } from './DashboardKit';
 export type {
   CrossFilterItem,
@@ -160,6 +164,14 @@ export type {
   DrillBreakdownDimension,
   DrillDatum,
   DrillPopupTarget,
+  DrillTarget,
+  DrillBreakdown,
+  DrillChartKind,
+  DrillColour,
+  DrillSlice,
+  DrillJobRow,
+  DrillSourceFilter,
+  DrillPopupSpec,
 } from './DashboardKit';
 export { default as SectionNav } from './SectionNav';
 export type { SectionNavItem, SectionNavProps } from './SectionNav';

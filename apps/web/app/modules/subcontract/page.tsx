@@ -86,7 +86,7 @@ function SubcontractPageContent() {
     label: string,
     metric: 'sentQty' | 'receivedQty' | 'balanceQty',
     procName?: string,
-    anchorRect?: DOMRect
+    anchorRect?: DOMRect | { left: number; top: number; width: number; height: number }
   ) {
     const scope = procName ? orders.filter((o) => o.processType === procName) : orders;
     const byVendor = new Map<string, { val: number; jobs: Set<string> }>();
@@ -1061,8 +1061,8 @@ function SubcontractPageContent() {
         <DrillPopup
           target={drillTarget}
           onClose={() => setDrillTarget(null)}
-          onShowInTable={(f) => {
-            setSearch(f.value);
+          onShowInTable={(_field, drillValue) => {
+            setSearch(drillValue);
             setDrillTarget(null);
           }}
         />

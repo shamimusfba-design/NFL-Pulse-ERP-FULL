@@ -605,7 +605,7 @@ export default function MaintenancePage() {
         target={drill}
         onClose={() => setDrill(null)}
         onApplyFilter={(val) => {
-          setMachineFilter(val);
+          setMachineFilter(val.value);
           setDrill(null);
         }}
       />

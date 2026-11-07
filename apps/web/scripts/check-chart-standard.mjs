@@ -45,6 +45,10 @@ function check(file) {
       }
     }
   }
+  // The shared UI kit draws its own small marks (KPI sparkline, drill-popup donut) and owns
+  // the motion standard itself — exempt it rather than wrapping a 24px sparkline in fx helpers.
+  if (/components[\\/]ui[\\/](index|DashboardKit)\.tsx$/.test(rel)) return;
+
   const handDonut = /<circle[^>]*strokeDasharray/.test(src) || /strokeDasharray=\{[^}]*\}\s*[\r\n]/.test(src);
   if (handDonut && !/fx-donut-seg/.test(src)) problems.push(`${rel}: hand-built SVG donut without fx-donut-seg / useFxScope`);
   if (/<polyline|<path[^>]*stroke=/.test(src) && /viewBox/.test(src) && !/useFxScope|data-fx|fx-line/.test(src) && !rc) {

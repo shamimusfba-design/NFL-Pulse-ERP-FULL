@@ -538,7 +538,7 @@ export default function KpiBoardPage() {
         target={drill}
         onClose={() => setDrill(null)}
         onApplyFilter={(val) => {
-          setLineFilter(val);
+          setLineFilter(val.value);
           setDrill(null);
         }}
       />

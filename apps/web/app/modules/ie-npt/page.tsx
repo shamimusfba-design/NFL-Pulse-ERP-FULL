@@ -470,9 +470,9 @@ export default function NptPage() {
         target={drill}
         onClose={() => setDrill(null)}
         onApplyFilter={(val) => {
-          const isLine = rows.some((r: any) => r.lineCode === val);
-          if (isLine) setFilterLine(val);
-          else setFilterReason(val);
+          const isLine = rows.some((r: any) => r.lineCode === val.value);
+          if (isLine) setFilterLine(val.value);
+          else setFilterReason(val.value);
           setDrill(null);
         }}
       />

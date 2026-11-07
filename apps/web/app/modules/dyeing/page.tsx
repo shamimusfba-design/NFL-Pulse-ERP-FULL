@@ -36,6 +36,8 @@ import {
   DataGrid,
   GridColumn,
   RecordPanel,
+  rechartsClick,
+  rechartsChartClick,
 } from '../../../components/ui';
 import { FxResponsiveContainer as ResponsiveContainer, FX_BAR, FX_PIE, FX_SERIES } from '../../../components/fx';
 import { fmtDate, fmtJobsQty, fmtNum, fmtPct, fmtQty } from '../../../lib/format';
@@ -1155,7 +1157,7 @@ function DyeingDashboardInner() {
                       dataKey="tons"
                       radius={[3, 3, 0, 0]}
                       maxBarSize={42}
-                      onClick={(data: typeof supplyStatus.fourColumns[number], _idx: number, e: React.MouseEvent) => {
+                      onClick={rechartsClick((data: typeof supplyStatus.fourColumns[number], _idx: number, e: React.MouseEvent) => {
                         if (!data) return;
                         handleMarkInteraction(
                           `col-${data.name}`,
@@ -1163,7 +1165,7 @@ function DyeingDashboardInner() {
                           () => toggle('factoryType', data.factoryType, 'Source'),
                           (x, y) => openSupplyColumnDrill(data, x, y),
                         );
-                      }}
+                      })}
                     >
                       {supplyStatus.fourColumns.map((col, i) => (
                         <Cell
@@ -1289,7 +1291,7 @@ function DyeingDashboardInner() {
                   radius={[3, 3, 0, 0]}
                   maxBarSize={22}
                   cursor="pointer"
-                  onClick={(d: { process?: 'AOP' | 'Brush' | 'Peach' }, _i: number, e: React.MouseEvent) => {
+                  onClick={rechartsClick((d: { process?: 'AOP' | 'Brush' | 'Peach' }, _i: number, e: React.MouseEvent) => {
                     const proc = d?.process;
                     if (!proc) return;
                     handleMarkInteraction(
@@ -1298,7 +1300,7 @@ function DyeingDashboardInner() {
                       () => toggle('finishingProcess', proc, 'Finishing'),
                       (x, y) => openFinishingDrill(proc, 'required', x, y),
                     );
-                  }}
+                  })}
                 />
                 <Bar
                   {...FX_SERIES}
@@ -1308,7 +1310,7 @@ function DyeingDashboardInner() {
                   radius={[3, 3, 0, 0]}
                   maxBarSize={22}
                   cursor="pointer"
-                  onClick={(d: { process?: 'AOP' | 'Brush' | 'Peach' }, _i: number, e: React.MouseEvent) => {
+                  onClick={rechartsClick((d: { process?: 'AOP' | 'Brush' | 'Peach' }, _i: number, e: React.MouseEvent) => {
                     const proc = d?.process;
                     if (!proc) return;
                     handleMarkInteraction(
@@ -1317,7 +1319,7 @@ function DyeingDashboardInner() {
                       () => toggle('finishingProcess', proc, 'Finishing'),
                       (x, y) => openFinishingDrill(proc, 'delivered', x, y),
                     );
-                  }}
+                  })}
                 />
                 <Bar
                   {...FX_SERIES}
@@ -1327,7 +1329,7 @@ function DyeingDashboardInner() {
                   radius={[3, 3, 0, 0]}
                   maxBarSize={22}
                   cursor="pointer"
-                  onClick={(d: { process?: 'AOP' | 'Brush' | 'Peach' }, _i: number, e: React.MouseEvent) => {
+                  onClick={rechartsClick((d: { process?: 'AOP' | 'Brush' | 'Peach' }, _i: number, e: React.MouseEvent) => {
                     const proc = d?.process;
                     if (!proc) return;
                     handleMarkInteraction(
@@ -1336,7 +1338,7 @@ function DyeingDashboardInner() {
                       () => toggle('finishingProcess', proc, 'Finishing'),
                       (x, y) => openFinishingDrill(proc, 'balance', x, y),
                     );
-                  }}
+                  })}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -1359,7 +1361,7 @@ function DyeingDashboardInner() {
               <LineChart
                 data={rftTrendData}
                 margin={{ top: 10, right: 14, left: -14, bottom: 0 }}
-                onClick={(state: { activeLabel?: string }, e: React.MouseEvent) => {
+                onClick={rechartsChartClick((state: { activeLabel?: string }, e: React.MouseEvent) => {
                   const item = rftTrendData.find((x) => x.slot === state?.activeLabel);
                   if (!item) return;
                   handleMarkInteraction(
@@ -1368,7 +1370,7 @@ function DyeingDashboardInner() {
                     () => toggle('slot', item.rawSlot, 'Planning slot'),
                     (x, y) => openRftSlotDrill(item.rawSlot, x, y),
                   );
-                }}
+                })}
               >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="slot" tick={{ fontSize: 10, fontWeight: 600 }} />
@@ -1433,7 +1435,7 @@ function DyeingDashboardInner() {
                   radius={[3, 3, 0, 0]}
                   maxBarSize={18}
                   cursor="pointer"
-                  onClick={(d: { fullFactory?: string }, _i: number, e: React.MouseEvent) => {
+                  onClick={rechartsClick((d: { fullFactory?: string }, _i: number, e: React.MouseEvent) => {
                     const fac = d?.fullFactory;
                     if (!fac) return;
                     handleMarkInteraction(
@@ -1442,7 +1444,7 @@ function DyeingDashboardInner() {
                       () => toggle('dyeingFactory', fac, 'Sub-con Mill'),
                       (x, y) => openSubconDrill(fac, 'sent', x, y),
                     );
-                  }}
+                  })}
                 />
                 <Bar
                   {...FX_SERIES}
@@ -1452,7 +1454,7 @@ function DyeingDashboardInner() {
                   radius={[3, 3, 0, 0]}
                   maxBarSize={18}
                   cursor="pointer"
-                  onClick={(d: { fullFactory?: string }, _i: number, e: React.MouseEvent) => {
+                  onClick={rechartsClick((d: { fullFactory?: string }, _i: number, e: React.MouseEvent) => {
                     const fac = d?.fullFactory;
                     if (!fac) return;
                     handleMarkInteraction(
@@ -1461,7 +1463,7 @@ function DyeingDashboardInner() {
                       () => toggle('dyeingFactory', fac, 'Sub-con Mill'),
                       (x, y) => openSubconDrill(fac, 'received', x, y),
                     );
-                  }}
+                  })}
                 />
                 <Bar
                   {...FX_SERIES}
@@ -1471,7 +1473,7 @@ function DyeingDashboardInner() {
                   radius={[3, 3, 0, 0]}
                   maxBarSize={18}
                   cursor="pointer"
-                  onClick={(d: { fullFactory?: string }, _i: number, e: React.MouseEvent) => {
+                  onClick={rechartsClick((d: { fullFactory?: string }, _i: number, e: React.MouseEvent) => {
                     const fac = d?.fullFactory;
                     if (!fac) return;
                     handleMarkInteraction(
@@ -1480,7 +1482,7 @@ function DyeingDashboardInner() {
                       () => toggle('dyeingFactory', fac, 'Sub-con Mill'),
                       (x, y) => openSubconDrill(fac, 'balance', x, y),
                     );
-                  }}
+                  })}
                 />
               </BarChart>
             </ResponsiveContainer>

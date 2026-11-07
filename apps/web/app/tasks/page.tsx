@@ -216,7 +216,7 @@ function TasksContent() {
         width: 110,
         value: (t) => t.priority,
         render: (t) => (
-          <Badge tone={t.priority === 'CRITICAL' ? 'balance' : t.priority === 'HIGH' ? 'mid' : 'neutral'}>
+          <Badge tone={t.priority === 'CRITICAL' ? 'balance' : t.priority === 'HIGH' ? 'mid' : 'quiet'}>
             {t.priority}
           </Badge>
         )

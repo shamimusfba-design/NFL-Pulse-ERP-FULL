@@ -1187,9 +1187,9 @@ function TestingLabModuleContent() {
       <DrillPopup
         target={drillTarget}
         onClose={() => setDrillTarget(null)}
-        onShowInTable={(f) => {
+        onShowInTable={(_field, drillValue) => {
           setActiveTab('REGISTER');
-          setSearchQuery(f.value);
+          setSearchQuery(drillValue);
           setDrillTarget(null);
         }}
       />

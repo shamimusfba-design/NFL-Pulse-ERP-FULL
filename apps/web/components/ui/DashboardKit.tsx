@@ -73,14 +73,16 @@ export function ChartBox({
  * 2a. CrossFilterProvider
  * ============================================================================ */
 export interface CrossFilterItem {
-  field: string;
+  /** alias of field, used by some pages */
+  key?: string;
+  field?: string;
   value: string;
   label?: string;
 }
 
 interface CrossFilterContextValue {
   filters: CrossFilterItem[];
-  toggle: (field: string, value: string, label?: string) => void;
+  toggle: (fieldOrItem: string | CrossFilterItem, value?: string, label?: string) => void;
   setFilter: (field: string, value: string, label?: string) => void;
   remove: (field: string, value?: string) => void;
   clear: () => void;
@@ -114,11 +116,16 @@ export function CrossFilterProvider({
 }) {
   const [filters, setFilters] = useState<CrossFilterItem[]>(initialFilters);
 
-  const toggle = useCallback((field: string, value: string, label?: string) => {
+  const toggle = useCallback((fieldOrItem: string | CrossFilterItem, valueArg?: string, labelArg?: string) => {
+    const isItem = typeof fieldOrItem !== 'string';
+    const field: string = isItem ? ((fieldOrItem as CrossFilterItem).field || (fieldOrItem as CrossFilterItem).key || '') : fieldOrItem;
+    const value: string = isItem ? (fieldOrItem as CrossFilterItem).value : (valueArg ?? '');
+    const label = isItem ? (fieldOrItem as CrossFilterItem).label : labelArg;
     setFilters((prev) => {
       const exists = prev.some((f) => f.field === field && f.value === value);
       if (exists) return prev.filter((f) => !(f.field === field && f.value === value));
-      return [...prev.filter((f) => f.field !== field), { field, value, label }];
+      const next: CrossFilterItem = label ? { field, value, label } : { field, value };
+      return [...prev.filter((f) => f.field !== field), next];
     });
   }, []);
 
@@ -155,7 +162,7 @@ export function CrossFilterProvider({
     (row: Record<string, unknown>) => {
       if (filters.length === 0) return true;
       return filters.every((f) => {
-        const rv = row[f.field];
+        const rv = row[f.field ?? f.key ?? ''];
         if (rv === undefined || rv === null) return true;
         return String(rv).toLowerCase() === String(f.value).toLowerCase();
       });
@@ -182,7 +189,7 @@ export function CrossFilterChips() {
           key={`${f.field}:${f.value}`}
           type="button"
           className="nos-cf-chip"
-          onClick={() => remove(f.field, f.value)}
+          onClick={() => remove(f.field ?? f.key ?? '', f.value)}
           title="Remove filter"
         >
           <span>
@@ -376,437 +383,433 @@ export function SlicerBar({
  *     auto chart type: 2-5 donut, >=6 sorted horizontal bar, time -> trend line,
  *     last level -> job list; 2-3 breakdown switchers; outside click + Esc + ×)
  * ============================================================================ */
-export type DrillBreakdownDimension = 'factory' | 'buyer' | 'time' | 'job';
+export type DrillBreakdownDimension = 'factory' | 'buyer' | 'job' | 'time' | 'reason' | 'line' | 'item' | 'other';
+export type DrillChartKind = 'donut' | 'bar' | 'line' | 'jobs';
+export type DrillColour = 'blue' | 'green' | 'red' | 'amber' | 'grey';
 
-export interface DrillDatum {
-  name: string;
-  qty: number;
-  jobsCount?: number;
-  style?: string;
-  color?: string;
-  filterField?: string;
+/** One clickable part of a breakdown (a factory, a buyer, a day …). */
+export interface DrillSlice {
+  key: string;
+  label: string;
+  value: number;
+  jobs?: number;
+  /** second series, used by the line chart (e.g. actual against plan) */
+  value2?: number;
+  /** value written into the page filter when this slice is picked */
   filterValue?: string;
 }
 
-export interface DrillPopupTarget {
-  title: string;
-  unit: string;
-  anchorX: number;
-  anchorY: number;
+export interface DrillJobRow {
+  jobNo: string;
+  buyer?: string;
+  style?: string;
+  qty: number;
+  unit?: string;
+  status?: string;
+}
+
+/** One way of breaking the clicked figure down. A target may offer several. */
+export interface DrillBreakdown {
+  dimension: DrillBreakdownDimension;
+  label: string;
+  /** leave out and the kit picks by shape: 2–5 slices → donut, 6+ → bar, time → line */
+  chart?: DrillChartKind;
+  unit?: string;
+  colour?: DrillColour | string;
+  color?: DrillColour | string;
   filterField?: string;
-  filterValue?: string;
+  slices?: DrillSlice[];
+  jobRows?: DrillJobRow[];
+  /** extras some pages pass */
+  total?: number;
+  tone?: DrillColour | 'neutral';
   factoryLabel?: string;
-  buyerLabel?: string;
-  timeLabel?: string;
+  [key: string]: unknown;
+}
+
+export interface DrillSourceFilter {
+  field: string;
+  value: string;
+  label?: string;
+}
+
+export interface DrillTarget {
+  title: string;
+  subtitle?: string;
+  /** where the clicked mark is, so the bubble can point at it */
+  anchorRect?: { left: number; top: number; width: number; height: number } | DOMRect | null;
+  anchorX?: number;
+  anchorY?: number;
+  sourceFilter?: DrillSourceFilter;
+  breakdowns?: DrillBreakdown[];
+  /** older shape, still used by some pages — turned into breakdowns automatically */
   byFactory?: DrillDatum[];
   byBuyer?: DrillDatum[];
   byTime?: DrillDatum[];
-  jobs?: { jobNo: string; buyer: string; style?: string; qty: number }[];
-  defaultDim?: DrillBreakdownDimension;
+  byReason?: DrillDatum[];
+  jobs?: { jobNo: string; buyer?: string; style?: string; qty: number; unit?: string; status?: string }[];
+  unit?: string;
+  /** extras some pages pass */
+  defaultDim?: DrillBreakdownDimension | string;
+  colour?: DrillColour | string;
+  color?: DrillColour | string;
+  factoryLabel?: string;
+  filterField?: string;
+  [key: string]: unknown;
 }
+
+/** Name some pages use for the same object. */
+export type DrillPopupSpec = DrillTarget;
+
+/** Older name kept so existing pages keep compiling. */
+export type DrillPopupTarget = DrillTarget;
+export interface DrillDatum {
+  /** either naming works */
+  name?: string;
+  label?: string;
+  key?: string;
+  qty?: number;
+  value?: number;
+  jobsCount?: number;
+  jobs?: number;
+  style?: string;
+  filterValue?: string;
+  [k: string]: unknown;
+}
+
+const DRILL_COLOUR: Record<DrillColour, string> = {
+  blue: 'var(--nos-required, #2563eb)',
+  green: 'var(--nos-done, #16a34a)',
+  red: 'var(--nos-balance, #dc2626)',
+  amber: 'var(--nos-mid, #d97706)',
+  grey: 'var(--nos-ink-3, #6b7280)',
+};
 
 /**
- * Helper hook for charts: single-click triggers cross-filter (`onSingleClick`),
- * double-click (two clicks within 260ms OR native dblclick) opens `DrillPopup` (`onDoubleClick`).
+ * Single click cross-filters, double click opens the drill popup.
+ * Recharts hands the data entry and the mouse event to onClick, so both are passed on.
  */
-export function useChartDrillGesture() {
-  const clickTimerRef = useRef<{ time: number; key: string; x: number; y: number } | null>(null);
+export function useChartDrillGesture<T = any>(handlers: {
+  onSingleClick?: (entry: T, event?: any) => void;
+  onDoubleClick?: (entry: T, rect: DOMRect | { left: number; top: number; width: number; height: number }) => void;
+  delay?: number;
+} = {}) {
+  const { onSingleClick, onDoubleClick, delay = 280 } = handlers;
+  const timer = useRef<number | null>(null);
+  const last = useRef<{ key: string; time: number } | null>(null);
 
-  const handleMarkInteraction = useCallback(
-    (
-      key: string,
-      event: { clientX?: number; clientY?: number } | React.MouseEvent | undefined,
-      onSingleClick: () => void,
-      onDoubleClick: (anchorX: number, anchorY: number) => void,
-    ) => {
-      const now = Date.now();
-      const x =
-        event && typeof event.clientX === 'number' && event.clientX > 0
-          ? event.clientX
-          : typeof window !== 'undefined'
-          ? window.innerWidth / 2
-          : 640;
-      const y =
-        event && typeof event.clientY === 'number' && event.clientY > 0
-          ? event.clientY
-          : 340;
+  const rectOf = (event: any) => {
+    const t = event?.currentTarget || event?.target;
+    if (t && typeof t.getBoundingClientRect === 'function') return t.getBoundingClientRect();
+    const x = typeof event?.clientX === 'number' ? event.clientX : (typeof window !== 'undefined' ? window.innerWidth / 2 : 640);
+    const y = typeof event?.clientY === 'number' ? event.clientY : 340;
+    return { left: x, top: y, width: 1, height: 1 };
+  };
 
-      const prev = clickTimerRef.current;
-      if (prev && prev.key === key && now - prev.time < 320) {
-        clickTimerRef.current = null;
-        onDoubleClick(x, y);
-      } else {
-        clickTimerRef.current = { time: now, key, x, y };
-        onSingleClick();
-      }
-    },
-    [],
-  );
+  const handleClick = useCallback((entry: T, event?: any) => {
+    const key = JSON.stringify((entry as any)?.name ?? (entry as any)?.key ?? entry ?? '');
+    const now = Date.now();
+    const rect = rectOf(event);
+    if (last.current && last.current.key === key && now - last.current.time < delay) {
+      if (timer.current) { window.clearTimeout(timer.current); timer.current = null; }
+      last.current = null;
+      onDoubleClick?.(entry, rect);
+      return;
+    }
+    last.current = { key, time: now };
+    if (timer.current) window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => { timer.current = null; onSingleClick?.(entry, event); }, delay);
+  }, [onSingleClick, onDoubleClick, delay]);
 
-  return { handleMarkInteraction };
+  const handleDoubleClick = useCallback((entry: T, event?: any) => {
+    if (timer.current) { window.clearTimeout(timer.current); timer.current = null; }
+    onDoubleClick?.(entry, rectOf(event));
+  }, [onDoubleClick]);
+
+  useEffect(() => () => { if (timer.current) window.clearTimeout(timer.current); }, []);
+
+  /** Older call style kept so existing pages keep working:
+   *  handleMarkInteraction(key, event, onSingle, onDouble(x, y)) */
+  const handleMarkInteraction = useCallback((
+    key: string,
+    event: { clientX?: number; clientY?: number } | any,
+    onSingle: () => void,
+    onDouble: (anchorX: number, anchorY: number) => void,
+  ) => {
+    const now = Date.now();
+    const r = rectOf(event);
+    const x = r.left + (r.width || 0) / 2;
+    const y = r.top;
+    if (last.current && last.current.key === key && now - last.current.time < delay) {
+      if (timer.current) { window.clearTimeout(timer.current); timer.current = null; }
+      last.current = null;
+      onDouble(x, y);
+      return;
+    }
+    last.current = { key, time: now };
+    if (timer.current) window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => { timer.current = null; onSingle(); }, delay);
+  }, [delay]);
+
+  return { handleClick, handleDoubleClick, handleMarkInteraction, onClick: handleClick, onDoubleClick: handleDoubleClick };
 }
 
+function pickChart(b: DrillBreakdown): DrillChartKind {
+  if (b.chart) return b.chart;
+  if (b.jobRows && b.jobRows.length && !(b.slices || []).length) return 'jobs';
+  if (b.dimension === 'time') return 'line';
+  const n = (b.slices || []).length;
+  return n >= 2 && n <= 5 ? 'donut' : 'bar';
+}
+
+const nf = (v: number, d = 0) => v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+
+/**
+ * Drill popup: a square bubble pointing at the clicked mark, in front of everything.
+ * Opens above the mark; below only when there is no room. A bottom sheet on phones.
+ */
 export function DrillPopup({
   target,
+  spec,
+  anchorRect,
   onClose,
   onShowInTable,
+  // Pages use these names; they are the same two actions under friendlier names.
+  onApplyFilter,
+  onShowJobsInTable,
 }: {
-  target: DrillPopupTarget | null;
+  onApplyFilter?: (filter: { field: string; key: string; value: string }) => void;
+  onShowJobsInTable?: (jobs: DrillJobRow[]) => void;
+  target?: DrillTarget | null;
+  /** same thing under the name some pages use */
+  spec?: DrillTarget | null;
+  /** passed separately by some pages instead of inside the target */
+  anchorRect?: DOMRect | { left: number; top: number; width: number; height: number } | null;
   onClose: () => void;
-  onShowInTable?: (filterField?: string, filterValue?: string) => void;
+  onShowInTable?: (field: string, value: string, breakdown?: DrillBreakdown) => void;
 }) {
-  const { setFilter } = useCrossFilter();
-  const bubbleRef = useRef<HTMLDivElement>(null);
-  const [dim, setDim] = useState<DrillBreakdownDimension>('factory');
+  const given = target ?? spec ?? null;
+  const resolved: DrillTarget | null = given
+    ? (anchorRect && !given.anchorRect ? { ...given, anchorRect } : given)
+    : null;
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [idx, setIdx] = useState(0);
+  const [pos, setPos] = useState<{ left: number; top: number; arrow: number; below: boolean } | null>(null);
+  const [phone, setPhone] = useState(false);
 
-  const availableDims = useMemo(() => {
-    if (!target) return [] as { id: DrillBreakdownDimension; label: string }[];
-    const list: { id: DrillBreakdownDimension; label: string }[] = [];
-    if (target.byFactory && target.byFactory.length > 0) {
-      list.push({ id: 'factory', label: target.factoryLabel || 'Factory' });
-    }
-    if (target.byBuyer && target.byBuyer.length > 0) {
-      list.push({ id: 'buyer', label: target.buyerLabel || 'Buyer' });
-    }
-    if (target.byTime && target.byTime.length > 0) {
-      list.push({ id: 'time', label: target.timeLabel || 'Time' });
-    }
-    if (target.jobs && target.jobs.length > 0) {
-      list.push({ id: 'job', label: 'Job' });
-    }
-    return list;
-  }, [target]);
+  useEffect(() => { setIdx(0); }, [resolved]);
 
   useEffect(() => {
-    if (!target) return;
-    if (target.defaultDim && availableDims.some((d) => d.id === target.defaultDim)) {
-      setDim(target.defaultDim);
-    } else if (availableDims.length > 0) {
-      setDim(availableDims[0].id);
-    } else {
-      setDim('job');
-    }
-  }, [target, availableDims]);
+    const check = () => setPhone(typeof window !== 'undefined' && window.innerWidth <= 640);
+    check(); window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
-  // Close on Escape and outside click
+  // close on Esc and on a click outside
   useEffect(() => {
-    if (!target) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    const onMouseDown = (e: MouseEvent) => {
-      if (bubbleRef.current && !bubbleRef.current.contains(e.target as Node)) {
-        onClose();
-      }
+    if (!resolved) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const onDown = (e: MouseEvent) => {
+      if (boxRef.current && !boxRef.current.contains(e.target as Node)) onClose();
     };
     document.addEventListener('keydown', onKey);
-    document.addEventListener('mousedown', onMouseDown);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.removeEventListener('mousedown', onMouseDown);
-    };
-  }, [target, onClose]);
+    document.addEventListener('mousedown', onDown, true);
+    return () => { document.removeEventListener('keydown', onKey); document.removeEventListener('mousedown', onDown, true); };
+  }, [resolved, onClose]);
 
-  if (!target) return null;
+  // place the bubble above the mark, or below when there is no room
+  useEffect(() => {
+    if (!resolved || phone) { setPos(null); return; }
+    const el = boxRef.current; if (!el) return;
+    const r: any = resolved.anchorRect;
+    const ax = r ? r.left + (r.width || 0) / 2 : (resolved.anchorX ?? window.innerWidth / 2);
+    const ay = r ? r.top : (resolved.anchorY ?? 300);
+    const ab = r ? r.top + (r.height || 0) : (resolved.anchorY ?? 300);
+    const w = el.offsetWidth || 320;
+    const h = el.offsetHeight || 260;
+    const below = ay - h - 14 < 8;
+    let left = ax - w / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
+    const top = below ? Math.min(ab + 14, window.innerHeight - h - 8) : ay - h - 14;
+    setPos({ left, top: Math.max(8, top), arrow: Math.max(12, Math.min(ax - left, w - 12)), below });
+  }, [resolved, idx, phone]);
 
-  const currentItems: DrillDatum[] =
-    dim === 'factory'
-      ? target.byFactory || []
-      : dim === 'buyer'
-      ? target.byBuyer || []
-      : dim === 'time'
-      ? target.byTime || []
-      : (target.jobs || []).map((j) => ({
-          name: `${j.buyer} ${j.jobNo}`,
-          qty: j.qty,
-          jobsCount: 1,
-          style: j.style,
-          filterField: 'jobNo',
-          filterValue: j.jobNo,
-        }));
+  if (!resolved) return null;
+  const fromDatum = (d: DrillDatum[], dim: DrillBreakdownDimension, label: string, chart?: DrillChartKind): DrillBreakdown => ({
+    dimension: dim, label, chart, unit: resolved.unit,
+    slices: d.map((x, i) => {
+      const nm = String(x.label ?? x.name ?? x.key ?? i);
+      return { key: String(x.key ?? nm), label: nm, value: Number(x.value ?? x.qty ?? 0),
+               jobs: Number(x.jobs ?? x.jobsCount ?? 0) || undefined, filterValue: String(x.filterValue ?? nm) };
+    }),
+  });
+  const legacy: DrillBreakdown[] = [];
+  if (resolved.byFactory?.length) legacy.push(fromDatum(resolved.byFactory, 'factory', 'By factory'));
+  if (resolved.byBuyer?.length) legacy.push(fromDatum(resolved.byBuyer, 'buyer', 'By buyer'));
+  if (resolved.byReason?.length) legacy.push(fromDatum(resolved.byReason, 'reason', 'By reason'));
+  if (resolved.byTime?.length) legacy.push(fromDatum(resolved.byTime, 'time', 'Over time', 'line'));
+  if (resolved.jobs?.length) legacy.push({ dimension: 'job', label: 'Jobs', chart: 'jobs', unit: resolved.unit,
+    jobRows: resolved.jobs.map((j) => ({ jobNo: j.jobNo, buyer: j.buyer, style: j.style, qty: j.qty, unit: j.unit, status: j.status })) });
+  const list = (resolved.breakdowns && resolved.breakdowns.length ? resolved.breakdowns : legacy);
+  const b = list[Math.min(idx, Math.max(0, list.length - 1))];
+  if (!b) return null;
 
-  const totalQty = currentItems.reduce((s, d) => s + (Number(d.qty) || 0), 0);
-  const totalJobs =
-    (target.jobs && target.jobs.length) ||
-    currentItems.reduce((s, d) => s + (d.jobsCount ?? 0), 0);
+  const kind = pickChart(b);
+  const unit = b.unit || resolved.unit || '';
+  const colour = DRILL_COLOUR[((b.colour || b.color || 'blue') as string) as DrillColour] || String(b.colour || b.color || DRILL_COLOUR.blue);
+  const slices = (b.slices || []).slice();
+  const maxV = Math.max(1, ...slices.map((s) => Math.abs(s.value)));
+  const totalV = slices.reduce((a, s) => a + (s.value || 0), 0) || 1;
 
-  // Square bubble directly ABOVE clicked mark unless there is no room at the top of the page
-  const bubbleSize = 330;
-  const vw = typeof window !== 'undefined' ? window.innerWidth : 1366;
-  const vh = typeof window !== 'undefined' ? window.innerHeight : 768;
-  const placeAbove = target.anchorY >= bubbleSize + 18;
-  const left = Math.max(12, Math.min(vw - bubbleSize - 12, target.anchorX - bubbleSize / 2));
-  const top = placeAbove
-    ? Math.max(12, target.anchorY - bubbleSize - 12)
-    : Math.min(vh - bubbleSize - 12, target.anchorY + 14);
-  const arrowLeft = Math.max(18, Math.min(bubbleSize - 24, target.anchorX - left - 5));
-
-  const formatDatumSummary = (d: DrillDatum) => {
-    const valStr = `${fmtNum(Number(d.qty.toFixed(1)))} ${target.unit}`;
-    if (d.jobsCount !== undefined && d.jobsCount > 0) {
-      return `${ fmtJobsQty(d.jobsCount, Number(d.qty.toFixed(1)), target.unit) }`;
-    }
-    return valStr;
+  const pick = (filterValue?: string, label?: string) => {
+    const field = b.filterField || b.dimension;
+    const value = String(filterValue ?? label ?? '');
+    onShowInTable?.(field, value, b);
+    onApplyFilter?.({ field, key: field, value });
   };
 
-  // Never a popup inside a popup: clicking inside the popup filters the table and closes
-  const handleInnerItemClick = (item: DrillDatum) => {
-    const fField =
-      item.filterField ||
-      (dim === 'buyer' ? 'buyer' : dim === 'factory' ? target.filterField || 'factory' : target.filterField);
-    const fVal = item.filterValue || item.name;
-    if (fField && fVal) {
-      setFilter(fField, fVal, item.name);
-      onShowInTable?.(fField, fVal);
-    } else if (target.filterField && target.filterValue) {
-      setFilter(target.filterField, target.filterValue, target.title);
-      onShowInTable?.(target.filterField, target.filterValue);
-    } else {
-      onShowInTable?.(fField, fVal);
-    }
-    onClose();
-  };
-
-  const handleShowInTableClick = () => {
-    if (target.filterField && target.filterValue) {
-      setFilter(target.filterField, target.filterValue, target.title);
-    }
-    onShowInTable?.(target.filterField, target.filterValue);
-    if (typeof document !== 'undefined') {
-      const gridEl = document.querySelector('.nos-grid-wrap');
-      if (gridEl) gridEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-    onClose();
-  };
-
-  const sortedBars = [...currentItems].sort((a, b) => b.qty - a.qty).slice(0, 8);
+  const style: React.CSSProperties = phone
+    ? { position: 'fixed', left: 0, right: 0, bottom: 0, maxHeight: '70vh' }
+    : { position: 'fixed', left: pos?.left ?? -9999, top: pos?.top ?? -9999, width: 340 };
 
   return (
-    <div className="nos-drill-backdrop" onClick={onClose}>
-      <div
-        ref={bubbleRef}
-        className={`nos-drill-bubble ${placeAbove ? 'above' : 'below'}`}
-        style={{ left, top }}
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-label={target.title}
-      >
-        <span className="nos-drill-arrow" style={{ left: arrowLeft }} />
-
-        <div className="nos-drill-hd">
-          <div>
-            <div className="nos-drill-title">{target.title}</div>
-            <div className="nos-drill-sub">
-              {totalJobs > 0
-                ? fmtJobsQty(totalJobs, Number(totalQty.toFixed(1)), target.unit)
-                : `${fmtNum(Number(totalQty.toFixed(1)))} ${target.unit}`}
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              background: 'transparent',
-              border: 0,
-              color: 'var(--nos-ink-3)',
-              cursor: 'pointer',
-              fontSize: 16,
-              lineHeight: 1,
-              padding: '2px 4px',
-            }}
-            aria-label="Close popup"
-          >
-            ×
-          </button>
+    <div ref={boxRef} className={`nos-drill ${phone ? 'nos-drill-sheet' : ''}`} style={style} role="dialog" aria-label={resolved.title}>
+      {!phone && pos && (
+        <span className={`nos-drill-arrow ${pos.below ? 'up' : 'down'}`} style={{ left: pos.arrow }} aria-hidden="true" />
+      )}
+      <div className="nos-drill-hd">
+        <div>
+          <b>{resolved.title}</b>
+          {resolved.subtitle && <span className="nos-drill-sub">{resolved.subtitle}</span>}
         </div>
+        <button type="button" className="nos-drill-x" onClick={onClose} aria-label="Close">✕</button>
+      </div>
 
-        {/* 2-3 small buttons at the top switch the breakdown (only showing ones that have data) */}
-        {availableDims.length > 1 && (
-          <div className="nos-drill-switch" role="tablist">
-            {availableDims.map((d) => (
-              <button
-                key={d.id}
-                type="button"
-                className={dim === d.id ? 'active' : ''}
-                onClick={() => setDim(d.id)}
-              >
-                {d.label}
-              </button>
+      {list.length > 1 && (
+        <div className="nos-drill-tabs" role="tablist">
+          {list.map((x, i) => (
+            <button key={x.dimension + i} type="button" role="tab" aria-selected={i === idx}
+              className={i === idx ? 'on' : ''} onClick={() => setIdx(i)}>
+              {x.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="nos-drill-body">
+        {kind === 'jobs' && (
+          <ul className="nos-drill-jobs">
+            {(b.jobRows || []).slice(0, 12).map((j, i) => (
+              <li key={j.jobNo + i}>
+                <button type="button" onClick={() => pick(j.jobNo, j.jobNo)}>
+                  <span className="j">{j.jobNo}</span>
+                  <span className="m">{[j.buyer, j.style, j.status].filter(Boolean).join(' · ')}</span>
+                  <span className="v">{nf(j.qty)} {j.unit || unit}</span>
+                </button>
+              </li>
             ))}
-          </div>
+            {(b.jobRows || []).length > 12 && <li className="nos-drill-more">+ {(b.jobRows || []).length - 12} more</li>}
+          </ul>
         )}
 
-        {/* Inner chart chosen by shape of the data:
-            - dim === 'job' -> short job list
-            - dim === 'time' -> trend line
-            - 2..5 parts -> donut
-            - 6 or more parts (or 1 part) -> sorted horizontal bar, biggest first */}
-        <div className="nos-drill-body">
-          {dim === 'job' ? (
-            <div className="nos-drill-jobs">
-              {(target.jobs || []).slice(0, 12).map((j, i) => (
-                <button
-                  key={`${j.jobNo}-${i}`}
-                  type="button"
-                  className="nos-drill-job-row"
-                  onClick={() => {
-                    setFilter('jobNo', j.jobNo, `${j.buyer} ${j.jobNo}`);
-                    onShowInTable?.('jobNo', j.jobNo);
-                    onClose();
-                  }}
-                >
-                  <div style={{ textAlign: 'left', minWidth: 0 }}>
-                    <strong>
-                      {j.buyer} · {j.jobNo}
-                    </strong>
-                    {j.style && (
-                      <span style={{ color: 'var(--nos-ink-3)', marginLeft: 6 }}>{j.style}</span>
-                    )}
-                  </div>
-                  <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                    1 job · {fmtNum(Number(j.qty.toFixed(1)))} {target.unit}
-                  </span>
-                </button>
-              ))}
-            </div>
-          ) : dim === 'time' ? (
-            <div style={{ width: '100%', height: 185 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart
-                  data={currentItems}
-                  margin={{ top: 8, right: 12, left: -12, bottom: 4 }}
-                  onClick={(state: { activePayload?: { payload?: DrillDatum }[] }) => {
-                    const p = state?.activePayload?.[0]?.payload;
-                    if (p) handleInnerItemClick(p);
-                  }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} />
-                  <Tooltip
-                    formatter={(_v: unknown, _n: unknown, item: { payload?: DrillDatum }) => [
-                      item?.payload ? formatDatumSummary(item.payload) : '',
-                      target.title,
-                    ]}
-                  />
-                  <Line
-                    {...FX_SERIES}
-                    type="monotone"
-                    dataKey="qty"
-                    stroke="#2563EB"
-                    strokeWidth={2.2}
-                    dot={{ r: 3.5, fill: '#2563EB' }}
-                    activeDot={{ r: 5, fill: '#2563EB' }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          ) : currentItems.length >= 2 && currentItems.length <= 5 ? (
-            <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr', gap: 8, alignItems: 'center', height: 185 }}>
-              <div style={{ width: '100%', height: 150 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      {...FX_PIE}
-                      data={currentItems}
-                      dataKey="qty"
-                      nameKey="name"
-                      innerRadius={32}
-                      outerRadius={54}
-                      onClick={(data: DrillDatum) => {
-                        if (data) handleInnerItemClick(data);
-                      }}
-                    >
-                      {currentItems.map((entry, idx) => (
-                        <Cell
-                          key={entry.name}
-                          fill={entry.color || NOS_CHART_COLORS.palette[idx % NOS_CHART_COLORS.palette.length]}
-                          cursor="pointer"
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(_v: unknown, n: unknown, item: { payload?: DrillDatum }) => [
-                        item?.payload ? formatDatumSummary(item.payload) : '',
-                        String(n),
-                      ]}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 5, overflowY: 'auto', maxHeight: 175 }}>
-                {currentItems.map((item, idx) => (
-                  <button
-                    key={item.name}
-                    type="button"
-                    className="nos-drill-job-row"
-                    onClick={() => handleInnerItemClick(item)}
-                    style={{ padding: '4px 6px' }}
-                  >
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
-                      <span
-                        className="nos-chart-swatch"
-                        style={{
-                          background: item.color || NOS_CHART_COLORS.palette[idx % NOS_CHART_COLORS.palette.length],
-                          flexShrink: 0,
-                        }}
-                      />
-                      <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {item.name}
-                      </span>
-                    </span>
-                    <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11, color: 'var(--nos-ink-2)', whiteSpace: 'nowrap' }}>
-                      {formatDatumSummary(item)}
-                    </span>
-                  </button>
+        {kind === 'donut' && (() => {
+          const R = 34, C = 2 * Math.PI * R; let off = 0;
+          const shades = [colour, 'var(--nos-done, #16a34a)', 'var(--nos-mid, #d97706)', 'var(--nos-balance, #dc2626)', 'var(--nos-ink-3, #6b7280)'];
+          return (
+            <div className="nos-drill-donut">
+              <svg width="92" height="92" viewBox="0 0 92 92" role="img" aria-label={b.label}>
+                {slices.map((s, i) => {
+                  const len = (Math.abs(s.value) / totalV) * C;
+                  const el = (
+                    <circle key={s.key} r={R} cx="46" cy="46" fill="none" stroke={shades[i % shades.length]}
+                      strokeWidth="13" strokeDasharray={`${len} ${C - len}`} strokeDashoffset={-off}
+                      transform="rotate(-90 46 46)" style={{ cursor: 'pointer' }}
+                      onClick={() => pick(s.filterValue, s.label)} />
+                  );
+                  off += len; return el;
+                })}
+              </svg>
+              <ul className="nos-drill-legend">
+                {slices.map((s, i) => (
+                  <li key={s.key}>
+                    <button type="button" onClick={() => pick(s.filterValue, s.label)}>
+                      <i style={{ background: shades[i % shades.length] }} />
+                      <span>{s.label}</span>
+                      <b>{nf(s.value)} {unit}{s.jobs ? ` · ${s.jobs} jobs` : ''}</b>
+                    </button>
+                  </li>
                 ))}
+              </ul>
+            </div>
+          );
+        })()}
+
+        {kind === 'bar' && (
+          <ul className="nos-drill-bars">
+            {slices.slice(0, 10).map((s) => (
+              <li key={s.key}>
+                <button type="button" onClick={() => pick(s.filterValue, s.label)}>
+                  <span className="l">{s.label}</span>
+                  <span className="t"><i style={{ width: `${(Math.abs(s.value) / maxV) * 100}%`, background: colour }} /></span>
+                  <span className="v">{nf(s.value)} {unit}{s.jobs ? ` · ${s.jobs}` : ''}</span>
+                </button>
+              </li>
+            ))}
+            {slices.length > 10 && <li className="nos-drill-more">+ {slices.length - 10} more</li>}
+          </ul>
+        )}
+
+        {kind === 'line' && (() => {
+          const w = 300, h = 110, pad = 6;
+          const vals = slices.flatMap((s) => [s.value, s.value2 ?? s.value]);
+          const min = Math.min(0, ...vals), max = Math.max(1, ...vals), span = max - min || 1;
+          const xy = (v: number, i: number) => `${pad + (i / Math.max(1, slices.length - 1)) * (w - pad * 2)},${h - pad - ((v - min) / span) * (h - pad * 2)}`;
+          const line1 = slices.map((s, i) => xy(s.value, i)).join(' ');
+          const line2 = slices.some((s) => s.value2 !== undefined) ? slices.map((s, i) => xy(s.value2 ?? 0, i)).join(' ') : '';
+          return (
+            <div className="nos-drill-line">
+              <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={h} role="img" aria-label={b.label}>
+                {line2 && <polyline points={line2} fill="none" stroke="var(--nos-ink-3, #6b7280)" strokeWidth="1.6" strokeDasharray="4 3" />}
+                <polyline points={line1} fill="none" stroke={colour} strokeWidth="2" />
+                {slices.map((s, i) => {
+                  const [cx, cy] = xy(s.value, i).split(',');
+                  return <circle key={s.key} cx={cx} cy={cy} r="3" fill={colour} style={{ cursor: 'pointer' }}
+                    onClick={() => pick(s.filterValue, s.label)}><title>{`${s.label}: ${nf(s.value)} ${unit}`}</title></circle>;
+                })}
+              </svg>
+              <div className="nos-drill-xaxis">
+                <span>{slices[0]?.label}</span><span>{slices[slices.length - 1]?.label}</span>
               </div>
             </div>
-          ) : (
-            <div style={{ width: '100%', height: 185 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={sortedBars}
-                  layout="vertical"
-                  margin={{ top: 4, right: 12, left: 6, bottom: 4 }}
-                  onClick={(state: { activePayload?: { payload?: DrillDatum }[] }) => {
-                    const p = state?.activePayload?.[0]?.payload;
-                    if (p) handleInnerItemClick(p);
-                  }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 10 }} />
-                  <YAxis type="category" dataKey="name" width={84} tick={{ fontSize: 10 }} />
-                  <Tooltip
-                    formatter={(_v: unknown, _n: unknown, item: { payload?: DrillDatum }) => [
-                      item?.payload ? formatDatumSummary(item.payload) : '',
-                      'Breakdown',
-                    ]}
-                  />
-                  <Bar
-                    {...FX_SERIES}
-                    {...FX_BAR}
-                    dataKey="qty"
-                    fill="#2563EB"
-                    radius={[0, 3, 3, 0]}
-                    cursor="pointer"
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </div>
-
-        <div className="nos-drill-ft">
-          <button
-            type="button"
-            className="nos-drill-link"
-            onClick={handleShowInTableClick}
-          >
-            Show these jobs in the table →
-          </button>
-        </div>
+          );
+        })()}
       </div>
+
+      {(onShowInTable || onShowJobsInTable) && resolved.sourceFilter && (
+        <button type="button" className="nos-drill-link"
+          onClick={() => {
+            onShowInTable?.(resolved.sourceFilter!.field, resolved.sourceFilter!.value, b);
+            onShowJobsInTable?.(b.jobRows ?? []);
+          }}>
+          Show these jobs in the table →
+        </button>
+      )}
     </div>
   );
+}
+
+/** Names some pages import for the same chip bar. */
+export const ActiveFiltersBar = CrossFilterChips;
+export const CrossFilterBar = CrossFilterChips;
+
+/**
+ * Recharts' click prop types do not match the arguments it actually passes
+ * (datum, index, event). This adapter keeps the page's own types and casts only
+ * at the recharts boundary, so no page needs `any`.
+ */
+export function rechartsClick<T>(fn: (datum: T, index: number, event: React.MouseEvent) => void) {
+  return fn as unknown as never;
+}
+export function rechartsChartClick<T>(fn: (state: T, event: React.MouseEvent) => void) {
+  return fn as unknown as never;
 }
