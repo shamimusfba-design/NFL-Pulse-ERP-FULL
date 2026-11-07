@@ -7,8 +7,21 @@ import Shell from '../../components/Shell';
 import demo2000DataRaw from '../../data/demo-2000-master.json';
 import { displayJobNo } from '../../lib/display';
 import { api } from '../../lib/api';
-import { DataGrid, RecordPanel } from '../../components/ui';
+import { DataGrid, GridColumn, RecordPanel } from '../../components/ui';
 import { fmtDate } from '../../lib/format';
+
+interface MasterPipelineStageRow {
+  section: string;
+  floor: string;
+  unit: string;
+  req: number;
+  act: number;
+  bal: number;
+  yieldRate: string;
+  rft: string;
+  status: string;
+  inCharge: string;
+}
 import {
   BarChart,
   Bar,
@@ -309,7 +322,7 @@ export function Job360Content({ initialJobId }: Job360Props) {
   // =========================================================================
   // UNIFIED END-TO-END MASTER PRODUCTION PIPELINE (YARN TO SHIPMENT IN ONE PLACE)
   // =========================================================================
-  const masterPipeline = [
+  const masterPipeline: MasterPipelineStageRow[] = [
     { section: '1. Yarn Allotment & Store Issue', floor: 'Yarn Godown', unit: 'kg', req: Math.round(knitReq * 1.02), act: Math.round(knitReq * 1.02), bal: 0, yieldRate: '100.0%', rft: '99.5%', status: '100% ISSUED', inCharge: 'Yarn Store In-Charge' },
     { section: '2. Circular Knitting Floor', floor: 'Knitting Shed-1', unit: 'kg', req: knitReq, act: knitDone, bal: knitBal, yieldRate: `${((knitDone / knitReq) * 100).toFixed(1)}%`, rft: '98.8%', status: knitBal === 0 ? 'COMPLETED' : 'IN PROGRESS', inCharge: 'Knitting Master' },
     { section: '3. Greige Fabric Store Receiving & Audit', floor: 'Greige Store Bay 2', unit: 'kg', req: knitReq, act: Math.round(knitDone * 0.999), bal: 2, yieldRate: '99.9%', rft: '99.2%', status: 'AUDITED & ACCEPTED', inCharge: 'Greige Store Officer' },
@@ -1366,81 +1379,93 @@ export function Job360Content({ initialJobId }: Job360Props) {
           </div>
 
           {/* Unified Master Pipeline Table Covering All 12 Stages */}
-          <DataGrid
+          <DataGrid<MasterPipelineStageRow>
+            storageKey="job360-master-pipeline"
+            exportName="job360-master-pipeline"
             rows={masterPipeline}
-            rowKey={(row: any) => row.section}
-            activeRowKey={activePipelineStage}
-            onRowClick={(row: any) => setActivePipelineStage(row.section)}
-            searchPlaceholder="Search manufacturing stage, floor, in-charge..."
+            frozenColumns={1}
+            rowKey={(row) => row.section}
+            selectedRowKey={activePipelineStage}
+            onRowClick={(row) => setActivePipelineStage(row.section)}
             columns={[
               {
                 key: 'section',
                 header: 'Section / Manufacturing Stage',
-                sortable: true,
-                render: (row: any) => <span style={{ fontWeight: 800, color: COLORS.navy }}>{row.section}</span>,
+                width: 220,
+                value: (row) => row.section,
+                render: (row) => <span style={{ fontWeight: 800, color: COLORS.navy }}>{row.section}</span>,
               },
               {
                 key: 'floor',
                 header: 'Factory Floor Location',
-                sortable: true,
-                filter: 'enum',
-                render: (row: any) => <span style={{ color: COLORS.grey }}>{row.floor}</span>,
+                width: 155,
+                value: (row) => row.floor,
+                render: (row) => <span style={{ color: COLORS.grey }}>{row.floor}</span>,
               },
               {
                 key: 'unit',
                 header: 'Unit',
                 align: 'center',
-                filter: 'enum',
+                width: 85,
+                value: (row) => row.unit,
               },
               {
                 key: 'req',
                 header: 'Required Demand',
                 align: 'right',
-                sortable: true,
-                render: (row: any) => <span style={{ fontWeight: 600 }}>{fmt(row.req)}</span>,
-                exportValue: (row: any) => Number(row.req || 0),
+                width: 135,
+                numeric: true,
+                total: true,
+                value: (row) => Number(row.req || 0),
+                render: (row) => <span style={{ fontWeight: 600 }}>{fmt(row.req)}</span>,
               },
               {
                 key: 'act',
                 header: 'Actual Produced',
                 align: 'right',
-                sortable: true,
-                render: (row: any) => <span style={{ fontWeight: 800, color: COLORS.blue }}>{fmt(row.act)}</span>,
-                exportValue: (row: any) => Number(row.act || 0),
+                width: 135,
+                numeric: true,
+                total: true,
+                value: (row) => Number(row.act || 0),
+                render: (row) => <span style={{ fontWeight: 800, color: COLORS.blue }}>{fmt(row.act)}</span>,
               },
               {
                 key: 'bal',
                 header: 'Balance / Excess',
                 align: 'right',
-                sortable: true,
-                render: (row: any) => (
+                width: 135,
+                numeric: true,
+                total: true,
+                value: (row) => Number(row.bal || 0),
+                render: (row) => (
                   <span style={{ fontWeight: 700, color: row.bal === 0 ? COLORS.green : COLORS.amber }}>
                     {fmt(row.bal)}
                   </span>
                 ),
-                exportValue: (row: any) => Number(row.bal || 0),
               },
               {
                 key: 'yieldRate',
                 header: 'Achievement',
                 align: 'center',
-                sortable: true,
-                render: (row: any) => <span style={{ fontWeight: 800, color: COLORS.green }}>{row.yieldRate}</span>,
+                width: 110,
+                value: (row) => row.yieldRate,
+                render: (row) => <span style={{ fontWeight: 800, color: COLORS.green }}>{row.yieldRate}</span>,
               },
               {
                 key: 'rft',
                 header: 'RFT Quality',
                 align: 'center',
-                sortable: true,
-                render: (row: any) => <span style={{ fontWeight: 700, color: COLORS.emerald }}>{row.rft}</span>,
+                width: 110,
+                value: (row) => row.rft,
+                render: (row) => <span style={{ fontWeight: 700, color: COLORS.emerald }}>{row.rft}</span>,
               },
               {
                 key: 'status',
                 header: 'Stage Status',
                 align: 'center',
-                sortable: true,
-                filter: 'enum',
-                render: (row: any) => {
+                width: 155,
+                value: (row) => row.status,
+                render: (row) => {
                   const isGood =
                     row.status.includes('COMPLETED') ||
                     row.status.includes('100%') ||
@@ -1465,48 +1490,50 @@ export function Job360Content({ initialJobId }: Job360Props) {
               {
                 key: 'inCharge',
                 header: 'Responsible In-Charge',
-                sortable: true,
-                render: (row: any) => <span style={{ color: COLORS.grey, fontSize: '11px' }}>{row.inCharge}</span>,
+                width: 150,
+                value: (row) => row.inCharge,
+                render: (row) => <span style={{ color: COLORS.grey, fontSize: '11px' }}>{row.inCharge}</span>,
               },
-            ]}
+            ] satisfies GridColumn<MasterPipelineStageRow>[]}
           />
-          <RecordPanel
-            open={Boolean(activePipelineStage)}
-            onClose={() => setActivePipelineStage(null)}
-            rows={masterPipeline}
-            rowKey={(row: any) => row.section}
-            activeKey={activePipelineStage}
-            onNavigate={(nextKey) => setActivePipelineStage(String(nextKey))}
-            title={(row: any) => `${row.section} — Job #${job.jobNo}`}
-            subtitle={(row: any) => `${row.floor} · In-Charge: ${row.inCharge}`}
-            statusBadge={(row: any) => ({
-              label: row.status,
-              tone:
-                row.status.includes('COMPLETED') ||
-                row.status.includes('100%') ||
-                row.status.includes('APPROVED') ||
-                row.status.includes('SHIPPED')
-                  ? 'good'
-                  : 'warn',
-            })}
-            sections={[
-              {
-                key: 'stageDetails',
-                title: 'Manufacturing Stage Execution',
-                fields: [
-                  { key: 'section', label: 'Stage Name', type: 'readonly' },
-                  { key: 'floor', label: 'Floor Location', type: 'readonly' },
-                  { key: 'unit', label: 'Unit of Measure', type: 'readonly' },
-                  { key: 'req', label: 'Required Demand', type: 'readonly', format: (v) => fmt(v) },
-                  { key: 'act', label: 'Actual Produced', type: 'readonly', format: (v) => fmt(v) },
-                  { key: 'bal', label: 'Balance / Excess', type: 'readonly', format: (v) => fmt(v) },
-                  { key: 'yieldRate', label: 'Achievement %', type: 'readonly' },
-                  { key: 'rft', label: 'RFT Quality %', type: 'readonly' },
-                  { key: 'inCharge', label: 'Responsible In-Charge', type: 'readonly', span: 2 },
-                ],
-              },
-            ]}
-          />
+          {(() => {
+            const activeIdx = masterPipeline.findIndex((row) => row.section === activePipelineStage);
+            const activeStageRow = activeIdx >= 0 ? masterPipeline[activeIdx] : null;
+            return (
+              <RecordPanel
+                open={Boolean(activeStageRow)}
+                onClose={() => setActivePipelineStage(null)}
+                title={activeStageRow ? `${activeStageRow.section} — Job #${job.jobNo}` : ''}
+                subtitle={activeStageRow ? `${activeStageRow.floor} · In-Charge: ${activeStageRow.inCharge}` : undefined}
+                onPrev={activeIdx > 0 ? () => setActivePipelineStage(masterPipeline[activeIdx - 1].section) : undefined}
+                onNext={
+                  activeIdx >= 0 && activeIdx < masterPipeline.length - 1
+                    ? () => setActivePipelineStage(masterPipeline[activeIdx + 1].section)
+                    : undefined
+                }
+                sections={
+                  activeStageRow
+                    ? [
+                        {
+                          name: 'Manufacturing Stage Execution',
+                          fields: [
+                            { key: 'section', label: 'Stage Name', value: activeStageRow.section, readOnly: true },
+                            { key: 'floor', label: 'Floor Location', value: activeStageRow.floor, readOnly: true },
+                            { key: 'unit', label: 'Unit of Measure', value: activeStageRow.unit, readOnly: true },
+                            { key: 'req', label: 'Required Demand', value: activeStageRow.req, readOnly: true, renderReadOnly: (v) => fmt(Number(v ?? 0)) },
+                            { key: 'act', label: 'Actual Produced', value: activeStageRow.act, readOnly: true, renderReadOnly: (v) => fmt(Number(v ?? 0)) },
+                            { key: 'bal', label: 'Balance / Excess', value: activeStageRow.bal, readOnly: true, renderReadOnly: (v) => fmt(Number(v ?? 0)) },
+                            { key: 'yieldRate', label: 'Achievement %', value: activeStageRow.yieldRate, readOnly: true },
+                            { key: 'rft', label: 'RFT Quality %', value: activeStageRow.rft, readOnly: true },
+                            { key: 'inCharge', label: 'Responsible In-Charge', value: activeStageRow.inCharge, readOnly: true, fullWidth: true },
+                          ],
+                        },
+                      ]
+                    : []
+                }
+              />
+            );
+          })()}
         </div>
 
         {/* ========================================================================= */}

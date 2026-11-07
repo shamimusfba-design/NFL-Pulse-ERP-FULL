@@ -3,9 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import Shell from '../../../components/Shell';
-import { DataGrid, DataGridColumn } from '../../../components/ui/DataGrid';
-import { RecordPanel, RecordSection } from '../../../components/ui/RecordPanel';
-import { Badge } from '../../../components/ui';
+import { Badge, DataGrid, GridColumn, RecordPanel } from '../../../components/ui';
 import { fmtDate, fmtNum } from '../../../lib/format';
 import {
   Package,
@@ -2783,25 +2781,27 @@ export default function TrimsStorePage() {
 
           {/* Master Stock Table with DataGrid + RecordPanel */}
           <DataGrid<TrimsChecklistRecord>
-            tableId="trims-master-stock"
-            data={filteredStockJobs}
+            storageKey="trims-master-stock"
+            exportName="trims-master-stock"
+            rows={filteredStockJobs}
+            frozenColumns={2}
             rowKey={(j) => j.id}
+            selectedRowKey={recordJob?.id ?? null}
             onRowClick={(j) => setRecordJob(j)}
-            searchPlaceholder="Search job no, buyer, style, merchandiser, rack…"
             columns={[
-              { key: 'buyer', header: 'Buyer', width: 110, frozen: true, filterValues: uniqueBuyers, render: (j) => <strong style={{ color: 'var(--nos-brand-text)' }}>{j.buyer}</strong> },
-              { key: 'jobNo', header: 'Job No', width: 105, frozen: true, render: (j) => <strong>{j.jobNo}</strong> },
-              { key: 'styleNo', header: 'Style No', width: 130 },
-              { key: 'orderQty', header: 'Order Qty (pcs)', align: 'right', width: 130, sum: true, render: (j) => <strong>{fmtNum(j.orderQty)}</strong> },
+              { key: 'buyer', header: 'Buyer', width: 110, value: (j) => j.buyer, render: (j) => <strong style={{ color: 'var(--nos-brand-text)' }}>{j.buyer}</strong> },
+              { key: 'jobNo', header: 'Job No', width: 105, value: (j) => j.jobNo, render: (j) => <strong>{j.jobNo}</strong> },
+              { key: 'styleNo', header: 'Style No', width: 130, value: (j) => j.styleNo },
+              { key: 'orderQty', header: 'Order Qty (pcs)', align: 'right', width: 130, numeric: true, total: true, unit: 'pcs', value: (j) => j.orderQty, render: (j) => <strong>{fmtNum(j.orderQty)}</strong> },
               {
                 key: 'presentStatus',
                 header: 'Present Status',
                 width: 155,
-                accessor: (j) => computeJobStatus(j),
+                value: (j) => computeJobStatus(j),
                 render: (j) => {
                   const st = computeJobStatus(j);
                   return (
-                    <Badge tone={st === 'Receive OK' || st === 'Delivery Done' ? 'ok' : st === 'Inspection Fail' ? 'bad' : st === 'Partial Received Due' ? 'warn' : 'info'}>
+                    <Badge tone={st === 'Receive OK' || st === 'Delivery Done' ? 'done' : st === 'Inspection Fail' ? 'balance' : st === 'Partial Received Due' ? 'mid' : 'info'}>
                       {st}
                     </Badge>
                   );
@@ -2811,10 +2811,12 @@ export default function TrimsStorePage() {
                 key: 'itemsDue',
                 header: 'Items Due',
                 width: 220,
-                accessor: (j) => j.items.filter((it) => it.receivedQty < it.totalOrderQty).length,
+                numeric: true,
+                total: true,
+                value: (j) => j.items.filter((it) => it.receivedQty < it.totalOrderQty).length,
                 render: (j) => {
                   const due = j.items.filter((it) => it.receivedQty < it.totalOrderQty);
-                  if (due.length === 0) return <Badge tone="ok">All In</Badge>;
+                  if (due.length === 0) return <Badge tone="done">All In</Badge>;
                   return (
                     <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--nos-warn)' }}>
                       <strong>{due.length} due:</strong> {due.map((it) => `${it.itemName} (${fmtNum(it.balanceQty)})`).join(', ')}
@@ -2826,21 +2828,21 @@ export default function TrimsStorePage() {
                 key: 'qualityAudit',
                 header: 'Quality Audit',
                 width: 145,
-                accessor: (j) => j.items.filter((it) => it.qualityStatus === 'FAIL').length,
+                value: (j) => j.items.filter((it) => it.qualityStatus === 'FAIL').length,
                 render: (j) => {
                   const fail = j.items.filter((it) => it.qualityStatus === 'FAIL').length;
                   const pass = j.items.filter((it) => it.qualityStatus === 'PASS').length;
-                  if (fail > 0) return <Badge tone="bad">{fail} Failed</Badge>;
-                  return <Badge tone={pass === j.items.length ? 'ok' : 'warn'}>{pass}/{j.items.length} Passed</Badge>;
+                  if (fail > 0) return <Badge tone="balance">{fail} Failed</Badge>;
+                  return <Badge tone={pass === j.items.length ? 'done' : 'mid'}>{pass}/{j.items.length} Passed</Badge>;
                 }
               },
-              { key: 'merchandiser', header: 'Merchandiser', width: 130, filterValues: uniqueMerchandisers },
-              { key: 'tnaSlot', header: 'T&A Slot', width: 140, filterValues: uniqueTnaSlots },
+              { key: 'merchandiser', header: 'Merchandiser', width: 130, value: (j) => j.merchandiser },
+              { key: 'tnaSlot', header: 'T&A Slot', width: 140, value: (j) => j.tnaSlot },
               {
                 key: 'racks',
                 header: 'Racks Stored',
                 width: 130,
-                accessor: (j) => Array.from(new Set(j.items.map((it) => it.rackNo))).filter(Boolean).join(', '),
+                value: (j) => Array.from(new Set(j.items.map((it) => it.rackNo))).filter(Boolean).join(', '),
                 render: (j) => {
                   const ur = Array.from(new Set(j.items.map((it) => it.rackNo))).filter(Boolean);
                   return (
@@ -2856,7 +2858,7 @@ export default function TrimsStorePage() {
                 key: 'action',
                 header: 'Inspect',
                 width: 120,
-                sortable: false,
+                filterable: false,
                 render: (j) => (
                   <button
                     type="button"
@@ -2871,7 +2873,7 @@ export default function TrimsStorePage() {
                   </button>
                 )
               }
-            ]}
+            ] satisfies GridColumn<TrimsChecklistRecord>[]}
           />
 
           {/* Detailed Job Checklist & Quality Inspection Modal (Only opened on explicit button click) */}
@@ -3920,28 +3922,29 @@ export default function TrimsStorePage() {
 
           {/* Surplus Table via DataGrid */}
           <DataGrid<SurplusTrimsRecord>
-            tableId="trims-surplus-reuse"
-            data={filteredSurplusTrims}
+            storageKey="trims-surplus-reuse"
+            exportName="trims-surplus-reuse"
+            rows={filteredSurplusTrims}
+            frozenColumns={1}
             rowKey={(s) => s.id}
             onRowClick={(s) => {
               setAllocateModalItem(s);
               setAllocateQty(s.availableQty);
             }}
-            searchPlaceholder="Search surplus item, category, origin job, buyer, rack…"
             columns={[
-              { key: 'itemName', header: 'Surplus Item', width: 220, frozen: true, render: (s) => <strong>{s.itemName}</strong> },
-              { key: 'category', header: 'Category', width: 120, render: (s) => <Badge tone="warn">{s.category}</Badge> },
-              { key: 'availableQty', header: 'Available Qty', align: 'right', width: 130, sum: true, render: (s) => <strong style={{ color: 'var(--nos-ok)' }}>{fmtNum(s.availableQty)}</strong> },
-              { key: 'unit', header: 'Unit', width: 90 },
-              { key: 'originJobNo', header: 'Origin Job', width: 110, render: (s) => <strong>{s.originJobNo}</strong> },
-              { key: 'buyer', header: 'Buyer', width: 110 },
-              { key: 'rackShelf', header: 'Location', width: 130, render: (s) => <Badge tone="info">{s.rackShelf}</Badge> },
-              { key: 'condition', header: 'Condition', width: 130 },
+              { key: 'itemName', header: 'Surplus Item', width: 220, value: (s) => s.itemName, render: (s) => <strong>{s.itemName}</strong> },
+              { key: 'category', header: 'Category', width: 120, value: (s) => s.category, render: (s) => <Badge tone="mid">{s.category}</Badge> },
+              { key: 'availableQty', header: 'Available Qty', align: 'right', width: 130, numeric: true, total: true, value: (s) => s.availableQty, render: (s) => <strong style={{ color: 'var(--nos-ok)' }}>{fmtNum(s.availableQty)}</strong> },
+              { key: 'unit', header: 'Unit', width: 90, value: (s) => s.unit },
+              { key: 'originJobNo', header: 'Origin Job', width: 110, value: (s) => s.originJobNo, render: (s) => <strong>{s.originJobNo}</strong> },
+              { key: 'buyer', header: 'Buyer', width: 110, value: (s) => s.buyer },
+              { key: 'rackShelf', header: 'Location', width: 130, value: (s) => s.rackShelf, render: (s) => <Badge tone="info">{s.rackShelf}</Badge> },
+              { key: 'condition', header: 'Condition', width: 130, value: (s) => s.condition },
               {
                 key: 'action',
                 header: 'Action',
                 width: 130,
-                sortable: false,
+                filterable: false,
                 render: (s) => (
                   <button
                     type="button"
@@ -3957,7 +3960,7 @@ export default function TrimsStorePage() {
                   </button>
                 )
               }
-            ]}
+            ] satisfies GridColumn<SurplusTrimsRecord>[]}
           />
 
           {/* Allocate Modal */}
@@ -4346,59 +4349,67 @@ export default function TrimsStorePage() {
         </div>
       )}
 
-      <RecordPanel<TrimsChecklistRecord>
-        open={Boolean(recordJob)}
-        record={recordJob}
-        rows={filteredStockJobs}
-        getRowId={(r) => r.id}
-        onSelectRow={(r) => setRecordJob(r)}
-        onClose={() => setRecordJob(null)}
-        title={(r) => `Job ${r.jobNo} · ${r.buyer}`}
-        subtitle={(r) => `Style ${r.styleNo} · ${fmtNum(r.orderQty)} pcs · ${r.items.length} Trims Items`}
-        statusBadge={(r) => {
-          const st = computeJobStatus(r);
-          return {
-            label: st,
-            tone: st === 'Receive OK' || st === 'Delivery Done' ? 'ok' : st === 'Inspection Fail' ? 'bad' : 'warn'
-          };
-        }}
-        sections={[
-          {
-            id: 'trims-job-summary',
-            title: 'Job & Handover Details',
-            fields: [
-              { key: 'jobNo', label: 'Job No', lockedByRole: 'Merchandiser' },
-              { key: 'buyer', label: 'Buyer', lockedByRole: 'Merchandiser' },
-              { key: 'styleNo', label: 'Style No', lockedByRole: 'Merchandiser' },
-              { key: 'itemDescription', label: 'Garment Description', lockedByRole: 'Merchandiser' },
-              { key: 'orderQty', label: 'Order Qty', type: 'number', unit: 'pcs', lockedByRole: 'Merchandiser' },
-              { key: 'merchandiser', label: 'Merchandiser', lockedByRole: 'Merchandiser' },
-              { key: 'shipmentDate', label: 'Shipment Date', type: 'date', render: (v) => fmtDate(v) },
-              { key: 'tnaSlot', label: 'T&A Slot', lockedByRole: 'Central Planning' },
-              { key: 'sewingLine', label: 'Sewing Line' },
-              {
-                key: 'checklistStatus',
-                label: 'Checklist Verification',
-                type: 'select',
-                options: [
-                  { value: 'PENDING_REVIEW', label: 'Pending Review' },
-                  { value: 'REVIEW_REQUESTED', label: 'Review Requested' },
-                  { value: 'ACCEPTED', label: 'Accepted' }
-                ]
-              },
-              { key: 'storeReviewNote', label: 'Store Verification Notes', type: 'textarea', span: 2 }
-            ]
-          }
-        ]}
-        onSave={(updated) => {
-          const recomputed: TrimsChecklistRecord = {
-            ...updated,
-            presentStatus: computeJobStatus(updated)
-          };
-          setChecklists((prev) => prev.map((x) => (x.id === recomputed.id ? recomputed : x)));
-          setRecordJob(recomputed);
-        }}
-      />
+      {(() => {
+        const activeIdx = recordJob ? filteredStockJobs.findIndex((r) => r.id === recordJob.id) : -1;
+        return (
+          <RecordPanel
+            open={Boolean(recordJob)}
+            onClose={() => setRecordJob(null)}
+            title={recordJob ? `Job ${recordJob.jobNo} · ${recordJob.buyer}` : ''}
+            subtitle={recordJob ? `Style ${recordJob.styleNo} · ${fmtNum(recordJob.orderQty)} pcs · ${recordJob.items.length} Trims Items` : undefined}
+            onPrev={activeIdx > 0 ? () => setRecordJob(filteredStockJobs[activeIdx - 1]) : undefined}
+            onNext={activeIdx >= 0 && activeIdx < filteredStockJobs.length - 1 ? () => setRecordJob(filteredStockJobs[activeIdx + 1]) : undefined}
+            sections={
+              recordJob
+                ? [
+                    {
+                      name: 'Job & Handover Details',
+                      fields: [
+                        { key: 'jobNo', label: 'Job No', value: recordJob.jobNo, setByRole: 'Merchandiser' },
+                        { key: 'buyer', label: 'Buyer', value: recordJob.buyer, setByRole: 'Merchandiser' },
+                        { key: 'styleNo', label: 'Style No', value: recordJob.styleNo, setByRole: 'Merchandiser' },
+                        { key: 'itemDescription', label: 'Garment Description', value: recordJob.itemDescription, setByRole: 'Merchandiser' },
+                        { key: 'orderQty', label: 'Order Qty', value: recordJob.orderQty, type: 'number', unit: 'pcs', setByRole: 'Merchandiser' },
+                        { key: 'merchandiser', label: 'Merchandiser', value: recordJob.merchandiser, setByRole: 'Merchandiser' },
+                        { key: 'shipmentDate', label: 'Shipment Date', value: recordJob.shipmentDate, type: 'date', renderReadOnly: (v) => fmtDate(String(v ?? '')) },
+                        { key: 'tnaSlot', label: 'T&A Slot', value: recordJob.tnaSlot, setByRole: 'Central Planning' },
+                        { key: 'sewingLine', label: 'Sewing Line', value: recordJob.sewingLine },
+                        {
+                          key: 'checklistStatus',
+                          label: 'Checklist Verification',
+                          value: recordJob.checklistStatus,
+                          type: 'select',
+                          options: [
+                            { value: 'PENDING_REVIEW', label: 'Pending Review' },
+                            { value: 'REVIEW_REQUESTED', label: 'Review Requested' },
+                            { value: 'ACCEPTED', label: 'Accepted' }
+                          ]
+                        },
+                        { key: 'storeReviewNote', label: 'Store Verification Notes', value: recordJob.storeReviewNote ?? '', type: 'textarea', fullWidth: true }
+                      ]
+                    }
+                  ]
+                : []
+            }
+            onSave={(vals) => {
+              if (!recordJob) return;
+              const updated: TrimsChecklistRecord = {
+                ...recordJob,
+                shipmentDate: String(vals.shipmentDate ?? recordJob.shipmentDate),
+                sewingLine: String(vals.sewingLine ?? recordJob.sewingLine),
+                checklistStatus: (vals.checklistStatus as TrimsChecklistRecord['checklistStatus']) ?? recordJob.checklistStatus,
+                storeReviewNote: String(vals.storeReviewNote ?? recordJob.storeReviewNote ?? ''),
+              };
+              const recomputed: TrimsChecklistRecord = {
+                ...updated,
+                presentStatus: computeJobStatus(updated)
+              };
+              setChecklists((prev) => prev.map((x) => (x.id === recomputed.id ? recomputed : x)));
+              setRecordJob(recomputed);
+            }}
+          />
+        );
+      })()}
     </Shell>
   );
 }

@@ -26,18 +26,38 @@ import {
   TrendingUp,
 } from 'lucide-react';
 
-import { DataGrid, RecordPanel } from '../../../components/ui';
+import { DataGrid, GridColumn, RecordPanel } from '../../../components/ui';
 import { fmtDate, fmtNum } from '../../../lib/format';
 
-function fmt(n: any) {
+interface SubcontractWorkOrderRow {
+  workOrderNo: string;
+  challanNo?: string;
+  styleId?: string;
+  jobNo: string;
+  styleNo: string;
+  buyer: string;
+  processType: 'PRINTING' | 'EMBROIDERY' | 'WASH' | string;
+  vendorName: string;
+  sentDate: string;
+  expectedReturnDate: string;
+  receivedDate?: string;
+  sentQty: number;
+  receivedQty: number;
+  rejectQty: number;
+  balanceQty?: number;
+  status: 'SENT_TO_VENDOR' | 'IN_PROGRESS' | 'DELAYED' | 'COMPLETED' | string;
+  remarks?: string;
+}
+
+function fmt(n: number | string | null | undefined) {
   return fmtNum(Number(n || 0));
 }
 
 export default function SubcontractPage() {
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<SubcontractWorkOrderRow[]>([]);
   const [processFilter, setProcessFilter] = useState<string>('ALL');
   const [search, setSearch] = useState<string>('');
-  const [editingOrder, setEditingOrder] = useState<any>(null);
+  const [editingOrder, setEditingOrder] = useState<SubcontractWorkOrderRow | null>(null);
   const [activeWoNo, setActiveWoNo] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -537,44 +557,45 @@ export default function SubcontractPage() {
             </div>
           </div>
 
-          <DataGrid
+          <DataGrid<SubcontractWorkOrderRow>
+            storageKey="subcontract-work-orders"
+            exportName="subcontract-work-orders"
             rows={filtered}
-            rowKey={(wo: any) => wo.workOrderNo}
-            activeRowKey={activeWoNo}
-            onRowClick={(wo: any) => setActiveWoNo(wo.workOrderNo)}
-            searchPlaceholder="Search Work Order, Job, Vendor..."
+            frozenColumns={2}
+            rowKey={(wo) => wo.workOrderNo}
+            selectedRowKey={activeWoNo}
+            onRowClick={(wo) => setActiveWoNo(wo.workOrderNo)}
             columns={[
               {
                 key: 'workOrderNo',
                 header: 'Work Order / Challan',
-                sortable: true,
-                render: (wo: any) => (
+                width: 150,
+                value: (wo) => `${wo.workOrderNo} (${wo.challanNo || 'Pending'})`,
+                render: (wo) => (
                   <div>
                     <div style={{ fontWeight: 800, color: '#0284C7', fontFamily: 'monospace' }}>{wo.workOrderNo}</div>
                     <div style={{ fontSize: '10.5px', color: '#64748B' }}>Challan: {wo.challanNo || 'Pending'}</div>
                   </div>
                 ),
-                exportValue: (wo: any) => `${wo.workOrderNo} (${wo.challanNo || 'Pending'})`,
               },
               {
                 key: 'jobNo',
                 header: 'Job / Style / Buyer',
-                sortable: true,
-                filter: 'text',
-                render: (wo: any) => (
+                width: 165,
+                value: (wo) => `${wo.jobNo} ${wo.styleNo} ${wo.buyer}`,
+                render: (wo) => (
                   <div>
                     <div style={{ fontWeight: 800, color: '#0F274E' }}>Job #{wo.jobNo} · {wo.styleNo}</div>
                     <div style={{ fontSize: '11px', color: '#64748B' }}>{wo.buyer}</div>
                   </div>
                 ),
-                exportValue: (wo: any) => `${wo.jobNo} ${wo.styleNo} ${wo.buyer}`,
               },
               {
                 key: 'processType',
                 header: 'Process & Vendor',
-                sortable: true,
-                filter: 'enum',
-                render: (wo: any) => (
+                width: 165,
+                value: (wo) => `${wo.processType} - ${wo.vendorName}`,
+                render: (wo) => (
                   <div>
                     <span style={{ background: '#EEF2FF', color: '#4338CA', padding: '2px 6px', borderRadius: '4px', fontSize: '10.5px', fontWeight: 700 }}>
                       {wo.processType}
@@ -582,59 +603,64 @@ export default function SubcontractPage() {
                     <div style={{ fontSize: '11px', color: '#334155', marginTop: '2px' }}>{wo.vendorName}</div>
                   </div>
                 ),
-                exportValue: (wo: any) => `${wo.processType} - ${wo.vendorName}`,
               },
               {
                 key: 'expectedReturnDate',
                 header: 'Sent / Return Dates',
-                sortable: true,
-                render: (wo: any) => (
+                width: 150,
+                value: (wo) => `${wo.sentDate || ''} -> ${wo.expectedReturnDate || ''}`,
+                render: (wo) => (
                   <div style={{ fontSize: '11px', fontFamily: 'monospace' }}>
                     <div>Sent: {fmtDate(wo.sentDate)}</div>
                     <div style={{ color: '#0284C7', fontWeight: 600 }}>Due: {fmtDate(wo.expectedReturnDate)}</div>
                     {wo.receivedDate && <div style={{ color: '#059669' }}>Recv: {fmtDate(wo.receivedDate)}</div>}
                   </div>
                 ),
-                exportValue: (wo: any) => `${wo.sentDate || ''} -> ${wo.expectedReturnDate || ''}`,
               },
               {
                 key: 'sentQty',
                 header: 'Sent Qty',
                 align: 'right',
-                sortable: true,
-                sum: true,
-                render: (wo: any) => <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{fmt(wo.sentQty)} pcs</span>,
-                exportValue: (wo: any) => Number(wo.sentQty || 0),
+                width: 115,
+                numeric: true,
+                total: true,
+                unit: 'pcs',
+                value: (wo) => Number(wo.sentQty || 0),
+                render: (wo) => <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{fmt(wo.sentQty)} pcs</span>,
               },
               {
                 key: 'receivedQty',
                 header: 'Received OK',
                 align: 'right',
-                sortable: true,
-                sum: true,
-                render: (wo: any) => <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#059669' }}>{fmt(wo.receivedQty)} pcs</span>,
-                exportValue: (wo: any) => Number(wo.receivedQty || 0),
+                width: 120,
+                numeric: true,
+                total: true,
+                unit: 'pcs',
+                value: (wo) => Number(wo.receivedQty || 0),
+                render: (wo) => <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#059669' }}>{fmt(wo.receivedQty)} pcs</span>,
               },
               {
                 key: 'balanceQty',
                 header: 'Reject / Balance',
                 align: 'right',
-                sortable: true,
-                sum: true,
-                render: (wo: any) => (
+                width: 130,
+                numeric: true,
+                total: true,
+                unit: 'pcs',
+                value: (wo) => Number(wo.balanceQty || 0),
+                render: (wo) => (
                   <div style={{ fontFamily: 'monospace' }}>
                     <div style={{ color: '#D97706', fontSize: '11px' }}>Rej: {fmt(wo.rejectQty)}</div>
                     <div style={{ fontWeight: 700, color: '#0F274E' }}>Bal: {fmt(wo.balanceQty)}</div>
                   </div>
                 ),
-                exportValue: (wo: any) => Number(wo.balanceQty || 0),
               },
               {
                 key: 'status',
                 header: 'Status',
-                sortable: true,
-                filter: 'enum',
-                render: (wo: any) => (
+                width: 135,
+                value: (wo) => wo.status,
+                render: (wo) => (
                   <div>
                     <span
                       style={{
@@ -656,7 +682,9 @@ export default function SubcontractPage() {
                 key: 'actions',
                 header: 'Follow-up',
                 align: 'right',
-                render: (wo: any) => (
+                width: 120,
+                filterable: false,
+                render: (wo) => (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -677,81 +705,98 @@ export default function SubcontractPage() {
                   </button>
                 ),
               },
-            ]}
+            ] satisfies GridColumn<SubcontractWorkOrderRow>[]}
           />
         </div>
 
         {/* RecordPanel for Subcontract Work Order */}
-        <RecordPanel
-          open={Boolean(activeWoNo)}
-          onClose={() => setActiveWoNo(null)}
-          rows={filtered}
-          rowKey={(wo: any) => wo.workOrderNo}
-          activeKey={activeWoNo}
-          onNavigate={(nextKey) => setActiveWoNo(String(nextKey))}
-          title={(wo: any) => `${wo.workOrderNo} · Job #${wo.jobNo}`}
-          subtitle={(wo: any) => `${wo.processType} · ${wo.vendorName} · ${wo.buyer}`}
-          statusBadge={(wo: any) => ({
-            label: wo.status,
-            tone: wo.status === 'COMPLETED' ? 'good' : wo.status === 'DELAYED' ? 'bad' : 'warn',
-          })}
-          sections={[
-            {
-              key: 'identity',
-              title: 'Work Order & Job Details',
-              fields: [
-                { key: 'workOrderNo', label: 'Work Order No.', type: 'readonly' },
-                { key: 'jobNo', label: 'Job No.', type: 'readonly', setByRole: 'Merchandising' },
-                { key: 'styleNo', label: 'Style No.', type: 'readonly', setByRole: 'Merchandising' },
-                { key: 'buyer', label: 'Buyer', type: 'readonly', setByRole: 'Merchandising' },
-                {
-                  key: 'processType',
-                  label: 'Process Type',
-                  type: 'select',
-                  options: [
-                    { value: 'PRINTING', label: 'PRINTING' },
-                    { value: 'EMBROIDERY', label: 'EMBROIDERY' },
-                    { value: 'WASH', label: 'WASH' },
-                  ],
-                },
-                { key: 'vendorName', label: 'Vendor Name', type: 'text', required: true },
-              ],
-            },
-            {
-              key: 'quantities',
-              title: 'Challan, Dates & Quantities',
-              fields: [
-                { key: 'challanNo', label: 'Delivery Challan No.', type: 'text' },
-                {
-                  key: 'status',
-                  label: 'Status',
-                  type: 'select',
-                  options: [
-                    { value: 'SENT_TO_VENDOR', label: 'SENT_TO_VENDOR' },
-                    { value: 'IN_PROGRESS', label: 'IN_PROGRESS' },
-                    { value: 'DELAYED', label: 'DELAYED' },
-                    { value: 'COMPLETED', label: 'COMPLETED' },
-                  ],
-                },
-                { key: 'sentDate', label: 'Sent Date', type: 'date' },
-                { key: 'expectedReturnDate', label: 'Expected Return Date', type: 'date' },
-                { key: 'sentQty', label: 'Sent Qty (pcs)', type: 'number', min: 0 },
-                { key: 'receivedQty', label: 'Received OK (pcs)', type: 'number', min: 0 },
-                { key: 'rejectQty', label: 'Reject Qty (pcs)', type: 'number', min: 0 },
-                { key: 'remarks', label: 'Follow-up Remarks', type: 'textarea', span: 2 },
-              ],
-            },
-          ]}
-          onSave={async (wo: any, patch: Partial<any>) => {
-            const next = { ...wo, ...patch };
-            await api('/planning/subcontract', {
-              method: 'POST',
-              body: JSON.stringify(next),
-            });
-            setMessage(`Sub-contract work order ${next.workOrderNo} saved and synced with T&A.`);
-            await loadData();
-          }}
-        />
+        {(() => {
+          const activeIdx = filtered.findIndex((wo) => wo.workOrderNo === activeWoNo);
+          const activeWo = activeIdx >= 0 ? filtered[activeIdx] : null;
+          return (
+            <RecordPanel
+              open={Boolean(activeWo)}
+              onClose={() => setActiveWoNo(null)}
+              title={activeWo ? `${activeWo.workOrderNo} · Job #${activeWo.jobNo}` : ''}
+              subtitle={activeWo ? `${activeWo.processType} · ${activeWo.vendorName} · ${activeWo.buyer}` : undefined}
+              onPrev={activeIdx > 0 ? () => setActiveWoNo(filtered[activeIdx - 1].workOrderNo) : undefined}
+              onNext={activeIdx >= 0 && activeIdx < filtered.length - 1 ? () => setActiveWoNo(filtered[activeIdx + 1].workOrderNo) : undefined}
+              sections={
+                activeWo
+                  ? [
+                      {
+                        name: 'Work Order & Job Details',
+                        fields: [
+                          { key: 'workOrderNo', label: 'Work Order No.', value: activeWo.workOrderNo, readOnly: true },
+                          { key: 'jobNo', label: 'Job No.', value: activeWo.jobNo, readOnly: true, setByRole: 'Merchandising' },
+                          { key: 'styleNo', label: 'Style No.', value: activeWo.styleNo, readOnly: true, setByRole: 'Merchandising' },
+                          { key: 'buyer', label: 'Buyer', value: activeWo.buyer, readOnly: true, setByRole: 'Merchandising' },
+                          {
+                            key: 'processType',
+                            label: 'Process Type',
+                            value: activeWo.processType,
+                            type: 'select',
+                            options: [
+                              { value: 'PRINTING', label: 'PRINTING' },
+                              { value: 'EMBROIDERY', label: 'EMBROIDERY' },
+                              { value: 'WASH', label: 'WASH' },
+                            ],
+                          },
+                          { key: 'vendorName', label: 'Vendor Name', value: activeWo.vendorName, type: 'text', required: true },
+                        ],
+                      },
+                      {
+                        name: 'Challan, Dates & Quantities',
+                        fields: [
+                          { key: 'challanNo', label: 'Delivery Challan No.', value: activeWo.challanNo ?? '', type: 'text' },
+                          {
+                            key: 'status',
+                            label: 'Status',
+                            value: activeWo.status,
+                            type: 'select',
+                            options: [
+                              { value: 'SENT_TO_VENDOR', label: 'SENT_TO_VENDOR' },
+                              { value: 'IN_PROGRESS', label: 'IN_PROGRESS' },
+                              { value: 'DELAYED', label: 'DELAYED' },
+                              { value: 'COMPLETED', label: 'COMPLETED' },
+                            ],
+                          },
+                          { key: 'sentDate', label: 'Sent Date', value: activeWo.sentDate, type: 'date' },
+                          { key: 'expectedReturnDate', label: 'Expected Return Date', value: activeWo.expectedReturnDate, type: 'date' },
+                          { key: 'sentQty', label: 'Sent Qty (pcs)', value: activeWo.sentQty, type: 'number', min: 0, unit: 'pcs' },
+                          { key: 'receivedQty', label: 'Received OK (pcs)', value: activeWo.receivedQty, type: 'number', min: 0, unit: 'pcs' },
+                          { key: 'rejectQty', label: 'Reject Qty (pcs)', value: activeWo.rejectQty, type: 'number', min: 0, unit: 'pcs' },
+                          { key: 'remarks', label: 'Follow-up Remarks', value: activeWo.remarks ?? '', type: 'textarea', fullWidth: true },
+                        ],
+                      },
+                    ]
+                  : []
+              }
+              onSave={async (vals) => {
+                if (!activeWo) return;
+                const next: SubcontractWorkOrderRow = {
+                  ...activeWo,
+                  processType: String(vals.processType ?? activeWo.processType),
+                  vendorName: String(vals.vendorName ?? activeWo.vendorName),
+                  challanNo: String(vals.challanNo ?? activeWo.challanNo ?? ''),
+                  status: String(vals.status ?? activeWo.status),
+                  sentDate: String(vals.sentDate ?? activeWo.sentDate),
+                  expectedReturnDate: String(vals.expectedReturnDate ?? activeWo.expectedReturnDate),
+                  sentQty: Number(vals.sentQty ?? activeWo.sentQty),
+                  receivedQty: Number(vals.receivedQty ?? activeWo.receivedQty),
+                  rejectQty: Number(vals.rejectQty ?? activeWo.rejectQty),
+                  remarks: String(vals.remarks ?? activeWo.remarks ?? ''),
+                };
+                await api('/planning/subcontract', {
+                  method: 'POST',
+                  body: JSON.stringify(next),
+                });
+                setMessage(`Sub-contract work order ${next.workOrderNo} saved and synced with T&A.`);
+                await loadData();
+              }}
+            />
+          );
+        })()}
 
         {/* Modal: Edit Subcontract Work Order */}
         {editingOrder && (

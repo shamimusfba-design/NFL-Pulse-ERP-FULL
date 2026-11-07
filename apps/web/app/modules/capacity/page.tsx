@@ -25,10 +25,21 @@ import {
   Boxes,
 } from 'lucide-react';
 
-import { DataGrid, RecordPanel } from '../../../components/ui';
+import { DataGrid, GridColumn, RecordPanel } from '../../../components/ui';
 import { fmtDate, fmtNum } from '../../../lib/format';
 
-function fmt(n: any) {
+interface CapacitySlotJobRow {
+  _key: string;
+  jobNo: string;
+  styleNo: string;
+  buyer: string;
+  demand: number;
+  date: string;
+  section: string;
+  slotNo: number;
+}
+
+function fmt(n: number | string | null | undefined) {
   return fmtNum(Number(n || 0));
 }
 
@@ -861,81 +872,94 @@ export default function CapacityPage() {
               </button>
             </div>
 
-            <DataGrid
-              rows={(selectedCell.slot.topJobs || []).map((j: any, idx: number) => ({
-                ...j,
-                _key: `${j.jobNo}-${j.styleNo}-${idx}`,
-                section: selectedCell.section,
-                slotNo: selectedCell.slot.slot,
-              }))}
-              rowKey={(j: any) => j._key}
-              activeRowKey={activeSlotJobKey}
-              onRowClick={(j: any) => setActiveSlotJobKey(j._key)}
-              searchPlaceholder="Filter contributing jobs..."
-              columns={[
-                {
-                  key: 'jobNo',
-                  header: 'Job No.',
-                  sortable: true,
-                  render: (j: any) => <span style={{ fontWeight: 800, color: '#0284C7' }}>Job #{j.jobNo}</span>,
-                },
-                {
-                  key: 'styleNo',
-                  header: 'Style No.',
-                  sortable: true,
-                },
-                {
-                  key: 'buyer',
-                  header: 'Buyer',
-                  sortable: true,
-                  filter: 'enum',
-                },
-                {
-                  key: 'demand',
-                  header: 'Slot Demand',
-                  align: 'right',
-                  sortable: true,
-                  sum: true,
-                  render: (j: any) => <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{fmt(j.demand)}</span>,
-                  exportValue: (j: any) => Number(j.demand || 0),
-                },
-                {
-                  key: 'date',
-                  header: 'Target Date',
-                  sortable: true,
-                  render: (j: any) => <span style={{ color: '#059669', fontWeight: 600 }}>{fmtDate(j.date)}</span>,
-                },
-              ]}
-            />
-            <RecordPanel
-              open={Boolean(activeSlotJobKey)}
-              onClose={() => setActiveSlotJobKey(null)}
-              rows={(selectedCell.slot.topJobs || []).map((j: any, idx: number) => ({
-                ...j,
-                _key: `${j.jobNo}-${j.styleNo}-${idx}`,
-                section: selectedCell.section,
-                slotNo: selectedCell.slot.slot,
-              }))}
-              rowKey={(j: any) => j._key}
-              activeKey={activeSlotJobKey}
-              onNavigate={(nextKey) => setActiveSlotJobKey(String(nextKey))}
-              title={(j: any) => `Job #${j.jobNo} · ${j.styleNo}`}
-              subtitle={(j: any) => `${j.buyer} · ${j.section} Slot ${j.slotNo}`}
-              sections={[
-                {
-                  key: 'slotAllocation',
-                  title: 'Capacity Slot Allocation Details',
-                  fields: [
-                    { key: 'jobNo', label: 'Job No.', type: 'readonly' },
-                    { key: 'styleNo', label: 'Style No.', type: 'readonly' },
-                    { key: 'buyer', label: 'Buyer', type: 'readonly' },
-                    { key: 'section', label: 'Factory Section', type: 'readonly' },
-                    { key: 'demand', label: 'Allocated Demand', type: 'readonly', format: (v) => fmt(v) },
-                    { key: 'date', label: 'Target Schedule Date', type: 'readonly', format: (v) => fmtDate(v) },
-                  ],
-                },
-              ]}
-            />
+            {(() => {
+              const slotJobs: CapacitySlotJobRow[] = (selectedCell.slot.topJobs || []).map(
+                (j: { jobNo: string; styleNo: string; buyer: string; demand: number; date: string }, idx: number) => ({
+                  ...j,
+                  _key: `${j.jobNo}-${j.styleNo}-${idx}`,
+                  section: selectedCell.section,
+                  slotNo: selectedCell.slot.slot,
+                })
+              );
+              const activeIdx = slotJobs.findIndex((j) => j._key === activeSlotJobKey);
+              const activeJob = activeIdx >= 0 ? slotJobs[activeIdx] : null;
+              return (
+                <>
+                  <DataGrid<CapacitySlotJobRow>
+                    storageKey="capacity-slot-jobs"
+                    exportName="capacity-slot-jobs"
+                    rows={slotJobs}
+                    frozenColumns={2}
+                    rowKey={(j) => j._key}
+                    selectedRowKey={activeSlotJobKey}
+                    onRowClick={(j) => setActiveSlotJobKey(j._key)}
+                    columns={[
+                      {
+                        key: 'jobNo',
+                        header: 'Job No.',
+                        width: 110,
+                        value: (j) => j.jobNo,
+                        render: (j) => <span style={{ fontWeight: 800, color: '#0284C7' }}>Job #{j.jobNo}</span>,
+                      },
+                      {
+                        key: 'styleNo',
+                        header: 'Style No.',
+                        width: 130,
+                        value: (j) => j.styleNo,
+                      },
+                      {
+                        key: 'buyer',
+                        header: 'Buyer',
+                        width: 130,
+                        value: (j) => j.buyer,
+                      },
+                      {
+                        key: 'demand',
+                        header: 'Slot Demand',
+                        align: 'right',
+                        width: 130,
+                        numeric: true,
+                        total: true,
+                        value: (j) => Number(j.demand || 0),
+                        render: (j) => <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{fmt(j.demand)}</span>,
+                      },
+                      {
+                        key: 'date',
+                        header: 'Target Date',
+                        width: 120,
+                        value: (j) => j.date,
+                        render: (j) => <span style={{ color: '#059669', fontWeight: 600 }}>{fmtDate(j.date)}</span>,
+                      },
+                    ] satisfies GridColumn<CapacitySlotJobRow>[]}
+                  />
+                  <RecordPanel
+                    open={Boolean(activeJob)}
+                    onClose={() => setActiveSlotJobKey(null)}
+                    title={activeJob ? `Job #${activeJob.jobNo} · ${activeJob.styleNo}` : ''}
+                    subtitle={activeJob ? `${activeJob.buyer} · ${activeJob.section} Slot ${activeJob.slotNo}` : undefined}
+                    onPrev={activeIdx > 0 ? () => setActiveSlotJobKey(slotJobs[activeIdx - 1]._key) : undefined}
+                    onNext={activeIdx >= 0 && activeIdx < slotJobs.length - 1 ? () => setActiveSlotJobKey(slotJobs[activeIdx + 1]._key) : undefined}
+                    sections={
+                      activeJob
+                        ? [
+                            {
+                              name: 'Capacity Slot Allocation Details',
+                              fields: [
+                                { key: 'jobNo', label: 'Job No.', value: activeJob.jobNo, readOnly: true },
+                                { key: 'styleNo', label: 'Style No.', value: activeJob.styleNo, readOnly: true },
+                                { key: 'buyer', label: 'Buyer', value: activeJob.buyer, readOnly: true },
+                                { key: 'section', label: 'Factory Section', value: activeJob.section, readOnly: true },
+                                { key: 'demand', label: 'Allocated Demand', value: activeJob.demand, readOnly: true, renderReadOnly: (v) => fmt(Number(v ?? 0)) },
+                                { key: 'date', label: 'Target Schedule Date', value: activeJob.date, readOnly: true, renderReadOnly: (v) => fmtDate(String(v ?? '')) },
+                              ],
+                            },
+                          ]
+                        : []
+                    }
+                  />
+                </>
+              );
+            })()}
           </div>
         )}
       </div>

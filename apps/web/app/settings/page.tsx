@@ -1,9 +1,7 @@
 'use client';
 import React, { useEffect, useMemo, useState } from 'react';
 import Shell from '../../components/Shell';
-import { Card, Button, Badge, CommandBar, useToast } from '../../components/ui';
-import DataGrid, { GridColumn } from '../../components/ui/DataGrid';
-import RecordPanel from '../../components/ui/RecordPanel';
+import { Card, Button, Badge, CommandBar, DataGrid, GridColumn, RecordPanel, useToast } from '../../components/ui';
 import { fmtDate, fmtNum } from '../../lib/format';
 import {
   CompanySettingsData,

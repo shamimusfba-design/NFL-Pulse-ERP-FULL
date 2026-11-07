@@ -32,10 +32,32 @@ import {
   Sparkles,
 } from 'lucide-react';
 
-import { DataGrid, RecordPanel } from '../../../components/ui';
+import { DataGrid, GridColumn, RecordPanel } from '../../../components/ui';
 import { fmtDate, fmtNum } from '../../../lib/format';
 
-function fmt(n: any) {
+interface ApprovalQueueItem {
+  styleId: string;
+  jobNo: string;
+  styleNo: string;
+  itemDescription?: string;
+  buyer: string;
+  merchandiser: string;
+  orderQty: number;
+  ccd?: string;
+  fabricSheetNo?: string;
+  fabricSheetRevision?: number;
+  totalFinishKg: number;
+  status: string;
+  returnReason?: string;
+  signedCopy?: {
+    fabricSheet?: boolean;
+    tna?: boolean;
+    referenceNo?: string;
+    receivedBy?: string;
+  };
+}
+
+function fmt(n: number | string | null | undefined) {
   return fmtNum(Number(n || 0));
 }
 
@@ -888,61 +910,66 @@ export default function PlanningApprovalsPage() {
                 </div>
               </div>
 
-              <DataGrid
+              <DataGrid<ApprovalQueueItem>
+                storageKey="planning-approvals-queue"
+                exportName="planning-approvals-queue"
                 rows={filteredQueue}
-                rowKey={(item: any) => item.styleId || item.jobNo}
-                activeRowKey={activeRecordId}
-                onRowClick={(item: any) => setActiveRecordId(item.styleId || item.jobNo)}
-                searchPlaceholder="Search Job #, Style, Buyer..."
+                frozenColumns={2}
+                rowKey={(item) => item.styleId || item.jobNo}
+                selectedRowKey={activeRecordId}
+                onRowClick={(item) => setActiveRecordId(item.styleId || item.jobNo)}
                 columns={[
                   {
                     key: 'jobNo',
                     header: 'Job / Style No.',
-                    sortable: true,
-                    filter: 'text',
-                    render: (item: any) => (
+                    width: 165,
+                    value: (item) => `${item.jobNo} ${item.styleNo}`,
+                    render: (item) => (
                       <div>
                         <div style={{ fontWeight: 800, color: '#0284C7', fontSize: '12.5px' }}>Job #{item.jobNo}</div>
                         <div style={{ fontWeight: 600, color: '#0F274E', fontSize: '11.5px' }}>{item.styleNo}</div>
                         <div style={{ color: '#64748B', fontSize: '10.5px' }}>{item.itemDescription}</div>
                       </div>
                     ),
-                    exportValue: (item: any) => `${item.jobNo} ${item.styleNo}`,
                   },
                   {
                     key: 'buyer',
                     header: 'Buyer & Merchandiser',
-                    sortable: true,
-                    filter: 'enum',
-                    render: (item: any) => (
+                    width: 160,
+                    value: (item) => `${item.buyer} (${item.merchandiser})`,
+                    render: (item) => (
                       <div>
                         <div style={{ fontWeight: 700, color: '#1E293B' }}>{item.buyer}</div>
                         <div style={{ color: '#64748B', fontSize: '11px' }}>Merch: {item.merchandiser}</div>
                       </div>
                     ),
-                    exportValue: (item: any) => `${item.buyer} (${item.merchandiser})`,
                   },
                   {
                     key: 'orderQty',
                     header: 'Order Qty / CCD',
                     align: 'right',
-                    sortable: true,
-                    sum: true,
-                    render: (item: any) => (
+                    width: 140,
+                    numeric: true,
+                    total: true,
+                    unit: 'pcs',
+                    value: (item) => Number(item.orderQty || 0),
+                    render: (item) => (
                       <div>
                         <div style={{ fontWeight: 800, color: '#0F274E', fontFamily: 'monospace' }}>{fmt(item.orderQty)} pcs</div>
                         <div style={{ color: '#0284C7', fontSize: '11px', fontWeight: 600 }}>CCD: {fmtDate(item.ccd)}</div>
                       </div>
                     ),
-                    exportValue: (item: any) => Number(item.orderQty || 0),
                   },
                   {
                     key: 'totalFinishKg',
                     header: 'Fabric Order Sheet',
                     align: 'right',
-                    sortable: true,
-                    sum: true,
-                    render: (item: any) => (
+                    width: 165,
+                    numeric: true,
+                    total: true,
+                    unit: 'kg',
+                    value: (item) => Number(item.totalFinishKg || 0),
+                    render: (item) => (
                       <div>
                         <div style={{ fontWeight: 700, color: '#334155' }}>
                           {item.fabricSheetNo} <span style={{ color: '#94A3B8' }}>(Rev {item.fabricSheetRevision})</span>
@@ -950,12 +977,13 @@ export default function PlanningApprovalsPage() {
                         <div style={{ color: '#059669', fontSize: '11.5px', fontWeight: 700 }}>Req Finish: {fmt(item.totalFinishKg)} Kg</div>
                       </div>
                     ),
-                    exportValue: (item: any) => Number(item.totalFinishKg || 0),
                   },
                   {
                     key: 'signedCopy',
                     header: 'Signed Hard-Copy Gate',
-                    render: (item: any) => (
+                    width: 170,
+                    value: (item) => item.signedCopy?.referenceNo || 'Pending',
+                    render: (item) => (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '11px' }}>
                         <span style={{ color: item.signedCopy?.fabricSheet ? '#059669' : '#D97706', fontWeight: 600 }}>
                           {item.signedCopy?.fabricSheet ? '✓ Fabric Sheet Signed' : '○ Fabric Sheet Missing'}
@@ -970,14 +998,13 @@ export default function PlanningApprovalsPage() {
                         )}
                       </div>
                     ),
-                    exportValue: (item: any) => item.signedCopy?.referenceNo || 'Pending',
                   },
                   {
                     key: 'status',
                     header: 'Current Status',
-                    sortable: true,
-                    filter: 'enum',
-                    render: (item: any) => {
+                    width: 165,
+                    value: (item) => item.status,
+                    render: (item) => {
                       const badge = statusBadge(item.status);
                       return (
                         <div>
@@ -1008,7 +1035,9 @@ export default function PlanningApprovalsPage() {
                     key: 'actions',
                     header: 'Action',
                     align: 'right',
-                    render: (item: any) => (
+                    width: 135,
+                    filterable: false,
+                    render: (item) => (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -1029,87 +1058,103 @@ export default function PlanningApprovalsPage() {
                       </button>
                     ),
                   },
-                ]}
+                ] satisfies GridColumn<ApprovalQueueItem>[]}
               />
             </div>
 
-            <RecordPanel
-              open={Boolean(activeRecordId)}
-              onClose={() => setActiveRecordId(null)}
-              rows={filteredQueue}
-              rowKey={(item: any) => item.styleId || item.jobNo}
-              activeKey={activeRecordId}
-              onNavigate={(nextKey) => setActiveRecordId(String(nextKey))}
-              title={(item: any) => `Job #${item.jobNo} · ${item.styleNo}`}
-              subtitle={(item: any) => `${item.buyer} · Merchandiser: ${item.merchandiser}`}
-              statusBadge={(item: any) => {
-                const b = statusBadge(item.status);
-                return {
-                  label: b.label,
-                  tone: item.status === 'RELEASED_TO_KNITTING' ? 'good' : item.status === 'RETURNED' ? 'bad' : 'warn',
-                };
-              }}
-              sections={[
-                {
-                  key: 'orderInfo',
-                  title: 'Job & Fabric Sheet Summary',
-                  fields: [
-                    { key: 'jobNo', label: 'Job No.', type: 'readonly', setByRole: 'Merchandising' },
-                    { key: 'styleNo', label: 'Style No.', type: 'readonly', setByRole: 'Merchandising' },
-                    { key: 'buyer', label: 'Buyer', type: 'readonly', setByRole: 'Merchandising' },
-                    { key: 'merchandiser', label: 'Merchandiser', type: 'readonly', setByRole: 'Merchandising' },
-                    { key: 'orderQty', label: 'Order Qty (pcs)', type: 'readonly', setByRole: 'Merchandising' },
-                    { key: 'totalFinishKg', label: 'Finish Fabric Required (Kg)', type: 'readonly', setByRole: 'Merchandising' },
-                    { key: 'fabricSheetNo', label: 'Fabric Sheet No.', type: 'readonly' },
-                    { key: 'ccd', label: 'Cargo Closing Date (CCD)', type: 'readonly', format: (v) => fmtDate(v) },
-                  ],
-                },
-                {
-                  key: 'signedGate',
-                  title: 'Signed Hard-Copy Verification',
-                  fields: [
-                    {
-                      key: 'referenceNo',
-                      label: 'Physical Register Reference No.',
-                      type: 'text',
-                      format: (_, row) => row.signedCopy?.referenceNo || `PHY-SIG-${row.jobNo}`,
-                    },
-                    {
-                      key: 'receivedBy',
-                      label: 'Verified By (Planning Desk)',
-                      type: 'text',
-                      format: (_, row) => row.signedCopy?.receivedBy || 'Shahidul Alam (Head of Planning)',
-                    },
-                  ],
-                },
-              ]}
-              onSave={async (item: any, patch: Partial<any>) => {
-                await api(`/planning/approvals/jobs/${item.styleId}/signed-copy`, {
-                  method: 'POST',
-                  body: JSON.stringify({
-                    fabricSheet: true,
-                    tna: true,
-                    referenceNo: (patch as any).referenceNo || item.signedCopy?.referenceNo || `PHY-SIG-${item.jobNo}`,
-                    receivedBy: (patch as any).receivedBy || item.signedCopy?.receivedBy || 'Shahidul Alam (Head of Planning)',
-                    remarks: 'Signed hard-copy verified via RecordPanel',
-                  }),
-                });
-                setMessage(`Physical signed copy verified for Job ${item.jobNo}.`);
-                await loadAll();
-              }}
-              footerSlot={(item: any) => (
-                <button
-                  type="button"
-                  className="ui-btn ui-btn-primary"
-                  onClick={() => {
-                    setActiveRecordId(null);
-                    openReleaseModal(item);
+            {(() => {
+              const activeIdx = filteredQueue.findIndex((item: ApprovalQueueItem) => (item.styleId || item.jobNo) === activeRecordId);
+              const activeItem: ApprovalQueueItem | null = activeIdx >= 0 ? filteredQueue[activeIdx] : null;
+              return (
+                <RecordPanel
+                  open={Boolean(activeItem)}
+                  onClose={() => setActiveRecordId(null)}
+                  title={activeItem ? `Job #${activeItem.jobNo} · ${activeItem.styleNo}` : ''}
+                  subtitle={activeItem ? `${activeItem.buyer} · Merchandiser: ${activeItem.merchandiser}` : undefined}
+                  onPrev={
+                    activeIdx > 0
+                      ? () => {
+                          const prev = filteredQueue[activeIdx - 1];
+                          setActiveRecordId(prev.styleId || prev.jobNo);
+                        }
+                      : undefined
+                  }
+                  onNext={
+                    activeIdx >= 0 && activeIdx < filteredQueue.length - 1
+                      ? () => {
+                          const next = filteredQueue[activeIdx + 1];
+                          setActiveRecordId(next.styleId || next.jobNo);
+                        }
+                      : undefined
+                  }
+                  sections={
+                    activeItem
+                      ? [
+                          {
+                            name: 'Job & Fabric Sheet Summary',
+                            fields: [
+                              { key: 'jobNo', label: 'Job No.', value: activeItem.jobNo, readOnly: true, setByRole: 'Merchandising' },
+                              { key: 'styleNo', label: 'Style No.', value: activeItem.styleNo, readOnly: true, setByRole: 'Merchandising' },
+                              { key: 'buyer', label: 'Buyer', value: activeItem.buyer, readOnly: true, setByRole: 'Merchandising' },
+                              { key: 'merchandiser', label: 'Merchandiser', value: activeItem.merchandiser, readOnly: true, setByRole: 'Merchandising' },
+                              { key: 'orderQty', label: 'Order Qty (pcs)', value: activeItem.orderQty, readOnly: true, setByRole: 'Merchandising' },
+                              { key: 'totalFinishKg', label: 'Finish Fabric Required (Kg)', value: activeItem.totalFinishKg, readOnly: true, setByRole: 'Merchandising' },
+                              { key: 'fabricSheetNo', label: 'Fabric Sheet No.', value: activeItem.fabricSheetNo ?? '', readOnly: true },
+                              { key: 'ccd', label: 'Cargo Closing Date (CCD)', value: activeItem.ccd ?? '', readOnly: true, renderReadOnly: (v) => fmtDate(String(v ?? '')) },
+                            ],
+                          },
+                          {
+                            name: 'Signed Hard-Copy Verification',
+                            fields: [
+                              {
+                                key: 'referenceNo',
+                                label: 'Physical Register Reference No.',
+                                value: activeItem.signedCopy?.referenceNo || `PHY-SIG-${activeItem.jobNo}`,
+                                type: 'text',
+                              },
+                              {
+                                key: 'receivedBy',
+                                label: 'Verified By (Planning Desk)',
+                                value: activeItem.signedCopy?.receivedBy || 'Shahidul Alam (Head of Planning)',
+                                type: 'text',
+                              },
+                            ],
+                          },
+                        ]
+                      : []
+                  }
+                  onSave={async (vals) => {
+                    if (!activeItem) return;
+                    await api(`/planning/approvals/jobs/${activeItem.styleId}/signed-copy`, {
+                      method: 'POST',
+                      body: JSON.stringify({
+                        fabricSheet: true,
+                        tna: true,
+                        referenceNo: String(vals.referenceNo || activeItem.signedCopy?.referenceNo || `PHY-SIG-${activeItem.jobNo}`),
+                        receivedBy: String(vals.receivedBy || activeItem.signedCopy?.receivedBy || 'Shahidul Alam (Head of Planning)'),
+                        remarks: 'Signed hard-copy verified via RecordPanel',
+                      }),
+                    });
+                    setMessage(`Physical signed copy verified for Job ${activeItem.jobNo}.`);
+                    await loadAll();
                   }}
-                >
-                  Open Colour × Part Release Desk →
-                </button>
-              )}
-            />
+                  extraFooter={
+                    activeItem ? (
+                      <button
+                        type="button"
+                        className="ui-btn ui-btn-primary"
+                        onClick={() => {
+                          setActiveRecordId(null);
+                          openReleaseModal(activeItem);
+                        }}
+                      >
+                        Open Colour × Part Release Desk →
+                      </button>
+                    ) : undefined
+                  }
+                />
+              );
+            })()}
           </>
         )}
 

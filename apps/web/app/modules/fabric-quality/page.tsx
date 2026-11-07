@@ -16,8 +16,7 @@ import {
   Cell
 } from 'recharts';
 import { FX_SERIES, FX_BAR, FX_PIE, FxResponsiveContainer as ResponsiveContainer } from '../../../components/fx';
-import { DataGrid, DataGridColumn } from '../../../components/ui/DataGrid';
-import { RecordPanel, RecordPanelSection } from '../../../components/ui/RecordPanel';
+import { DataGrid, GridColumn, RecordPanel } from '../../../components/ui';
 import { fmtDate, fmtNum } from '../../../lib/format';
 
 type InspectionStage = 'knitting' | 'greige' | 'dyeing';
@@ -841,29 +840,34 @@ export default function FabricQualityPage() {
 
             {/* Register Data Grid */}
             <DataGrid<FabricInspectionRecord>
-              tableId="fabric-quality-register"
+              storageKey="fabric-quality-register"
+              exportName="fabric-quality-register"
               rows={filteredRecords}
+              frozenColumns={2}
               rowKey={(r) => r.id}
+              selectedRowKey={selectedRecordId}
               onRowClick={(r) => setSelectedRecordId(r.id)}
-              searchPlaceholder="Filter roll, lot, job, buyer, or defect..."
               columns={[
                 {
                   key: 'id',
                   header: 'Inspection ID',
-                  accessor: (r) => r.id,
-                  cell: (r) => <strong style={{ color: '#2563eb' }}>{r.id}</strong>
+                  width: 120,
+                  value: (r) => r.id,
+                  render: (r) => <strong style={{ color: '#2563eb' }}>{r.id}</strong>
                 },
                 {
                   key: 'date',
                   header: 'Date',
-                  accessor: (r) => r.date,
-                  cell: (r) => fmtDate(r.date)
+                  width: 110,
+                  value: (r) => r.date,
+                  render: (r) => fmtDate(r.date)
                 },
                 {
                   key: 'stageLabel',
                   header: 'Stage',
-                  accessor: (r) => r.stageLabel,
-                  cell: (r) => (
+                  width: 140,
+                  value: (r) => r.stageLabel,
+                  render: (r) => (
                     <span
                       style={{
                         fontSize: '11.5px',
@@ -881,8 +885,9 @@ export default function FabricQualityPage() {
                 {
                   key: 'buyerJob',
                   header: 'Buyer / Job #',
-                  accessor: (r) => `${r.buyer} ${r.jobNo}`,
-                  cell: (r) => (
+                  width: 135,
+                  value: (r) => `${r.buyer} ${r.jobNo}`,
+                  render: (r) => (
                     <div>
                       <strong style={{ color: '#0f172a' }}>{r.buyer}</strong>
                       <span style={{ display: 'block', fontSize: '12px', color: '#64748b' }}>Job #{r.jobNo}</span>
@@ -892,8 +897,9 @@ export default function FabricQualityPage() {
                 {
                   key: 'fabricType',
                   header: 'Fabric & Composition',
-                  accessor: (r) => `${r.fabricType} ${r.composition}`,
-                  cell: (r) => (
+                  width: 185,
+                  value: (r) => `${r.fabricType} ${r.composition}`,
+                  render: (r) => (
                     <div>
                       <div style={{ fontWeight: 650, color: '#1e293b' }}>{r.fabricType}</div>
                       <div style={{ fontSize: '12px', color: '#64748b' }}>{r.composition}</div>
@@ -904,8 +910,10 @@ export default function FabricQualityPage() {
                   key: 'gsm',
                   header: 'Act / Req GSM',
                   align: 'right',
-                  accessor: (r) => r.actualGsm,
-                  cell: (r) => (
+                  width: 115,
+                  numeric: true,
+                  value: (r) => r.actualGsm,
+                  render: (r) => (
                     <span>
                       <strong style={{ color: '#0f172a' }}>{r.actualGsm}</strong>
                       <span style={{ fontSize: '12px', color: '#64748b' }}> / {r.reqGsm}</span>
@@ -915,8 +923,9 @@ export default function FabricQualityPage() {
                 {
                   key: 'width',
                   header: 'Width',
-                  accessor: (r) => r.actualWidth,
-                  cell: (r) => (
+                  width: 115,
+                  value: (r) => r.actualWidth,
+                  render: (r) => (
                     <span>
                       {r.actualWidth} <span style={{ fontSize: '11px', color: '#64748b' }}>({r.reqWidth})</span>
                     </span>
@@ -925,8 +934,9 @@ export default function FabricQualityPage() {
                 {
                   key: 'rollNo',
                   header: 'Roll / Lot #',
-                  accessor: (r) => `${r.rollNo} ${r.lotNo}`,
-                  cell: (r) => (
+                  width: 130,
+                  value: (r) => `${r.rollNo} ${r.lotNo}`,
+                  render: (r) => (
                     <div>
                       <div style={{ fontWeight: 700, color: '#0f172a' }}>{r.rollNo}</div>
                       <div style={{ fontSize: '11.5px', color: '#64748b' }}>{r.lotNo}</div>
@@ -937,15 +947,20 @@ export default function FabricQualityPage() {
                   key: 'inspectedKg',
                   header: 'Qty (Kg)',
                   align: 'right',
-                  accessor: (r) => r.inspectedKg,
-                  cell: (r) => <strong>{r.inspectedKg.toFixed(1)}</strong>,
-                  sum: true
+                  width: 110,
+                  numeric: true,
+                  total: true,
+                  decimals: 1,
+                  unit: 'kg',
+                  value: (r) => r.inspectedKg,
+                  render: (r) => <strong>{r.inspectedKg.toFixed(1)}</strong>
                 },
                 {
                   key: 'defects',
                   header: 'Defect Observed',
-                  accessor: (r) => r.defects,
-                  cell: (r) => (
+                  width: 165,
+                  value: (r) => r.defects,
+                  render: (r) => (
                     <span style={{ color: r.severity === 'Critical' ? '#b91c1c' : '#334155', fontWeight: r.severity === 'Critical' ? 700 : 500 }}>
                       {r.defects}
                     </span>
@@ -954,8 +969,9 @@ export default function FabricQualityPage() {
                 {
                   key: 'status',
                   header: 'Status',
-                  accessor: (r) => r.status,
-                  cell: (r) => {
+                  width: 115,
+                  value: (r) => r.status,
+                  render: (r) => {
                     const statusBg =
                       r.status === 'Approved' ? '#dcfce7' :
                       r.status === 'Hold' ? '#fef3c7' :
@@ -983,15 +999,16 @@ export default function FabricQualityPage() {
                 {
                   key: 'storeCleared',
                   header: 'Store Clearance',
-                  accessor: (r) => (r.storeCleared ? 'Cleared' : 'Blocked'),
-                  cell: (r) =>
+                  width: 120,
+                  value: (r) => (r.storeCleared ? 'Cleared' : 'Blocked'),
+                  render: (r) =>
                     r.storeCleared ? (
                       <span style={{ fontSize: '12px', fontWeight: 700, color: '#16a34a' }}>✓ Cleared</span>
                     ) : (
                       <span style={{ fontSize: '12px', fontWeight: 700, color: '#dc2626' }}>🚫 Blocked</span>
                     )
                 }
-              ]}
+              ] satisfies GridColumn<FabricInspectionRecord>[]}
             />
           </div>
         )}
@@ -1002,74 +1019,83 @@ export default function FabricQualityPage() {
         const idx = filteredRecords.findIndex((r) => r.id === selectedRecordId);
         const rec = idx >= 0 ? filteredRecords[idx] : null;
         return (
-          <RecordPanel<FabricInspectionRecord>
+          <RecordPanel
             open={!!rec}
-            record={rec}
             onClose={() => setSelectedRecordId(null)}
-            title={(r) => `${r.id} · Roll ${r.rollNo}`}
-            subtitle={(r) => `${r.buyer} · Job #${r.jobNo} · ${r.stageLabel}`}
-            statusBadge={(r) => ({
-              label: r.status,
-              tone: r.status === 'Approved' ? 'good' : r.status === 'Hold' ? 'warn' : 'bad'
-            })}
+            title={rec ? `${rec.id} · Roll ${rec.rollNo}` : ''}
+            subtitle={rec ? `${rec.buyer} · Job #${rec.jobNo} · ${rec.stageLabel}` : undefined}
             onPrev={idx > 0 ? () => setSelectedRecordId(filteredRecords[idx - 1].id) : undefined}
             onNext={idx >= 0 && idx < filteredRecords.length - 1 ? () => setSelectedRecordId(filteredRecords[idx + 1].id) : undefined}
-            prevDisabled={idx <= 0}
-            nextDisabled={idx < 0 || idx >= filteredRecords.length - 1}
-            sections={[
-              {
-                key: 'summary',
-                title: 'Roll & Job Details',
-                fields: [
-                  { key: 'id', label: 'Inspection ID', readOnly: true },
-                  { key: 'date', label: 'Inspection Date', type: 'date' },
-                  { key: 'buyer', label: 'Buyer', readOnly: true },
-                  { key: 'jobNo', label: 'Job No', readOnly: true },
-                  { key: 'styleNo', label: 'Style No', readOnly: true },
-                  { key: 'rollNo', label: 'Roll No' },
-                  { key: 'lotNo', label: 'Batch / Lot No' },
-                  { key: 'inspectedKg', label: 'Roll Weight', type: 'number', unit: 'kg', required: true }
-                ]
-              },
-              {
-                key: 'quality',
-                title: 'Quality & Clearance Gate',
-                fields: [
-                  { key: 'reqGsm', label: 'Required GSM', type: 'number', readOnly: true },
-                  { key: 'actualGsm', label: 'Actual GSM', type: 'number', required: true },
-                  { key: 'reqWidth', label: 'Required Width', readOnly: true },
-                  { key: 'actualWidth', label: 'Actual Width', required: true },
-                  {
-                    key: 'severity',
-                    label: 'Defect Severity',
-                    type: 'select',
-                    options: [
-                      { value: 'None', label: 'None (Zero Defect)' },
-                      { value: 'Minor', label: 'Minor' },
-                      { value: 'Major', label: 'Major' },
-                      { value: 'Critical', label: 'Critical' }
-                    ]
-                  },
-                  {
-                    key: 'status',
-                    label: 'Quality Status',
-                    type: 'select',
-                    options: [
-                      { value: 'Approved', label: 'Approved (Store Cleared)' },
-                      { value: 'Hold', label: 'Hold' },
-                      { value: 'Rejected', label: 'Rejected' },
-                      { value: 'Rework', label: 'Rework' }
-                    ]
-                  },
-                  { key: 'defects', label: 'Observed Defects', span: 2 },
-                  { key: 'remarks', label: 'Quality Remarks', type: 'textarea', span: 2 }
-                ]
-              }
-            ]}
-            onSave={(updated) => {
-              const withClearance = {
-                ...updated,
-                storeCleared: updated.status === 'Approved'
+            sections={
+              rec
+                ? [
+                    {
+                      name: 'Roll & Job Details',
+                      fields: [
+                        { key: 'id', label: 'Inspection ID', value: rec.id, readOnly: true },
+                        { key: 'date', label: 'Inspection Date', value: rec.date, type: 'date' },
+                        { key: 'buyer', label: 'Buyer', value: rec.buyer, readOnly: true },
+                        { key: 'jobNo', label: 'Job No', value: rec.jobNo, readOnly: true },
+                        { key: 'styleNo', label: 'Style No', value: rec.styleNo, readOnly: true },
+                        { key: 'rollNo', label: 'Roll No', value: rec.rollNo },
+                        { key: 'lotNo', label: 'Batch / Lot No', value: rec.lotNo },
+                        { key: 'inspectedKg', label: 'Roll Weight', value: rec.inspectedKg, type: 'number', unit: 'kg', required: true }
+                      ]
+                    },
+                    {
+                      name: 'Quality & Clearance Gate',
+                      fields: [
+                        { key: 'reqGsm', label: 'Required GSM', value: rec.reqGsm, type: 'number', readOnly: true },
+                        { key: 'actualGsm', label: 'Actual GSM', value: rec.actualGsm, type: 'number', required: true },
+                        { key: 'reqWidth', label: 'Required Width', value: rec.reqWidth, readOnly: true },
+                        { key: 'actualWidth', label: 'Actual Width', value: rec.actualWidth, required: true },
+                        {
+                          key: 'severity',
+                          label: 'Defect Severity',
+                          value: rec.severity,
+                          type: 'select',
+                          options: [
+                            { value: 'None', label: 'None (Zero Defect)' },
+                            { value: 'Minor', label: 'Minor' },
+                            { value: 'Major', label: 'Major' },
+                            { value: 'Critical', label: 'Critical' }
+                          ]
+                        },
+                        {
+                          key: 'status',
+                          label: 'Quality Status',
+                          value: rec.status,
+                          type: 'select',
+                          options: [
+                            { value: 'Approved', label: 'Approved (Store Cleared)' },
+                            { value: 'Hold', label: 'Hold' },
+                            { value: 'Rejected', label: 'Rejected' },
+                            { value: 'Rework', label: 'Rework' }
+                          ]
+                        },
+                        { key: 'defects', label: 'Observed Defects', value: rec.defects, fullWidth: true },
+                        { key: 'remarks', label: 'Quality Remarks', value: rec.remarks, type: 'textarea', fullWidth: true }
+                      ]
+                    }
+                  ]
+                : []
+            }
+            onSave={(vals) => {
+              if (!rec) return;
+              const nextStatus = (vals.status as InspectionStatus) ?? rec.status;
+              const withClearance: FabricInspectionRecord = {
+                ...rec,
+                date: String(vals.date ?? rec.date),
+                rollNo: String(vals.rollNo ?? rec.rollNo),
+                lotNo: String(vals.lotNo ?? rec.lotNo),
+                inspectedKg: Number(vals.inspectedKg ?? rec.inspectedKg),
+                actualGsm: Number(vals.actualGsm ?? rec.actualGsm),
+                actualWidth: String(vals.actualWidth ?? rec.actualWidth),
+                severity: (vals.severity as FabricInspectionRecord['severity']) ?? rec.severity,
+                status: nextStatus,
+                defects: String(vals.defects ?? rec.defects),
+                remarks: String(vals.remarks ?? rec.remarks),
+                storeCleared: nextStatus === 'Approved'
               };
               setInspections((prev) => prev.map((item) => (item.id === withClearance.id ? withClearance : item)));
             }}

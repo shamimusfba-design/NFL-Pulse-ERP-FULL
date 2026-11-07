@@ -2,9 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Shell from '../../../components/Shell';
-import { DataGrid, DataGridColumn } from '../../../components/ui/DataGrid';
-import { RecordPanel, RecordSection } from '../../../components/ui/RecordPanel';
-import { Badge, KpiCard, Toolbar } from '../../../components/ui';
+import { Badge, CommandBar, DataGrid, GridColumn, KpiCard, RecordPanel, RecordSection } from '../../../components/ui';
 import { fmtDate, fmtNum, fmtQty } from '../../../lib/format';
 
 export interface GreigeRollLotRecord {
@@ -46,6 +44,7 @@ export default function GreigeStorePage() {
   const [viewMode, setViewMode] = useState<'LEDGER' | 'SHEET'>('LEDGER');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [selectedLot, setSelectedLot] = useState<GreigeRollLotRecord | null>(null);
+  const [lastDeletedLot, setLastDeletedLot] = useState<GreigeRollLotRecord | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   const filteredLots = useMemo(() => {
@@ -84,48 +83,51 @@ export default function GreigeStorePage() {
     return () => observer.disconnect();
   }, []);
 
-  const columns = useMemo<DataGridColumn<GreigeRollLotRecord>[]>(
+  const columns = useMemo<GridColumn<GreigeRollLotRecord>[]>(
     () => [
-      { key: 'lotNo', header: 'Greige Lot #', width: 130, frozen: true, render: (r) => <strong>{r.lotNo}</strong> },
-      { key: 'jobNo', header: 'Job No', width: 100, frozen: true, render: (r) => <strong>{r.jobNo}</strong> },
-      { key: 'buyer', header: 'Buyer', width: 110, filterValues: ['ONLY', 'BS-NMT', 'OVS', 'Only&Sons', 'UTG', 'Name It'] },
-      { key: 'styleNo', header: 'Style', width: 120 },
-      { key: 'fabricType', header: 'Fabric Construction', width: 200 },
-      { key: 'gsm', header: 'GSM', align: 'right', width: 80 },
-      { key: 'diaWidth', header: 'Dia / Width', width: 110 },
-      { key: 'binRack', header: 'Bin / Rack', width: 105 },
-      { key: 'rollsCount', header: 'Rolls', align: 'right', width: 85, sum: true, render: (r) => fmtNum(r.rollsCount) },
-      { key: 'receivedKg', header: 'Received (kg)', align: 'right', width: 125, sum: true, render: (r) => <strong>{fmtNum(r.receivedKg)}</strong> },
-      { key: 'allocatedDyeingKg', header: 'Dyeing Alloc (kg)', align: 'right', width: 140, sum: true, render: (r) => fmtNum(r.allocatedDyeingKg) },
+      { key: 'lotNo', header: 'Greige Lot #', width: 130, value: (r) => r.lotNo, render: (r) => <strong>{r.lotNo}</strong> },
+      { key: 'jobNo', header: 'Job No', width: 100, value: (r) => r.jobNo, render: (r) => <strong>{r.jobNo}</strong> },
+      { key: 'buyer', header: 'Buyer', width: 110, value: (r) => r.buyer },
+      { key: 'styleNo', header: 'Style', width: 120, value: (r) => r.styleNo },
+      { key: 'fabricType', header: 'Fabric Construction', width: 200, value: (r) => r.fabricType },
+      { key: 'gsm', header: 'GSM', align: 'right', width: 80, numeric: true, value: (r) => r.gsm },
+      { key: 'diaWidth', header: 'Dia / Width', width: 110, value: (r) => r.diaWidth },
+      { key: 'binRack', header: 'Bin / Rack', width: 105, value: (r) => r.binRack },
+      { key: 'rollsCount', header: 'Rolls', align: 'right', width: 85, numeric: true, total: true, unit: 'rolls', value: (r) => r.rollsCount, render: (r) => fmtNum(r.rollsCount) },
+      { key: 'receivedKg', header: 'Received (kg)', align: 'right', width: 125, numeric: true, total: true, unit: 'kg', value: (r) => r.receivedKg, render: (r) => <strong>{fmtNum(r.receivedKg)}</strong> },
+      { key: 'allocatedDyeingKg', header: 'Dyeing Alloc (kg)', align: 'right', width: 140, numeric: true, total: true, unit: 'kg', value: (r) => r.allocatedDyeingKg, render: (r) => fmtNum(r.allocatedDyeingKg) },
       {
         key: 'availableKg',
         header: 'Available (kg)',
         align: 'right',
         width: 125,
-        sum: true,
+        numeric: true,
+        total: true,
+        unit: 'kg',
+        value: (r) => r.availableKg,
         render: (r) => (
           <strong style={{ color: r.availableKg > 0 ? 'var(--nos-ok)' : 'var(--nos-ink-3)' }}>
             {fmtNum(r.availableKg)}
           </strong>
         )
       },
-      { key: 'receivedDate', header: 'Received Date', width: 115, render: (r) => fmtDate(r.receivedDate) },
-      { key: 'agingDays', header: 'Aging', align: 'right', width: 80, render: (r) => `${r.agingDays}d` },
+      { key: 'receivedDate', header: 'Received Date', width: 115, value: (r) => r.receivedDate, render: (r) => fmtDate(r.receivedDate) },
+      { key: 'agingDays', header: 'Aging', align: 'right', width: 80, numeric: true, value: (r) => r.agingDays, render: (r) => `${r.agingDays}d` },
       {
         key: 'status',
         header: 'Status',
         width: 145,
-        filterValues: ['AVAILABLE', 'ALLOCATED_WINCH', 'AGING_ALERT', 'QUALITY_HOLD'],
+        value: (r) => r.status,
         render: (r) => (
           <Badge
             tone={
               r.status === 'AVAILABLE'
-                ? 'ok'
+                ? 'done'
                 : r.status === 'ALLOCATED_WINCH'
                 ? 'info'
                 : r.status === 'AGING_ALERT'
-                ? 'warn'
-                : 'bad'
+                ? 'mid'
+                : 'balance'
             }
           >
             {r.status.replace('_', ' ')}
@@ -136,68 +138,77 @@ export default function GreigeStorePage() {
     []
   );
 
-  const recordSections = useMemo<RecordSection<GreigeRollLotRecord>[]>(
-    () => [
-      {
-        id: 'greige-lot-info',
-        title: 'Greige Roll Lot & Job Identity',
-        fields: [
-          { key: 'lotNo', label: 'Greige Lot #', required: true },
-          { key: 'jobNo', label: 'Job No', lockedByRole: 'Central Planning' },
-          { key: 'buyer', label: 'Buyer', lockedByRole: 'Merchandiser' },
-          { key: 'styleNo', label: 'Style No', lockedByRole: 'Merchandiser' },
-          { key: 'fabricType', label: 'Fabric Type', required: true },
-          { key: 'gsm', label: 'Target GSM', type: 'number', unit: 'GSM' },
-          { key: 'diaWidth', label: 'Dia / Width' },
-          { key: 'yarnLot', label: 'Source Yarn Lot', lockedByRole: 'Knitting' },
-          { key: 'knittingMachine', label: 'Knitting Machine', lockedByRole: 'Knitting' },
-          { key: 'binRack', label: 'Store Bin / Rack', required: true }
-        ]
-      },
-      {
-        id: 'greige-weights',
-        title: 'Weight Audit & Dyeing Winch Allocation',
-        fields: [
-          { key: 'rollsCount', label: 'Roll Count', type: 'number', unit: 'rolls', required: true },
-          { key: 'receivedKg', label: 'Knitting Received', type: 'number', unit: 'kg', required: true },
-          { key: 'allocatedDyeingKg', label: 'Allocated to Dyeing', type: 'number', unit: 'kg' },
-          {
-            key: 'availableKg',
-            label: 'Available Balance',
-            type: 'readonly',
-            render: (_, r) => fmtQty(Math.max(0, Number(r.receivedKg || 0) - Number(r.allocatedDyeingKg || 0)), 'kg')
-          },
-          { key: 'fourPointPassPct', label: '4-Point Inspection Pass', type: 'number', unit: '%', lockedByRole: 'Fabric Quality' },
-          { key: 'receivedDate', label: 'Received Date', type: 'date' },
-          {
-            key: 'status',
-            label: 'Lot Status',
-            type: 'select',
-            options: [
-              { value: 'AVAILABLE', label: 'Available for Dyeing' },
-              { value: 'ALLOCATED_WINCH', label: 'Allocated to Winch' },
-              { value: 'AGING_ALERT', label: 'Aging Alert (>14d)' },
-              { value: 'QUALITY_HOLD', label: 'Quality Hold' }
-            ]
-          },
-          { key: 'remarks', label: 'Store & Allocation Notes', type: 'textarea', span: 2 }
-        ]
-      }
-    ],
-    []
+  const selectedIdx = useMemo(
+    () => (selectedLot ? filteredLots.findIndex((r) => r.id === selectedLot.id) : -1),
+    [filteredLots, selectedLot]
+  );
+
+  const recordSections = useMemo<RecordSection[]>(
+    () =>
+      selectedLot
+        ? [
+            {
+              name: 'Greige Roll Lot & Job Identity',
+              fields: [
+                { key: 'lotNo', label: 'Greige Lot #', value: selectedLot.lotNo, required: true },
+                { key: 'jobNo', label: 'Job No', value: selectedLot.jobNo, setByRole: 'Central Planning' },
+                { key: 'buyer', label: 'Buyer', value: selectedLot.buyer, setByRole: 'Merchandiser' },
+                { key: 'styleNo', label: 'Style No', value: selectedLot.styleNo, setByRole: 'Merchandiser' },
+                { key: 'fabricType', label: 'Fabric Type', value: selectedLot.fabricType, required: true },
+                { key: 'gsm', label: 'Target GSM', value: selectedLot.gsm, type: 'number', unit: 'GSM' },
+                { key: 'diaWidth', label: 'Dia / Width', value: selectedLot.diaWidth },
+                { key: 'yarnLot', label: 'Source Yarn Lot', value: selectedLot.yarnLot, setByRole: 'Knitting' },
+                { key: 'knittingMachine', label: 'Knitting Machine', value: selectedLot.knittingMachine, setByRole: 'Knitting' },
+                { key: 'binRack', label: 'Store Bin / Rack', value: selectedLot.binRack, required: true }
+              ]
+            },
+            {
+              name: 'Weight Audit & Dyeing Winch Allocation',
+              fields: [
+                { key: 'rollsCount', label: 'Roll Count', value: selectedLot.rollsCount, type: 'number', unit: 'rolls', required: true },
+                { key: 'receivedKg', label: 'Knitting Received', value: selectedLot.receivedKg, type: 'number', unit: 'kg', required: true },
+                { key: 'allocatedDyeingKg', label: 'Allocated to Dyeing', value: selectedLot.allocatedDyeingKg, type: 'number', unit: 'kg' },
+                {
+                  key: 'availableKg',
+                  label: 'Available Balance',
+                  value: selectedLot.availableKg,
+                  readOnly: true,
+                  unit: 'kg',
+                  renderReadOnly: () => fmtQty(Math.max(0, Number(selectedLot.receivedKg || 0) - Number(selectedLot.allocatedDyeingKg || 0)), 'kg')
+                },
+                { key: 'fourPointPassPct', label: '4-Point Inspection Pass', value: selectedLot.fourPointPassPct, type: 'number', unit: '%', setByRole: 'Fabric Quality' },
+                { key: 'receivedDate', label: 'Received Date', value: selectedLot.receivedDate, type: 'date' },
+                {
+                  key: 'status',
+                  label: 'Lot Status',
+                  value: selectedLot.status,
+                  type: 'select',
+                  options: [
+                    { value: 'AVAILABLE', label: 'Available for Dyeing' },
+                    { value: 'ALLOCATED_WINCH', label: 'Allocated to Winch' },
+                    { value: 'AGING_ALERT', label: 'Aging Alert (>14d)' },
+                    { value: 'QUALITY_HOLD', label: 'Quality Hold' }
+                  ]
+                },
+                { key: 'remarks', label: 'Store & Allocation Notes', value: selectedLot.remarks ?? '', type: 'textarea', fullWidth: true }
+              ]
+            }
+          ]
+        : [],
+    [selectedLot]
   );
 
   return (
     <Shell title="Greige Fabric Store" eyebrow="Knitted Rolls Receiving, Weight Audit, Bin Location & Dyeing Allocation">
       <div className="nos-stack">
         <div className="nos-grid nos-grid-4">
-          <KpiCard label="Total Greige Received" value={fmtNum(totals.totalReceived)} unit="kg" foot="124.50 Tons plant total" />
-          <KpiCard label="Allocated to Dyeing" value={fmtNum(totals.totalAllocated)} unit="kg" delta="Issued to 23 winches" deltaTone="up" />
-          <KpiCard label="Available Greige Stock" value={fmtNum(totals.totalAvailable)} unit="kg" foot="Ready for batching" />
-          <KpiCard label="Active Greige Rolls" value={fmtNum(totals.totalRolls)} unit="rolls" foot={`${lots.length} active roll lots`} />
+          <KpiCard label="Total Greige Received" value={fmtNum(totals.totalReceived)} unit="kg" delta="124.50 Tons plant total" />
+          <KpiCard label="Allocated to Dyeing" value={fmtNum(totals.totalAllocated)} unit="kg" delta="Issued to 23 winches" deltaDirection="up" />
+          <KpiCard label="Available Greige Stock" value={fmtNum(totals.totalAvailable)} unit="kg" delta="Ready for batching" />
+          <KpiCard label="Active Greige Rolls" value={fmtNum(totals.totalRolls)} unit="rolls" delta={`${lots.length} active roll lots`} />
         </div>
 
-        <Toolbar
+        <CommandBar
           left={
             <div className="nos-seg" role="tablist">
               <button type="button" aria-selected={viewMode === 'LEDGER'} onClick={() => setViewMode('LEDGER')}>
@@ -223,12 +234,14 @@ export default function GreigeStorePage() {
 
         {viewMode === 'LEDGER' ? (
           <DataGrid<GreigeRollLotRecord>
-            tableId="greige-store-lots"
-            data={filteredLots}
+            storageKey="greige-store-lots"
+            exportName="greige-store-lots"
+            rows={filteredLots}
             columns={columns}
+            frozenColumns={2}
             rowKey={(r) => r.id}
+            selectedRowKey={selectedLot?.id ?? null}
             onRowClick={(r) => setSelectedLot(r)}
-            searchPlaceholder="Search greige lot, job no, buyer, fabric type, bin rack…"
           />
         ) : (
           <iframe
@@ -246,39 +259,53 @@ export default function GreigeStorePage() {
           />
         )}
 
-        <RecordPanel<GreigeRollLotRecord>
+        <RecordPanel
           open={Boolean(selectedLot)}
-          record={selectedLot}
-          rows={filteredLots}
-          getRowId={(r) => r.id}
-          onSelectRow={(r) => setSelectedLot(r)}
           onClose={() => setSelectedLot(null)}
-          title={(r) => `${r.lotNo} · Job ${r.jobNo}`}
-          subtitle={(r) => `${r.buyer} · ${r.fabricType} (${r.gsm} GSM) · ${r.binRack}`}
-          statusBadge={(r) => ({
-            label: r.status.replace('_', ' '),
-            tone: r.status === 'AVAILABLE' ? 'ok' : r.status === 'ALLOCATED_WINCH' ? 'info' : r.status === 'AGING_ALERT' ? 'warn' : 'bad'
-          })}
+          title={selectedLot ? `${selectedLot.lotNo} · Job ${selectedLot.jobNo}` : ''}
+          subtitle={selectedLot ? `${selectedLot.buyer} · ${selectedLot.fabricType} (${selectedLot.gsm} GSM) · ${selectedLot.binRack}` : undefined}
+          onPrev={selectedIdx > 0 ? () => setSelectedLot(filteredLots[selectedIdx - 1]) : undefined}
+          onNext={selectedIdx >= 0 && selectedIdx < filteredLots.length - 1 ? () => setSelectedLot(filteredLots[selectedIdx + 1]) : undefined}
           sections={recordSections}
           onSave={(updated) => {
-            const receivedKg = Number(updated.receivedKg || 0);
-            const allocatedDyeingKg = Number(updated.allocatedDyeingKg || 0);
+            if (!selectedLot) return;
+            const receivedKg = Number(updated.receivedKg ?? selectedLot.receivedKg);
+            const allocatedDyeingKg = Number(updated.allocatedDyeingKg ?? selectedLot.allocatedDyeingKg);
             const recomputed: GreigeRollLotRecord = {
-              ...updated,
+              ...selectedLot,
+              lotNo: String(updated.lotNo ?? selectedLot.lotNo),
+              fabricType: String(updated.fabricType ?? selectedLot.fabricType),
+              gsm: Number(updated.gsm ?? selectedLot.gsm),
+              diaWidth: String(updated.diaWidth ?? selectedLot.diaWidth),
+              binRack: String(updated.binRack ?? selectedLot.binRack),
+              rollsCount: Number(updated.rollsCount ?? selectedLot.rollsCount),
               receivedKg,
               allocatedDyeingKg,
-              rollsCount: Number(updated.rollsCount || 0),
-              availableKg: Math.max(0, receivedKg - allocatedDyeingKg)
+              availableKg: Math.max(0, receivedKg - allocatedDyeingKg),
+              receivedDate: String(updated.receivedDate ?? selectedLot.receivedDate),
+              status: (updated.status as GreigeRollLotRecord['status']) ?? selectedLot.status,
+              remarks: String(updated.remarks ?? selectedLot.remarks ?? '')
             };
             setLots((prev) => prev.map((x) => (x.id === recomputed.id ? recomputed : x)));
             setSelectedLot(recomputed);
           }}
-          onDelete={(rec) => {
-            setLots((prev) => prev.filter((x) => x.id !== rec.id));
-          }}
-          onUndoDelete={(rec) => {
-            setLots((prev) => [rec, ...prev]);
-          }}
+          onDelete={
+            selectedLot
+              ? () => {
+                  setLastDeletedLot(selectedLot);
+                  setLots((prev) => prev.filter((x) => x.id !== selectedLot.id));
+                  setSelectedLot(null);
+                }
+              : undefined
+          }
+          onUndoDelete={
+            lastDeletedLot
+              ? () => {
+                  setLots((prev) => [lastDeletedLot, ...prev]);
+                  setLastDeletedLot(null);
+                }
+              : undefined
+          }
         />
       </div>
     </Shell>

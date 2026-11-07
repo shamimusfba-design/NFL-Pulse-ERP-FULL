@@ -18,8 +18,7 @@ import {
   Cell
 } from 'recharts';
 import { FX_SERIES, FX_BAR, FX_PIE, FxResponsiveContainer as ResponsiveContainer } from '../../components/fx';
-import { DataGrid } from '../../components/ui/DataGrid';
-import { RecordPanel } from '../../components/ui/RecordPanel';
+import { DataGrid, GridColumn, RecordPanel } from '../../components/ui';
 import { fmtDate, fmtNum } from '../../lib/format';
 
 type GarmentSection = 'overview' | 'cutting' | 'printing' | 'embroidery' | 'sewing' | 'finishing' | 'defects';
@@ -786,29 +785,34 @@ export default function GarmentsQualityPage() {
             </div>
 
             <DataGrid<GarmentQualityInspection>
-              tableId="garment-quality-register"
+              storageKey="garment-quality-register"
+              exportName="garment-quality-register"
               rows={filteredRecords}
+              frozenColumns={2}
               rowKey={(r) => r.id}
+              selectedRowKey={selectedRecordId}
               onRowClick={(r) => setSelectedRecordId(r.id)}
-              searchPlaceholder="Filter ID, Job #, Style, Line, Defect..."
               columns={[
                 {
                   key: 'id',
                   header: 'Inspection ID',
-                  accessor: (r) => r.id,
-                  cell: (r) => <strong style={{ color: '#2563eb' }}>{r.id}</strong>
+                  width: 120,
+                  value: (r) => r.id,
+                  render: (r) => <strong style={{ color: '#2563eb' }}>{r.id}</strong>
                 },
                 {
                   key: 'date',
                   header: 'Date',
-                  accessor: (r) => r.date,
-                  cell: (r) => fmtDate(r.date)
+                  width: 110,
+                  value: (r) => r.date,
+                  render: (r) => fmtDate(r.date)
                 },
                 {
                   key: 'sectionLabel',
                   header: 'Section',
-                  accessor: (r) => r.sectionLabel,
-                  cell: (r) => (
+                  width: 145,
+                  value: (r) => r.sectionLabel,
+                  render: (r) => (
                     <span
                       style={{
                         fontSize: '11.5px',
@@ -826,8 +830,9 @@ export default function GarmentsQualityPage() {
                 {
                   key: 'buyerJob',
                   header: 'Buyer / Job #',
-                  accessor: (r) => `${r.buyer} ${r.jobNo}`,
-                  cell: (r) => (
+                  width: 135,
+                  value: (r) => `${r.buyer} ${r.jobNo}`,
+                  render: (r) => (
                     <div>
                       <strong style={{ color: '#0f172a' }}>{r.buyer}</strong>
                       <span style={{ display: 'block', fontSize: '12px', color: '#64748b' }}>Job #{r.jobNo}</span>
@@ -837,8 +842,9 @@ export default function GarmentsQualityPage() {
                 {
                   key: 'lineOrTable',
                   header: 'Line / Location',
-                  accessor: (r) => `${r.lineOrTable} ${r.styleNo}`,
-                  cell: (r) => (
+                  width: 155,
+                  value: (r) => `${r.lineOrTable} ${r.styleNo}`,
+                  render: (r) => (
                     <div>
                       <div style={{ fontWeight: 650, color: '#1e293b' }}>{r.lineOrTable}</div>
                       <div style={{ fontSize: '11.5px', color: '#64748b' }}>Style: {r.styleNo}</div>
@@ -849,16 +855,23 @@ export default function GarmentsQualityPage() {
                   key: 'inspectedPcs',
                   header: 'Inspected Pcs',
                   align: 'right',
-                  accessor: (r) => r.inspectedPcs,
-                  cell: (r) => <strong>{fmtNum(r.inspectedPcs)}</strong>,
-                  sum: true
+                  width: 125,
+                  numeric: true,
+                  total: true,
+                  unit: 'pcs',
+                  value: (r) => r.inspectedPcs,
+                  render: (r) => <strong>{fmtNum(r.inspectedPcs)}</strong>
                 },
                 {
                   key: 'defectivePcs',
                   header: 'Defects (DHU %)',
                   align: 'right',
-                  accessor: (r) => r.defectivePcs,
-                  cell: (r) => (
+                  width: 130,
+                  numeric: true,
+                  total: true,
+                  unit: 'pcs',
+                  value: (r) => r.defectivePcs,
+                  render: (r) => (
                     <div>
                       <span style={{ fontWeight: 750, color: r.defectivePcs > 20 ? '#dc2626' : '#0f172a' }}>
                         {r.defectivePcs} pcs
@@ -867,14 +880,14 @@ export default function GarmentsQualityPage() {
                         ({r.dhuPercent}%)
                       </span>
                     </div>
-                  ),
-                  sum: true
+                  )
                 },
                 {
                   key: 'topDefect',
                   header: 'Top Defect & Checks',
-                  accessor: (r) => `${r.topDefect} ${r.criticalChecks}`,
-                  cell: (r) => (
+                  width: 185,
+                  value: (r) => `${r.topDefect} ${r.criticalChecks}`,
+                  render: (r) => (
                     <div>
                       <div style={{ color: r.severity === 'Critical' ? '#b91c1c' : '#1e293b', fontWeight: r.severity === 'Critical' ? 700 : 500 }}>
                         {r.topDefect}
@@ -886,8 +899,9 @@ export default function GarmentsQualityPage() {
                 {
                   key: 'status',
                   header: 'Status',
-                  accessor: (r) => r.status,
-                  cell: (r) => {
+                  width: 115,
+                  value: (r) => r.status,
+                  render: (r) => {
                     const statusBg =
                       r.status === 'Passed' ? '#dcfce7' :
                       r.status === 'Hold' ? '#fef3c7' :
@@ -915,9 +929,10 @@ export default function GarmentsQualityPage() {
                 {
                   key: 'inspector',
                   header: 'Inspector',
-                  accessor: (r) => r.inspector
+                  width: 135,
+                  value: (r) => r.inspector
                 }
-              ]}
+              ] satisfies GridColumn<GarmentQualityInspection>[]}
             />
           </div>
         )}
@@ -928,72 +943,86 @@ export default function GarmentsQualityPage() {
         const idx = filteredRecords.findIndex((r) => r.id === selectedRecordId);
         const rec = idx >= 0 ? filteredRecords[idx] : null;
         return (
-          <RecordPanel<GarmentQualityInspection>
+          <RecordPanel
             open={!!rec}
-            record={rec}
             onClose={() => setSelectedRecordId(null)}
-            title={(r) => `${r.id} · ${r.lineOrTable}`}
-            subtitle={(r) => `${r.buyer} · Job #${r.jobNo} · ${r.sectionLabel}`}
-            statusBadge={(r) => ({
-              label: r.status,
-              tone: r.status === 'Passed' ? 'good' : r.status === 'Hold' || r.status === 'Rework' ? 'warn' : 'bad'
-            })}
+            title={rec ? `${rec.id} · ${rec.lineOrTable}` : ''}
+            subtitle={rec ? `${rec.buyer} · Job #${rec.jobNo} · ${rec.sectionLabel}` : undefined}
             onPrev={idx > 0 ? () => setSelectedRecordId(filteredRecords[idx - 1].id) : undefined}
             onNext={idx >= 0 && idx < filteredRecords.length - 1 ? () => setSelectedRecordId(filteredRecords[idx + 1].id) : undefined}
-            prevDisabled={idx <= 0}
-            nextDisabled={idx < 0 || idx >= filteredRecords.length - 1}
-            sections={[
-              {
-                key: 'summary',
-                title: 'Line & Job Details',
-                fields: [
-                  { key: 'id', label: 'Inspection ID', readOnly: true },
-                  { key: 'date', label: 'Date', type: 'date' },
-                  { key: 'buyer', label: 'Buyer', readOnly: true },
-                  { key: 'jobNo', label: 'Job No', readOnly: true },
-                  { key: 'styleNo', label: 'Style No', readOnly: true },
-                  { key: 'lineOrTable', label: 'Line / Table' },
-                  { key: 'inspector', label: 'Inspector', span: 2 }
-                ]
-              },
-              {
-                key: 'audit',
-                title: 'Inspection Result & DHU',
-                fields: [
-                  { key: 'inspectedPcs', label: 'Inspected Pcs', type: 'number', unit: 'pcs', required: true },
-                  { key: 'defectivePcs', label: 'Defective Pcs', type: 'number', unit: 'pcs', required: true },
-                  {
-                    key: 'severity',
-                    label: 'Severity',
-                    type: 'select',
-                    options: [
-                      { value: 'Clean', label: 'Clean' },
-                      { value: 'Minor', label: 'Minor' },
-                      { value: 'Major', label: 'Major' },
-                      { value: 'Critical', label: 'Critical' }
-                    ]
-                  },
-                  {
-                    key: 'status',
-                    label: 'Quality Decision',
-                    type: 'select',
-                    options: [
-                      { value: 'Passed', label: 'Passed' },
-                      { value: 'Rework', label: 'Rework' },
-                      { value: 'Hold', label: 'Hold' },
-                      { value: 'Failed', label: 'Failed' }
-                    ]
-                  },
-                  { key: 'topDefect', label: 'Top Defect Observed', span: 2 },
-                  { key: 'criticalChecks', label: 'Critical Checks Verified', span: 2 },
-                  { key: 'remarks', label: 'Inspector Remarks', type: 'textarea', span: 2 }
-                ]
-              }
-            ]}
-            onSave={(updated) => {
-              const passed = Math.max(0, Number(updated.inspectedPcs) - Number(updated.defectivePcs));
-              const dhu = Number(updated.inspectedPcs) > 0 ? Number(((Number(updated.defectivePcs) / Number(updated.inspectedPcs)) * 100).toFixed(2)) : 0;
-              const nextRec = { ...updated, passedPcs: passed, dhuPercent: dhu };
+            sections={
+              rec
+                ? [
+                    {
+                      name: 'Line & Job Details',
+                      fields: [
+                        { key: 'id', label: 'Inspection ID', value: rec.id, readOnly: true },
+                        { key: 'date', label: 'Date', value: rec.date, type: 'date' },
+                        { key: 'buyer', label: 'Buyer', value: rec.buyer, readOnly: true },
+                        { key: 'jobNo', label: 'Job No', value: rec.jobNo, readOnly: true },
+                        { key: 'styleNo', label: 'Style No', value: rec.styleNo, readOnly: true },
+                        { key: 'lineOrTable', label: 'Line / Table', value: rec.lineOrTable },
+                        { key: 'inspector', label: 'Inspector', value: rec.inspector, fullWidth: true }
+                      ]
+                    },
+                    {
+                      name: 'Inspection Result & DHU',
+                      fields: [
+                        { key: 'inspectedPcs', label: 'Inspected Pcs', value: rec.inspectedPcs, type: 'number', unit: 'pcs', required: true },
+                        { key: 'defectivePcs', label: 'Defective Pcs', value: rec.defectivePcs, type: 'number', unit: 'pcs', required: true },
+                        {
+                          key: 'severity',
+                          label: 'Severity',
+                          value: rec.severity,
+                          type: 'select',
+                          options: [
+                            { value: 'Clean', label: 'Clean' },
+                            { value: 'Minor', label: 'Minor' },
+                            { value: 'Major', label: 'Major' },
+                            { value: 'Critical', label: 'Critical' }
+                          ]
+                        },
+                        {
+                          key: 'status',
+                          label: 'Quality Decision',
+                          value: rec.status,
+                          type: 'select',
+                          options: [
+                            { value: 'Passed', label: 'Passed' },
+                            { value: 'Rework', label: 'Rework' },
+                            { value: 'Hold', label: 'Hold' },
+                            { value: 'Failed', label: 'Failed' }
+                          ]
+                        },
+                        { key: 'topDefect', label: 'Top Defect Observed', value: rec.topDefect, fullWidth: true },
+                        { key: 'criticalChecks', label: 'Critical Checks Verified', value: rec.criticalChecks, fullWidth: true },
+                        { key: 'remarks', label: 'Inspector Remarks', value: rec.remarks, type: 'textarea', fullWidth: true }
+                      ]
+                    }
+                  ]
+                : []
+            }
+            onSave={(vals) => {
+              if (!rec) return;
+              const inspectedPcs = Number(vals.inspectedPcs ?? rec.inspectedPcs);
+              const defectivePcs = Number(vals.defectivePcs ?? rec.defectivePcs);
+              const passed = Math.max(0, inspectedPcs - defectivePcs);
+              const dhu = inspectedPcs > 0 ? Number(((defectivePcs / inspectedPcs) * 100).toFixed(2)) : 0;
+              const nextRec: GarmentQualityInspection = {
+                ...rec,
+                date: String(vals.date ?? rec.date),
+                lineOrTable: String(vals.lineOrTable ?? rec.lineOrTable),
+                inspector: String(vals.inspector ?? rec.inspector),
+                inspectedPcs,
+                defectivePcs,
+                passedPcs: passed,
+                dhuPercent: dhu,
+                severity: (vals.severity as GarmentQualityInspection['severity']) ?? rec.severity,
+                status: (vals.status as GarmentQualityInspection['status']) ?? rec.status,
+                topDefect: String(vals.topDefect ?? rec.topDefect),
+                criticalChecks: String(vals.criticalChecks ?? rec.criticalChecks),
+                remarks: String(vals.remarks ?? rec.remarks)
+              };
               setInspections((prev) => prev.map((item) => (item.id === nextRec.id ? nextRec : item)));
             }}
           />

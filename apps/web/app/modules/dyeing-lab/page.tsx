@@ -3,8 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import Shell from '../../../components/Shell';
-import { DataGrid } from '../../../components/ui/DataGrid';
-import { RecordPanel } from '../../../components/ui/RecordPanel';
+import { DataGrid, GridColumn, RecordPanel } from '../../../components/ui';
 import { fmtDate } from '../../../lib/format';
 import {
   Palette,
@@ -986,17 +985,20 @@ export default function DyeingLabPage() {
             </div>
 
             <DataGrid<LabDipMasterRecord>
-              tableId="dyeing-lab-master-register"
+              storageKey="dyeing-lab-master-register"
+              exportName="dyeing-lab-master-register"
               rows={filteredRecords}
+              frozenColumns={2}
               rowKey={(r) => r.id}
+              selectedRowKey={panelDipId}
               onRowClick={(r) => setPanelDipId(r.id)}
-              searchPlaceholder="Filter Dip #, Job, Buyer, Color, Pantone..."
               columns={[
                 {
                   key: 'buyerJob',
                   header: 'Buyer & Job No',
-                  accessor: (r) => `${r.buyer} ${r.jobNo} ${r.dipNo}`,
-                  cell: (r) => (
+                  width: 150,
+                  value: (r) => `${r.buyer} ${r.jobNo} ${r.dipNo}`,
+                  render: (r) => (
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span style={{ fontWeight: 800, color: '#0F274E' }}>{r.buyer}</span>
@@ -1012,8 +1014,9 @@ export default function DyeingLabPage() {
                 {
                   key: 'styleItem',
                   header: 'Style, Item & Fabric',
-                  accessor: (r) => `${r.styleNo} ${r.item} ${r.fabricType}`,
-                  cell: (r) => (
+                  width: 170,
+                  value: (r) => `${r.styleNo} ${r.item} ${r.fabricType}`,
+                  render: (r) => (
                     <div>
                       <div style={{ fontWeight: 750, color: '#1E293B' }}>{r.styleNo}</div>
                       <div style={{ fontSize: 11.5, color: '#64748B' }}>{r.item}</div>
@@ -1024,8 +1027,9 @@ export default function DyeingLabPage() {
                 {
                   key: 'colorName',
                   header: 'Color & Pantone Ref',
-                  accessor: (r) => `${r.colorName} ${r.pantoneRef}`,
-                  cell: (r) => (
+                  width: 165,
+                  value: (r) => `${r.colorName} ${r.pantoneRef}`,
+                  render: (r) => (
                     <div>
                       <div style={{ fontWeight: 800, color: '#0F172A' }}>{r.colorName}</div>
                       <span style={{ background: '#F1F5F9', border: '1px solid #CBD5E1', padding: '1px 6px', borderRadius: 4, fontSize: 11, color: '#475569', fontWeight: 700 }}>
@@ -1037,8 +1041,9 @@ export default function DyeingLabPage() {
                 {
                   key: 'stagePlan',
                   header: 'Stage & 10-Day Plan',
-                  accessor: (r) => `${r.stage} ${r.scheduledMachine || ''}`,
-                  cell: (r) => {
+                  width: 185,
+                  value: (r) => `${r.stage} ${r.scheduledMachine || ''}`,
+                  render: (r) => {
                     const isApproved = r.status === 'APPROVED';
                     return (
                       <div>
@@ -1080,8 +1085,9 @@ export default function DyeingLabPage() {
                 {
                   key: 'optionRecipe',
                   header: 'Option & Dyestuffs',
-                  accessor: (r) => `${r.optionCode} ${r.dyestuffFamily} ${r.recipe}`,
-                  cell: (r) => (
+                  width: 220,
+                  value: (r) => `${r.optionCode} ${r.dyestuffFamily} ${r.recipe}`,
+                  render: (r) => (
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span style={{ background: '#0F274E', color: '#FFF', padding: '1px 7px', borderRadius: 4, fontSize: 11, fontWeight: 800 }}>
@@ -1099,8 +1105,11 @@ export default function DyeingLabPage() {
                   key: 'deltaE',
                   header: 'Spectro ΔE',
                   align: 'right',
-                  accessor: (r) => r.deltaE,
-                  cell: (r) => (
+                  width: 110,
+                  numeric: true,
+                  decimals: 2,
+                  value: (r) => r.deltaE,
+                  render: (r) => (
                     <div>
                       <div style={{ fontWeight: 900, color: r.deltaE <= 0.6 ? '#15803D' : '#DC2626' }}>
                         ΔE: {r.deltaE.toFixed(2)}
@@ -1112,8 +1121,9 @@ export default function DyeingLabPage() {
                 {
                   key: 'status',
                   header: 'Buyer Status',
-                  accessor: (r) => r.status,
-                  cell: (r) => {
+                  width: 145,
+                  value: (r) => r.status,
+                  render: (r) => {
                     const isApproved = r.status === 'APPROVED';
                     const isReDip = r.status === 'RE_DIP_REQUIRED';
                     return (
@@ -1136,8 +1146,9 @@ export default function DyeingLabPage() {
                 {
                   key: 'merchandiser',
                   header: 'Merchandiser Follow-Up',
-                  accessor: (r) => `${r.merchandiser} ${r.submissionDate}`,
-                  cell: (r) => (
+                  width: 160,
+                  value: (r) => `${r.merchandiser} ${r.submissionDate}`,
+                  render: (r) => (
                     <div>
                       <div style={{ fontWeight: 750, color: '#0F172A' }}>{r.merchandiser}</div>
                       <div style={{ fontSize: 11, color: '#64748B' }}>Sub: {fmtDate(r.submissionDate)}</div>
@@ -1147,8 +1158,10 @@ export default function DyeingLabPage() {
                 {
                   key: 'dossier',
                   header: 'Dossier',
-                  accessor: (r) => r.dipNo,
-                  cell: (r) => (
+                  width: 95,
+                  filterable: false,
+                  value: (r) => r.dipNo,
+                  render: (r) => (
                     <button
                       type="button"
                       onClick={(e) => {
@@ -1173,7 +1186,7 @@ export default function DyeingLabPage() {
                     </button>
                   )
                 }
-              ]}
+              ] satisfies GridColumn<LabDipMasterRecord>[]}
             />
           </div>
         </>
@@ -1807,74 +1820,86 @@ export default function DyeingLabPage() {
         const idx = filteredRecords.findIndex((r) => r.id === panelDipId);
         const rec = idx >= 0 ? filteredRecords[idx] : null;
         return (
-          <RecordPanel<LabDipMasterRecord>
+          <RecordPanel
             open={!!rec}
-            record={rec}
             onClose={() => setPanelDipId(null)}
-            title={(r) => `${r.dipNo} · ${r.colorName}`}
-            subtitle={(r) => `${r.buyer} · Job #${r.jobNo} · Style ${r.styleNo}`}
-            statusBadge={(r) => ({
-              label: r.status,
-              tone: r.status === 'APPROVED' ? 'good' : r.status === 'RE_DIP_REQUIRED' ? 'bad' : 'warn'
-            })}
+            title={rec ? `${rec.dipNo} · ${rec.colorName}` : ''}
+            subtitle={rec ? `${rec.buyer} · Job #${rec.jobNo} · Style ${rec.styleNo}` : undefined}
             onPrev={idx > 0 ? () => setPanelDipId(filteredRecords[idx - 1].id) : undefined}
             onNext={idx >= 0 && idx < filteredRecords.length - 1 ? () => setPanelDipId(filteredRecords[idx + 1].id) : undefined}
-            prevDisabled={idx <= 0}
-            nextDisabled={idx < 0 || idx >= filteredRecords.length - 1}
-            sections={[
-              {
-                key: 'job',
-                title: 'Job & Color Details',
-                fields: [
-                  { key: 'dipNo', label: 'Lab Dip No', readOnly: true },
-                  { key: 'jobNo', label: 'Job No', readOnly: true },
-                  { key: 'buyer', label: 'Buyer', readOnly: true },
-                  { key: 'styleNo', label: 'Style No', readOnly: true },
-                  { key: 'colorName', label: 'Color Name' },
-                  { key: 'pantoneRef', label: 'Pantone Ref' },
-                  { key: 'merchandiser', label: 'Merchandiser', lockedByRole: 'Merchandiser' },
-                  { key: 'submissionDate', label: 'Submission Date', type: 'date' }
-                ]
-              },
-              {
-                key: 'recipe',
-                title: 'Formulation & Buyer Decision',
-                fields: [
-                  {
-                    key: 'optionCode',
-                    label: 'Selected Option',
-                    type: 'select',
-                    options: [
-                      { value: 'A', label: 'Option A' },
-                      { value: 'B', label: 'Option B' },
-                      { value: 'C', label: 'Option C' },
-                      { value: 'D', label: 'Option D' },
-                      { value: 'R1', label: 'Re-Dip R1' },
-                      { value: 'R2', label: 'Re-Dip R2' }
-                    ]
-                  },
-                  {
-                    key: 'status',
-                    label: 'Approval Status',
-                    type: 'select',
-                    options: [
-                      { value: 'APPROVED', label: 'APPROVED' },
-                      { value: 'PENDING_BUYER', label: 'PENDING_BUYER' },
-                      { value: 'SUBMITTED', label: 'SUBMITTED' },
-                      { value: 'RE_DIP_REQUIRED', label: 'RE_DIP_REQUIRED' },
-                      { value: 'IN_FORMULATION', label: 'IN_FORMULATION' }
-                    ]
-                  },
-                  { key: 'dyestuffFamily', label: 'Dyestuff Family' },
-                  { key: 'deltaE', label: 'Spectro ΔE', type: 'number', required: true },
-                  { key: 'd65Match', label: 'D65 Match' },
-                  { key: 'tl84Match', label: 'TL84 Match' },
-                  { key: 'recipe', label: 'Dye Recipe Formulation', span: 2 },
-                  { key: 'comments', label: 'Lab & Buyer Comments', type: 'textarea', span: 2 }
-                ]
-              }
-            ]}
-            onSave={(updated) => {
+            sections={
+              rec
+                ? [
+                    {
+                      name: 'Job & Color Details',
+                      fields: [
+                        { key: 'dipNo', label: 'Lab Dip No', value: rec.dipNo, readOnly: true },
+                        { key: 'jobNo', label: 'Job No', value: rec.jobNo, readOnly: true },
+                        { key: 'buyer', label: 'Buyer', value: rec.buyer, readOnly: true },
+                        { key: 'styleNo', label: 'Style No', value: rec.styleNo, readOnly: true },
+                        { key: 'colorName', label: 'Color Name', value: rec.colorName },
+                        { key: 'pantoneRef', label: 'Pantone Ref', value: rec.pantoneRef },
+                        { key: 'merchandiser', label: 'Merchandiser', value: rec.merchandiser, setByRole: 'Merchandiser' },
+                        { key: 'submissionDate', label: 'Submission Date', value: rec.submissionDate, type: 'date' }
+                      ]
+                    },
+                    {
+                      name: 'Formulation & Buyer Decision',
+                      fields: [
+                        {
+                          key: 'optionCode',
+                          label: 'Selected Option',
+                          value: rec.optionCode,
+                          type: 'select',
+                          options: [
+                            { value: 'A', label: 'Option A' },
+                            { value: 'B', label: 'Option B' },
+                            { value: 'C', label: 'Option C' },
+                            { value: 'D', label: 'Option D' },
+                            { value: 'R1', label: 'Re-Dip R1' },
+                            { value: 'R2', label: 'Re-Dip R2' }
+                          ]
+                        },
+                        {
+                          key: 'status',
+                          label: 'Approval Status',
+                          value: rec.status,
+                          type: 'select',
+                          options: [
+                            { value: 'APPROVED', label: 'APPROVED' },
+                            { value: 'PENDING_BUYER', label: 'PENDING_BUYER' },
+                            { value: 'SUBMITTED', label: 'SUBMITTED' },
+                            { value: 'RE_DIP_REQUIRED', label: 'RE_DIP_REQUIRED' },
+                            { value: 'IN_FORMULATION', label: 'IN_FORMULATION' }
+                          ]
+                        },
+                        { key: 'dyestuffFamily', label: 'Dyestuff Family', value: rec.dyestuffFamily },
+                        { key: 'deltaE', label: 'Spectro ΔE', value: rec.deltaE, type: 'number', required: true },
+                        { key: 'd65Match', label: 'D65 Match', value: rec.d65Match },
+                        { key: 'tl84Match', label: 'TL84 Match', value: rec.tl84Match },
+                        { key: 'recipe', label: 'Dye Recipe Formulation', value: rec.recipe, fullWidth: true },
+                        { key: 'comments', label: 'Lab & Buyer Comments', value: rec.comments, type: 'textarea', fullWidth: true }
+                      ]
+                    }
+                  ]
+                : []
+            }
+            onSave={(vals) => {
+              if (!rec) return;
+              const updated: LabDipMasterRecord = {
+                ...rec,
+                colorName: String(vals.colorName ?? rec.colorName),
+                pantoneRef: String(vals.pantoneRef ?? rec.pantoneRef),
+                submissionDate: String(vals.submissionDate ?? rec.submissionDate),
+                optionCode: (vals.optionCode as LabDipMasterRecord['optionCode']) ?? rec.optionCode,
+                status: (vals.status as LabDipMasterRecord['status']) ?? rec.status,
+                dyestuffFamily: String(vals.dyestuffFamily ?? rec.dyestuffFamily),
+                deltaE: Number(vals.deltaE ?? rec.deltaE),
+                d65Match: (vals.d65Match as LabDipMasterRecord['d65Match']) ?? rec.d65Match,
+                tl84Match: (vals.tl84Match as LabDipMasterRecord['tl84Match']) ?? rec.tl84Match,
+                recipe: String(vals.recipe ?? rec.recipe),
+                comments: String(vals.comments ?? rec.comments),
+              };
               setMasterRecords((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
             }}
           />

@@ -32,9 +32,10 @@ import {
   DrillPopupTarget,
   ChartBox,
   NOS_CHART_COLORS,
+  DataGrid,
+  GridColumn,
+  RecordPanel,
 } from '../../../components/ui';
-import DataGrid, { GridColumn } from '../../../components/ui/DataGrid';
-import RecordPanel from '../../../components/ui/RecordPanel';
 import { FxResponsiveContainer as ResponsiveContainer, FX_BAR, FX_PIE, FX_SERIES } from '../../../components/fx';
 import { fmtDate, fmtJobsQty, fmtNum, fmtPct, fmtQty } from '../../../lib/format';
 

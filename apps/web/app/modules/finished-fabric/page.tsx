@@ -45,7 +45,7 @@ import {
   YAxis,
   Tooltip,
 } from 'recharts';
-import DataGrid, { GridColumn } from '../../../components/ui/DataGrid';
+import { DataGrid, GridColumn } from '../../../components/ui';
 import { FX_SERIES, FX_BAR, FxResponsiveContainer as ResponsiveContainer } from '../../../components/fx';
 import FabricRackLocation, { RackLocations, LocationPicker, LocationPick, emptyPick, pickIsValid, pickLabel, assignLocation, locLabel, isShelfKey } from '../../../components/fabric/FabricRackLocation';
 

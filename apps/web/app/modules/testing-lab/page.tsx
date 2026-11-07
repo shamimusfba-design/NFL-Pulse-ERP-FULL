@@ -3,8 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import Shell from '../../../components/Shell';
-import { DataGrid } from '../../../components/ui/DataGrid';
-import { RecordPanel } from '../../../components/ui/RecordPanel';
+import { DataGrid, GridColumn, RecordPanel } from '../../../components/ui';
 import { fmtDate, fmtNum } from '../../../lib/format';
 import {
   FlaskConical,
@@ -1193,17 +1192,20 @@ export default function TestingLabModulePage() {
             </div>
 
             <DataGrid<LabJobMasterRecord>
-              tableId="testing-lab-master-register"
+              storageKey="testing-lab-master-register"
+              exportName="testing-lab-master-register"
               rows={filteredRecords}
+              frozenColumns={2}
               rowKey={(r) => r.id}
+              selectedRowKey={panelLabId}
               onRowClick={(r) => setPanelLabId(r.id)}
-              searchPlaceholder="Filter Job #, Buyer, Style, Color, Batch..."
               columns={[
                 {
                   key: 'buyerJob',
                   header: 'Buyer & Job No',
-                  accessor: (r) => `${r.buyer} ${r.jobNo} ${r.batchNo}`,
-                  cell: (r) => (
+                  width: 155,
+                  value: (r) => `${r.buyer} ${r.jobNo} ${r.batchNo}`,
+                  render: (r) => (
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span style={{ fontWeight: 800, color: '#0F274E' }}>{r.buyer}</span>
@@ -1219,8 +1221,9 @@ export default function TestingLabModulePage() {
                 {
                   key: 'styleItem',
                   header: 'Style & Fabric Item',
-                  accessor: (r) => `${r.styleNo} ${r.item} ${r.fabricType}`,
-                  cell: (r) => (
+                  width: 170,
+                  value: (r) => `${r.styleNo} ${r.item} ${r.fabricType}`,
+                  render: (r) => (
                     <div>
                       <div style={{ fontWeight: 750, color: '#1E293B' }}>{r.styleNo}</div>
                       <div style={{ fontSize: 11.5, color: '#64748B' }}>{r.item}</div>
@@ -1231,8 +1234,12 @@ export default function TestingLabModulePage() {
                 {
                   key: 'color',
                   header: 'Color & Lot Qty',
-                  accessor: (r) => r.color,
-                  cell: (r) => (
+                  width: 135,
+                  numeric: true,
+                  total: true,
+                  unit: 'kg',
+                  value: (r) => r.lotQtyKg,
+                  render: (r) => (
                     <div>
                       <div style={{ fontWeight: 750, color: '#0F172A' }}>{r.color}</div>
                       <div style={{ fontSize: 11.5, color: '#15803D', fontWeight: 700 }}>{fmtNum(r.lotQtyKg)} kg</div>
@@ -1242,8 +1249,9 @@ export default function TestingLabModulePage() {
                 {
                   key: 'deliveryGate',
                   header: 'Delivery Gate',
-                  accessor: (r) => r.deliveryGate,
-                  cell: (r) => {
+                  width: 130,
+                  value: (r) => r.deliveryGate,
+                  render: (r) => {
                     const isCleared = r.deliveryGate === 'CLEARED';
                     const isBlocked = r.deliveryGate === 'BLOCKED';
                     if (isCleared) {
@@ -1270,50 +1278,59 @@ export default function TestingLabModulePage() {
                 {
                   key: 'dimensionalStability',
                   header: 'Dimensional Stability',
-                  accessor: (r) => r.dimensionalStability.status,
-                  cell: (r) => renderTestBadge(r.dimensionalStability)
+                  width: 145,
+                  value: (r) => r.dimensionalStability.status,
+                  render: (r) => renderTestBadge(r.dimensionalStability)
                 },
                 {
                   key: 'washTest5x',
                   header: '5-Time Wash',
-                  accessor: (r) => r.washTest5x.status,
-                  cell: (r) => renderTestBadge(r.washTest5x)
+                  width: 125,
+                  value: (r) => r.washTest5x.status,
+                  render: (r) => renderTestBadge(r.washTest5x)
                 },
                 {
                   key: 'rubbingFastness',
                   header: 'Rubbing Fastness',
-                  accessor: (r) => r.rubbingFastness.status,
-                  cell: (r) => renderTestBadge(r.rubbingFastness)
+                  width: 135,
+                  value: (r) => r.rubbingFastness.status,
+                  render: (r) => renderTestBadge(r.rubbingFastness)
                 },
                 {
                   key: 'perspirationFastness',
                   header: 'Perspiration',
-                  accessor: (r) => r.perspirationFastness.status,
-                  cell: (r) => renderTestBadge(r.perspirationFastness)
+                  width: 125,
+                  value: (r) => r.perspirationFastness.status,
+                  render: (r) => renderTestBadge(r.perspirationFastness)
                 },
                 {
                   key: 'salivaFastness',
                   header: 'Saliva (Kids)',
-                  accessor: (r) => r.salivaFastness.status,
-                  cell: (r) => renderTestBadge(r.salivaFastness)
+                  width: 125,
+                  value: (r) => r.salivaFastness.status,
+                  render: (r) => renderTestBadge(r.salivaFastness)
                 },
                 {
                   key: 'pillingStretch',
                   header: 'Pilling / Stretch',
-                  accessor: (r) => r.pillingStretch.status,
-                  cell: (r) => renderTestBadge(r.pillingStretch)
+                  width: 130,
+                  value: (r) => r.pillingStretch.status,
+                  render: (r) => renderTestBadge(r.pillingStretch)
                 },
                 {
                   key: 'garmentAccessories',
                   header: 'Accessories Pull',
-                  accessor: (r) => r.garmentAccessories.status,
-                  cell: (r) => renderTestBadge(r.garmentAccessories)
+                  width: 130,
+                  value: (r) => r.garmentAccessories.status,
+                  render: (r) => renderTestBadge(r.garmentAccessories)
                 },
                 {
                   key: 'certificates',
                   header: 'Certificates',
-                  accessor: (r) => r.attachedFiles.length,
-                  cell: (r) => (
+                  width: 110,
+                  filterable: false,
+                  value: (r) => r.attachedFiles.length,
+                  render: (r) => (
                     <button
                       type="button"
                       onClick={(e) => {
@@ -1339,7 +1356,7 @@ export default function TestingLabModulePage() {
                     </button>
                   )
                 }
-              ]}
+              ] satisfies GridColumn<LabJobMasterRecord>[]}
             />
           </div>
         </>
@@ -2136,55 +2153,61 @@ export default function TestingLabModulePage() {
         const idx = filteredRecords.findIndex((r) => r.id === panelLabId);
         const rec = idx >= 0 ? filteredRecords[idx] : null;
         return (
-          <RecordPanel<LabJobMasterRecord>
+          <RecordPanel
             open={!!rec}
-            record={rec}
             onClose={() => setPanelLabId(null)}
-            title={(r) => `Job #${r.jobNo} · ${r.color}`}
-            subtitle={(r) => `${r.buyer} · Style ${r.styleNo} · Batch ${r.batchNo}`}
-            statusBadge={(r) => ({
-              label: r.deliveryGate,
-              tone: r.deliveryGate === 'CLEARED' ? 'good' : r.deliveryGate === 'BLOCKED' ? 'bad' : 'warn'
-            })}
+            title={rec ? `Job #${rec.jobNo} · ${rec.color}` : ''}
+            subtitle={rec ? `${rec.buyer} · Style ${rec.styleNo} · Batch ${rec.batchNo}` : undefined}
             onPrev={idx > 0 ? () => setPanelLabId(filteredRecords[idx - 1].id) : undefined}
             onNext={idx >= 0 && idx < filteredRecords.length - 1 ? () => setPanelLabId(filteredRecords[idx + 1].id) : undefined}
-            prevDisabled={idx <= 0}
-            nextDisabled={idx < 0 || idx >= filteredRecords.length - 1}
-            sections={[
-              {
-                key: 'batch',
-                title: 'Job & Batch Information',
-                fields: [
-                  { key: 'jobNo', label: 'Job No', readOnly: true },
-                  { key: 'buyer', label: 'Buyer', readOnly: true },
-                  { key: 'styleNo', label: 'Style No', readOnly: true },
-                  { key: 'color', label: 'Color', readOnly: true },
-                  { key: 'batchNo', label: 'Batch No' },
-                  { key: 'lotQtyKg', label: 'Lot Quantity', type: 'number', unit: 'kg', required: true },
-                  { key: 'targetDeliveryDate', label: 'Target Delivery Date', type: 'date' },
-                  { key: 'merchandiser', label: 'Merchandiser', lockedByRole: 'Merchandiser' }
-                ]
-              },
-              {
-                key: 'gate',
-                title: 'Laboratory Delivery Gate & Sign-off',
-                fields: [
-                  {
-                    key: 'deliveryGate',
-                    label: 'Delivery Gate Status',
-                    type: 'select',
-                    options: [
-                      { value: 'CLEARED', label: 'CLEARED' },
-                      { value: 'PENDING', label: 'PENDING' },
-                      { value: 'BLOCKED', label: 'BLOCKED' }
-                    ]
-                  },
-                  { key: 'leadApprover', label: 'Lead Approver' },
-                  { key: 'clearanceNote', label: 'Clearance & Test Remarks', type: 'textarea', span: 2 }
-                ]
-              }
-            ]}
-            onSave={(updated) => {
+            sections={
+              rec
+                ? [
+                    {
+                      name: 'Job & Batch Information',
+                      fields: [
+                        { key: 'jobNo', label: 'Job No', value: rec.jobNo, readOnly: true },
+                        { key: 'buyer', label: 'Buyer', value: rec.buyer, readOnly: true },
+                        { key: 'styleNo', label: 'Style No', value: rec.styleNo, readOnly: true },
+                        { key: 'color', label: 'Color', value: rec.color, readOnly: true },
+                        { key: 'batchNo', label: 'Batch No', value: rec.batchNo },
+                        { key: 'lotQtyKg', label: 'Lot Quantity', value: rec.lotQtyKg, type: 'number', unit: 'kg', required: true },
+                        { key: 'targetDeliveryDate', label: 'Target Delivery Date', value: rec.targetDeliveryDate, type: 'date' },
+                        { key: 'merchandiser', label: 'Merchandiser', value: rec.merchandiser, setByRole: 'Merchandiser' }
+                      ]
+                    },
+                    {
+                      name: 'Laboratory Delivery Gate & Sign-off',
+                      fields: [
+                        {
+                          key: 'deliveryGate',
+                          label: 'Delivery Gate Status',
+                          value: rec.deliveryGate,
+                          type: 'select',
+                          options: [
+                            { value: 'CLEARED', label: 'CLEARED' },
+                            { value: 'PENDING', label: 'PENDING' },
+                            { value: 'BLOCKED', label: 'BLOCKED' }
+                          ]
+                        },
+                        { key: 'leadApprover', label: 'Lead Approver', value: rec.leadApprover },
+                        { key: 'clearanceNote', label: 'Clearance & Test Remarks', value: rec.clearanceNote, type: 'textarea', fullWidth: true }
+                      ]
+                    }
+                  ]
+                : []
+            }
+            onSave={(vals) => {
+              if (!rec) return;
+              const updated: LabJobMasterRecord = {
+                ...rec,
+                batchNo: String(vals.batchNo ?? rec.batchNo),
+                lotQtyKg: Number(vals.lotQtyKg ?? rec.lotQtyKg),
+                targetDeliveryDate: String(vals.targetDeliveryDate ?? rec.targetDeliveryDate),
+                deliveryGate: (vals.deliveryGate as LabJobMasterRecord['deliveryGate']) ?? rec.deliveryGate,
+                leadApprover: String(vals.leadApprover ?? rec.leadApprover),
+                clearanceNote: String(vals.clearanceNote ?? rec.clearanceNote),
+              };
               setMasterRecords((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
             }}
           />
