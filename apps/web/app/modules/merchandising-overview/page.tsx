@@ -233,7 +233,7 @@ export default function MerchandisingDashboardPage() {
     return Array.from(m.entries())
       .map(([item, v]) => ({ item, ...v }))
       .sort((a, b) => b.qty - a.qty)
-      .slice(0, 6);
+      .slice(0, 8);
   }, [filtered]);
 
   /* clicking a donut part filters the table below */
@@ -295,7 +295,7 @@ export default function MerchandisingDashboardPage() {
         )}
       </div>
 
-      <div className="nos-grid nos-grid-4" style={{ marginBottom: 'var(--sp-3)' }}>
+      <div className="nos-grid nos-grid-4" style={{ marginBottom: 'var(--sp-3)', gap: 'var(--sp-2)' }}>
         <KpiCard label="My jobs" value={fmtNum(stats.totalJobs)} unit=" jobs" delta={`${fmtNum(stats.totalQty)} pcs`} deltaDirection="flat" />
         <KpiCard label="Orders in hand" value={fmtNum(stats.inHandJobs)} unit=" jobs" delta={`${fmtNum(stats.inHandQty)} pcs not shipped`} deltaDirection="flat" />
         <KpiCard label="In progress" value={fmtNum(stats.inProgressJobs)} unit=" jobs" delta={`${fmtNum(stats.inProgressQty)} pcs`} deltaDirection="flat" />
@@ -317,44 +317,25 @@ export default function MerchandisingDashboardPage() {
             />
           ))}
         </div>
+
+        {byItem.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--sp-2)', marginTop: 'var(--sp-3)', paddingTop: 'var(--sp-2)', borderTop: '1px solid var(--nos-line)' }}>
+            {byItem.map((r) => (
+              <span key={r.item} style={{ fontSize: 'var(--fs-xs)', color: 'var(--nos-ink-2)' }}>
+                {r.item} <b style={{ fontWeight: 500, color: 'var(--nos-ink)' }}>{fmtNum(r.qty)} pcs</b>
+              </span>
+            ))}
+          </div>
+        )}
       </Card>
 
-      <div className="nos-grid nos-grid-2" style={{ margin: 'var(--sp-3) 0' }}>
-        <Card title="My items">
-          <div style={{ fontSize: 'var(--fs-sm)' }}>
-            {byItem.map((r) => (
-              <div key={r.item} style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 'var(--sp-2)', padding: '5px 0', borderBottom: '1px solid var(--nos-line)' }}>
-                <span style={{ color: 'var(--nos-ink)' }}>{r.item}</span>
-                <span style={{ color: 'var(--nos-ink-2)' }}>{fmtNum(r.jobs)} jobs</span>
-                <span style={{ color: 'var(--nos-ink)', fontWeight: 500 }}>{fmtNum(r.qty)} pcs</span>
-              </div>
-            ))}
-            {byItem.length === 0 && <div className="nos-empty"><b>No jobs for this filter</b></div>}
-          </div>
-        </Card>
-
-        <Card title="Nearest shipments">
-          <div style={{ fontSize: 'var(--fs-sm)' }}>
-            {filtered
-              .filter((j) => num(j.shipment?.shipBalance) > 0 && j.dates?.exFactory)
-              .sort((a, b) => (parseDate(a.dates?.exFactory)?.getTime() || 0) - (parseDate(b.dates?.exFactory)?.getTime() || 0))
-              .slice(0, 6)
-              .map((j) => (
-                <div key={j.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 'var(--sp-2)', padding: '5px 0', borderBottom: '1px solid var(--nos-line)' }}>
-                  <Link href={`/jobs/${j.jobNo}`} style={{ color: 'var(--nos-required)' }}>{displayJobNo(j.jobNo)}</Link>
-                  <span style={{ color: 'var(--nos-ink-2)' }}>{j.buyer}</span>
-                  <span style={{ color: 'var(--nos-ink)' }}>{j.dates?.exFactory}</span>
-                </div>
-              ))}
-          </div>
-        </Card>
-      </div>
+      <div style={{ height: 'var(--sp-3)' }} />
 
       <DataGrid<JobRow>
         columns={columns}
         rows={tableRows}
         rowKey={(j) => j.id}
-        frozenColumns={2}
+        frozenColumns={1}
         storageKey="merch-dashboard-jobs"
         exportName="my-jobs"
         emptyText="No jobs match this filter."

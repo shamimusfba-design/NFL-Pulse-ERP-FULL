@@ -1,19 +1,14 @@
 import React, { Suspense } from 'react';
 import { Job360Client } from './Job360Client';
 
+import demo2000DataRaw from '../../../data/demo-2000-master.json';
+
+/** Every job gets its own page. Without this, Firebase's "unknown path -> /index.html"
+ *  rule sends the job straight to the Executive Dashboard. */
 export function generateStaticParams() {
-  return [
-    { id: '46755' },
-    { id: '48092' },
-    { id: '48085' },
-    { id: '48061' },
-    { id: '22041' },
-    { id: '45456' },
-    { id: '44278' },
-    { id: '46880' },
-    { id: '46881' },
-    { id: '47056' },
-  ];
+  const jobs = ((demo2000DataRaw as { jobs?: { jobNo?: string }[] }).jobs ?? []);
+  const ids = Array.from(new Set(jobs.map((j) => String(j.jobNo || '')).filter(Boolean)));
+  return ids.map((id) => ({ id }));
 }
 
 export default async function JobDetailPage({ params }: { params: Promise<{ id: string }> }) {
