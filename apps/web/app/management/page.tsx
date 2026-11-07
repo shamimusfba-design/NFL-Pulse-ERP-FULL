@@ -61,7 +61,8 @@ function money(num: number | null | undefined, decimals = 2): string {
   return `$${num.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 }
 
-// Enhanced Readable KPI Card (Target 28px value, 13px label, min-height 88px)
+// KPI card — NOS clean standard (docs/UX-STANDARD.md): white card, no coloured edge,
+// label / big number / quiet trend line. Colour carries meaning on the trend text only.
 function CompactKpiCard({
   label,
   value,
@@ -81,58 +82,31 @@ function CompactKpiCard({
   subtext?: string;
   onClick?: () => void;
 }) {
-  const trendBg =
-    trendType === 'positive' ? COLORS.greenLight :
-    trendType === 'negative' ? COLORS.redLight :
-    trendType === 'warning' ? COLORS.amberLight : '#F1F5F9';
-  const trendColor =
-    trendType === 'positive' ? COLORS.green :
-    trendType === 'negative' ? COLORS.red :
-    trendType === 'warning' ? COLORS.amber : COLORS.grey;
+  const trendClass =
+    trendType === 'positive' ? 'nos-up' :
+    trendType === 'negative' ? 'nos-down' : 'nos-flat';
 
   return (
     <div
+      className="nos-card nos-kpi"
       onClick={onClick}
-      style={{
-        background: COLORS.cardBg,
-        border: `1px solid ${COLORS.border}`,
-        borderLeft: `4px solid ${color}`,
-        borderRadius: '8px',
-        padding: '10px 14px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-        cursor: onClick ? 'pointer' : 'default',
-        transition: 'transform 0.12s, box-shadow 0.12s',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-        minHeight: '88px'
-      }}
-      onMouseEnter={e => { if (onClick) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 10px rgba(0,0,0,0.06)'; } }}
-      onMouseLeave={e => { if (onClick) { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.03)'; } }}
+      style={{ cursor: onClick ? 'pointer' : 'default', minHeight: 84, justifyContent: 'space-between' }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
-        <span style={{ fontSize: '13px', fontWeight: 750, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.03em', lineHeight: 1.2 }}>
-          {label}
-        </span>
-        {trend && (
-          <span style={{ fontSize: '11.5px', fontWeight: 750, padding: '2px 7px', borderRadius: '4px', background: trendBg, color: trendColor, whiteSpace: 'nowrap' }}>
-            {trend}
+      <span className="nos-kpi-l">{label}</span>
+
+      <span className="nos-kpi-v">
+        <span data-fx-count="">{typeof value === 'number' ? fmt(value) : value}</span>
+        {unit && <span className="u">{unit}</span>}
+      </span>
+
+      <span className="nos-kpi-f">
+        <span className={trendClass} style={{ fontSize: 'var(--fs-xs)' }}>{trend ?? ''}</span>
+        {subtext && (
+          <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--nos-ink-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {subtext}
           </span>
         )}
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '5px', marginTop: '4px' }}>
-        <span data-fx-count="" style={{ fontSize: '28px', fontWeight: 900, color: COLORS.navy, letterSpacing: '-0.03em', lineHeight: 1.1 }}>
-          {typeof value === 'number' ? fmt(value) : value}
-        </span>
-        {unit && <span style={{ fontSize: '13px', fontWeight: 700, color: '#64748B' }}>{unit}</span>}
-      </div>
-
-      {subtext && (
-        <div style={{ fontSize: '12px', color: '#64748B', marginTop: '3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {subtext}
-        </div>
-      )}
+      </span>
     </div>
   );
 }
@@ -170,7 +144,6 @@ function CompactSectionHeader({
         <h2 style={{ fontSize: '16px', fontWeight: 800, color: COLORS.navy, margin: 0 }}>
           {title}
         </h2>
-        {subtitle && <span style={{ fontSize: '13px', color: '#64748B' }}>· {subtitle}</span>}
       </div>
       {rightElement}
     </div>
@@ -782,10 +755,7 @@ export default function ManagementDashboardPage() {
           <h1 style={{ fontSize: '18px', fontWeight: 800, color: '#991B1B', margin: '0 0 8px' }}>
             HTTP 403 · Restricted Management Dashboard
           </h1>
-          <p style={{ fontSize: '12px', color: '#475569', lineHeight: 1.6, margin: '0 0 16px' }}>
-            Access to Director and Owner level factory intelligence is strictly limited to authorized Executive Management, Factory Owners, and Plant Directors.
-          </p>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+<div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
             <Link href="/" style={{ background: COLORS.navy, color: '#FFFFFF', padding: '7px 14px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, textDecoration: 'none' }}>
               Return to Executive Dashboard
             </Link>
@@ -823,7 +793,6 @@ export default function ManagementDashboardPage() {
                 Management Dashboard
               </span>
               <span style={{ fontSize: '10px', color: COLORS.grey }}>
-                · Plant Leadership Intelligence
               </span>
             </div>
 
@@ -984,7 +953,7 @@ export default function ManagementDashboardPage() {
         />
 
         {/* 8 Compact KPI Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px', marginBottom: '14px' }}>
+        <div className="nos-grid nos-grid-4" style={{ marginBottom: '14px' }}>
           <CompactKpiCard label="Active Orders" value={overviewStats.activeOrdersCount} unit="orders" trend="In-plant" trendType="neutral" color={COLORS.navy} />
           <CompactKpiCard label="Total Order Qty" value={overviewStats.totalOrderQty} unit="pcs" trend={`${fmt(overviewStats.totalJobs)} Jobs`} trendType="positive" color={COLORS.blue} />
           <CompactKpiCard label="Total Shipped" value={overviewStats.totalShippedQty} unit="pcs" trend="Delivered" trendType="positive" color={COLORS.green} />

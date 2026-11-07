@@ -550,10 +550,7 @@ export default function LabTestingPage() {
           </div>
           <div style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a', marginTop: '4px' }}>Before Bulk Production</div>
           <div style={{ fontSize: '20px', fontWeight: 800, color: '#0ea5e9', marginTop: '4px' }}>{stageCounts.beforeBulk} Tests</div>
-          <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
-            Pilot batch 200kg wash, rubbing, perspiration &amp; initial shrink check
-          </div>
-        </div>
+</div>
 
         {/* Stage 3: Testing Before Delivery */}
         <div
@@ -569,10 +566,7 @@ export default function LabTestingPage() {
           </div>
           <div style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a', marginTop: '4px' }}>Testing Before Delivery</div>
           <div style={{ fontSize: '20px', fontWeight: 800, color: '#16a34a', marginTop: '4px' }}>{stageCounts.beforeDelivery} Tests</div>
-          <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
-            Martindale pilling, spirality, burst strength, OEKO-TEX &amp; COA release
-          </div>
-        </div>
+</div>
 
         {/* Overall Lab Quality Pass Rate */}
         <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px' }}>
@@ -665,8 +659,7 @@ export default function LabTestingPage() {
         <div className="panel-head">
           <div>
             <div className="panel-title">Quality Assurance &amp; Physical / Chemical Test Logs</div>
-            <div className="panel-sub">Click any record to inspect test certificate, spectrophotometer curves and release details</div>
-          </div>
+</div>
           <span className="status-pill neutral">{filteredTests.length} tests matching</span>
         </div>
 
@@ -777,10 +770,7 @@ export default function LabTestingPage() {
           <div className="modal-dialog-360" onClick={e => e.stopPropagation()} style={{ maxWidth: '780px', background: '#fff', borderRadius: '12px', overflow: 'hidden' }}>
             <div style={{ background: '#0f172a', color: '#fff', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <span style={{ fontSize: '10px', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 800 }}>
-                  Northern Fashion Ltd. · Textile Testing &amp; Calibration Laboratory
-                </span>
-                <h3 style={{ margin: '2px 0 0', fontSize: '18px' }}>
+<h3 style={{ margin: '2px 0 0', fontSize: '18px' }}>
                   Laboratory Quality Release Certificate
                 </h3>
               </div>

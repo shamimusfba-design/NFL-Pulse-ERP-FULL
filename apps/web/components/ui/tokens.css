@@ -1,0 +1,95 @@
+/* NOS design tokens (docs/UX-STANDARD.md).
+   Type scale, 4px spacing grid, 3 radii, 3 shadows — so every page comes out the same.
+   Sizes are steps, never free numbers, which is what keeps labels from overlapping. */
+:root{
+  /* type scale */
+  --fs-xs:12px; --fs-sm:13px; --fs-md:14px; --fs-lg:16px; --fs-xl:20px; --fs-2xl:24px; --fs-3xl:28px;
+  --lh-tight:1.25; --lh-normal:1.45;
+  --fw-regular:400; --fw-medium:500; --fw-semibold:600;
+  /* 4px spacing grid */
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px; --sp-8:32px;
+  /* 3 radii */
+  --r-sm:4px; --r-md:8px; --r-lg:12px;
+  /* 3 shadows */
+  --sh-card:0 1px 2px rgba(16,24,40,.06);
+  --sh-raised:0 4px 10px rgba(16,24,40,.10);
+  --sh-overlay:0 12px 28px rgba(16,24,40,.18);
+  /* surfaces, layered: page -> card -> inset */
+  --nos-page:#f3f6fb; --nos-card:#ffffff; --nos-inset:#f8fafc; --nos-line:#e2e8f0; --nos-line-strong:#cbd5e1;
+  --nos-ink:#111827; --nos-ink-2:#4b5563; --nos-ink-3:#6b7280;
+  /* meaning colours — locked (blue required, green delivered, red balance, amber in-between) */
+  --nos-required:#2563eb; --nos-done:#16a34a; --nos-balance:#dc2626; --nos-mid:#d97706;
+  --nos-focus:#2563eb;
+}
+html[data-theme="dark"]{
+  --nos-page:#0d1524; --nos-card:#131c2e; --nos-inset:#182338; --nos-line:#2a3955; --nos-line-strong:#3a4c6d;
+  --nos-ink:#e6edf7; --nos-ink-2:#b3c0d1; --nos-ink-3:#94a3b8;
+  --nos-required:#93c5fd; --nos-done:#6ee7b7; --nos-balance:#fca5a5; --nos-mid:#fcd34d;
+  --sh-card:0 1px 2px rgba(0,0,0,.35); --sh-raised:0 4px 10px rgba(0,0,0,.45); --sh-overlay:0 12px 28px rgba(0,0,0,.55);
+}
+
+/* ---- Card: white, thin border, no coloured edge (the clean look) ---- */
+.nos-card{background:var(--nos-card);border:1px solid var(--nos-line);border-radius:var(--r-md);box-shadow:var(--sh-card);padding:var(--sp-3) var(--sp-4);color:var(--nos-ink)}
+.nos-card-hd{display:flex;align-items:baseline;justify-content:space-between;gap:var(--sp-2);margin-bottom:var(--sp-2)}
+.nos-card-hd > b{font-size:var(--fs-sm);font-weight:var(--fw-medium);color:var(--nos-ink)}
+.nos-card-hd > a,.nos-card-hd > button.nos-link{font-size:var(--fs-xs);color:var(--nos-required);background:none;border:0;cursor:pointer;padding:0;text-decoration:none}
+
+/* ---- KPI card: label, big number, delta + sparkline ---- */
+.nos-kpi{display:flex;flex-direction:column;gap:var(--sp-1)}
+.nos-kpi-l{font-size:var(--fs-xs);color:var(--nos-ink-2)}
+.nos-kpi-v{font-size:var(--fs-2xl);font-weight:var(--fw-medium);color:var(--nos-ink);line-height:var(--lh-tight)}
+.nos-kpi-v .u{font-size:var(--fs-sm);font-weight:var(--fw-regular);color:var(--nos-ink-2);margin-left:3px}
+.nos-kpi-f{display:flex;align-items:flex-end;justify-content:space-between;gap:var(--sp-2);font-size:var(--fs-xs)}
+.nos-up{color:var(--nos-done)} .nos-down{color:var(--nos-balance)} .nos-flat{color:var(--nos-ink-3)}
+
+/* ---- Buttons: one set, two sizes ---- */
+.nos-btn{display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-size:var(--fs-sm);font-weight:var(--fw-medium);line-height:1;padding:8px 12px;border-radius:var(--r-sm);border:1px solid transparent;cursor:pointer;white-space:nowrap}
+.nos-btn-sm{font-size:var(--fs-xs);padding:6px 10px}
+.nos-btn-primary{background:var(--nos-required);color:#fff}
+.nos-btn-secondary{background:var(--nos-card);color:var(--nos-ink);border-color:var(--nos-line-strong)}
+.nos-btn-quiet{background:transparent;color:var(--nos-ink-2)}
+.nos-btn-danger{background:var(--nos-balance);color:#fff}
+.nos-btn:disabled{opacity:.5;cursor:not-allowed}
+html[data-theme="dark"] .nos-btn-primary,html[data-theme="dark"] .nos-btn-danger{color:#0b1220}
+.nos-btn:focus-visible,.nos-card a:focus-visible,[data-nos] :focus-visible{outline:2px solid var(--nos-focus);outline-offset:2px}
+
+/* ---- Badge: colour on the text, not the whole row ---- */
+.nos-badge{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-xs);font-weight:var(--fw-medium);padding:2px 8px;border-radius:999px;border:1px solid transparent}
+.nos-badge-done{background:rgba(22,163,74,.12);color:var(--nos-done);border-color:rgba(22,163,74,.3)}
+.nos-badge-balance{background:rgba(220,38,38,.12);color:var(--nos-balance);border-color:rgba(220,38,38,.3)}
+.nos-badge-mid{background:rgba(217,119,6,.12);color:var(--nos-mid);border-color:rgba(217,119,6,.3)}
+.nos-badge-info{background:rgba(37,99,235,.12);color:var(--nos-required);border-color:rgba(37,99,235,.3)}
+.nos-badge-quiet{background:var(--nos-inset);color:var(--nos-ink-2);border-color:var(--nos-line)}
+
+/* ---- Command bar: same actions, same place, every page ---- */
+.nos-cmdbar{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap;padding:var(--sp-2) 0;margin-bottom:var(--sp-3)}
+.nos-cmdbar .spacer{flex:1}
+
+/* ---- Grids that keep cards the same size ---- */
+.nos-grid{display:grid;gap:var(--sp-3)}
+.nos-grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.nos-grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.nos-grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (max-width:1100px){.nos-grid-4{grid-template-columns:repeat(2,minmax(0,1fr))}.nos-grid-3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:640px){.nos-grid-4,.nos-grid-3,.nos-grid-2{grid-template-columns:minmax(0,1fr)}}
+
+/* ---- Toast ---- */
+.nos-toasts{position:fixed;right:16px;bottom:16px;z-index:9000;display:flex;flex-direction:column;gap:8px;max-width:min(360px,90vw)}
+.nos-toast{background:var(--nos-card);border:1px solid var(--nos-line-strong);border-left-width:3px;border-radius:var(--r-md);box-shadow:var(--sh-overlay);padding:10px 12px;font-size:var(--fs-sm);color:var(--nos-ink);display:flex;gap:8px;align-items:flex-start}
+.nos-toast-ok{border-left-color:var(--nos-done)} .nos-toast-err{border-left-color:var(--nos-balance)} .nos-toast-info{border-left-color:var(--nos-required)}
+
+/* ---- Skeleton while loading ---- */
+@keyframes nos-sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
+.nos-sk{border-radius:var(--r-sm);background:linear-gradient(90deg,var(--nos-inset) 25%,var(--nos-line) 50%,var(--nos-inset) 75%);background-size:200% 100%;animation:nos-sk 1.2s linear infinite}
+@media (prefers-reduced-motion:reduce){.nos-sk{animation:none}}
+
+/* ---- Empty state ---- */
+.nos-empty{display:flex;flex-direction:column;align-items:center;gap:var(--sp-2);padding:var(--sp-8) var(--sp-4);text-align:center;color:var(--nos-ink-2);font-size:var(--fs-sm)}
+.nos-empty b{font-size:var(--fs-md);font-weight:var(--fw-medium);color:var(--nos-ink)}
+
+/* ---- One-line alert (replaces long teaching banners) ---- */
+.nos-alert{display:flex;align-items:center;gap:var(--sp-2);padding:8px var(--sp-3);border-radius:var(--r-sm);font-size:var(--fs-sm);border:1px solid}
+.nos-alert-warn{background:rgba(217,119,6,.10);border-color:rgba(217,119,6,.35);color:var(--nos-mid)}
+.nos-alert-danger{background:rgba(220,38,38,.10);border-color:rgba(220,38,38,.35);color:var(--nos-balance)}
+.nos-alert-info{background:rgba(37,99,235,.10);border-color:rgba(37,99,235,.35);color:var(--nos-required)}
+.nos-alert .spacer{flex:1}

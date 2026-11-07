@@ -397,10 +397,7 @@ export default function KnittingModulePage() {
               </tbody>
             </table>
           </div>
-          <div className="panel-note" style={{ marginTop: 10 }}>
-            Production chain: Order Qty → Prodn → Prodn Balance (= Order - Prodn) → Delivery → Delivery Balance (= Order - Delivery) → Greige Stock (= Prodn - Delivery).
-          </div>
-        </div>
+</div>
       )}
 
       {/* Section 6.C: Machine-wise Knitting Gantt */}
@@ -409,10 +406,7 @@ export default function KnittingModulePage() {
           <div className="panel-head">
             <div>
               <div className="panel-title">Machine-wise Knitting Gantt &amp; Loading</div>
-              <div className="panel-sub">
-                No SMV requirement. Planned by Machine sequence, Job, Color, Fabric, Planned KG, Dia, Gauge, Yarn Count, Brand, Lot, Slot &amp; Factory.
-              </div>
-            </div>
+</div>
           </div>
 
           <div className="table-scroll">
@@ -547,10 +541,7 @@ export default function KnittingModulePage() {
               </tbody>
             </table>
           </div>
-          <div className="panel-note" style={{ marginTop: 12 }}>
-            Formula: Suggested Grey Qty = Finished Requirement ÷ (1 - Process Loss %) + Excess. Historical variance requires conscious user confirmation without guessing.
-          </div>
-        </div>
+</div>
       )}
 
       {/* Section 6.E: Yarn Requirement */}
@@ -559,10 +550,7 @@ export default function KnittingModulePage() {
           <div className="panel-head">
             <div>
               <div className="panel-title">Count / Type / Composition-wise Yarn Requirement</div>
-              <div className="panel-sub">
-                Links approved knitting requirement to Store Stock, Reserved Stock, Free Stock, Pipeline, Safety Stock, and Qty to Order.
-              </div>
-            </div>
+</div>
           </div>
 
           <div className="table-scroll">
@@ -616,10 +604,7 @@ export default function KnittingModulePage() {
           <div className="panel-head">
             <div>
               <div className="panel-title">Dead Stock Analysis (Strict Rule: Usage &lt; 25% Over Last 6 Months)</div>
-              <div className="panel-sub">
-                Based on composition, yarn count, type and brand. Not based on arbitrary periods.
-              </div>
-            </div>
+</div>
             <div style={{ display: 'flex', gap: 12 }}>
               <div className="metric-card" style={{ padding: '8px 14px', minHeight: 'auto' }}>
                 <span style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase' }}>Dead Compositions</span>
@@ -688,10 +673,7 @@ export default function KnittingModulePage() {
           <div className="panel-head">
             <div>
               <div className="panel-title">Production Follow-up Milestone Tracking</div>
-              <div className="panel-sub">
-                Key progression: FOS Received → Knitting Req Confirmed → Knitting Plan OK → Yarn Ready → M/C Allocated → Knitting Running → Completed → Greige Delivered.
-              </div>
-            </div>
+</div>
           </div>
 
           <div className="table-scroll">
@@ -745,10 +727,7 @@ export default function KnittingModulePage() {
           <div className="panel-head">
             <div>
               <div className="panel-title">Outside Knitting Allocation &amp; Capacity Control</div>
-              <div className="panel-sub">
-                Projected/Committed Capacity, Allocated, Completed, Running, Balance, Send/Receive Tracking and Challan status.
-              </div>
-            </div>
+</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <label style={{ fontSize: 12, fontWeight: 700 }}>Month:</label>
               <input type="month" value={outsideMonth} onChange={(e) => setOutsideMonth(e.target.value)} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #cbd5e1' }} />
@@ -854,10 +833,7 @@ export default function KnittingModulePage() {
           <div className="panel-head">
             <div>
               <div className="panel-title">Daily Production Target &amp; Date-wise Output</div>
-              <div className="panel-sub">
-                Shift-wise, machine-wise and component-separated knitting actual output against target.
-              </div>
-            </div>
+</div>
           </div>
 
           <div className="table-scroll">

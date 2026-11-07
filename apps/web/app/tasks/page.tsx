@@ -103,10 +103,7 @@ function TasksContent() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
           <div>
             <h2 style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a', margin: 0 }}>Active Workflow Tasks</h2>
-            <p style={{ fontSize: '12.5px', color: '#64748b', margin: '3px 0 0' }}>
-              Tasks generated on PO import across Central IE, CAD, Merchandising, Dyeing Lab, and Central Planning.
-            </p>
-          </div>
+</div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <Link href="/merchandising-bulk" className="btn btn-primary" style={{ fontSize: '12px', padding: '6px 14px', textDecoration: 'none' }}>
               + Import Another PO

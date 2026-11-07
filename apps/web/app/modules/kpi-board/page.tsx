@@ -148,11 +148,7 @@ export default function KpiBoardPage() {
         <div>
           <span className="status-pill good">Factory Live Board</span>
           <h2>Central KPI Board & Data Entry</h2>
-          <p>
-            Automated section pulls from Knitting, Dyeing, Cutting, Sewing and Quality.
-            IEs can review auto-pulled records, enter manual KPIs for missing metrics, and view real-time charts.
-          </p>
-        </div>
+</div>
         <div className="module-actions">
           <button className="btn btn-secondary" onClick={() => window.print()}>Print Physical Board</button>
           <a className="btn btn-secondary" href="/modules/ie-bulletin">IE Bulletin</a>
@@ -338,10 +334,7 @@ export default function KpiBoardPage() {
           <h3 style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a', margin: '0 0 4px' }}>
             IE Manual KPI Data Entry
           </h3>
-          <p style={{ fontSize: '11px', color: '#64748b', margin: 0 }}>
-            Use this form to input or correct section KPI values when automated data is not received. Saved records update the central board instantly.
-          </p>
-        </div>
+</div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px', alignItems: 'end' }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '11px', fontWeight: 700, color: '#334155' }}>

@@ -1,4 +1,5 @@
 import './globals.css';
+import '../components/ui/tokens.css';
 import TableExportEnhancer from '../components/TableExportEnhancer';
 import FxEnhancer from '../components/fx/FxEnhancer';
 import PwaRegister from '../components/PwaRegister';

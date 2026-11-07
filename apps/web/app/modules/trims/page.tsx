@@ -1952,10 +1952,7 @@ export default function TrimsStorePage() {
                                 }}
                               >
                                 <div>
-                                  <div style={{ fontSize: '11px', color: '#0284C7', fontWeight: 800, textTransform: 'uppercase' }}>
-                                    Trims Specification & Physical Swatch Checklist
-                                  </div>
-                                  <div style={{ fontSize: '16px', fontWeight: 800, color: '#0F274E', marginTop: '2px' }}>
+<div style={{ fontSize: '16px', fontWeight: 800, color: '#0F274E', marginTop: '2px' }}>
                                     Job {job.jobNo} ({job.buyer} - {job.styleNo}) • {job.items.length} Items Listed
                                   </div>
                                 </div>
@@ -2095,11 +2092,7 @@ export default function TrimsStorePage() {
                     Request Merchandiser Review (Job {reviewModalJob.jobNo})
                   </h3>
                 </div>
-                <p style={{ fontSize: '13px', color: '#475569', marginBottom: '16px' }}>
-                  Store personnel cannot modify required trims quantities. If there is a mismatch with garments or physical sample, please record the discrepancy remarks below.
-                </p>
-
-                <div style={{ marginBottom: '16px' }}>
+<div style={{ marginBottom: '16px' }}>
                   <label style={{ fontSize: '12px', fontWeight: 700, color: '#0F274E', display: 'block', marginBottom: '6px' }}>
                     Discrepancy / Sample Mismatch Remark:
                   </label>
@@ -2481,8 +2474,7 @@ export default function TrimsStorePage() {
             >
               <Package size={48} color="#94A3B8" style={{ margin: '0 auto 12px' }} />
               <div style={{ fontSize: '16px', fontWeight: 700, color: '#1E293B' }}>No Job Selected for Receiving</div>
-              <p style={{ fontSize: '13px', margin: '6px 0 0' }}>Search a Job No in the bar above to inspect checklist and receive trims into warehouse bins.</p>
-            </div>
+</div>
           )}
         </div>
       )}
@@ -3042,10 +3034,7 @@ export default function TrimsStorePage() {
                       justifyContent: 'space-between'
                     }}
                   >
-                    <div style={{ fontSize: '12.5px', color: '#92400E', fontWeight: 600 }}>
-                      Quality Inspection Entry: Toggle Pass/Fail for each item. Failing an item dispatches notification to Merchandiser.
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
+<div style={{ display: 'flex', gap: '8px' }}>
                       <button
                         type="button"
                         onClick={() => {
@@ -3750,10 +3739,7 @@ export default function TrimsStorePage() {
                     <h3 style={{ fontSize: '15px', fontWeight: 800, margin: 0, color: '#0F274E' }}>
                       Select a Rack to Configure (R-01 to R-40)
                     </h3>
-                    <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
-                      Click any rack box to re-assign buyer or re-dedicate individual shelves.
-                    </div>
-                  </div>
+</div>
                 </div>
 
                 <div
@@ -3942,11 +3928,7 @@ export default function TrimsStorePage() {
               <h2 style={{ fontSize: '20px', fontWeight: 800, margin: '4px 0', color: '#FFFFFF' }}>
                 Surplus Trims Stock for Production Reuse
               </h2>
-              <p style={{ fontSize: '13px', color: '#FEF3C7', margin: 0 }}>
-                Leftover certified trims from completed jobs (threads, elastics, zippers, spare buttons).
-                Merchandisers and Central Planning can inspect and re-allocate stock to save procurement costs.
-              </p>
-            </div>
+</div>
 
             <div style={{ display: 'flex', gap: '12px', textAlign: 'center' }}>
               <div style={{ background: 'rgba(255,255,255,0.15)', padding: '8px 14px', borderRadius: '6px' }}>
@@ -4175,10 +4157,7 @@ export default function TrimsStorePage() {
                 <div style={{ fontSize: '20px', fontWeight: 900, color: '#FFFFFF', letterSpacing: '-0.02em' }}>
                   TRIMS STORE LIVE KIOSK & QUICK LOCATION FINDER
                 </div>
-                <div style={{ fontSize: '12px', color: '#93C5FD' }}>
-                  Northern Fashions Limited • Trims Warehouse Floor System • Auto-refresh
-                </div>
-              </div>
+</div>
             </div>
 
             <div style={{ display: 'flex', gap: '8px' }}>

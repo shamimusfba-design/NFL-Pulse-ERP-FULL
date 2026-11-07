@@ -214,10 +214,7 @@ export default function SubcontractPage() {
               <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F274E', letterSpacing: '-0.01em' }}>
                 Sub-Contract &amp; Outside Vendor Follow-up
               </div>
-              <div style={{ fontSize: '11.5px', color: '#64748B' }}>
-                Track outside embellishment challans, delivery returns, and delay exceptions
-              </div>
-            </div>
+</div>
           </div>
 
           <button
@@ -430,10 +427,7 @@ export default function SubcontractPage() {
               <div style={{ fontSize: '13px', fontWeight: 750, color: '#0F274E' }}>
                 Outside Process Breakdown: Dispatched vs Received vs Balance
               </div>
-              <div style={{ fontSize: '11px', color: '#64748B' }}>
-                Hover over bars to inspect process volume and vendor return progress
-              </div>
-            </div>
+</div>
             <span
               style={{
                 background: '#F0F9FF',

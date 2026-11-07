@@ -70,10 +70,7 @@ export default function YarnModulePage() {
         <div>
           <div className="hero-kicker">Raw Material &amp; Inventory</div>
           <h2>Yarn Store &amp; Inventory Management</h2>
-          <p>
-            Real-time godown stock ledger, automated safety stock deficit tracking, spinning mill purchase pipeline, and knitting allocation.
-          </p>
-        </div>
+</div>
         <div className="hero-actions">
           <Link href="/" className="btn btn-primary">
             Executive KPI Board

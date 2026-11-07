@@ -467,10 +467,7 @@ export default function PlanningApprovalsPage() {
               <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F274E', letterSpacing: '-0.01em' }}>
                 Central Planning Approval &amp; Release Control
               </div>
-              <div style={{ fontSize: '11.5px', color: '#64748B' }}>
-                Gateway from Merchandising T&amp;A to Knitting, Dyeing and Cutting Execution
-              </div>
-            </div>
+</div>
           </div>
 
           {/* Tab Pill Switcher */}
@@ -731,13 +728,7 @@ export default function PlanningApprovalsPage() {
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <div>
-                  <div style={{ fontSize: '13px', fontWeight: 750, color: '#0F274E' }}>
-                    Approval Pipeline Velocity &amp; Fabric Allocation Distribution
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#64748B' }}>
-                    Hover over bars to inspect status volumes and live fabric demand; click card to filter table
-                  </div>
-                </div>
+</div>
                 <span
                   style={{
                     background: '#F0F9FF',
@@ -825,10 +816,7 @@ export default function PlanningApprovalsPage() {
                   <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F274E' }}>
                     Fabric Order Sheet &amp; T&amp;A Approval Queue
                   </div>
-                  <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '1px' }}>
-                    Verify signed hard-copies, validate CAD marker cons., and trigger Colour × Part knitting release
-                  </div>
-                </div>
+</div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div style={{ position: 'relative' }}>
@@ -1052,11 +1040,7 @@ export default function PlanningApprovalsPage() {
               <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#0F274E', marginBottom: '4px' }}>
                 Monthly Buyer Sample &amp; Bulk Line Quota ({quotaData?.month || '2026-10'})
               </div>
-              <div style={{ fontSize: '11.5px', color: '#64748B', marginBottom: '12px' }}>
-                Tracks Order Development (OD) samples, Salesman Samples (SMS), and Bulk Sewing Line allocation against monthly buyer quotas.
-              </div>
-
-              <div style={{ overflowX: 'auto' }}>
+<div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px' }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid #E2E8F0', color: '#64748B', textAlign: 'left' }}>
@@ -1106,14 +1090,7 @@ export default function PlanningApprovalsPage() {
                 boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
               }}
             >
-              <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#0F274E', marginBottom: '4px' }}>
-                Sample Fabric &amp; Garment Order Sheet — Planning TNA &amp; Dispatch
-              </div>
-              <div style={{ fontSize: '11.5px', color: '#64748B', marginBottom: '12px' }}>
-                Central Planning assigns Yarn, Knitting, Dyeing, Sewing and Dispatch deadlines for Merchandising sample requisitions.
-              </div>
-
-              <div style={{ overflowX: 'auto' }}>
+<div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px' }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid #E2E8F0', color: '#64748B', textAlign: 'left' }}>
@@ -1377,11 +1354,7 @@ export default function PlanningApprovalsPage() {
               <div style={{ fontSize: '14.5px', fontWeight: 800, color: '#0F274E', marginBottom: '4px' }}>
                 Record Physical Signed Copy — Job #{signedModalJob.jobNo} ({signedModalJob.styleNo})
               </div>
-              <p style={{ color: '#64748B', fontSize: '11.5px', marginBottom: '14px' }}>
-                Confirm physical hand-signed copies of the Fabric Order Sheet and T&amp;A before releasing to Knitting.
-              </p>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+<div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1E293B', fontWeight: 600 }}>
                   <input
                     type="checkbox"
@@ -1509,11 +1482,7 @@ export default function PlanningApprovalsPage() {
               <div style={{ fontSize: '14.5px', fontWeight: 800, color: '#DC2626', marginBottom: '4px' }}>
                 Return to Merchandiser — Job #{returnModalJob.jobNo} ({returnModalJob.styleNo})
               </div>
-              <p style={{ color: '#64748B', fontSize: '11.5px', marginBottom: '14px' }}>
-                Returning re-opens the Merchandiser&apos;s task with your discrepancy note and blocks Knitting release until corrected.
-              </p>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+<div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div>
                   <label style={{ display: 'block', color: '#64748B', marginBottom: '4px' }}>Document to Return</label>
                   <select
@@ -1631,10 +1600,7 @@ export default function PlanningApprovalsPage() {
                   <div style={{ fontSize: '15px', fontWeight: 800, color: '#0F274E' }}>
                     Approve &amp; Release to Knitting — Job #{releaseModalJob.jobNo} · Style {releaseModalJob.styleNo} ({releaseModalJob.buyer})
                   </div>
-                  <div style={{ fontSize: '11.5px', color: '#64748B' }}>
-                    Review Colour × Part finish fabric (Kg) and CAD consumption. Greige for knitting is calculated automatically.
-                  </div>
-                </div>
+</div>
                 <button
                   onClick={addReleaseRow}
                   style={{

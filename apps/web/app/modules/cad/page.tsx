@@ -124,7 +124,7 @@ export default function CadWorkspace() {
 
   return <Shell title="CAD / Consumption / Pattern" eyebrow="Sample / CAD / Technical · job-linked consumption">
     <section className="module-hero">
-      <div><span className="status-pill">Live foundation</span><h2>CAD Consumption Work Queue</h2><p>Confirmed Order Entry automatically creates a CAD pending task. CAD reviews color-wise quantities, prepares consumption and confirms the fabric requirement. The same data feeds the Fabric Order Sheet and Merchandising follow-up.</p></div>
+      <div><span className="status-pill">Live foundation</span><h2>CAD Consumption Work Queue</h2></div>
       <div className="module-actions"><a className="btn btn-secondary" href="/tasks">My Pending Tasks</a></div>
     </section>
 

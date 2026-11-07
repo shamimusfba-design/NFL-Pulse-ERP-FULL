@@ -193,11 +193,7 @@ export default function PrintingModulePage() {
         <div>
           <div className="hero-kicker">Garment Production · Printing Division</div>
           <h2>In-House &amp; Outsource Printing Management</h2>
-          <p>
-            Track in-house automatic oval carousels and manual printing tables alongside multi-vendor outsource print challans,
-            strike-off lab approvals, and defect/rejection rates.
-          </p>
-        </div>
+</div>
         <div className="hero-actions">
           <Link href="/" className="btn btn-primary">
             Executive KPI Board

@@ -912,10 +912,7 @@ export function Job360Content({ initialJobId }: Job360Props) {
               <h3 style={{ fontSize: '15px', fontWeight: 900, color: COLORS.navy, margin: 0 }}>
                 1. Job Information · Core Specifications, Commercials &amp; PO Breakdown
               </h3>
-              <div style={{ fontSize: '11.5px', color: COLORS.grey, marginTop: '2px' }}>
-                Complete order identification, technical flat sketch, size breakdown matrix, and PO logistics
-              </div>
-            </div>
+</div>
             <span style={{
               fontSize: '11px',
               fontWeight: 800,
@@ -1238,10 +1235,7 @@ export function Job360Content({ initialJobId }: Job360Props) {
               <h3 style={{ fontSize: '15px', fontWeight: 900, color: COLORS.navy, margin: 0 }}>
                 2. Planning Input · Backward Schedule, T&amp;A Critical Path &amp; Milestones
               </h3>
-              <div style={{ fontSize: '11.5px', color: COLORS.grey, marginTop: '2px' }}>
-                Backward critical path from target ex-factory to PO import and production release
-              </div>
-            </div>
+</div>
             <span style={{ fontSize: '11px', fontWeight: 800, color: COLORS.green, background: '#DCFCE7', padding: '4px 10px', borderRadius: '6px' }}>
               ✓ T&amp;A ON-TIME
             </span>
@@ -1326,10 +1320,7 @@ export function Job360Content({ initialJobId }: Job360Props) {
               <h3 style={{ fontSize: '15px', fontWeight: 900, color: COLORS.navy, margin: 0 }}>
                 3. Total Production Status · Unified End-to-End Manufacturing Master Board
               </h3>
-              <div style={{ fontSize: '11.5px', color: COLORS.grey, marginTop: '2px' }}>
-                Complete pipeline tracking from Yarn sourcing to Garment shipment in one unified view
-              </div>
-            </div>
+</div>
             <span style={{ fontSize: '11px', fontWeight: 800, color: COLORS.blue, background: '#E0F2FE', padding: '4px 10px', borderRadius: '6px' }}>
               ALL 12 STAGES SYNCHRONIZED
             </span>
@@ -1434,10 +1425,7 @@ export function Job360Content({ initialJobId }: Job360Props) {
               <h3 style={{ fontSize: '15px', fontWeight: 900, color: COLORS.navy, margin: 0 }}>
                 4. Knitting Input · Yarn Lot, Count, Brand &amp; Machine Parameters
               </h3>
-              <div style={{ fontSize: '11.5px', color: COLORS.grey, marginTop: '2px' }}>
-                Practical knitting floor parameters with yarn allocation and delivery into Greige Store
-              </div>
-            </div>
+</div>
             <span style={{ fontSize: '11px', fontWeight: 800, color: COLORS.green, background: '#DCFCE7', padding: '4px 10px', borderRadius: '6px' }}>
               ✓ KNITTING COMPLETED
             </span>
@@ -1511,10 +1499,7 @@ export function Job360Content({ initialJobId }: Job360Props) {
               <h3 style={{ fontSize: '15px', fontWeight: 900, color: COLORS.navy, margin: 0 }}>
                 5. Dyeing &amp; Special Process · Batch Delivery, Peach/Brush &amp; AOP Tracking
               </h3>
-              <div style={{ fontSize: '11.5px', color: COLORS.grey, marginTop: '2px' }}>
-                Batch deliveries from dyeing mills with sent vs received weights and process loss %
-              </div>
-            </div>
+</div>
             <span style={{ fontSize: '11px', fontWeight: 800, color: COLORS.green, background: '#DCFCE7', padding: '4px 10px', borderRadius: '6px' }}>
               ✓ 100% DELIVERED
             </span>
@@ -1580,10 +1565,7 @@ export function Job360Content({ initialJobId }: Job360Props) {
               <h3 style={{ fontSize: '15px', fontWeight: 900, color: COLORS.navy, margin: 0 }}>
                 6. Dyeing Lab (Lab Dip) · Official LD#2026 Register &amp; Mill Shade Approval Matrix
               </h3>
-              <div style={{ fontSize: '11.5px', color: COLORS.grey, marginTop: '2px' }}>
-                Direct factory format with Northern, DBL, GMS, Yasin and Amantex option approvals
-              </div>
-            </div>
+</div>
             <span style={{ fontSize: '11px', fontWeight: 800, color: '#15803D', background: '#DCFCE7', padding: '4px 10px', borderRadius: '6px' }}>
               ✓ SHADES APPROVED
             </span>
@@ -1773,10 +1755,7 @@ export function Job360Content({ initialJobId }: Job360Props) {
               <h3 style={{ fontSize: '15px', fontWeight: 900, color: COLORS.navy, margin: 0 }}>
                 8. Cutting &amp; CAD Adjustment · Shrinkage Calibration &amp; Lay Optimization
               </h3>
-              <div style={{ fontSize: '11.5px', color: COLORS.grey, marginTop: '2px' }}>
-                Steam vs Tumble shrinkage adjustment, CAD marker scale ratio, and table lay length calibration
-              </div>
-            </div>
+</div>
 
             {/* Toggle: Steam vs Tumble Shrinkage */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#F1F5F9', padding: '4px 8px', borderRadius: '8px' }}>
@@ -1861,10 +1840,7 @@ export function Job360Content({ initialJobId }: Job360Props) {
               <h3 style={{ fontSize: '15px', fontWeight: 900, color: COLORS.navy, margin: 0 }}>
                 9. Print &amp; Embroidery · Strike-Off Approval, Panel Reconciliation &amp; Fastness
               </h3>
-              <div style={{ fontSize: '11.5px', color: COLORS.grey, marginTop: '2px' }}>
-                Chest placement print execution with strike-off sign-off and panel rejection rate
-              </div>
-            </div>
+</div>
             <span style={{ fontSize: '11px', fontWeight: 800, color: COLORS.green, background: '#DCFCE7', padding: '4px 10px', borderRadius: '6px' }}>
               ✓ STRIKE-OFF APPROVED
             </span>
@@ -1909,10 +1885,7 @@ export function Job360Content({ initialJobId }: Job360Props) {
               <h3 style={{ fontSize: '15px', fontWeight: 900, color: COLORS.navy, margin: 0 }}>
                 10. Sewing &amp; Finishing · Hourly Line Performance &amp; Packing Output
               </h3>
-              <div style={{ fontSize: '11.5px', color: COLORS.grey, marginTop: '2px' }}>
-                Hourly production output, line balancing, SMV target vs actual, and packed carton ledger
-              </div>
-            </div>
+</div>
             <span style={{ fontSize: '11px', fontWeight: 800, color: COLORS.green, background: '#DCFCE7', padding: '4px 10px', borderRadius: '6px' }}>
               ✓ SEWING COMPLETE
             </span>
@@ -1963,10 +1936,7 @@ export function Job360Content({ initialJobId }: Job360Props) {
               <h3 style={{ fontSize: '16px', fontWeight: 900, color: COLORS.navy, margin: 0 }}>
                 11. Quality &amp; Audits · Section 4-Point Scores, DHU Metrics &amp; Final AQL 1.5
               </h3>
-              <div style={{ fontSize: '12px', color: COLORS.grey, marginTop: '2px' }}>
-                Stage-wise penalty points, defect piece counts, DHU benchmarks, and buyer export certificates
-              </div>
-            </div>
+</div>
             <span style={{ fontSize: '12px', fontWeight: 900, color: COLORS.green, background: '#DCFCE7', padding: '6px 14px', borderRadius: '6px' }}>
               ✓ FINAL AQL 1.5 EXPORT AUDIT PASSED
             </span>
@@ -2008,10 +1978,7 @@ export function Job360Content({ initialJobId }: Job360Props) {
 
           {/* 2. SECTION-WISE QUALITY TABLE (LARGER FONT SIZE · 13px-14px · NO PARAGRAPHS) */}
           <div style={{ marginBottom: '20px' }}>
-            <div style={{ fontSize: '13px', fontWeight: 900, color: COLORS.navy, marginBottom: '8px' }}>
-              Section-Wise Quality Audits (Fabric Inspection to Final Buyer AQL 1.5)
-            </div>
-            <div style={{ overflowX: 'auto', border: `1px solid ${COLORS.border}`, borderRadius: '8px' }}>
+<div style={{ overflowX: 'auto', border: `1px solid ${COLORS.border}`, borderRadius: '8px' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px', textAlign: 'left' }}>
                 <thead>
                   <tr style={{ background: '#0F274E', color: '#FFFFFF', borderBottom: `2px solid ${COLORS.navy}` }}>

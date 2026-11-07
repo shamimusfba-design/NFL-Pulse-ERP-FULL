@@ -515,10 +515,7 @@ export default function CapacityPage() {
               <div style={{ fontSize: '13px', fontWeight: 750, color: '#0F274E' }}>
                 Section Monthly Capacity Utilization vs Booked Demand
               </div>
-              <div style={{ fontSize: '11px', color: '#64748B' }}>
-                Hover over bars to inspect booked demand vs full capacity across knitting, dyeing, sewing and finishing
-              </div>
-            </div>
+</div>
             <span
               style={{
                 background: '#F0F9FF',
@@ -579,10 +576,7 @@ export default function CapacityPage() {
                 <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#0F274E' }}>
                   Factory Holiday &amp; Closure Calendar
                 </div>
-                <div style={{ fontSize: '11.5px', color: '#64748B' }}>
-                  Weekly holiday is fixed to Sunday. Any date listed below reduces slot working days automatically.
-                </div>
-              </div>
+</div>
               <button
                 onClick={savePolicies}
                 disabled={saving}
@@ -745,10 +739,7 @@ export default function CapacityPage() {
               <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F274E' }}>
                 1. Bulk Production 10-Day Slot Heatmap ({data?.month || month})
               </div>
-              <div style={{ fontSize: '11.5px', color: '#64748B' }}>
-                Slot 1 (Days 1–10) · Slot 2 (Days 11–20) · Slot 3 (Days 21–End). Click slot to inspect contributing jobs.
-              </div>
-            </div>
+</div>
             <div style={{ display: 'flex', gap: '6px', fontSize: '11px' }}>
               <span style={{ padding: '2px 8px', borderRadius: '12px', background: '#ECFDF5', border: '1px solid #A7F3D0', color: '#065F46', fontWeight: 700 }}>
                 Normal ≤ {thresholds.greenMax}%

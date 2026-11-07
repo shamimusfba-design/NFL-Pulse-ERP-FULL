@@ -2051,10 +2051,7 @@ export default function FinishedFabricPage() {
                   <Truck className="w-4 h-4 text-sky-600" />
                   Dyeing Delivery Challans Verification & Inward Gate Register
                 </h3>
-                <p className="text-xs text-slate-500">
-                  Verify scale weight vs mill delivery challan, shade clearance & bin rack assignment
-                </p>
-              </div>
+</div>
               <button
                 onClick={() => {
                   if (rawLines[0]) handleOpenReceive(rawLines[0]);
@@ -2219,10 +2216,7 @@ export default function FinishedFabricPage() {
                     <Scissors className="w-4 h-4 text-purple-600" />
                     Cutting Floor Requisition & Delivery Gate Pass
                   </h3>
-                  <p className="text-xs text-slate-500">
-                    Assign cutting table, CAD marker lot #, and allocate body & rib roll weight
-                  </p>
-                </div>
+</div>
                 <span className="text-xs font-bold bg-slate-100 text-slate-700 px-2.5 py-1 rounded">
                   Issue Desk
                 </span>
@@ -2347,10 +2341,7 @@ export default function FinishedFabricPage() {
                 <div className="py-20 text-center text-slate-400">
                   <Scissors className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                   <p className="text-xs font-semibold text-slate-600">No colorway currently selected</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    Click any fabric line from "Available Fabric Ready for Cutting" on the left to prepare the issue slip.
-                  </p>
-                </div>
+</div>
               )}
             </div>
           </div>

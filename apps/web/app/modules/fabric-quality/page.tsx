@@ -396,10 +396,7 @@ export default function FabricQualityPage() {
             <h1 style={{ fontSize: '24px', fontWeight: 850, margin: '4px 0', letterSpacing: '-0.02em', color: '#ffffff' }}>
               Fabric Quality Management
             </h1>
-            <p style={{ margin: 0, fontSize: '13px', color: '#cbd5e1' }}>
-              Full traceability from Yarn Lot & Knitting Machine through Greige 4-Point Inspection to Dyeing Batch Shade & Physical Tests.
-            </p>
-          </div>
+</div>
 
           <div style={{ display: 'flex', gap: '10px' }}>
             <button
@@ -653,10 +650,7 @@ export default function FabricQualityPage() {
               <div style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>
                 Stage-wise Fabric Inspection: Passed vs Defect (Kg)
               </div>
-              <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '14px' }}>
-                Knitting machine output, Greige 4-point rolls and Dyeing finished winches
-              </div>
-              <div style={{ height: '240px' }}>
+<div style={{ height: '240px' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={stageChartData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -713,10 +707,7 @@ export default function FabricQualityPage() {
                 <h2 style={{ fontSize: '16px', fontWeight: 800, margin: 0, color: '#0f172a' }}>
                   Fabric Defect Library & Corrective Action Master
                 </h2>
-                <p style={{ margin: '3px 0 0', fontSize: '12.5px', color: '#64748b' }}>
-                  Standard defect categorization for Knitting, Greige Fabric and Dyeing processes.
-                </p>
-              </div>
+</div>
               <span className="badge">{DEFECT_LIBRARY.length} Standard Defect Codes</span>
             </div>
 
@@ -989,10 +980,7 @@ export default function FabricQualityPage() {
                 <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#0f172a' }}>
                   Log Fabric Quality Inspection
                 </h3>
-                <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#64748b' }}>
-                  Verify fabric specifications, detect defects and issue store clearance.
-                </p>
-              </div>
+</div>
               <button
                 type="button"
                 onClick={() => setShowEntryModal(false)}

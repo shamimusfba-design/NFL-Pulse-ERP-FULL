@@ -301,11 +301,7 @@ export default function TargetGivingPage() {
         <div>
           <div className="hero-kicker">IE Operations · Official Daily Targets</div>
           <h2>Sewing Line &amp; Style Target Setting</h2>
-          <p>
-            One authoritative source for floor target calculation. Standard SMV, Manpower, and Target Efficiency dynamically compute Target/Hour
-            and Total Daily Targets with the 2× SMV rule for Short/Balance runs.
-          </p>
-        </div>
+</div>
         <div className="hero-actions">
           <Link href="/modules/ie-line-performance" className="btn btn-primary">
             Floor Line Performance &rarr;

@@ -614,10 +614,7 @@ export default function TaPage() {
               <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F274E', letterSpacing: '-0.01em' }}>
                 Time &amp; Action (T&amp;A) Plan &amp; Control Tower
               </div>
-              <div style={{ fontSize: '11.5px', color: '#64748B' }}>
-                Backward scheduling from earliest PO CCD with milestone tracking and delay risk management
-              </div>
-            </div>
+</div>
           </div>
 
           {/* Sub-Tabs Switcher */}
@@ -872,10 +869,7 @@ export default function TaPage() {
               <div style={{ fontSize: '13px', fontWeight: 750, color: '#0F274E' }}>
                 T&amp;A Schedule Health &amp; Critical Path Distribution
               </div>
-              <div style={{ fontSize: '11px', color: '#64748B' }}>
-                Hover over bars to inspect critical milestone health and projected shipment runway
-              </div>
-            </div>
+</div>
             <span
               style={{
                 background: '#F0F9FF',
@@ -1113,10 +1107,7 @@ export default function TaPage() {
                         <div style={{ fontSize: '16px', fontWeight: 800, color: '#0F274E' }}>
                           {displayJobNo(order.jobNo)} — T&amp;A Schedule, Actuals &amp; Re-Plan Control
                         </div>
-                        <div style={{ fontSize: '11.5px', color: '#64748B' }}>
-                          Backward scheduled from earliest PO CCD. Includes Test Cutting, Actual Dates, Delay Reasons, and Re-plan Version control.
-                        </div>
-                      </div>
+</div>
 
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                         <button
@@ -1544,11 +1535,7 @@ export default function TaPage() {
             <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F274E', marginBottom: '4px' }}>
               Critical Path &amp; Shipment-Risk Alert List
             </div>
-            <div style={{ fontSize: '11.5px', color: '#64748B', marginBottom: '14px' }}>
-              Identifies jobs where milestone delays threaten to breach the earliest PO CCD date.
-            </div>
-
-            <div style={{ overflowX: 'auto' }}>
+<div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', minWidth: '950px', borderCollapse: 'collapse', fontSize: '12px' }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid #E2E8F0', color: '#64748B', textAlign: 'left' }}>
@@ -1639,11 +1626,7 @@ export default function TaPage() {
             <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F274E', marginBottom: '4px' }}>
               Weekly Fabric &amp; Trims Due vs Received Follow-up
             </div>
-            <div style={{ fontSize: '11.5px', color: '#64748B', marginBottom: '14px' }}>
-              Tracks weekly finish fabric demand vs warehouse stock and item-wise trims readiness.
-            </div>
-
-            <div style={{ overflowX: 'auto' }}>
+<div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', minWidth: '950px', borderCollapse: 'collapse', fontSize: '12px' }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid #E2E8F0', color: '#64748B', textAlign: 'left' }}>
@@ -1830,10 +1813,7 @@ export default function TaPage() {
                 <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F274E' }}>
                   Weekly Shipment Meeting Decisions &amp; Action Items
                 </div>
-                <div style={{ fontSize: '11.5px', color: '#64748B' }}>
-                  Reviews bottlenecks, revised commitments, and responsible section head actions.
-                </div>
-              </div>
+</div>
               <button
                 onClick={() =>
                   setEditingMeeting({

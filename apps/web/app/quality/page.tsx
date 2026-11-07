@@ -334,10 +334,7 @@ export default function GarmentsQualityPage() {
             <h1 style={{ fontSize: '24px', fontWeight: 850, margin: '4px 0', letterSpacing: '-0.02em', color: '#ffffff' }}>
               Garments Quality Department
             </h1>
-            <p style={{ margin: 0, fontSize: '13px', color: '#cbd5e1' }}>
-              Process-specific inspection registers, inline & end-line checkpoints, DHU tracking, and AQL audit release.
-            </p>
-          </div>
+</div>
 
           <div style={{ display: 'flex', gap: '10px' }}>
             <button
@@ -597,10 +594,7 @@ export default function GarmentsQualityPage() {
                 {activeSection === 'sewing' && 'Sewing Quality Checkpoint: Inline Inspection, End-line Table DHU, SPI & Seam Strength'}
                 {activeSection === 'finishing' && 'Finishing Quality Checkpoint: Ironing, Label Verification, Measurement Audit & AQL 1.5 Final Audit'}
               </strong>
-              <p style={{ margin: '2px 0 0', fontSize: '12.5px', color: '#64748b' }}>
-                Process-specific parameters, tolerances and authorized quality sign-offs.
-              </p>
-            </div>
+</div>
             <button
               type="button"
               onClick={() => {
@@ -630,10 +624,7 @@ export default function GarmentsQualityPage() {
               <div style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>
                 Section-wise DHU (%) vs Target Benchmark
               </div>
-              <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '14px' }}>
-                Real factory operational DHU across Cutting, Printing, Embroidery, Sewing and Finishing
-              </div>
-              <div style={{ height: '240px' }}>
+<div style={{ height: '240px' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={sectionDHUData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -688,10 +679,7 @@ export default function GarmentsQualityPage() {
                 <h2 style={{ fontSize: '16px', fontWeight: 800, margin: 0, color: '#0f172a' }}>
                   Garment Manufacturing Defect Classification Master
                 </h2>
-                <p style={{ margin: '3px 0 0', fontSize: '12.5px', color: '#64748b' }}>
-                  Critical, Major, and Minor defect classification with mandatory corrective action protocols.
-                </p>
-              </div>
+</div>
               <span className="badge">{GARMENT_DEFECT_LIBRARY.length} Standard Defect Rules</span>
             </div>
 
@@ -922,10 +910,7 @@ export default function GarmentsQualityPage() {
                 <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#0f172a' }}>
                   Log Garment Quality Inspection
                 </h3>
-                <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#64748b' }}>
-                  Record inline/endline audit, measure DHU, and issue quality release.
-                </p>
-              </div>
+</div>
               <button
                 type="button"
                 onClick={() => setShowModal(false)}
