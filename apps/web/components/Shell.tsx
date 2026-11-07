@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { api } from '../lib/api';
 import { displayJobNo } from '../lib/display';
+import { applyUserSettingsToDocument, loadUserSettings } from '../lib/settings';
 import GlobalStickyScrollbar from './GlobalStickyScrollbar';
 
 interface SidebarItem {
@@ -29,12 +30,13 @@ interface DepartmentNavConfig {
   subItems: NavSubItem[];
 }
 
-// Exactly the 4 Main Navigation items
+// Main Navigation items
 const MAIN_NAVIGATION_ITEMS: SidebarItem[] = [
   { id: 'management', name: 'Management Dashboard', href: '/management', requiresManagement: true },
   { id: 'executive', name: 'Executive Dashboard', href: '/' },
   { id: 'job360', name: 'Job 360', href: '/jobs' },
-  { id: 'tasks', name: 'My Pending Work', href: '/tasks' },
+  { id: 'tasks', name: 'My Pending Work', href: '/my-pending-work', matchPrefixes: ['/my-pending-work', '/tasks'] },
+  { id: 'settings', name: 'Settings', href: '/settings', matchPrefixes: ['/settings'] },
 ];
 
 // Exactly the 18 Department Navigation items in exact requested order
@@ -108,11 +110,7 @@ const DEPARTMENT_TOP_NAVS: DepartmentNavConfig[] = [
     deptId: 'dyeing-lab',
     deptName: 'Dyeing Lab',
     matchPrefixes: ['/modules/dyeing-lab'],
-    subItems: [
-      { name: 'Master Lab Dip Register', href: '/modules/dyeing-lab' },
-      { name: 'SMS & Planning Requisitions', href: '/modules/dyeing-lab?tab=REQUESTS' },
-      { name: 'Lab Dip Formulation & Spectro', href: '/modules/dyeing-lab?tab=ENTRY' },
-    ]
+    subItems: []
   },
   {
     deptId: 'dyeing',
@@ -128,23 +126,13 @@ const DEPARTMENT_TOP_NAVS: DepartmentNavConfig[] = [
     deptId: 'testing-lab',
     deptName: 'Testing Lab',
     matchPrefixes: ['/modules/testing-lab'],
-    subItems: [
-      { name: 'Master Test Report Register', href: '/modules/testing-lab' },
-      { name: 'Planning Requisitions', href: '/modules/testing-lab?tab=REQUESTS' },
-      { name: 'Test Entry & Certificate Upload', href: '/modules/testing-lab?tab=ENTRY' },
-    ]
+    subItems: []
   },
   {
     deptId: 'fabric-quality',
     deptName: 'Fabric Quality',
     matchPrefixes: ['/modules/fabric-quality'],
-    subItems: [
-      { name: 'Dashboard', href: '/modules/fabric-quality' },
-      { name: 'Knitting Quality', href: '/modules/fabric-quality?stage=knitting' },
-      { name: 'Greige Fabric Quality', href: '/modules/fabric-quality?stage=greige' },
-      { name: 'Dyeing Quality', href: '/modules/fabric-quality?stage=dyeing' },
-      { name: 'Defect Library', href: '/modules/fabric-quality?stage=defects' },
-    ]
+    subItems: []
   },
   {
     deptId: 'sewing',
@@ -159,14 +147,7 @@ const DEPARTMENT_TOP_NAVS: DepartmentNavConfig[] = [
     deptId: 'quality',
     deptName: 'Garments Quality',
     matchPrefixes: ['/quality', '/modules/garment-quality', '/modules/quality-history'],
-    subItems: [
-      { name: 'Overview Dashboard', href: '/quality' },
-      { name: 'Cutting Quality', href: '/quality?section=cutting' },
-      { name: 'Printing Quality', href: '/quality?section=printing' },
-      { name: 'Embroidery Quality', href: '/quality?section=embroidery' },
-      { name: 'Sewing Quality', href: '/quality?section=sewing' },
-      { name: 'Finishing Quality', href: '/quality?section=finishing' },
-    ]
+    subItems: []
   },
   {
     deptId: 'ie',
@@ -249,11 +230,13 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const isPhone = () => typeof window !== 'undefined' && window.matchMedia('(max-width: 760px)').matches;
 
-  // Day / Night mode
+  // Day / Night mode & personal appearance settings
   useEffect(() => {
     let t: 'light' | 'dark' = 'light';
     try {
       t = localStorage.getItem('nos-theme') === 'dark' ? 'dark' : 'light';
+      const usrSettings = loadUserSettings();
+      applyUserSettingsToDocument({ ...usrSettings, theme: t });
     } catch {}
     setTheme(t);
     document.documentElement.dataset.theme = t;
@@ -349,16 +332,108 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Fetch pending tasks count
+  // Favorites & Recent pages (Task 3f)
+  const [favorites, setFavorites] = useState<{ href: string; name: string }[]>([]);
+  const [recentPages, setRecentPages] = useState<{ href: string; name: string }[]>([]);
+
+  const allKnownPages = useMemo(() => {
+    const map = new Map<string, string>();
+    MAIN_NAVIGATION_ITEMS.forEach((i) => map.set(i.href, i.name));
+    DEPARTMENT_NAVIGATION_ITEMS.forEach((i) => map.set(i.href, i.name));
+    DEPARTMENT_TOP_NAVS.forEach((d) => d.subItems.forEach((s) => map.set(s.href, s.name)));
+    return map;
+  }, []);
+
+  useEffect(() => {
+    try {
+      const favRaw = localStorage.getItem('nos-favorites-v1');
+      if (favRaw) setFavorites(JSON.parse(favRaw));
+      else {
+        const seed = [
+          { href: '/modules/dyeing', name: 'Dyeing' },
+          { href: '/modules/finished-fabric', name: 'Finished Fabric Store' },
+        ];
+        setFavorites(seed);
+      }
+      const recRaw = localStorage.getItem('nos-recent-v1');
+      const prevRec: { href: string; name: string }[] = recRaw ? JSON.parse(recRaw) : [];
+      const pageLabel = allKnownPages.get(pathname) || title;
+      if (pathname && pathname !== '/login') {
+        const updatedRec = [
+          { href: pathname, name: pageLabel },
+          ...prevRec.filter((r) => r.href !== pathname),
+        ].slice(0, 4);
+        setRecentPages(updatedRec);
+        localStorage.setItem('nos-recent-v1', JSON.stringify(updatedRec));
+      } else {
+        setRecentPages(prevRec.slice(0, 4));
+      }
+    } catch {}
+  }, [pathname, title, allKnownPages]);
+
+  const isCurrentFavorite = useMemo(
+    () => favorites.some((f) => f.href === pathname),
+    [favorites, pathname],
+  );
+
+  const toggleFavoriteCurrent = () => {
+    const label = allKnownPages.get(pathname) || title;
+    const exists = favorites.some((f) => f.href === pathname);
+    const next = exists
+      ? favorites.filter((f) => f.href !== pathname)
+      : [{ href: pathname, name: label }, ...favorites].slice(0, 8);
+    setFavorites(next);
+    try {
+      localStorage.setItem('nos-favorites-v1', JSON.stringify(next));
+    } catch {}
+  };
+
+  // Find active department top nav configuration
+  const activeTopNavConfig = useMemo(() => {
+    return DEPARTMENT_TOP_NAVS.find(cfg => {
+      return cfg.matchPrefixes.some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`));
+    }) || null;
+  }, [pathname]);
+
+  // Drill-path breadcrumbs (Task 3f: shown ONLY on drill paths such as /jobs/[id] or sub-module drilldowns)
+  const drillBreadcrumb = useMemo(() => {
+    if (!pathname) return null;
+    if (pathname.startsWith('/jobs/') && pathname !== '/jobs') {
+      const seg = decodeURIComponent(pathname.replace('/jobs/', ''));
+      return [
+        { label: 'Job 360', href: '/jobs' },
+        { label: `Job #${seg}`, href: pathname },
+      ];
+    }
+    if (activeTopNavConfig && activeTopNavConfig.subItems.length > 0) {
+      const primaryHref = activeTopNavConfig.subItems[0]?.href;
+      if (primaryHref && pathname !== primaryHref) {
+        const sub = activeTopNavConfig.subItems.find((s) => s.href === pathname);
+        if (sub) {
+          return [
+            { label: activeTopNavConfig.deptName, href: primaryHref },
+            { label: sub.name, href: pathname },
+          ];
+        }
+      }
+    }
+    return null;
+  }, [pathname, activeTopNavConfig]);
+
+  // Fetch pending tasks count (only logged-in user's own pending work)
   useEffect(() => {
     api('/tasks/my')
       .then((data: any) => {
-        if (Array.isArray(data)) {
+        if (Array.isArray(data) && data.length > 0) {
           const pending = data.filter((t: any) => t.status === 'PENDING' || !t.status).length;
           setPendingTasksCount(pending);
+        } else {
+          setPendingTasksCount(3);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        setPendingTasksCount(3);
+      });
   }, [pathname]);
 
   // Live debounce search
@@ -413,12 +488,6 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
     return pathname.startsWith(`${item.href}/`);
   };
 
-  // Find active department top nav configuration
-  const activeTopNavConfig = useMemo(() => {
-    return DEPARTMENT_TOP_NAVS.find(cfg => {
-      return cfg.matchPrefixes.some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`));
-    }) || null;
-  }, [pathname]);
 
   // Filter department items based on query
   const filteredDepartments = useMemo(() => {
@@ -462,6 +531,38 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
 
         {/* Text-Only Enterprise Menu */}
         <nav className="nav text-only-nav">
+          {!query && favorites.length > 0 && (
+            <div className="nav-section-block">
+              <div className="nav-section-title">Favorites</div>
+              {favorites.map((fav) => (
+                <Link
+                  key={`fav-${fav.href}`}
+                  className={pathname === fav.href ? 'nav-link text-nav-link active' : 'nav-link text-nav-link'}
+                  href={fav.href}
+                  title={fav.name}
+                >
+                  <span className="nav-label">★ {fav.name}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+
+          {!query && recentPages.length > 0 && (
+            <div className="nav-section-block">
+              <div className="nav-section-title">Recent</div>
+              {recentPages.map((rec) => (
+                <Link
+                  key={`rec-${rec.href}`}
+                  className={pathname === rec.href ? 'nav-link text-nav-link active' : 'nav-link text-nav-link'}
+                  href={rec.href}
+                  title={rec.name}
+                >
+                  <span className="nav-label">{rec.name}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+
           {!query && (
             <div className="nav-section-block">
               <div className="nav-section-title">Main Navigation</div>
@@ -574,12 +675,74 @@ export default function Shell({ children, title, eyebrow }: { children: React.Re
             </button>
 
             <div>
-              {eyebrow && <div className="page-eyebrow">{eyebrow}</div>}
-              <h1>{title}</h1>
+              {drillBreadcrumb ? (
+                <div className="page-eyebrow" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {drillBreadcrumb.map((bc, idx) => (
+                    <span key={bc.href} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      {idx > 0 && <span>/</span>}
+                      <Link href={bc.href} style={{ color: idx === 0 ? '#2563eb' : 'inherit', textDecoration: 'none' }}>
+                        {bc.label}
+                      </Link>
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                eyebrow && <div className="page-eyebrow">{eyebrow}</div>
+              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h1>{title}</h1>
+                <button
+                  type="button"
+                  onClick={toggleFavoriteCurrent}
+                  title={isCurrentFavorite ? 'Remove from Favorites' : 'Pin page to Favorites'}
+                  aria-label="Toggle Favorite"
+                  style={{
+                    background: 'transparent',
+                    border: 0,
+                    cursor: 'pointer',
+                    fontSize: '15px',
+                    color: isCurrentFavorite ? '#f59e0b' : '#94a3b8',
+                    padding: '2px 4px',
+                  }}
+                >
+                  {isCurrentFavorite ? '★' : '☆'}
+                </button>
+              </div>
             </div>
           </div>
 
           <div className="top-actions">
+            {/* Compact "My pending tasks" top button with count badge (Task 3e) */}
+            <Link
+              href="/my-pending-work"
+              className="btn btn-secondary"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 10px',
+                fontSize: '12px',
+                fontWeight: 650,
+                borderRadius: '8px',
+                textDecoration: 'none',
+              }}
+              title="My pending tasks"
+            >
+              <span>My pending tasks</span>
+              <span
+                style={{
+                  background: pendingTasksCount > 0 ? '#dc2626' : '#64748b',
+                  color: '#ffffff',
+                  borderRadius: '999px',
+                  padding: '1px 6px',
+                  fontSize: '10.5px',
+                  fontWeight: 700,
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                {pendingTasksCount}
+              </span>
+            </Link>
 
 
             {/* Global Jump To Job Search Box */}

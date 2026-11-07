@@ -16,6 +16,9 @@ import {
   Cell
 } from 'recharts';
 import { FX_SERIES, FX_BAR, FX_PIE, FxResponsiveContainer as ResponsiveContainer } from '../../../components/fx';
+import { DataGrid, DataGridColumn } from '../../../components/ui/DataGrid';
+import { RecordPanel, RecordPanelSection } from '../../../components/ui/RecordPanel';
+import { fmtDate, fmtNum } from '../../../lib/format';
 
 type InspectionStage = 'knitting' | 'greige' | 'dyeing';
 type InspectionStatus = 'Approved' | 'Hold' | 'Rejected' | 'Rework';
@@ -261,6 +264,7 @@ export default function FabricQualityPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [inspections, setInspections] = useState<FabricInspectionRecord[]>(INITIAL_INSPECTIONS);
   const [showEntryModal, setShowEntryModal] = useState(false);
+  const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
 
   // Form states for new inspection entry
   const [formStage, setFormStage] = useState<InspectionStage>('knitting');
@@ -433,130 +437,15 @@ export default function FabricQualityPage() {
           </div>
         </section>
 
-        {/* Finished Fabric Store Quality Gate Rule Notice */}
-        <div
-          style={{
-            background: '#f0fdf4',
-            border: '1px solid #bbf7d0',
-            borderRadius: '10px',
-            padding: '12px 18px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '12px'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '18px' }}>🛡️</span>
-            <div>
-              <strong style={{ fontSize: '13.5px', color: '#166534', display: 'block' }}>
-                Factory Business Rule: Finished Fabric Store Quality Gate
-              </strong>
-              <span style={{ fontSize: '12.5px', color: '#15803d' }}>
-                Finished Fabric Store does not perform separate inspections. It stores and issues fabric based on Fabric Quality clearance.
-                Rolls marked <strong>Hold</strong> or <strong>Rejected</strong> cannot be dispatched to cutting floor without Quality Head sign-off.
-              </span>
-            </div>
-          </div>
-          <span
-            style={{
-              padding: '4px 10px',
-              borderRadius: '999px',
-              background: '#dcfce7',
-              color: '#15803d',
-              fontSize: '12px',
-              fontWeight: 800,
-              whiteSpace: 'nowrap'
-            }}
-          >
-            ACTIVE QUALITY GATE
-          </span>
-        </div>
-
-        {/* High-Level KPI Summary Cards (Readable, Large Fonts) */}
-        <section
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
-            gap: '14px'
-          }}
-        >
-          {/* KPI 1: Inspected Rolls */}
-          <div className="card" style={{ padding: '16px', borderLeft: '4px solid #2563eb' }}>
-            <div style={{ fontSize: '13px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
-              Total Inspected
-            </div>
-            <div style={{ fontSize: '30px', fontWeight: 900, color: '#0f172a', margin: '4px 0' }}>
-              {kpiStats.totalRolls.toLocaleString()} <span style={{ fontSize: '14px', fontWeight: 600, color: '#64748b' }}>Rolls</span>
-            </div>
-            <div style={{ fontSize: '13px', color: '#475569', fontWeight: 600 }}>
-              {kpiStats.totalKg.toLocaleString()} Kg · 192,800 Mtrs
-            </div>
-          </div>
-
-          {/* KPI 2: Pass Rate & Accepted */}
-          <div className="card" style={{ padding: '16px', borderLeft: '4px solid #16a34a' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '13px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
-                Quality Pass Rate
-              </span>
-              <span style={{ fontSize: '12px', fontWeight: 800, background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '4px' }}>
-                95.0%
-              </span>
-            </div>
-            <div style={{ fontSize: '30px', fontWeight: 900, color: '#16a34a', margin: '4px 0' }}>
-              {kpiStats.approvedKg.toLocaleString()} <span style={{ fontSize: '14px', fontWeight: 600, color: '#64748b' }}>Kg</span>
-            </div>
-            <div style={{ fontSize: '13px', color: '#15803d', fontWeight: 600 }}>
-              1,215 Rolls Cleared for Store
-            </div>
-          </div>
-
-          {/* KPI 3: Quality Hold */}
-          <div className="card" style={{ padding: '16px', borderLeft: '4px solid #d97706' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '13px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
-                Quality Hold
-              </span>
-              <span style={{ fontSize: '12px', fontWeight: 800, background: '#fef3c7', color: '#b45309', padding: '2px 8px', borderRadius: '4px' }}>
-                {kpiStats.holdRate}%
-              </span>
-            </div>
-            <div style={{ fontSize: '30px', fontWeight: 900, color: '#d97706', margin: '4px 0' }}>
-              {kpiStats.holdKg.toLocaleString()} <span style={{ fontSize: '14px', fontWeight: 600, color: '#64748b' }}>Kg</span>
-            </div>
-            <div style={{ fontSize: '13px', color: '#b45309', fontWeight: 600 }}>
-              45 Rolls Pending Review
-            </div>
-          </div>
-
-          {/* KPI 4: Rejected Quantity */}
-          <div className="card" style={{ padding: '16px', borderLeft: '4px solid #dc2626' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '13px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
-                Defect Rejection
-              </span>
-              <span style={{ fontSize: '12px', fontWeight: 800, background: '#fee2e2', color: '#b91c1c', padding: '2px 8px', borderRadius: '4px' }}>
-                {kpiStats.rejectRate}%
-              </span>
-            </div>
-            <div style={{ fontSize: '30px', fontWeight: 900, color: '#dc2626', margin: '4px 0' }}>
-              {kpiStats.rejectedKg.toLocaleString()} <span style={{ fontSize: '14px', fontWeight: 600, color: '#64748b' }}>Kg</span>
-            </div>
-            <div style={{ fontSize: '13px', color: '#b91c1c', fontWeight: 600 }}>
-              20 Rolls Blocked
-            </div>
-          </div>
-        </section>
-
-        {/* Stage Navigation Pills */}
+        {/* Stage Navigation Pills (Top Sub-navigation per UX Standard) */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
             borderBottom: '2px solid #e2e8f0',
-            paddingBottom: '10px'
+            paddingBottom: '10px',
+            flexWrap: 'wrap'
           }}
         >
           <button
@@ -641,6 +530,122 @@ export default function FabricQualityPage() {
             📖 Fabric Defect Library
           </button>
         </div>
+
+        {/* Finished Fabric Store Quality Gate Rule Notice */}
+        <div
+          style={{
+            background: '#f0fdf4',
+            border: '1px solid #bbf7d0',
+            borderRadius: '10px',
+            padding: '12px 18px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '18px' }}>🛡️</span>
+            <div>
+              <strong style={{ fontSize: '13.5px', color: '#166534', display: 'block' }}>
+                Factory Business Rule: Finished Fabric Store Quality Gate
+              </strong>
+              <span style={{ fontSize: '12.5px', color: '#15803d' }}>
+                Finished Fabric Store does not perform separate inspections. It stores and issues fabric based on Fabric Quality clearance.
+                Rolls marked <strong>Hold</strong> or <strong>Rejected</strong> cannot be dispatched to cutting floor without Quality Head sign-off.
+              </span>
+            </div>
+          </div>
+          <span
+            style={{
+              padding: '4px 10px',
+              borderRadius: '999px',
+              background: '#dcfce7',
+              color: '#15803d',
+              fontSize: '12px',
+              fontWeight: 800,
+              whiteSpace: 'nowrap'
+            }}
+          >
+            ACTIVE QUALITY GATE
+          </span>
+        </div>
+
+        {/* High-Level KPI Summary Cards (Readable, Large Fonts) */}
+        <section
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+            gap: '14px'
+          }}
+        >
+          {/* KPI 1: Inspected Rolls */}
+          <div className="card" style={{ padding: '16px', borderLeft: '4px solid #2563eb' }}>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+              Total Inspected
+            </div>
+            <div style={{ fontSize: '30px', fontWeight: 900, color: '#0f172a', margin: '4px 0' }}>
+              {fmtNum(kpiStats.totalRolls)} <span style={{ fontSize: '14px', fontWeight: 600, color: '#64748b' }}>Rolls</span>
+            </div>
+            <div style={{ fontSize: '13px', color: '#475569', fontWeight: 600 }}>
+              {fmtNum(kpiStats.totalKg)} Kg · 192,800 Mtrs
+            </div>
+          </div>
+
+          {/* KPI 2: Pass Rate & Accepted */}
+          <div className="card" style={{ padding: '16px', borderLeft: '4px solid #16a34a' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                Quality Pass Rate
+              </span>
+              <span style={{ fontSize: '12px', fontWeight: 800, background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '4px' }}>
+                95.0%
+              </span>
+            </div>
+            <div style={{ fontSize: '30px', fontWeight: 900, color: '#16a34a', margin: '4px 0' }}>
+              {fmtNum(kpiStats.approvedKg)} <span style={{ fontSize: '14px', fontWeight: 600, color: '#64748b' }}>Kg</span>
+            </div>
+            <div style={{ fontSize: '13px', color: '#15803d', fontWeight: 600 }}>
+              1,215 Rolls Cleared for Store
+            </div>
+          </div>
+
+          {/* KPI 3: Quality Hold */}
+          <div className="card" style={{ padding: '16px', borderLeft: '4px solid #d97706' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                Quality Hold
+              </span>
+              <span style={{ fontSize: '12px', fontWeight: 800, background: '#fef3c7', color: '#b45309', padding: '2px 8px', borderRadius: '4px' }}>
+                {kpiStats.holdRate}%
+              </span>
+            </div>
+            <div style={{ fontSize: '30px', fontWeight: 900, color: '#d97706', margin: '4px 0' }}>
+              {fmtNum(kpiStats.holdKg)} <span style={{ fontSize: '14px', fontWeight: 600, color: '#64748b' }}>Kg</span>
+            </div>
+            <div style={{ fontSize: '13px', color: '#b45309', fontWeight: 600 }}>
+              45 Rolls Pending Review
+            </div>
+          </div>
+
+          {/* KPI 4: Rejected Quantity */}
+          <div className="card" style={{ padding: '16px', borderLeft: '4px solid #dc2626' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                Defect Rejection
+              </span>
+              <span style={{ fontSize: '12px', fontWeight: 800, background: '#fee2e2', color: '#b91c1c', padding: '2px 8px', borderRadius: '4px' }}>
+                {kpiStats.rejectRate}%
+              </span>
+            </div>
+            <div style={{ fontSize: '30px', fontWeight: 900, color: '#dc2626', margin: '4px 0' }}>
+              {fmtNum(kpiStats.rejectedKg)} <span style={{ fontSize: '14px', fontWeight: 600, color: '#64748b' }}>Kg</span>
+            </div>
+            <div style={{ fontSize: '13px', color: '#b91c1c', fontWeight: 600 }}>
+              20 Rolls Blocked
+            </div>
+          </div>
+        </section>
 
         {/* Visual Charts: Stage Performance & Defect Breakdown */}
         {activeTab !== 'defects' && (
@@ -834,27 +839,123 @@ export default function FabricQualityPage() {
               </div>
             </div>
 
-            {/* Register Data Grid (13-14px font, 42px row height) */}
-            <div style={{ overflowX: 'auto' }}>
-              <table className="table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ height: '42px', background: '#f8fafc' }}>
-                    <th style={{ fontSize: '13px' }}>Inspection ID</th>
-                    <th style={{ fontSize: '13px' }}>Date</th>
-                    <th style={{ fontSize: '13px' }}>Stage</th>
-                    <th style={{ fontSize: '13px' }}>Buyer / Job #</th>
-                    <th style={{ fontSize: '13px' }}>Fabric & Composition</th>
-                    <th style={{ fontSize: '13px' }}>Req / Act GSM</th>
-                    <th style={{ fontSize: '13px' }}>Width</th>
-                    <th style={{ fontSize: '13px' }}>Roll / Lot #</th>
-                    <th style={{ fontSize: '13px', textAlign: 'right' }}>Qty (Kg)</th>
-                    <th style={{ fontSize: '13px' }}>Defect Observed</th>
-                    <th style={{ fontSize: '13px' }}>Status</th>
-                    <th style={{ fontSize: '13px' }}>Store Clearance</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredRecords.map((r) => {
+            {/* Register Data Grid */}
+            <DataGrid<FabricInspectionRecord>
+              tableId="fabric-quality-register"
+              rows={filteredRecords}
+              rowKey={(r) => r.id}
+              onRowClick={(r) => setSelectedRecordId(r.id)}
+              searchPlaceholder="Filter roll, lot, job, buyer, or defect..."
+              columns={[
+                {
+                  key: 'id',
+                  header: 'Inspection ID',
+                  accessor: (r) => r.id,
+                  cell: (r) => <strong style={{ color: '#2563eb' }}>{r.id}</strong>
+                },
+                {
+                  key: 'date',
+                  header: 'Date',
+                  accessor: (r) => r.date,
+                  cell: (r) => fmtDate(r.date)
+                },
+                {
+                  key: 'stageLabel',
+                  header: 'Stage',
+                  accessor: (r) => r.stageLabel,
+                  cell: (r) => (
+                    <span
+                      style={{
+                        fontSize: '11.5px',
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        background: '#e0f2fe',
+                        color: '#0369a1'
+                      }}
+                    >
+                      {r.stageLabel}
+                    </span>
+                  )
+                },
+                {
+                  key: 'buyerJob',
+                  header: 'Buyer / Job #',
+                  accessor: (r) => `${r.buyer} ${r.jobNo}`,
+                  cell: (r) => (
+                    <div>
+                      <strong style={{ color: '#0f172a' }}>{r.buyer}</strong>
+                      <span style={{ display: 'block', fontSize: '12px', color: '#64748b' }}>Job #{r.jobNo}</span>
+                    </div>
+                  )
+                },
+                {
+                  key: 'fabricType',
+                  header: 'Fabric & Composition',
+                  accessor: (r) => `${r.fabricType} ${r.composition}`,
+                  cell: (r) => (
+                    <div>
+                      <div style={{ fontWeight: 650, color: '#1e293b' }}>{r.fabricType}</div>
+                      <div style={{ fontSize: '12px', color: '#64748b' }}>{r.composition}</div>
+                    </div>
+                  )
+                },
+                {
+                  key: 'gsm',
+                  header: 'Act / Req GSM',
+                  align: 'right',
+                  accessor: (r) => r.actualGsm,
+                  cell: (r) => (
+                    <span>
+                      <strong style={{ color: '#0f172a' }}>{r.actualGsm}</strong>
+                      <span style={{ fontSize: '12px', color: '#64748b' }}> / {r.reqGsm}</span>
+                    </span>
+                  )
+                },
+                {
+                  key: 'width',
+                  header: 'Width',
+                  accessor: (r) => r.actualWidth,
+                  cell: (r) => (
+                    <span>
+                      {r.actualWidth} <span style={{ fontSize: '11px', color: '#64748b' }}>({r.reqWidth})</span>
+                    </span>
+                  )
+                },
+                {
+                  key: 'rollNo',
+                  header: 'Roll / Lot #',
+                  accessor: (r) => `${r.rollNo} ${r.lotNo}`,
+                  cell: (r) => (
+                    <div>
+                      <div style={{ fontWeight: 700, color: '#0f172a' }}>{r.rollNo}</div>
+                      <div style={{ fontSize: '11.5px', color: '#64748b' }}>{r.lotNo}</div>
+                    </div>
+                  )
+                },
+                {
+                  key: 'inspectedKg',
+                  header: 'Qty (Kg)',
+                  align: 'right',
+                  accessor: (r) => r.inspectedKg,
+                  cell: (r) => <strong>{r.inspectedKg.toFixed(1)}</strong>,
+                  sum: true
+                },
+                {
+                  key: 'defects',
+                  header: 'Defect Observed',
+                  accessor: (r) => r.defects,
+                  cell: (r) => (
+                    <span style={{ color: r.severity === 'Critical' ? '#b91c1c' : '#334155', fontWeight: r.severity === 'Critical' ? 700 : 500 }}>
+                      {r.defects}
+                    </span>
+                  )
+                },
+                {
+                  key: 'status',
+                  header: 'Status',
+                  accessor: (r) => r.status,
+                  cell: (r) => {
                     const statusBg =
                       r.status === 'Approved' ? '#dcfce7' :
                       r.status === 'Hold' ? '#fef3c7' :
@@ -863,90 +964,118 @@ export default function FabricQualityPage() {
                       r.status === 'Approved' ? '#15803d' :
                       r.status === 'Hold' ? '#b45309' :
                       r.status === 'Rejected' ? '#b91c1c' : '#7c3aed';
-
                     return (
-                      <tr key={r.id} style={{ height: '44px', borderBottom: '1px solid #edf2f7' }}>
-                        <td>
-                          <strong style={{ color: '#2563eb', fontSize: '13.5px' }}>{r.id}</strong>
-                        </td>
-                        <td style={{ fontSize: '13px', color: '#475569' }}>{r.date}</td>
-                        <td>
-                          <span
-                            style={{
-                              fontSize: '11.5px',
-                              fontWeight: 700,
-                              padding: '2px 8px',
-                              borderRadius: '4px',
-                              background: '#e0f2fe',
-                              color: '#0369a1'
-                            }}
-                          >
-                            {r.stageLabel}
-                          </span>
-                        </td>
-                        <td>
-                          <strong style={{ fontSize: '13.5px', color: '#0f172a' }}>{r.buyer}</strong>
-                          <span style={{ display: 'block', fontSize: '12px', color: '#64748b' }}>Job #{r.jobNo}</span>
-                        </td>
-                        <td>
-                          <div style={{ fontSize: '13.5px', fontWeight: 650, color: '#1e293b' }}>{r.fabricType}</div>
-                          <div style={{ fontSize: '12px', color: '#64748b' }}>{r.composition}</div>
-                        </td>
-                        <td>
-                          <span style={{ fontSize: '13.5px', fontWeight: 700, color: '#0f172a' }}>
-                            {r.actualGsm}
-                          </span>
-                          <span style={{ fontSize: '12px', color: '#64748b' }}> / {r.reqGsm} gsm</span>
-                        </td>
-                        <td style={{ fontSize: '13px', color: '#334155' }}>
-                          {r.actualWidth} <span style={{ fontSize: '11px', color: '#64748b' }}>({r.reqWidth})</span>
-                        </td>
-                        <td>
-                          <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>{r.rollNo}</div>
-                          <div style={{ fontSize: '11.5px', color: '#64748b' }}>{r.lotNo}</div>
-                        </td>
-                        <td style={{ textAlign: 'right', fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>
-                          {r.inspectedKg.toFixed(1)}
-                        </td>
-                        <td>
-                          <div style={{ fontSize: '13px', color: r.severity === 'Critical' ? '#b91c1c' : '#334155', fontWeight: r.severity === 'Critical' ? 700 : 500 }}>
-                            {r.defects}
-                          </div>
-                        </td>
-                        <td>
-                          <span
-                            style={{
-                              fontSize: '12px',
-                              fontWeight: 800,
-                              padding: '3px 9px',
-                              borderRadius: '999px',
-                              background: statusBg,
-                              color: statusColor
-                            }}
-                          >
-                            {r.status}
-                          </span>
-                        </td>
-                        <td>
-                          {r.storeCleared ? (
-                            <span style={{ fontSize: '12px', fontWeight: 700, color: '#16a34a', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <span>✓</span> Cleared
-                            </span>
-                          ) : (
-                            <span style={{ fontSize: '12px', fontWeight: 700, color: '#dc2626', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <span>🚫</span> Blocked
-                            </span>
-                          )}
-                        </td>
-                      </tr>
+                      <span
+                        style={{
+                          fontSize: '12px',
+                          fontWeight: 800,
+                          padding: '3px 9px',
+                          borderRadius: '999px',
+                          background: statusBg,
+                          color: statusColor
+                        }}
+                      >
+                        {r.status}
+                      </span>
                     );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                  }
+                },
+                {
+                  key: 'storeCleared',
+                  header: 'Store Clearance',
+                  accessor: (r) => (r.storeCleared ? 'Cleared' : 'Blocked'),
+                  cell: (r) =>
+                    r.storeCleared ? (
+                      <span style={{ fontSize: '12px', fontWeight: 700, color: '#16a34a' }}>✓ Cleared</span>
+                    ) : (
+                      <span style={{ fontSize: '12px', fontWeight: 700, color: '#dc2626' }}>🚫 Blocked</span>
+                    )
+                }
+              ]}
+            />
           </div>
         )}
       </div>
+
+      {/* RecordPanel for row click */}
+      {(() => {
+        const idx = filteredRecords.findIndex((r) => r.id === selectedRecordId);
+        const rec = idx >= 0 ? filteredRecords[idx] : null;
+        return (
+          <RecordPanel<FabricInspectionRecord>
+            open={!!rec}
+            record={rec}
+            onClose={() => setSelectedRecordId(null)}
+            title={(r) => `${r.id} · Roll ${r.rollNo}`}
+            subtitle={(r) => `${r.buyer} · Job #${r.jobNo} · ${r.stageLabel}`}
+            statusBadge={(r) => ({
+              label: r.status,
+              tone: r.status === 'Approved' ? 'good' : r.status === 'Hold' ? 'warn' : 'bad'
+            })}
+            onPrev={idx > 0 ? () => setSelectedRecordId(filteredRecords[idx - 1].id) : undefined}
+            onNext={idx >= 0 && idx < filteredRecords.length - 1 ? () => setSelectedRecordId(filteredRecords[idx + 1].id) : undefined}
+            prevDisabled={idx <= 0}
+            nextDisabled={idx < 0 || idx >= filteredRecords.length - 1}
+            sections={[
+              {
+                key: 'summary',
+                title: 'Roll & Job Details',
+                fields: [
+                  { key: 'id', label: 'Inspection ID', readOnly: true },
+                  { key: 'date', label: 'Inspection Date', type: 'date' },
+                  { key: 'buyer', label: 'Buyer', readOnly: true },
+                  { key: 'jobNo', label: 'Job No', readOnly: true },
+                  { key: 'styleNo', label: 'Style No', readOnly: true },
+                  { key: 'rollNo', label: 'Roll No' },
+                  { key: 'lotNo', label: 'Batch / Lot No' },
+                  { key: 'inspectedKg', label: 'Roll Weight', type: 'number', unit: 'kg', required: true }
+                ]
+              },
+              {
+                key: 'quality',
+                title: 'Quality & Clearance Gate',
+                fields: [
+                  { key: 'reqGsm', label: 'Required GSM', type: 'number', readOnly: true },
+                  { key: 'actualGsm', label: 'Actual GSM', type: 'number', required: true },
+                  { key: 'reqWidth', label: 'Required Width', readOnly: true },
+                  { key: 'actualWidth', label: 'Actual Width', required: true },
+                  {
+                    key: 'severity',
+                    label: 'Defect Severity',
+                    type: 'select',
+                    options: [
+                      { value: 'None', label: 'None (Zero Defect)' },
+                      { value: 'Minor', label: 'Minor' },
+                      { value: 'Major', label: 'Major' },
+                      { value: 'Critical', label: 'Critical' }
+                    ]
+                  },
+                  {
+                    key: 'status',
+                    label: 'Quality Status',
+                    type: 'select',
+                    options: [
+                      { value: 'Approved', label: 'Approved (Store Cleared)' },
+                      { value: 'Hold', label: 'Hold' },
+                      { value: 'Rejected', label: 'Rejected' },
+                      { value: 'Rework', label: 'Rework' }
+                    ]
+                  },
+                  { key: 'defects', label: 'Observed Defects', span: 2 },
+                  { key: 'remarks', label: 'Quality Remarks', type: 'textarea', span: 2 }
+                ]
+              }
+            ]}
+            onSave={(updated) => {
+              const withClearance = {
+                ...updated,
+                storeCleared: updated.status === 'Approved'
+              };
+              setInspections((prev) => prev.map((item) => (item.id === withClearance.id ? withClearance : item)));
+            }}
+          />
+        );
+      })()}
 
       {/* Modal: Log New Quality Inspection */}
       {showEntryModal && (

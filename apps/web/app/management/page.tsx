@@ -24,6 +24,8 @@ import {
   Cell
 } from 'recharts';
 import { FX_SERIES, FX_BAR, FX_PIE, FxResponsiveContainer as ResponsiveContainer } from '../../components/fx';
+import { SectionNav } from '../../components/ui/SectionNav';
+import { fmtDate } from '../../lib/format';
 
 // Strict Corporate Palette
 const COLORS = {
@@ -928,6 +930,19 @@ export default function ManagementDashboardPage() {
           </div>
         </div>
 
+        <SectionNav
+          stickyTop={68}
+          sections={[
+            { id: 'sec-01', code: 'Sec 01', label: 'Overview' },
+            { id: 'sec-02', code: 'Sec 02', label: 'Buyer Quota' },
+            { id: 'sec-03', code: 'Sec 03', label: 'Buyer Delivery' },
+            { id: 'sec-04', code: 'Sec 04', label: 'Costing' },
+            { id: 'sec-05', code: 'Sec 05–06', label: 'Yarn & Fabric' },
+            { id: 'sec-07', code: 'Sec 07', label: 'Dept Run-Rate & DHU' },
+            { id: 'sec-08', code: 'Sec 08', label: 'Dyeing RFT & Subcontract' },
+          ]}
+        />
+
         {/* ========================================================================= */}
         {/* SECTION 01 — Factory Business Overview */}
         {/* ========================================================================= */}
@@ -1034,7 +1049,7 @@ export default function ManagementDashboardPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.25fr) minmax(0, 0.75fr)', gap: '14px', marginBottom: '16px' }}>
           
           {/* LEFT: Section 02 — Merchandising Team & Buyer Quota Matrix */}
-          <div style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', overflow: 'hidden' }}>
+          <div id="sec-02" style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', overflow: 'hidden', scrollMarginTop: 120 }}>
             <div style={{ padding: '6px 9px', background: '#F1F5F9', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <span style={{ fontSize: '11.5px', fontWeight: 800, color: COLORS.blue, background: COLORS.blueLight, padding: '2px 7px', borderRadius: '4px' }}>Sec 02</span>
@@ -1130,7 +1145,7 @@ export default function ManagementDashboardPage() {
           </div>
 
           {/* RIGHT: Section 03 — Buyer Performance & Delivery Reliability */}
-          <div style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', overflow: 'hidden' }}>
+          <div id="sec-03" style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', overflow: 'hidden', scrollMarginTop: 120 }}>
             <div style={{ padding: '6px 9px', background: '#F1F5F9', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <span style={{ fontSize: '11.5px', fontWeight: 800, color: COLORS.blue, background: COLORS.blueLight, padding: '2px 7px', borderRadius: '4px' }}>Sec 03</span>
@@ -1229,7 +1244,7 @@ export default function ManagementDashboardPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(0, 0.7fr)', gap: '14px', marginBottom: '16px' }}>
           
           {/* LEFT: Section 04 — Product Category Costing & Benchmarks */}
-          <div style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', overflow: 'hidden' }}>
+          <div id="sec-04" style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', overflow: 'hidden', scrollMarginTop: 120 }}>
             <div style={{ padding: '6px 9px', background: '#F1F5F9', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <span style={{ fontSize: '11.5px', fontWeight: 800, color: COLORS.purple, background: COLORS.purpleLight, padding: '2px 7px', borderRadius: '4px' }}>Sec 04</span>
@@ -1308,7 +1323,7 @@ export default function ManagementDashboardPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '14px', marginBottom: '16px' }}>
           
           {/* LEFT: Section 05 & 06A — Yarn Stock & Grey Fabric Inventory */}
-          <div style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', padding: '7px 9px' }}>
+          <div id="sec-05" style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', padding: '7px 9px', scrollMarginTop: 120 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', paddingBottom: '3px', borderBottom: `1.5px solid ${COLORS.teal}` }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <span style={{ fontSize: '11.5px', fontWeight: 800, color: COLORS.teal, background: COLORS.tealLight, padding: '2px 7px', borderRadius: '4px' }}>Sec 05 &amp; 06A</span>
@@ -1420,7 +1435,7 @@ export default function ManagementDashboardPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.25fr) minmax(0, 0.75fr)', gap: '14px', marginBottom: '16px' }}>
           
           {/* LEFT: Section 07 — Department-wise Production Run-Rate Table */}
-          <div style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', overflow: 'hidden' }}>
+          <div id="sec-07" style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', overflow: 'hidden', scrollMarginTop: 120 }}>
             <div style={{ padding: '6px 9px', background: '#F1F5F9', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <span style={{ fontSize: '11.5px', fontWeight: 800, color: COLORS.blue, background: COLORS.blueLight, padding: '2px 7px', borderRadius: '4px' }}>Sec 07</span>
@@ -1609,7 +1624,7 @@ export default function ManagementDashboardPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 0.75fr) minmax(0, 1.25fr)', gap: '14px' }}>
           
           {/* LEFT: Section 08A — Dyeing Reprocess & First-Time-Pass (RFT) */}
-          <div style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', padding: '7px 9px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div id="sec-08" style={{ background: COLORS.cardBg, border: `1px solid ${COLORS.border}`, borderRadius: '6px', padding: '7px 9px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', scrollMarginTop: 120 }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', paddingBottom: '3px', borderBottom: `1.5px solid ${COLORS.navy}` }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -1804,7 +1819,7 @@ export default function ManagementDashboardPage() {
                             {r.presentStatus || r.riskStatus || 'Running'}
                           </span>
                         </td>
-                        <td style={{ padding: '8px 10px' }}>{r.dates?.exFactory || 'N/A'}</td>
+                        <td style={{ padding: '8px 10px' }}>{fmtDate(r.dates?.exFactory)}</td>
                         <td style={{ padding: '8px 10px' }}>{r.merchandiser || 'Unassigned'}</td>
                         <td style={{ padding: '8px 10px', textAlign: 'center' }}>
                           <Link href={`/jobs/${r.jobNo}`} style={{ color: COLORS.blue, textDecoration: 'none', fontWeight: 700 }}>

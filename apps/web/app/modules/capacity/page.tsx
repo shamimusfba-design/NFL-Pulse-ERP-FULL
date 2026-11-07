@@ -25,8 +25,11 @@ import {
   Boxes,
 } from 'lucide-react';
 
+import { DataGrid, RecordPanel } from '../../../components/ui';
+import { fmtDate, fmtNum } from '../../../lib/format';
+
 function fmt(n: any) {
-  return Number(n || 0).toLocaleString();
+  return fmtNum(Number(n || 0));
 }
 
 function statusPill(loadPct: number, thresholds = { greenMax: 85, amberMax: 100 }) {
@@ -67,6 +70,7 @@ export default function CapacityPage() {
   const [newHolidayName, setNewHolidayName] = useState('');
   const [newHolidayFactor, setNewHolidayFactor] = useState(0);
   const [selectedCell, setSelectedCell] = useState<{ section: string; slot: any } | null>(null);
+  const [activeSlotJobKey, setActiveSlotJobKey] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -857,18 +861,81 @@ export default function CapacityPage() {
               </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '8px' }}>
-              {(selectedCell.slot.topJobs || []).map((j: any, i: number) => (
-                <div key={i} style={{ padding: '10px', borderRadius: '6px', background: '#F8FAFC', border: '1px solid #E2E8F0', fontSize: '11.5px' }}>
-                  <div style={{ fontWeight: 800, color: '#0284C7' }}>Job #{j.jobNo} · {j.styleNo}</div>
-                  <div style={{ color: '#64748B', fontSize: '10.5px' }}>{j.buyer}</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontWeight: 650 }}>
-                    <span>Demand: {fmt(j.demand)}</span>
-                    <span style={{ color: '#059669' }}>Due: {j.date}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <DataGrid
+              rows={(selectedCell.slot.topJobs || []).map((j: any, idx: number) => ({
+                ...j,
+                _key: `${j.jobNo}-${j.styleNo}-${idx}`,
+                section: selectedCell.section,
+                slotNo: selectedCell.slot.slot,
+              }))}
+              rowKey={(j: any) => j._key}
+              activeRowKey={activeSlotJobKey}
+              onRowClick={(j: any) => setActiveSlotJobKey(j._key)}
+              searchPlaceholder="Filter contributing jobs..."
+              columns={[
+                {
+                  key: 'jobNo',
+                  header: 'Job No.',
+                  sortable: true,
+                  render: (j: any) => <span style={{ fontWeight: 800, color: '#0284C7' }}>Job #{j.jobNo}</span>,
+                },
+                {
+                  key: 'styleNo',
+                  header: 'Style No.',
+                  sortable: true,
+                },
+                {
+                  key: 'buyer',
+                  header: 'Buyer',
+                  sortable: true,
+                  filter: 'enum',
+                },
+                {
+                  key: 'demand',
+                  header: 'Slot Demand',
+                  align: 'right',
+                  sortable: true,
+                  sum: true,
+                  render: (j: any) => <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{fmt(j.demand)}</span>,
+                  exportValue: (j: any) => Number(j.demand || 0),
+                },
+                {
+                  key: 'date',
+                  header: 'Target Date',
+                  sortable: true,
+                  render: (j: any) => <span style={{ color: '#059669', fontWeight: 600 }}>{fmtDate(j.date)}</span>,
+                },
+              ]}
+            />
+            <RecordPanel
+              open={Boolean(activeSlotJobKey)}
+              onClose={() => setActiveSlotJobKey(null)}
+              rows={(selectedCell.slot.topJobs || []).map((j: any, idx: number) => ({
+                ...j,
+                _key: `${j.jobNo}-${j.styleNo}-${idx}`,
+                section: selectedCell.section,
+                slotNo: selectedCell.slot.slot,
+              }))}
+              rowKey={(j: any) => j._key}
+              activeKey={activeSlotJobKey}
+              onNavigate={(nextKey) => setActiveSlotJobKey(String(nextKey))}
+              title={(j: any) => `Job #${j.jobNo} · ${j.styleNo}`}
+              subtitle={(j: any) => `${j.buyer} · ${j.section} Slot ${j.slotNo}`}
+              sections={[
+                {
+                  key: 'slotAllocation',
+                  title: 'Capacity Slot Allocation Details',
+                  fields: [
+                    { key: 'jobNo', label: 'Job No.', type: 'readonly' },
+                    { key: 'styleNo', label: 'Style No.', type: 'readonly' },
+                    { key: 'buyer', label: 'Buyer', type: 'readonly' },
+                    { key: 'section', label: 'Factory Section', type: 'readonly' },
+                    { key: 'demand', label: 'Allocated Demand', type: 'readonly', format: (v) => fmt(v) },
+                    { key: 'date', label: 'Target Schedule Date', type: 'readonly', format: (v) => fmtDate(v) },
+                  ],
+                },
+              ]}
+            />
           </div>
         )}
       </div>

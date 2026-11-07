@@ -3,6 +3,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import Shell from '../../../components/Shell';
+import { DataGrid } from '../../../components/ui/DataGrid';
+import { RecordPanel } from '../../../components/ui/RecordPanel';
+import { fmtDate, fmtNum } from '../../../lib/format';
 import {
   FlaskConical,
   CheckCircle2,
@@ -607,6 +610,7 @@ export default function TestingLabModulePage() {
 
   // Report Modal State
   const [selectedModalRecord, setSelectedModalRecord] = useState<LabJobMasterRecord | null>(null);
+  const [panelLabId, setPanelLabId] = useState<string | null>(null);
 
   // Accept Request Modal State
   const [acceptingRequest, setAcceptingRequest] = useState<PlanningLabRequest | null>(null);
@@ -1188,129 +1192,155 @@ export default function TestingLabModulePage() {
               </div>
             </div>
 
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left', minWidth: 1200 }}>
-                <thead style={{ background: '#F1F5F9' }}>
-                  <tr style={{ borderBottom: '2px solid #CBD5E1', color: '#334155' }}>
-                    <th style={{ padding: '10px 12px', fontWeight: 800, width: '160px' }}>Buyer &amp; Job No</th>
-                    <th style={{ padding: '10px 12px', fontWeight: 800, width: '180px' }}>Style &amp; Fabric Item</th>
-                    <th style={{ padding: '10px 12px', fontWeight: 800, width: '140px' }}>Color &amp; Lot Qty</th>
-                    <th style={{ padding: '10px 12px', fontWeight: 800, width: '120px', textAlign: 'center' }}>Delivery Gate</th>
-                    <th style={{ padding: '10px 12px', fontWeight: 800, width: '120px', textAlign: 'center' }}>Dimensional Stability</th>
-                    <th style={{ padding: '10px 12px', fontWeight: 800, width: '110px', textAlign: 'center' }}>5-Time Wash</th>
-                    <th style={{ padding: '10px 12px', fontWeight: 800, width: '120px', textAlign: 'center' }}>Rubbing Fastness</th>
-                    <th style={{ padding: '10px 12px', fontWeight: 800, width: '110px', textAlign: 'center' }}>Perspiration</th>
-                    <th style={{ padding: '10px 12px', fontWeight: 800, width: '100px', textAlign: 'center' }}>Saliva (Kids)</th>
-                    <th style={{ padding: '10px 12px', fontWeight: 800, width: '110px', textAlign: 'center' }}>Pilling / Stretch</th>
-                    <th style={{ padding: '10px 12px', fontWeight: 800, width: '110px', textAlign: 'center' }}>Accessories Pull</th>
-                    <th style={{ padding: '10px 12px', fontWeight: 800, width: '100px', textAlign: 'center' }}>Certificates</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredRecords.length === 0 ? (
-                    <tr>
-                      <td colSpan={12} style={{ padding: '30px', textAlign: 'center', color: '#64748B' }}>
-                        No lab records match the selected filter criteria.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredRecords.map((r, idx) => {
-                      const isCleared = r.deliveryGate === 'CLEARED';
-                      const isBlocked = r.deliveryGate === 'BLOCKED';
-
+            <DataGrid<LabJobMasterRecord>
+              tableId="testing-lab-master-register"
+              rows={filteredRecords}
+              rowKey={(r) => r.id}
+              onRowClick={(r) => setPanelLabId(r.id)}
+              searchPlaceholder="Filter Job #, Buyer, Style, Color, Batch..."
+              columns={[
+                {
+                  key: 'buyerJob',
+                  header: 'Buyer & Job No',
+                  accessor: (r) => `${r.buyer} ${r.jobNo} ${r.batchNo}`,
+                  cell: (r) => (
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontWeight: 800, color: '#0F274E' }}>{r.buyer}</span>
+                        <span style={{ color: '#64748B' }}>·</span>
+                        <span style={{ fontWeight: 800, color: '#2563EB' }}>#{r.jobNo}</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                        Batch: {r.batchNo} · {r.merchandiser}
+                      </div>
+                    </div>
+                  )
+                },
+                {
+                  key: 'styleItem',
+                  header: 'Style & Fabric Item',
+                  accessor: (r) => `${r.styleNo} ${r.item} ${r.fabricType}`,
+                  cell: (r) => (
+                    <div>
+                      <div style={{ fontWeight: 750, color: '#1E293B' }}>{r.styleNo}</div>
+                      <div style={{ fontSize: 11.5, color: '#64748B' }}>{r.item}</div>
+                      <div style={{ fontSize: 11, color: '#475569', fontStyle: 'italic' }}>{r.fabricType}</div>
+                    </div>
+                  )
+                },
+                {
+                  key: 'color',
+                  header: 'Color & Lot Qty',
+                  accessor: (r) => r.color,
+                  cell: (r) => (
+                    <div>
+                      <div style={{ fontWeight: 750, color: '#0F172A' }}>{r.color}</div>
+                      <div style={{ fontSize: 11.5, color: '#15803D', fontWeight: 700 }}>{fmtNum(r.lotQtyKg)} kg</div>
+                    </div>
+                  )
+                },
+                {
+                  key: 'deliveryGate',
+                  header: 'Delivery Gate',
+                  accessor: (r) => r.deliveryGate,
+                  cell: (r) => {
+                    const isCleared = r.deliveryGate === 'CLEARED';
+                    const isBlocked = r.deliveryGate === 'BLOCKED';
+                    if (isCleared) {
                       return (
-                        <tr
-                          key={r.id}
-                          style={{
-                            borderBottom: '1px solid #F1F5F9',
-                            background: isBlocked ? '#FFF5F5' : idx % 2 === 0 ? '#FFFFFF' : '#FAFAFA'
-                          }}
-                        >
-                          {/* Column 1: Combined Buyer & Job */}
-                          <td style={{ padding: '10px 12px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <span style={{ fontWeight: 800, color: '#0F274E', fontSize: 13.5 }}>{r.buyer}</span>
-                              <span style={{ color: '#64748B' }}>·</span>
-                              <span style={{ fontWeight: 800, color: '#2563EB', fontSize: 13.5 }}>#{r.jobNo}</span>
-                            </div>
-                            <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
-                              Batch: {r.batchNo} · {r.merchandiser}
-                            </div>
-                          </td>
-
-                          {/* Column 2: Style & Item */}
-                          <td style={{ padding: '10px 12px' }}>
-                            <div style={{ fontWeight: 750, color: '#1E293B' }}>{r.styleNo}</div>
-                            <div style={{ fontSize: 11.5, color: '#64748B' }}>{r.item}</div>
-                            <div style={{ fontSize: 11, color: '#475569', fontStyle: 'italic' }}>{r.fabricType}</div>
-                          </td>
-
-                          {/* Column 3: Color & Lot Qty */}
-                          <td style={{ padding: '10px 12px' }}>
-                            <div style={{ fontWeight: 750, color: '#0F172A' }}>{r.color}</div>
-                            <div style={{ fontSize: 11.5, color: '#15803D', fontWeight: 700 }}>
-                              {r.lotQtyKg.toLocaleString()} kg
-                            </div>
-                          </td>
-
-                          {/* Column 4: Delivery Clearance Gate */}
-                          <td style={{ padding: '10px 12px', textAlign: 'center' }}>
-                            {isCleared && (
-                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', padding: '4px 8px', borderRadius: 6, fontSize: 11.5, fontWeight: 800 }}>
-                                <Unlock size={13} /> CLEARED
-                              </div>
-                            )}
-                            {isBlocked && (
-                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#FEE2E2', color: '#B91C1C', border: '1px solid #FCA5A5', padding: '4px 8px', borderRadius: 6, fontSize: 11.5, fontWeight: 800 }}>
-                                <Lock size={13} /> BLOCKED
-                              </div>
-                            )}
-                            {!isCleared && !isBlocked && (
-                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A', padding: '4px 8px', borderRadius: 6, fontSize: 11.5, fontWeight: 800 }}>
-                                <Clock size={13} /> PENDING
-                              </div>
-                            )}
-                          </td>
-
-                          {/* Test Columns */}
-                          <td style={{ padding: '8px 10px', textAlign: 'center' }}>{renderTestBadge(r.dimensionalStability)}</td>
-                          <td style={{ padding: '8px 10px', textAlign: 'center' }}>{renderTestBadge(r.washTest5x)}</td>
-                          <td style={{ padding: '8px 10px', textAlign: 'center' }}>{renderTestBadge(r.rubbingFastness)}</td>
-                          <td style={{ padding: '8px 10px', textAlign: 'center' }}>{renderTestBadge(r.perspirationFastness)}</td>
-                          <td style={{ padding: '8px 10px', textAlign: 'center' }}>{renderTestBadge(r.salivaFastness)}</td>
-                          <td style={{ padding: '8px 10px', textAlign: 'center' }}>{renderTestBadge(r.pillingStretch)}</td>
-                          <td style={{ padding: '8px 10px', textAlign: 'center' }}>{renderTestBadge(r.garmentAccessories)}</td>
-
-                          {/* Column 12: Actions / Files */}
-                          <td style={{ padding: '10px 12px', textAlign: 'center' }}>
-                            <button
-                              type="button"
-                              onClick={() => setSelectedModalRecord(r)}
-                              style={{
-                                fontSize: 11.5,
-                                fontWeight: 750,
-                                padding: '5px 10px',
-                                borderRadius: 6,
-                                background: r.attachedFiles.length > 0 ? '#EFF6FF' : '#F8FAFC',
-                                border: r.attachedFiles.length > 0 ? '1px solid #93C5FD' : '1px solid #CBD5E1',
-                                color: r.attachedFiles.length > 0 ? '#1D4ED8' : '#475569',
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 4
-                              }}
-                            >
-                              <FileText size={13} />
-                              {r.attachedFiles.length > 0 ? `${r.attachedFiles.length} Files` : 'View'}
-                            </button>
-                          </td>
-                        </tr>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', padding: '4px 8px', borderRadius: 6, fontSize: 11.5, fontWeight: 800 }}>
+                          <Unlock size={13} /> CLEARED
+                        </div>
                       );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    }
+                    if (isBlocked) {
+                      return (
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#FEE2E2', color: '#B91C1C', border: '1px solid #FCA5A5', padding: '4px 8px', borderRadius: 6, fontSize: 11.5, fontWeight: 800 }}>
+                          <Lock size={13} /> BLOCKED
+                        </div>
+                      );
+                    }
+                    return (
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A', padding: '4px 8px', borderRadius: 6, fontSize: 11.5, fontWeight: 800 }}>
+                        <Clock size={13} /> PENDING
+                      </div>
+                    );
+                  }
+                },
+                {
+                  key: 'dimensionalStability',
+                  header: 'Dimensional Stability',
+                  accessor: (r) => r.dimensionalStability.status,
+                  cell: (r) => renderTestBadge(r.dimensionalStability)
+                },
+                {
+                  key: 'washTest5x',
+                  header: '5-Time Wash',
+                  accessor: (r) => r.washTest5x.status,
+                  cell: (r) => renderTestBadge(r.washTest5x)
+                },
+                {
+                  key: 'rubbingFastness',
+                  header: 'Rubbing Fastness',
+                  accessor: (r) => r.rubbingFastness.status,
+                  cell: (r) => renderTestBadge(r.rubbingFastness)
+                },
+                {
+                  key: 'perspirationFastness',
+                  header: 'Perspiration',
+                  accessor: (r) => r.perspirationFastness.status,
+                  cell: (r) => renderTestBadge(r.perspirationFastness)
+                },
+                {
+                  key: 'salivaFastness',
+                  header: 'Saliva (Kids)',
+                  accessor: (r) => r.salivaFastness.status,
+                  cell: (r) => renderTestBadge(r.salivaFastness)
+                },
+                {
+                  key: 'pillingStretch',
+                  header: 'Pilling / Stretch',
+                  accessor: (r) => r.pillingStretch.status,
+                  cell: (r) => renderTestBadge(r.pillingStretch)
+                },
+                {
+                  key: 'garmentAccessories',
+                  header: 'Accessories Pull',
+                  accessor: (r) => r.garmentAccessories.status,
+                  cell: (r) => renderTestBadge(r.garmentAccessories)
+                },
+                {
+                  key: 'certificates',
+                  header: 'Certificates',
+                  accessor: (r) => r.attachedFiles.length,
+                  cell: (r) => (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedModalRecord(r);
+                      }}
+                      style={{
+                        fontSize: 11.5,
+                        fontWeight: 750,
+                        padding: '5px 10px',
+                        borderRadius: 6,
+                        background: r.attachedFiles.length > 0 ? '#EFF6FF' : '#F8FAFC',
+                        border: r.attachedFiles.length > 0 ? '1px solid #93C5FD' : '1px solid #CBD5E1',
+                        color: r.attachedFiles.length > 0 ? '#1D4ED8' : '#475569',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4
+                      }}
+                    >
+                      <FileText size={13} />
+                      {r.attachedFiles.length > 0 ? `${r.attachedFiles.length} Files` : 'Cert'}
+                    </button>
+                  )
+                }
+              ]}
+            />
           </div>
         </>
       )}
@@ -2100,6 +2130,66 @@ export default function TestingLabModulePage() {
           </div>
         </div>
       )}
+
+      {/* RecordPanel for row click */}
+      {(() => {
+        const idx = filteredRecords.findIndex((r) => r.id === panelLabId);
+        const rec = idx >= 0 ? filteredRecords[idx] : null;
+        return (
+          <RecordPanel<LabJobMasterRecord>
+            open={!!rec}
+            record={rec}
+            onClose={() => setPanelLabId(null)}
+            title={(r) => `Job #${r.jobNo} · ${r.color}`}
+            subtitle={(r) => `${r.buyer} · Style ${r.styleNo} · Batch ${r.batchNo}`}
+            statusBadge={(r) => ({
+              label: r.deliveryGate,
+              tone: r.deliveryGate === 'CLEARED' ? 'good' : r.deliveryGate === 'BLOCKED' ? 'bad' : 'warn'
+            })}
+            onPrev={idx > 0 ? () => setPanelLabId(filteredRecords[idx - 1].id) : undefined}
+            onNext={idx >= 0 && idx < filteredRecords.length - 1 ? () => setPanelLabId(filteredRecords[idx + 1].id) : undefined}
+            prevDisabled={idx <= 0}
+            nextDisabled={idx < 0 || idx >= filteredRecords.length - 1}
+            sections={[
+              {
+                key: 'batch',
+                title: 'Job & Batch Information',
+                fields: [
+                  { key: 'jobNo', label: 'Job No', readOnly: true },
+                  { key: 'buyer', label: 'Buyer', readOnly: true },
+                  { key: 'styleNo', label: 'Style No', readOnly: true },
+                  { key: 'color', label: 'Color', readOnly: true },
+                  { key: 'batchNo', label: 'Batch No' },
+                  { key: 'lotQtyKg', label: 'Lot Quantity', type: 'number', unit: 'kg', required: true },
+                  { key: 'targetDeliveryDate', label: 'Target Delivery Date', type: 'date' },
+                  { key: 'merchandiser', label: 'Merchandiser', lockedByRole: 'Merchandiser' }
+                ]
+              },
+              {
+                key: 'gate',
+                title: 'Laboratory Delivery Gate & Sign-off',
+                fields: [
+                  {
+                    key: 'deliveryGate',
+                    label: 'Delivery Gate Status',
+                    type: 'select',
+                    options: [
+                      { value: 'CLEARED', label: 'CLEARED' },
+                      { value: 'PENDING', label: 'PENDING' },
+                      { value: 'BLOCKED', label: 'BLOCKED' }
+                    ]
+                  },
+                  { key: 'leadApprover', label: 'Lead Approver' },
+                  { key: 'clearanceNote', label: 'Clearance & Test Remarks', type: 'textarea', span: 2 }
+                ]
+              }
+            ]}
+            onSave={(updated) => {
+              setMasterRecords((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+            }}
+          />
+        );
+      })()}
     </Shell>
   );
 }

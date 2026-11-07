@@ -32,8 +32,11 @@ import {
   Sparkles,
 } from 'lucide-react';
 
+import { DataGrid, RecordPanel } from '../../../components/ui';
+import { fmtDate, fmtNum } from '../../../lib/format';
+
 function fmt(n: any) {
-  return Number(n || 0).toLocaleString();
+  return fmtNum(Number(n || 0));
 }
 
 function statusBadge(status: string) {
@@ -82,6 +85,7 @@ export default function PlanningApprovalsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [search, setSearch] = useState<string>('');
   const [selectedJob, setSelectedJob] = useState<any>(null);
+  const [activeRecordId, setActiveRecordId] = useState<string | null>(null);
   const [activeChartBar, setActiveChartBar] = useState<number | null>(null);
 
   // Modals / Drawers
@@ -884,143 +888,228 @@ export default function PlanningApprovalsPage() {
                 </div>
               </div>
 
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', minWidth: '950px', borderCollapse: 'collapse', fontSize: '12px' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '2px solid #E2E8F0', textAlign: 'left', color: '#64748B' }}>
-                      <th style={{ padding: '8px 10px', fontWeight: 700 }}>Job / Style No.</th>
-                      <th style={{ padding: '8px 10px', fontWeight: 700 }}>Buyer &amp; Merchandiser</th>
-                      <th style={{ padding: '8px 10px', fontWeight: 700 }}>Order Qty / CCD</th>
-                      <th style={{ padding: '8px 10px', fontWeight: 700 }}>Fabric Order Sheet</th>
-                      <th style={{ padding: '8px 10px', fontWeight: 700 }}>Signed Hard-Copy Gate</th>
-                      <th style={{ padding: '8px 10px', fontWeight: 700 }}>Current Status</th>
-                      <th style={{ padding: '8px 10px', fontWeight: 700, textAlign: 'right' }}>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredQueue.map((item, idx) => {
+              <DataGrid
+                rows={filteredQueue}
+                rowKey={(item: any) => item.styleId || item.jobNo}
+                activeRowKey={activeRecordId}
+                onRowClick={(item: any) => setActiveRecordId(item.styleId || item.jobNo)}
+                searchPlaceholder="Search Job #, Style, Buyer..."
+                columns={[
+                  {
+                    key: 'jobNo',
+                    header: 'Job / Style No.',
+                    sortable: true,
+                    filter: 'text',
+                    render: (item: any) => (
+                      <div>
+                        <div style={{ fontWeight: 800, color: '#0284C7', fontSize: '12.5px' }}>Job #{item.jobNo}</div>
+                        <div style={{ fontWeight: 600, color: '#0F274E', fontSize: '11.5px' }}>{item.styleNo}</div>
+                        <div style={{ color: '#64748B', fontSize: '10.5px' }}>{item.itemDescription}</div>
+                      </div>
+                    ),
+                    exportValue: (item: any) => `${item.jobNo} ${item.styleNo}`,
+                  },
+                  {
+                    key: 'buyer',
+                    header: 'Buyer & Merchandiser',
+                    sortable: true,
+                    filter: 'enum',
+                    render: (item: any) => (
+                      <div>
+                        <div style={{ fontWeight: 700, color: '#1E293B' }}>{item.buyer}</div>
+                        <div style={{ color: '#64748B', fontSize: '11px' }}>Merch: {item.merchandiser}</div>
+                      </div>
+                    ),
+                    exportValue: (item: any) => `${item.buyer} (${item.merchandiser})`,
+                  },
+                  {
+                    key: 'orderQty',
+                    header: 'Order Qty / CCD',
+                    align: 'right',
+                    sortable: true,
+                    sum: true,
+                    render: (item: any) => (
+                      <div>
+                        <div style={{ fontWeight: 800, color: '#0F274E', fontFamily: 'monospace' }}>{fmt(item.orderQty)} pcs</div>
+                        <div style={{ color: '#0284C7', fontSize: '11px', fontWeight: 600 }}>CCD: {fmtDate(item.ccd)}</div>
+                      </div>
+                    ),
+                    exportValue: (item: any) => Number(item.orderQty || 0),
+                  },
+                  {
+                    key: 'totalFinishKg',
+                    header: 'Fabric Order Sheet',
+                    align: 'right',
+                    sortable: true,
+                    sum: true,
+                    render: (item: any) => (
+                      <div>
+                        <div style={{ fontWeight: 700, color: '#334155' }}>
+                          {item.fabricSheetNo} <span style={{ color: '#94A3B8' }}>(Rev {item.fabricSheetRevision})</span>
+                        </div>
+                        <div style={{ color: '#059669', fontSize: '11.5px', fontWeight: 700 }}>Req Finish: {fmt(item.totalFinishKg)} Kg</div>
+                      </div>
+                    ),
+                    exportValue: (item: any) => Number(item.totalFinishKg || 0),
+                  },
+                  {
+                    key: 'signedCopy',
+                    header: 'Signed Hard-Copy Gate',
+                    render: (item: any) => (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '11px' }}>
+                        <span style={{ color: item.signedCopy?.fabricSheet ? '#059669' : '#D97706', fontWeight: 600 }}>
+                          {item.signedCopy?.fabricSheet ? '✓ Fabric Sheet Signed' : '○ Fabric Sheet Missing'}
+                        </span>
+                        <span style={{ color: item.signedCopy?.tna ? '#059669' : '#D97706', fontWeight: 600 }}>
+                          {item.signedCopy?.tna ? '✓ T&A Copy Signed' : '○ T&A Copy Missing'}
+                        </span>
+                        {item.signedCopy?.referenceNo && (
+                          <span style={{ color: '#64748B', fontSize: '10px', fontFamily: 'monospace' }}>
+                            Ref: {item.signedCopy.referenceNo}
+                          </span>
+                        )}
+                      </div>
+                    ),
+                    exportValue: (item: any) => item.signedCopy?.referenceNo || 'Pending',
+                  },
+                  {
+                    key: 'status',
+                    header: 'Current Status',
+                    sortable: true,
+                    filter: 'enum',
+                    render: (item: any) => {
                       const badge = statusBadge(item.status);
-                      const isSigned = item.signedCopy?.fabricSheet && item.signedCopy?.tna;
                       return (
-                        <tr
-                          key={item.styleId || idx}
-                          style={{
-                            borderBottom: '1px solid #F1F5F9',
-                            background: idx % 2 === 0 ? '#FFFFFF' : '#FAFAFC',
-                          }}
-                        >
-                          <td style={{ padding: '10px' }}>
-                            <div style={{ fontWeight: 800, color: '#0284C7', fontSize: '12.5px' }}>
-                              Job #{item.jobNo}
+                        <div>
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              padding: '3px 8px',
+                              borderRadius: '12px',
+                              fontSize: '10.5px',
+                              fontWeight: 700,
+                              background: badge.bg,
+                              border: `1px solid ${badge.border}`,
+                              color: badge.text,
+                            }}
+                          >
+                            {badge.label}
+                          </span>
+                          {item.returnReason && (
+                            <div style={{ marginTop: '4px', maxWidth: '180px', fontSize: '10.5px', color: '#DC2626', lineHeight: 1.2 }}>
+                              Note: {item.returnReason}
                             </div>
-                            <div style={{ fontWeight: 600, color: '#0F274E', fontSize: '11.5px' }}>
-                              {item.styleNo}
-                            </div>
-                            <div style={{ color: '#64748B', fontSize: '10.5px' }}>{item.itemDescription}</div>
-                          </td>
-
-                          <td style={{ padding: '10px' }}>
-                            <div style={{ fontWeight: 700, color: '#1E293B' }}>{item.buyer}</div>
-                            <div style={{ color: '#64748B', fontSize: '11px' }}>Merch: {item.merchandiser}</div>
-                          </td>
-
-                          <td style={{ padding: '10px' }}>
-                            <div style={{ fontWeight: 800, color: '#0F274E', fontFamily: 'monospace' }}>
-                              {fmt(item.orderQty)} pcs
-                            </div>
-                            <div style={{ color: '#0284C7', fontSize: '11px', fontWeight: 600 }}>
-                              CCD: {item.ccd || 'TBD'}
-                            </div>
-                          </td>
-
-                          <td style={{ padding: '10px' }}>
-                            <div style={{ fontWeight: 700, color: '#334155' }}>
-                              {item.fabricSheetNo} <span style={{ color: '#94A3B8' }}>(Rev {item.fabricSheetRevision})</span>
-                            </div>
-                            <div style={{ color: '#059669', fontSize: '11.5px', fontWeight: 700 }}>
-                              Req Finish: {fmt(item.totalFinishKg)} Kg
-                            </div>
-                          </td>
-
-                          <td style={{ padding: '10px' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '11px' }}>
-                              <span style={{ color: item.signedCopy?.fabricSheet ? '#059669' : '#D97706', fontWeight: 600 }}>
-                                {item.signedCopy?.fabricSheet ? '✓ Fabric Sheet Signed' : '○ Fabric Sheet Missing'}
-                              </span>
-                              <span style={{ color: item.signedCopy?.tna ? '#059669' : '#D97706', fontWeight: 600 }}>
-                                {item.signedCopy?.tna ? '✓ T&A Copy Signed' : '○ T&A Copy Missing'}
-                              </span>
-                              {item.signedCopy?.referenceNo && (
-                                <span style={{ color: '#64748B', fontSize: '10px', fontFamily: 'monospace' }}>
-                                  Ref: {item.signedCopy.referenceNo}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-
-                          <td style={{ padding: '10px' }}>
-                            <span
-                              style={{
-                                display: 'inline-block',
-                                padding: '3px 8px',
-                                borderRadius: '12px',
-                                fontSize: '10.5px',
-                                fontWeight: 700,
-                                background: badge.bg,
-                                border: `1px solid ${badge.border}`,
-                                color: badge.text,
-                              }}
-                            >
-                              {badge.label}
-                            </span>
-                            {item.returnReason && (
-                              <div
-                                style={{
-                                  marginTop: '4px',
-                                  maxWidth: '180px',
-                                  fontSize: '10.5px',
-                                  color: '#DC2626',
-                                  lineHeight: 1.2,
-                                }}
-                              >
-                                Note: {item.returnReason}
-                              </div>
-                            )}
-                          </td>
-
-                          <td style={{ padding: '10px', textAlign: 'right' }}>
-                            <button
-                              onClick={() => setReviewJob(item)}
-                              style={{
-                                padding: '6px 12px',
-                                borderRadius: '6px',
-                                fontSize: '11.5px',
-                                fontWeight: 700,
-                                border: '1px solid #0284C7',
-                                background: '#F0F9FF',
-                                color: '#0284C7',
-                                cursor: 'pointer',
-                                transition: 'all 0.15s ease',
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.background = '#0284C7';
-                                e.currentTarget.style.color = '#FFFFFF';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.background = '#F0F9FF';
-                                e.currentTarget.style.color = '#0284C7';
-                              }}
-                            >
-                              Review &amp; Release
-                            </button>
-                          </td>
-                        </tr>
+                          )}
+                        </div>
                       );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                    },
+                  },
+                  {
+                    key: 'actions',
+                    header: 'Action',
+                    align: 'right',
+                    render: (item: any) => (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setReviewJob(item);
+                        }}
+                        style={{
+                          padding: '6px 12px',
+                          borderRadius: '6px',
+                          fontSize: '11.5px',
+                          fontWeight: 700,
+                          border: '1px solid #0284C7',
+                          background: '#F0F9FF',
+                          color: '#0284C7',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Review &amp; Release
+                      </button>
+                    ),
+                  },
+                ]}
+              />
             </div>
+
+            <RecordPanel
+              open={Boolean(activeRecordId)}
+              onClose={() => setActiveRecordId(null)}
+              rows={filteredQueue}
+              rowKey={(item: any) => item.styleId || item.jobNo}
+              activeKey={activeRecordId}
+              onNavigate={(nextKey) => setActiveRecordId(String(nextKey))}
+              title={(item: any) => `Job #${item.jobNo} · ${item.styleNo}`}
+              subtitle={(item: any) => `${item.buyer} · Merchandiser: ${item.merchandiser}`}
+              statusBadge={(item: any) => {
+                const b = statusBadge(item.status);
+                return {
+                  label: b.label,
+                  tone: item.status === 'RELEASED_TO_KNITTING' ? 'good' : item.status === 'RETURNED' ? 'bad' : 'warn',
+                };
+              }}
+              sections={[
+                {
+                  key: 'orderInfo',
+                  title: 'Job & Fabric Sheet Summary',
+                  fields: [
+                    { key: 'jobNo', label: 'Job No.', type: 'readonly', setByRole: 'Merchandising' },
+                    { key: 'styleNo', label: 'Style No.', type: 'readonly', setByRole: 'Merchandising' },
+                    { key: 'buyer', label: 'Buyer', type: 'readonly', setByRole: 'Merchandising' },
+                    { key: 'merchandiser', label: 'Merchandiser', type: 'readonly', setByRole: 'Merchandising' },
+                    { key: 'orderQty', label: 'Order Qty (pcs)', type: 'readonly', setByRole: 'Merchandising' },
+                    { key: 'totalFinishKg', label: 'Finish Fabric Required (Kg)', type: 'readonly', setByRole: 'Merchandising' },
+                    { key: 'fabricSheetNo', label: 'Fabric Sheet No.', type: 'readonly' },
+                    { key: 'ccd', label: 'Cargo Closing Date (CCD)', type: 'readonly', format: (v) => fmtDate(v) },
+                  ],
+                },
+                {
+                  key: 'signedGate',
+                  title: 'Signed Hard-Copy Verification',
+                  fields: [
+                    {
+                      key: 'referenceNo',
+                      label: 'Physical Register Reference No.',
+                      type: 'text',
+                      format: (_, row) => row.signedCopy?.referenceNo || `PHY-SIG-${row.jobNo}`,
+                    },
+                    {
+                      key: 'receivedBy',
+                      label: 'Verified By (Planning Desk)',
+                      type: 'text',
+                      format: (_, row) => row.signedCopy?.receivedBy || 'Shahidul Alam (Head of Planning)',
+                    },
+                  ],
+                },
+              ]}
+              onSave={async (item: any, patch: Partial<any>) => {
+                await api(`/planning/approvals/jobs/${item.styleId}/signed-copy`, {
+                  method: 'POST',
+                  body: JSON.stringify({
+                    fabricSheet: true,
+                    tna: true,
+                    referenceNo: (patch as any).referenceNo || item.signedCopy?.referenceNo || `PHY-SIG-${item.jobNo}`,
+                    receivedBy: (patch as any).receivedBy || item.signedCopy?.receivedBy || 'Shahidul Alam (Head of Planning)',
+                    remarks: 'Signed hard-copy verified via RecordPanel',
+                  }),
+                });
+                setMessage(`Physical signed copy verified for Job ${item.jobNo}.`);
+                await loadAll();
+              }}
+              footerSlot={(item: any) => (
+                <button
+                  type="button"
+                  className="ui-btn ui-btn-primary"
+                  onClick={() => {
+                    setActiveRecordId(null);
+                    openReleaseModal(item);
+                  }}
+                >
+                  Open Colour × Part Release Desk →
+                </button>
+              )}
+            />
           </>
         )}
 

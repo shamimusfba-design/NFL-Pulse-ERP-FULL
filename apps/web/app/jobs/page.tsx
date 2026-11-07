@@ -7,6 +7,8 @@ import Shell from '../../components/Shell';
 import demo2000DataRaw from '../../data/demo-2000-master.json';
 import { displayJobNo } from '../../lib/display';
 import { api } from '../../lib/api';
+import { DataGrid, RecordPanel } from '../../components/ui';
+import { fmtDate } from '../../lib/format';
 import {
   BarChart,
   Bar,
@@ -127,6 +129,7 @@ export function Job360Content({ initialJobId }: Job360Props) {
   const [knitInspections, setKnitInspections] = useState<any[]>([]);
   const [knitLoadError, setKnitLoadError] = useState<boolean>(false);
   const [labRecords, setLabRecords] = useState<any[]>([]);
+  const [activePipelineStage, setActivePipelineStage] = useState<string | null>(null);
 
   // Match Job based on selectedJobNo
   const job = useMemo(() => {
@@ -1363,46 +1366,147 @@ export function Job360Content({ initialJobId }: Job360Props) {
           </div>
 
           {/* Unified Master Pipeline Table Covering All 12 Stages */}
-          <div style={{ overflowX: 'auto', border: `1px solid ${COLORS.border}`, borderRadius: '8px' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ background: '#F1F5F9', borderBottom: `1px solid ${COLORS.border}`, color: COLORS.navy }}>
-                  <th style={{ padding: '8px 10px' }}>Section / Manufacturing Stage</th>
-                  <th style={{ padding: '8px 10px' }}>Factory Floor Location</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'center' }}>Unit</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'right' }}>Required Demand</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'right' }}>Actual Produced</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'right' }}>Balance / Excess</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'center' }}>Achievement</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'center' }}>RFT Quality</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'center' }}>Stage Status</th>
-                  <th style={{ padding: '8px 10px' }}>Responsible In-Charge</th>
-                </tr>
-              </thead>
-              <tbody>
-                {masterPipeline.map((row, idx) => (
-                  <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9', background: idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC' }}>
-                    <td style={{ padding: '8px 10px', fontWeight: 800, color: COLORS.navy }}>{row.section}</td>
-                    <td style={{ padding: '8px 10px', color: COLORS.grey }}>{row.floor}</td>
-                    <td style={{ padding: '8px 10px', textAlign: 'center', color: COLORS.grey }}>{row.unit}</td>
-                    <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600 }}>{fmt(row.req)}</td>
-                    <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 800, color: COLORS.blue }}>{fmt(row.act)}</td>
-                    <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: row.bal === 0 ? COLORS.green : COLORS.amber }}>
-                      {fmt(row.bal)}
-                    </td>
-                    <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 800, color: COLORS.green }}>{row.yieldRate}</td>
-                    <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 700, color: COLORS.emerald }}>{row.rft}</td>
-                    <td style={{ padding: '8px 10px', textAlign: 'center' }}>
-                      <span style={{ fontSize: '10px', fontWeight: 800, padding: '2px 8px', borderRadius: '4px', background: row.status.includes('COMPLETED') || row.status.includes('100%') || row.status.includes('APPROVED') || row.status.includes('SHIPPED') ? '#DCFCE7' : '#FEF3C7', color: row.status.includes('COMPLETED') || row.status.includes('100%') || row.status.includes('APPROVED') || row.status.includes('SHIPPED') ? COLORS.green : COLORS.amber }}>
-                        {row.status}
-                      </span>
-                    </td>
-                    <td style={{ padding: '8px 10px', color: COLORS.grey, fontSize: '11px' }}>{row.inCharge}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataGrid
+            rows={masterPipeline}
+            rowKey={(row: any) => row.section}
+            activeRowKey={activePipelineStage}
+            onRowClick={(row: any) => setActivePipelineStage(row.section)}
+            searchPlaceholder="Search manufacturing stage, floor, in-charge..."
+            columns={[
+              {
+                key: 'section',
+                header: 'Section / Manufacturing Stage',
+                sortable: true,
+                render: (row: any) => <span style={{ fontWeight: 800, color: COLORS.navy }}>{row.section}</span>,
+              },
+              {
+                key: 'floor',
+                header: 'Factory Floor Location',
+                sortable: true,
+                filter: 'enum',
+                render: (row: any) => <span style={{ color: COLORS.grey }}>{row.floor}</span>,
+              },
+              {
+                key: 'unit',
+                header: 'Unit',
+                align: 'center',
+                filter: 'enum',
+              },
+              {
+                key: 'req',
+                header: 'Required Demand',
+                align: 'right',
+                sortable: true,
+                render: (row: any) => <span style={{ fontWeight: 600 }}>{fmt(row.req)}</span>,
+                exportValue: (row: any) => Number(row.req || 0),
+              },
+              {
+                key: 'act',
+                header: 'Actual Produced',
+                align: 'right',
+                sortable: true,
+                render: (row: any) => <span style={{ fontWeight: 800, color: COLORS.blue }}>{fmt(row.act)}</span>,
+                exportValue: (row: any) => Number(row.act || 0),
+              },
+              {
+                key: 'bal',
+                header: 'Balance / Excess',
+                align: 'right',
+                sortable: true,
+                render: (row: any) => (
+                  <span style={{ fontWeight: 700, color: row.bal === 0 ? COLORS.green : COLORS.amber }}>
+                    {fmt(row.bal)}
+                  </span>
+                ),
+                exportValue: (row: any) => Number(row.bal || 0),
+              },
+              {
+                key: 'yieldRate',
+                header: 'Achievement',
+                align: 'center',
+                sortable: true,
+                render: (row: any) => <span style={{ fontWeight: 800, color: COLORS.green }}>{row.yieldRate}</span>,
+              },
+              {
+                key: 'rft',
+                header: 'RFT Quality',
+                align: 'center',
+                sortable: true,
+                render: (row: any) => <span style={{ fontWeight: 700, color: COLORS.emerald }}>{row.rft}</span>,
+              },
+              {
+                key: 'status',
+                header: 'Stage Status',
+                align: 'center',
+                sortable: true,
+                filter: 'enum',
+                render: (row: any) => {
+                  const isGood =
+                    row.status.includes('COMPLETED') ||
+                    row.status.includes('100%') ||
+                    row.status.includes('APPROVED') ||
+                    row.status.includes('SHIPPED');
+                  return (
+                    <span
+                      style={{
+                        fontSize: '10px',
+                        fontWeight: 800,
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        background: isGood ? '#DCFCE7' : '#FEF3C7',
+                        color: isGood ? COLORS.green : COLORS.amber,
+                      }}
+                    >
+                      {row.status}
+                    </span>
+                  );
+                },
+              },
+              {
+                key: 'inCharge',
+                header: 'Responsible In-Charge',
+                sortable: true,
+                render: (row: any) => <span style={{ color: COLORS.grey, fontSize: '11px' }}>{row.inCharge}</span>,
+              },
+            ]}
+          />
+          <RecordPanel
+            open={Boolean(activePipelineStage)}
+            onClose={() => setActivePipelineStage(null)}
+            rows={masterPipeline}
+            rowKey={(row: any) => row.section}
+            activeKey={activePipelineStage}
+            onNavigate={(nextKey) => setActivePipelineStage(String(nextKey))}
+            title={(row: any) => `${row.section} — Job #${job.jobNo}`}
+            subtitle={(row: any) => `${row.floor} · In-Charge: ${row.inCharge}`}
+            statusBadge={(row: any) => ({
+              label: row.status,
+              tone:
+                row.status.includes('COMPLETED') ||
+                row.status.includes('100%') ||
+                row.status.includes('APPROVED') ||
+                row.status.includes('SHIPPED')
+                  ? 'good'
+                  : 'warn',
+            })}
+            sections={[
+              {
+                key: 'stageDetails',
+                title: 'Manufacturing Stage Execution',
+                fields: [
+                  { key: 'section', label: 'Stage Name', type: 'readonly' },
+                  { key: 'floor', label: 'Floor Location', type: 'readonly' },
+                  { key: 'unit', label: 'Unit of Measure', type: 'readonly' },
+                  { key: 'req', label: 'Required Demand', type: 'readonly', format: (v) => fmt(v) },
+                  { key: 'act', label: 'Actual Produced', type: 'readonly', format: (v) => fmt(v) },
+                  { key: 'bal', label: 'Balance / Excess', type: 'readonly', format: (v) => fmt(v) },
+                  { key: 'yieldRate', label: 'Achievement %', type: 'readonly' },
+                  { key: 'rft', label: 'RFT Quality %', type: 'readonly' },
+                  { key: 'inCharge', label: 'Responsible In-Charge', type: 'readonly', span: 2 },
+                ],
+              },
+            ]}
+          />
         </div>
 
         {/* ========================================================================= */}

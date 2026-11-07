@@ -26,8 +26,11 @@ import {
   TrendingUp,
 } from 'lucide-react';
 
+import { DataGrid, RecordPanel } from '../../../components/ui';
+import { fmtDate, fmtNum } from '../../../lib/format';
+
 function fmt(n: any) {
-  return Number(n || 0).toLocaleString();
+  return fmtNum(Number(n || 0));
 }
 
 export default function SubcontractPage() {
@@ -35,6 +38,7 @@ export default function SubcontractPage() {
   const [processFilter, setProcessFilter] = useState<string>('ALL');
   const [search, setSearch] = useState<string>('');
   const [editingOrder, setEditingOrder] = useState<any>(null);
+  const [activeWoNo, setActiveWoNo] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -533,93 +537,221 @@ export default function SubcontractPage() {
             </div>
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', minWidth: '950px', borderCollapse: 'collapse', fontSize: '12px' }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid #E2E8F0', color: '#64748B', textAlign: 'left' }}>
-                  <th style={{ padding: '8px 10px' }}>Work Order / Challan</th>
-                  <th style={{ padding: '8px 10px' }}>Job / Style / Buyer</th>
-                  <th style={{ padding: '8px 10px' }}>Process &amp; Vendor</th>
-                  <th style={{ padding: '8px 10px' }}>Sent / Return Dates</th>
-                  <th style={{ padding: '8px 10px' }}>Sent Qty</th>
-                  <th style={{ padding: '8px 10px' }}>Received OK</th>
-                  <th style={{ padding: '8px 10px' }}>Reject / Balance</th>
-                  <th style={{ padding: '8px 10px' }}>Status</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'right' }}>Follow-up</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((wo, idx) => (
-                  <tr key={wo.workOrderNo || idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                    <td style={{ padding: '10px' }}>
-                      <div style={{ fontWeight: 800, color: '#0284C7', fontFamily: 'monospace' }}>
-                        {wo.workOrderNo}
-                      </div>
-                      <div style={{ fontSize: '10.5px', color: '#64748B' }}>Challan: {wo.challanNo || 'Pending'}</div>
-                    </td>
-                    <td style={{ padding: '10px' }}>
-                      <div style={{ fontWeight: 800, color: '#0F274E' }}>Job #{wo.jobNo} · {wo.styleNo}</div>
-                      <div style={{ fontSize: '11px', color: '#64748B' }}>{wo.buyer}</div>
-                    </td>
-                    <td style={{ padding: '10px' }}>
-                      <span style={{ background: '#EEF2FF', color: '#4338CA', padding: '2px 6px', borderRadius: '4px', fontSize: '10.5px', fontWeight: 700 }}>
-                        {wo.processType}
-                      </span>
-                      <div style={{ fontSize: '11px', color: '#334155', marginTop: '2px' }}>{wo.vendorName}</div>
-                    </td>
-                    <td style={{ padding: '10px', fontSize: '11px', fontFamily: 'monospace' }}>
-                      <div>Sent: {wo.sentDate || '—'}</div>
-                      <div style={{ color: '#0284C7', fontWeight: 600 }}>Due: {wo.expectedReturnDate || '—'}</div>
-                      {wo.receivedDate && <div style={{ color: '#059669' }}>Recv: {wo.receivedDate}</div>}
-                    </td>
-                    <td style={{ padding: '10px', fontFamily: 'monospace', fontWeight: 700 }}>
-                      {fmt(wo.sentQty)} pcs
-                    </td>
-                    <td style={{ padding: '10px', fontFamily: 'monospace', fontWeight: 700, color: '#059669' }}>
-                      {fmt(wo.receivedQty)} pcs
-                    </td>
-                    <td style={{ padding: '10px', fontFamily: 'monospace' }}>
-                      <div style={{ color: '#D97706', fontSize: '11px' }}>Rej: {fmt(wo.rejectQty)}</div>
-                      <div style={{ fontWeight: 700, color: '#0F274E' }}>Bal: {fmt(wo.balanceQty)}</div>
-                    </td>
-                    <td style={{ padding: '10px' }}>
-                      <span
-                        style={{
-                          padding: '3px 8px',
-                          borderRadius: '10px',
-                          fontSize: '10.5px',
-                          fontWeight: 700,
-                          background: wo.status === 'COMPLETED' ? '#ECFDF5' : wo.status === 'DELAYED' ? '#FEF2F2' : '#FFFBEB',
-                          color: wo.status === 'COMPLETED' ? '#059669' : wo.status === 'DELAYED' ? '#DC2626' : '#D97706',
-                        }}
-                      >
-                        {wo.status}
-                      </span>
-                      {wo.remarks && <div style={{ fontSize: '10.5px', color: '#64748B', marginTop: '2px' }}>{wo.remarks}</div>}
-                    </td>
-                    <td style={{ padding: '10px', textAlign: 'right' }}>
-                      <button
-                        onClick={() => setEditingOrder({ ...wo })}
-                        style={{
-                          padding: '4px 10px',
-                          borderRadius: '5px',
-                          border: '1px solid #0284C7',
-                          background: '#F0F9FF',
-                          color: '#0284C7',
-                          fontSize: '11px',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Update Receive
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataGrid
+            rows={filtered}
+            rowKey={(wo: any) => wo.workOrderNo}
+            activeRowKey={activeWoNo}
+            onRowClick={(wo: any) => setActiveWoNo(wo.workOrderNo)}
+            searchPlaceholder="Search Work Order, Job, Vendor..."
+            columns={[
+              {
+                key: 'workOrderNo',
+                header: 'Work Order / Challan',
+                sortable: true,
+                render: (wo: any) => (
+                  <div>
+                    <div style={{ fontWeight: 800, color: '#0284C7', fontFamily: 'monospace' }}>{wo.workOrderNo}</div>
+                    <div style={{ fontSize: '10.5px', color: '#64748B' }}>Challan: {wo.challanNo || 'Pending'}</div>
+                  </div>
+                ),
+                exportValue: (wo: any) => `${wo.workOrderNo} (${wo.challanNo || 'Pending'})`,
+              },
+              {
+                key: 'jobNo',
+                header: 'Job / Style / Buyer',
+                sortable: true,
+                filter: 'text',
+                render: (wo: any) => (
+                  <div>
+                    <div style={{ fontWeight: 800, color: '#0F274E' }}>Job #{wo.jobNo} · {wo.styleNo}</div>
+                    <div style={{ fontSize: '11px', color: '#64748B' }}>{wo.buyer}</div>
+                  </div>
+                ),
+                exportValue: (wo: any) => `${wo.jobNo} ${wo.styleNo} ${wo.buyer}`,
+              },
+              {
+                key: 'processType',
+                header: 'Process & Vendor',
+                sortable: true,
+                filter: 'enum',
+                render: (wo: any) => (
+                  <div>
+                    <span style={{ background: '#EEF2FF', color: '#4338CA', padding: '2px 6px', borderRadius: '4px', fontSize: '10.5px', fontWeight: 700 }}>
+                      {wo.processType}
+                    </span>
+                    <div style={{ fontSize: '11px', color: '#334155', marginTop: '2px' }}>{wo.vendorName}</div>
+                  </div>
+                ),
+                exportValue: (wo: any) => `${wo.processType} - ${wo.vendorName}`,
+              },
+              {
+                key: 'expectedReturnDate',
+                header: 'Sent / Return Dates',
+                sortable: true,
+                render: (wo: any) => (
+                  <div style={{ fontSize: '11px', fontFamily: 'monospace' }}>
+                    <div>Sent: {fmtDate(wo.sentDate)}</div>
+                    <div style={{ color: '#0284C7', fontWeight: 600 }}>Due: {fmtDate(wo.expectedReturnDate)}</div>
+                    {wo.receivedDate && <div style={{ color: '#059669' }}>Recv: {fmtDate(wo.receivedDate)}</div>}
+                  </div>
+                ),
+                exportValue: (wo: any) => `${wo.sentDate || ''} -> ${wo.expectedReturnDate || ''}`,
+              },
+              {
+                key: 'sentQty',
+                header: 'Sent Qty',
+                align: 'right',
+                sortable: true,
+                sum: true,
+                render: (wo: any) => <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{fmt(wo.sentQty)} pcs</span>,
+                exportValue: (wo: any) => Number(wo.sentQty || 0),
+              },
+              {
+                key: 'receivedQty',
+                header: 'Received OK',
+                align: 'right',
+                sortable: true,
+                sum: true,
+                render: (wo: any) => <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#059669' }}>{fmt(wo.receivedQty)} pcs</span>,
+                exportValue: (wo: any) => Number(wo.receivedQty || 0),
+              },
+              {
+                key: 'balanceQty',
+                header: 'Reject / Balance',
+                align: 'right',
+                sortable: true,
+                sum: true,
+                render: (wo: any) => (
+                  <div style={{ fontFamily: 'monospace' }}>
+                    <div style={{ color: '#D97706', fontSize: '11px' }}>Rej: {fmt(wo.rejectQty)}</div>
+                    <div style={{ fontWeight: 700, color: '#0F274E' }}>Bal: {fmt(wo.balanceQty)}</div>
+                  </div>
+                ),
+                exportValue: (wo: any) => Number(wo.balanceQty || 0),
+              },
+              {
+                key: 'status',
+                header: 'Status',
+                sortable: true,
+                filter: 'enum',
+                render: (wo: any) => (
+                  <div>
+                    <span
+                      style={{
+                        padding: '3px 8px',
+                        borderRadius: '10px',
+                        fontSize: '10.5px',
+                        fontWeight: 700,
+                        background: wo.status === 'COMPLETED' ? '#ECFDF5' : wo.status === 'DELAYED' ? '#FEF2F2' : '#FFFBEB',
+                        color: wo.status === 'COMPLETED' ? '#059669' : wo.status === 'DELAYED' ? '#DC2626' : '#D97706',
+                      }}
+                    >
+                      {wo.status}
+                    </span>
+                    {wo.remarks && <div style={{ fontSize: '10.5px', color: '#64748B', marginTop: '2px' }}>{wo.remarks}</div>}
+                  </div>
+                ),
+              },
+              {
+                key: 'actions',
+                header: 'Follow-up',
+                align: 'right',
+                render: (wo: any) => (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingOrder({ ...wo });
+                    }}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: '5px',
+                      border: '1px solid #0284C7',
+                      background: '#F0F9FF',
+                      color: '#0284C7',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Update Receive
+                  </button>
+                ),
+              },
+            ]}
+          />
         </div>
+
+        {/* RecordPanel for Subcontract Work Order */}
+        <RecordPanel
+          open={Boolean(activeWoNo)}
+          onClose={() => setActiveWoNo(null)}
+          rows={filtered}
+          rowKey={(wo: any) => wo.workOrderNo}
+          activeKey={activeWoNo}
+          onNavigate={(nextKey) => setActiveWoNo(String(nextKey))}
+          title={(wo: any) => `${wo.workOrderNo} · Job #${wo.jobNo}`}
+          subtitle={(wo: any) => `${wo.processType} · ${wo.vendorName} · ${wo.buyer}`}
+          statusBadge={(wo: any) => ({
+            label: wo.status,
+            tone: wo.status === 'COMPLETED' ? 'good' : wo.status === 'DELAYED' ? 'bad' : 'warn',
+          })}
+          sections={[
+            {
+              key: 'identity',
+              title: 'Work Order & Job Details',
+              fields: [
+                { key: 'workOrderNo', label: 'Work Order No.', type: 'readonly' },
+                { key: 'jobNo', label: 'Job No.', type: 'readonly', setByRole: 'Merchandising' },
+                { key: 'styleNo', label: 'Style No.', type: 'readonly', setByRole: 'Merchandising' },
+                { key: 'buyer', label: 'Buyer', type: 'readonly', setByRole: 'Merchandising' },
+                {
+                  key: 'processType',
+                  label: 'Process Type',
+                  type: 'select',
+                  options: [
+                    { value: 'PRINTING', label: 'PRINTING' },
+                    { value: 'EMBROIDERY', label: 'EMBROIDERY' },
+                    { value: 'WASH', label: 'WASH' },
+                  ],
+                },
+                { key: 'vendorName', label: 'Vendor Name', type: 'text', required: true },
+              ],
+            },
+            {
+              key: 'quantities',
+              title: 'Challan, Dates & Quantities',
+              fields: [
+                { key: 'challanNo', label: 'Delivery Challan No.', type: 'text' },
+                {
+                  key: 'status',
+                  label: 'Status',
+                  type: 'select',
+                  options: [
+                    { value: 'SENT_TO_VENDOR', label: 'SENT_TO_VENDOR' },
+                    { value: 'IN_PROGRESS', label: 'IN_PROGRESS' },
+                    { value: 'DELAYED', label: 'DELAYED' },
+                    { value: 'COMPLETED', label: 'COMPLETED' },
+                  ],
+                },
+                { key: 'sentDate', label: 'Sent Date', type: 'date' },
+                { key: 'expectedReturnDate', label: 'Expected Return Date', type: 'date' },
+                { key: 'sentQty', label: 'Sent Qty (pcs)', type: 'number', min: 0 },
+                { key: 'receivedQty', label: 'Received OK (pcs)', type: 'number', min: 0 },
+                { key: 'rejectQty', label: 'Reject Qty (pcs)', type: 'number', min: 0 },
+                { key: 'remarks', label: 'Follow-up Remarks', type: 'textarea', span: 2 },
+              ],
+            },
+          ]}
+          onSave={async (wo: any, patch: Partial<any>) => {
+            const next = { ...wo, ...patch };
+            await api('/planning/subcontract', {
+              method: 'POST',
+              body: JSON.stringify(next),
+            });
+            setMessage(`Sub-contract work order ${next.workOrderNo} saved and synced with T&A.`);
+            await loadData();
+          }}
+        />
 
         {/* Modal: Edit Subcontract Work Order */}
         {editingOrder && (

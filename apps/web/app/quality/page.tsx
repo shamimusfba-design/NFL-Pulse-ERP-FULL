@@ -18,6 +18,9 @@ import {
   Cell
 } from 'recharts';
 import { FX_SERIES, FX_BAR, FX_PIE, FxResponsiveContainer as ResponsiveContainer } from '../../components/fx';
+import { DataGrid } from '../../components/ui/DataGrid';
+import { RecordPanel } from '../../components/ui/RecordPanel';
+import { fmtDate, fmtNum } from '../../lib/format';
 
 type GarmentSection = 'overview' | 'cutting' | 'printing' | 'embroidery' | 'sewing' | 'finishing' | 'defects';
 type QualityStatus = 'Passed' | 'Failed' | 'Hold' | 'Rework' | 'Pending';
@@ -209,6 +212,7 @@ export default function GarmentsQualityPage() {
   const [statusFilter, setStatusFilter] = useState<'ALL' | QualityStatus>('ALL');
   const [inspections, setInspections] = useState<GarmentQualityInspection[]>(INITIAL_GARMENT_INSPECTIONS);
   const [showModal, setShowModal] = useState(false);
+  const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
 
   // Form states
   const [formSection, setFormSection] = useState<'cutting' | 'printing' | 'embroidery' | 'sewing' | 'finishing'>('sewing');
@@ -371,83 +375,7 @@ export default function GarmentsQualityPage() {
           </div>
         </section>
 
-        {/* High-Level Overall Quality KPIs (Large, Legible 28-32px Figures) */}
-        <section
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
-            gap: '14px'
-          }}
-        >
-          {/* KPI 1: Total Inspected Garments */}
-          <div className="card" style={{ padding: '16px', borderLeft: '4px solid #2563eb' }}>
-            <div style={{ fontSize: '13px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
-              Inspected Garments
-            </div>
-            <div style={{ fontSize: '30px', fontWeight: 900, color: '#0f172a', margin: '4px 0' }}>
-              {stats.totalPcs.toLocaleString()} <span style={{ fontSize: '14px', fontWeight: 600, color: '#64748b' }}>Pcs</span>
-            </div>
-            <div style={{ fontSize: '13px', color: '#475569', fontWeight: 600 }}>
-              Across 5 Manufacturing Sections
-            </div>
-          </div>
-
-          {/* KPI 2: Overall Plant Pass Rate */}
-          <div className="card" style={{ padding: '16px', borderLeft: '4px solid #16a34a' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '13px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
-                Overall Pass Rate
-              </span>
-              <span style={{ fontSize: '12px', fontWeight: 800, background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '4px' }}>
-                AQL 1.5 OK
-              </span>
-            </div>
-            <div style={{ fontSize: '30px', fontWeight: 900, color: '#16a34a', margin: '4px 0' }}>
-              {stats.passRate}%
-            </div>
-            <div style={{ fontSize: '13px', color: '#15803d', fontWeight: 600 }}>
-              {stats.passedPcs.toLocaleString()} Pcs First-Time Pass
-            </div>
-          </div>
-
-          {/* KPI 3: Defect Rate / Plant DHU */}
-          <div className="card" style={{ padding: '16px', borderLeft: '4px solid #d97706' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '13px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
-                Average Plant DHU
-              </span>
-              <span style={{ fontSize: '12px', fontWeight: 800, background: '#fef3c7', color: '#b45309', padding: '2px 8px', borderRadius: '4px' }}>
-                Benchmark: 3.5%
-              </span>
-            </div>
-            <div style={{ fontSize: '30px', fontWeight: 900, color: '#d97706', margin: '4px 0' }}>
-              {stats.dhu}%
-            </div>
-            <div style={{ fontSize: '13px', color: '#b45309', fontWeight: 600 }}>
-              {stats.defPcs} Defective Pcs Identified
-            </div>
-          </div>
-
-          {/* KPI 4: Pending Rework & Action */}
-          <div className="card" style={{ padding: '16px', borderLeft: '4px solid #dc2626' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '13px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
-                Rework & Holds
-              </span>
-              <span style={{ fontSize: '12px', fontWeight: 800, background: '#fee2e2', color: '#b91c1c', padding: '2px 8px', borderRadius: '4px' }}>
-                Action
-              </span>
-            </div>
-            <div style={{ fontSize: '30px', fontWeight: 900, color: '#dc2626', margin: '4px 0' }}>
-              70 <span style={{ fontSize: '14px', fontWeight: 600, color: '#64748b' }}>Pcs</span>
-            </div>
-            <div style={{ fontSize: '13px', color: '#b91c1c', fontWeight: 600 }}>
-              38 Sewing · 28 Finishing Hold · 4 Print
-            </div>
-          </div>
-        </section>
-
-        {/* Five Process-Specific Navigation Section Buttons */}
+        {/* Five Process-Specific Navigation Section Buttons (Top Sub-navigation per UX Standard) */}
         <div
           style={{
             display: 'flex',
@@ -572,6 +500,82 @@ export default function GarmentsQualityPage() {
             📖 Defect Register
           </button>
         </div>
+
+        {/* High-Level Overall Quality KPIs (Large, Legible 28-32px Figures) */}
+        <section
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+            gap: '14px'
+          }}
+        >
+          {/* KPI 1: Total Inspected Garments */}
+          <div className="card" style={{ padding: '16px', borderLeft: '4px solid #2563eb' }}>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+              Inspected Garments
+            </div>
+            <div style={{ fontSize: '30px', fontWeight: 900, color: '#0f172a', margin: '4px 0' }}>
+              {fmtNum(stats.totalPcs)} <span style={{ fontSize: '14px', fontWeight: 600, color: '#64748b' }}>Pcs</span>
+            </div>
+            <div style={{ fontSize: '13px', color: '#475569', fontWeight: 600 }}>
+              Across 5 Manufacturing Sections
+            </div>
+          </div>
+
+          {/* KPI 2: Overall Plant Pass Rate */}
+          <div className="card" style={{ padding: '16px', borderLeft: '4px solid #16a34a' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                Overall Pass Rate
+              </span>
+              <span style={{ fontSize: '12px', fontWeight: 800, background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '4px' }}>
+                AQL 1.5 OK
+              </span>
+            </div>
+            <div style={{ fontSize: '30px', fontWeight: 900, color: '#16a34a', margin: '4px 0' }}>
+              {stats.passRate}%
+            </div>
+            <div style={{ fontSize: '13px', color: '#15803d', fontWeight: 600 }}>
+              {fmtNum(stats.passedPcs)} Pcs First-Time Pass
+            </div>
+          </div>
+
+          {/* KPI 3: Defect Rate / Plant DHU */}
+          <div className="card" style={{ padding: '16px', borderLeft: '4px solid #d97706' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                Average Plant DHU
+              </span>
+              <span style={{ fontSize: '12px', fontWeight: 800, background: '#fef3c7', color: '#b45309', padding: '2px 8px', borderRadius: '4px' }}>
+                Benchmark: 3.5%
+              </span>
+            </div>
+            <div style={{ fontSize: '30px', fontWeight: 900, color: '#d97706', margin: '4px 0' }}>
+              {stats.dhu}%
+            </div>
+            <div style={{ fontSize: '13px', color: '#b45309', fontWeight: 600 }}>
+              {stats.defPcs} Defective Pcs Identified
+            </div>
+          </div>
+
+          {/* KPI 4: Pending Rework & Action */}
+          <div className="card" style={{ padding: '16px', borderLeft: '4px solid #dc2626' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                Rework & Holds
+              </span>
+              <span style={{ fontSize: '12px', fontWeight: 800, background: '#fee2e2', color: '#b91c1c', padding: '2px 8px', borderRadius: '4px' }}>
+                Action
+              </span>
+            </div>
+            <div style={{ fontSize: '30px', fontWeight: 900, color: '#dc2626', margin: '4px 0' }}>
+              70 <span style={{ fontSize: '14px', fontWeight: 600, color: '#64748b' }}>Pcs</span>
+            </div>
+            <div style={{ fontSize: '13px', color: '#b91c1c', fontWeight: 600 }}>
+              38 Sewing · 28 Finishing Hold · 4 Print
+            </div>
+          </div>
+        </section>
 
         {/* Process-Specific Sub-Header Banner */}
         {activeSection !== 'overview' && activeSection !== 'defects' && (
@@ -781,24 +785,109 @@ export default function GarmentsQualityPage() {
               </div>
             </div>
 
-            <div style={{ overflowX: 'auto' }}>
-              <table className="table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ height: '42px', background: '#f8fafc' }}>
-                    <th style={{ fontSize: '13px' }}>Inspection ID</th>
-                    <th style={{ fontSize: '13px' }}>Date</th>
-                    <th style={{ fontSize: '13px' }}>Section</th>
-                    <th style={{ fontSize: '13px' }}>Buyer / Job #</th>
-                    <th style={{ fontSize: '13px' }}>Line / Location</th>
-                    <th style={{ fontSize: '13px', textAlign: 'right' }}>Inspected Pcs</th>
-                    <th style={{ fontSize: '13px', textAlign: 'right' }}>Defects (DHU %)</th>
-                    <th style={{ fontSize: '13px' }}>Top Defect & Critical Checks</th>
-                    <th style={{ fontSize: '13px' }}>Status</th>
-                    <th style={{ fontSize: '13px' }}>Inspector</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredRecords.map((r) => {
+            <DataGrid<GarmentQualityInspection>
+              tableId="garment-quality-register"
+              rows={filteredRecords}
+              rowKey={(r) => r.id}
+              onRowClick={(r) => setSelectedRecordId(r.id)}
+              searchPlaceholder="Filter ID, Job #, Style, Line, Defect..."
+              columns={[
+                {
+                  key: 'id',
+                  header: 'Inspection ID',
+                  accessor: (r) => r.id,
+                  cell: (r) => <strong style={{ color: '#2563eb' }}>{r.id}</strong>
+                },
+                {
+                  key: 'date',
+                  header: 'Date',
+                  accessor: (r) => r.date,
+                  cell: (r) => fmtDate(r.date)
+                },
+                {
+                  key: 'sectionLabel',
+                  header: 'Section',
+                  accessor: (r) => r.sectionLabel,
+                  cell: (r) => (
+                    <span
+                      style={{
+                        fontSize: '11.5px',
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        background: '#e0f2fe',
+                        color: '#0369a1'
+                      }}
+                    >
+                      {r.sectionLabel}
+                    </span>
+                  )
+                },
+                {
+                  key: 'buyerJob',
+                  header: 'Buyer / Job #',
+                  accessor: (r) => `${r.buyer} ${r.jobNo}`,
+                  cell: (r) => (
+                    <div>
+                      <strong style={{ color: '#0f172a' }}>{r.buyer}</strong>
+                      <span style={{ display: 'block', fontSize: '12px', color: '#64748b' }}>Job #{r.jobNo}</span>
+                    </div>
+                  )
+                },
+                {
+                  key: 'lineOrTable',
+                  header: 'Line / Location',
+                  accessor: (r) => `${r.lineOrTable} ${r.styleNo}`,
+                  cell: (r) => (
+                    <div>
+                      <div style={{ fontWeight: 650, color: '#1e293b' }}>{r.lineOrTable}</div>
+                      <div style={{ fontSize: '11.5px', color: '#64748b' }}>Style: {r.styleNo}</div>
+                    </div>
+                  )
+                },
+                {
+                  key: 'inspectedPcs',
+                  header: 'Inspected Pcs',
+                  align: 'right',
+                  accessor: (r) => r.inspectedPcs,
+                  cell: (r) => <strong>{fmtNum(r.inspectedPcs)}</strong>,
+                  sum: true
+                },
+                {
+                  key: 'defectivePcs',
+                  header: 'Defects (DHU %)',
+                  align: 'right',
+                  accessor: (r) => r.defectivePcs,
+                  cell: (r) => (
+                    <div>
+                      <span style={{ fontWeight: 750, color: r.defectivePcs > 20 ? '#dc2626' : '#0f172a' }}>
+                        {r.defectivePcs} pcs
+                      </span>
+                      <span style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: r.dhuPercent > 3.0 ? '#dc2626' : '#16a34a' }}>
+                        ({r.dhuPercent}%)
+                      </span>
+                    </div>
+                  ),
+                  sum: true
+                },
+                {
+                  key: 'topDefect',
+                  header: 'Top Defect & Checks',
+                  accessor: (r) => `${r.topDefect} ${r.criticalChecks}`,
+                  cell: (r) => (
+                    <div>
+                      <div style={{ color: r.severity === 'Critical' ? '#b91c1c' : '#1e293b', fontWeight: r.severity === 'Critical' ? 700 : 500 }}>
+                        {r.topDefect}
+                      </div>
+                      <div style={{ fontSize: '11.5px', color: '#64748b' }}>{r.criticalChecks}</div>
+                    </div>
+                  )
+                },
+                {
+                  key: 'status',
+                  header: 'Status',
+                  accessor: (r) => r.status,
+                  cell: (r) => {
                     const statusBg =
                       r.status === 'Passed' ? '#dcfce7' :
                       r.status === 'Hold' ? '#fef3c7' :
@@ -807,76 +896,109 @@ export default function GarmentsQualityPage() {
                       r.status === 'Passed' ? '#15803d' :
                       r.status === 'Hold' ? '#b45309' :
                       r.status === 'Rework' ? '#7c3aed' : '#b91c1c';
-
                     return (
-                      <tr key={r.id} style={{ height: '44px', borderBottom: '1px solid #edf2f7' }}>
-                        <td>
-                          <strong style={{ color: '#2563eb', fontSize: '13.5px' }}>{r.id}</strong>
-                        </td>
-                        <td style={{ fontSize: '13px', color: '#475569' }}>{r.date}</td>
-                        <td>
-                          <span
-                            style={{
-                              fontSize: '11.5px',
-                              fontWeight: 700,
-                              padding: '2px 8px',
-                              borderRadius: '4px',
-                              background: '#e0f2fe',
-                              color: '#0369a1'
-                            }}
-                          >
-                            {r.sectionLabel}
-                          </span>
-                        </td>
-                        <td>
-                          <strong style={{ fontSize: '13.5px', color: '#0f172a' }}>{r.buyer}</strong>
-                          <span style={{ display: 'block', fontSize: '12px', color: '#64748b' }}>Job #{r.jobNo}</span>
-                        </td>
-                        <td>
-                          <div style={{ fontSize: '13px', fontWeight: 650, color: '#1e293b' }}>{r.lineOrTable}</div>
-                          <div style={{ fontSize: '11.5px', color: '#64748b' }}>Style: {r.styleNo}</div>
-                        </td>
-                        <td style={{ textAlign: 'right', fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>
-                          {r.inspectedPcs.toLocaleString()}
-                        </td>
-                        <td style={{ textAlign: 'right' }}>
-                          <span style={{ fontSize: '13.5px', fontWeight: 750, color: r.defectivePcs > 20 ? '#dc2626' : '#0f172a' }}>
-                            {r.defectivePcs} pcs
-                          </span>
-                          <span style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: r.dhuPercent > 3.0 ? '#dc2626' : '#16a34a' }}>
-                            ({r.dhuPercent}%)
-                          </span>
-                        </td>
-                        <td>
-                          <div style={{ fontSize: '13px', color: r.severity === 'Critical' ? '#b91c1c' : '#1e293b', fontWeight: r.severity === 'Critical' ? 700 : 500 }}>
-                            {r.topDefect}
-                          </div>
-                          <div style={{ fontSize: '11.5px', color: '#64748b' }}>{r.criticalChecks}</div>
-                        </td>
-                        <td>
-                          <span
-                            style={{
-                              fontSize: '12px',
-                              fontWeight: 800,
-                              padding: '3px 9px',
-                              borderRadius: '999px',
-                              background: statusBg,
-                              color: statusColor
-                            }}
-                          >
-                            {r.status}
-                          </span>
-                        </td>
-                        <td style={{ fontSize: '12.5px', color: '#475569' }}>{r.inspector}</td>
-                      </tr>
+                      <span
+                        style={{
+                          fontSize: '12px',
+                          fontWeight: 800,
+                          padding: '3px 9px',
+                          borderRadius: '999px',
+                          background: statusBg,
+                          color: statusColor
+                        }}
+                      >
+                        {r.status}
+                      </span>
                     );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                  }
+                },
+                {
+                  key: 'inspector',
+                  header: 'Inspector',
+                  accessor: (r) => r.inspector
+                }
+              ]}
+            />
           </div>
         )}
       </div>
+
+      {/* RecordPanel for row click */}
+      {(() => {
+        const idx = filteredRecords.findIndex((r) => r.id === selectedRecordId);
+        const rec = idx >= 0 ? filteredRecords[idx] : null;
+        return (
+          <RecordPanel<GarmentQualityInspection>
+            open={!!rec}
+            record={rec}
+            onClose={() => setSelectedRecordId(null)}
+            title={(r) => `${r.id} · ${r.lineOrTable}`}
+            subtitle={(r) => `${r.buyer} · Job #${r.jobNo} · ${r.sectionLabel}`}
+            statusBadge={(r) => ({
+              label: r.status,
+              tone: r.status === 'Passed' ? 'good' : r.status === 'Hold' || r.status === 'Rework' ? 'warn' : 'bad'
+            })}
+            onPrev={idx > 0 ? () => setSelectedRecordId(filteredRecords[idx - 1].id) : undefined}
+            onNext={idx >= 0 && idx < filteredRecords.length - 1 ? () => setSelectedRecordId(filteredRecords[idx + 1].id) : undefined}
+            prevDisabled={idx <= 0}
+            nextDisabled={idx < 0 || idx >= filteredRecords.length - 1}
+            sections={[
+              {
+                key: 'summary',
+                title: 'Line & Job Details',
+                fields: [
+                  { key: 'id', label: 'Inspection ID', readOnly: true },
+                  { key: 'date', label: 'Date', type: 'date' },
+                  { key: 'buyer', label: 'Buyer', readOnly: true },
+                  { key: 'jobNo', label: 'Job No', readOnly: true },
+                  { key: 'styleNo', label: 'Style No', readOnly: true },
+                  { key: 'lineOrTable', label: 'Line / Table' },
+                  { key: 'inspector', label: 'Inspector', span: 2 }
+                ]
+              },
+              {
+                key: 'audit',
+                title: 'Inspection Result & DHU',
+                fields: [
+                  { key: 'inspectedPcs', label: 'Inspected Pcs', type: 'number', unit: 'pcs', required: true },
+                  { key: 'defectivePcs', label: 'Defective Pcs', type: 'number', unit: 'pcs', required: true },
+                  {
+                    key: 'severity',
+                    label: 'Severity',
+                    type: 'select',
+                    options: [
+                      { value: 'Clean', label: 'Clean' },
+                      { value: 'Minor', label: 'Minor' },
+                      { value: 'Major', label: 'Major' },
+                      { value: 'Critical', label: 'Critical' }
+                    ]
+                  },
+                  {
+                    key: 'status',
+                    label: 'Quality Decision',
+                    type: 'select',
+                    options: [
+                      { value: 'Passed', label: 'Passed' },
+                      { value: 'Rework', label: 'Rework' },
+                      { value: 'Hold', label: 'Hold' },
+                      { value: 'Failed', label: 'Failed' }
+                    ]
+                  },
+                  { key: 'topDefect', label: 'Top Defect Observed', span: 2 },
+                  { key: 'criticalChecks', label: 'Critical Checks Verified', span: 2 },
+                  { key: 'remarks', label: 'Inspector Remarks', type: 'textarea', span: 2 }
+                ]
+              }
+            ]}
+            onSave={(updated) => {
+              const passed = Math.max(0, Number(updated.inspectedPcs) - Number(updated.defectivePcs));
+              const dhu = Number(updated.inspectedPcs) > 0 ? Number(((Number(updated.defectivePcs) / Number(updated.inspectedPcs)) * 100).toFixed(2)) : 0;
+              const nextRec = { ...updated, passedPcs: passed, dhuPercent: dhu };
+              setInspections((prev) => prev.map((item) => (item.id === nextRec.id ? nextRec : item)));
+            }}
+          />
+        );
+      })()}
 
       {/* Modal: Log New Garment Quality Inspection */}
       {showModal && (

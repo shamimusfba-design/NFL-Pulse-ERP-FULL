@@ -1,0 +1,408 @@
+You are continuing development of NOS (NFL Pulse ERP), a garment manufacturing ERP for
+Northern Fashion Ltd., Bangladesh. The owner is the business analyst and acceptance tester.
+
+REPO: github.com/shamimusfba-design/NFL-Pulse-ERP-FULL, branch main. Next.js 16 monorepo,
+web app in apps/web. ALWAYS `git pull` before starting and before pushing — another assistant
+pushes to this same repo.
+
+READ FIRST (these are the contract; where this prompt and these files disagree, the files win):
+  docs/UX-STANDARD.md       — the owner's binding UI rules
+  apps/web/AGENTS.md        — build rules and the two checks that run before every build
+  docs/CHART-STANDARD.md    — chart motion standard
+  docs/MOBILE-STANDARD.md   — phone / PWA layout
+Where something is not covered, ASK. Do not guess and do not invent data.
+
+ALREADY DONE — reuse, never rebuild, never undo:
+  40cfad8  Night mode (dark surfaces, light text), calm chart hover (no flicker),
+           compact header (title only), one hamburger menu, docs/UX-STANDARD.md,
+           apps/web/scripts/check-ux-standard.mjs
+  b698fd8  apps/web/components/ui/tokens.css — type scale, 4px spacing grid, 3 radii,
+           3 shadows, layered surfaces, locked meaning colours
+           apps/web/components/ui/index.tsx — Card, KpiCard, Button, Badge, CommandBar,
+           Alert, Skeleton, EmptyState, Toast + ToastProvider/useToast
+           apps/web/lib/format.ts — fmtDate (01.07.26), fmtNum, fmtQty, fmtJobsQty, fmtPct, fmtDelta
+           Management Dashboard KPI cards in the clean style; 98 teaching lines removed
+  6517c7c  apps/web/components/ui/DataGrid.tsx + datagrid.css — frozen header and left columns,
+           Excel-style column filters, group by, totals row, column chooser, saved views,
+           density, bulk select, CSV export, row windowing. Live on Finished Fabric (colour view).
+
+Reuse those components everywhere. Never write a new table, card, button or badge.
+No paid libraries or licences — build what is needed with free tools.
+
+=====================================================================
+DESIGN DIRECTION — where the patterns come from
+=====================================================================
+The owner compared NOS against Odoo and Microsoft Dynamics 365 and picked specific patterns.
+Do not copy their colours, logos or branding; the NOS palette stays.
+
+Five principles:
+  1. Navigation simple and clean like Odoo.
+  2. Dashboards informative like Dynamics 365, but NOT stuffed with KPIs.
+  3. Tables make big garment data easy to search, filter, sort and export.
+  4. Forms: few clicks, logical grouping, clear validation.
+  5. Consistency: the same interaction pattern in every module.
+
+TAKE FROM DYNAMICS 365 (its free Fluent 2 rules):
+  fixed type scale, 4px spacing grid, 3 shadows, 3 radii, layered backgrounds
+  (already in tokens.css — never hard-code a size, padding, radius or shadow again);
+  advanced data grid (done); FactBox / right detail pane; command bar with New / Save /
+  Print / Export in the same place on every page; workspaces with count tiles; Favorites and
+  Recent in navigation; toast on save, skeleton while loading, real empty states, errors beside
+  the field; a visible keyboard focus ring.
+
+TAKE FROM ODOO:
+  the clean dashboard look — WHITE cards, thin border, NO coloured left edge, NO coloured chips;
+  each card shows only a small label, a big number, a quiet "▲ 4.2% vs last month" and a tiny
+  sparkline; widgets on an even grid, equal heights, no empty side or bottom; short list widgets
+  (e.g. "Most delayed jobs") beside the charts, not only charts. This is the standard for EVERY
+  dashboard. Also: a search bar with facets (Filters, Group By, Favorites); Group By with
+  subtotals (buyer → job → colour); a statusbar stage bar; smart count buttons on a record
+  header ("Lab dip 3", "Trims 5") that open filtered lists; a selection action bar (tick rows →
+  Accept / Print / Export); breadcrumbs on drill paths only; Kanban ONLY for stage flows
+  (samples Offer → SMS → PP, lab dips) offered beside the table, never replacing it;
+  Undo for a few seconds after a delete.
+
+DO NOT TAKE: Odoo's app-grid home page (the department sidebar stays); Dynamics' very dense
+small type (table text never below 12px); either palette or icon style; a separate BI tool.
+
+=====================================================================
+RULES THAT APPLY TO EVERY PAGE
+=====================================================================
+Header and navigation
+  - One compact header everywhere: page title only, no descriptive line. It scrolls away.
+  - One hamburger menu, in the header. The sidebar has none of its own.
+  - Dashboard pages: the page's own section buttons stay frozen, highlight left→right while
+    scrolling and jump to a section on click (the Job 360 pattern).
+  - A separate tab row only where the kind of work differs or there is data entry.
+  - No duplicate buttons doing the same job. Where the same buttons appear in a top sub-menu
+    AND inside the page, keep the INNER design the owner likes, move it to the top, delete the
+    outer one.
+  - No teaching text, no Bengali text, no "demo"/"prototype"/"sample data" on working screens.
+    An urgent alert is one line plus one button. A "Reset demo" control may stay, ADMIN only.
+
+Tables
+  - The section's main table is the focus: full width, filling from its own top to the bottom
+    of the screen, ONE vertical scroll, only the header row frozen. No half-cut rows, no empty
+    space underneath, never a table inside a short scroll box.
+  - Excel-style filter in every column header (tick list with counts, search, A→Z); values must
+    never overlap. Filters drive cards, charts and the table together; active filters show as chips.
+  - Clicking a row opens the right-side record panel. Values change only after pressing Edit.
+  - As little sideways scrolling as possible, but table text never below 12px. If it does not
+    fit: column chooser or column groups. Job and Style frozen left. The horizontal scrollbar
+    always reachable at the bottom of the screen. One scrollbar style everywhere.
+  - Small secondary tables stay in the page and scroll with it.
+
+Look
+  - Cards, charts, tables and buttons identical on every page.
+  - Day mode: light surfaces, dark text. Night mode: the reverse, cards and tables dark too.
+  - One date format 01.07.26. Numbers always with thousands commas and a unit (t, kg, pcs).
+
+Charts
+  - Never cards-only. Pick the chart for the data: time → trend line; compare items → column or
+    bar; 2–5 parts → donut; vs target → progress bar; day × line → heatmap.
+  - Only the important charts, compact, no lopsided empty space. A page may have many sections;
+    each SECTION holds roughly 4–6 charts or boxes, but the page has NO overall cap.
+  - Hover is calm: only the hovered mark is marked; other marks never dim or flash.
+  - No label or number overlaps anything, at 1366px, 1920px and phone width.
+  - Short labels ("NFL", not "In-house dyeing (NFL)"). If crowded, 2–3 small charts in one box.
+  - Colours locked: blue = required / load / plan, green = delivered / done, red = balance,
+    amber = in-between (grey ready, in process).
+  - Always show the job count AND the quantity with its unit.
+  - Keep the existing scroll-in draw-from-zero animation (components/fx).
+
+Before building any section's dashboard, list the possible charts for it and ask the owner
+which to keep. Do not decide alone.
+
+=====================================================================
+TASK 1 — RecordPanel (right-side edit panel)
+=====================================================================
+New: apps/web/components/ui/RecordPanel.tsx + recordpanel.css.
+  - Slides in from the right (~440px, full height) above the page, dimming what is behind.
+    On a phone it is a bottom sheet.
+  - Opens on DataGrid row click (onRowClick + selectedRowKey already exist).
+  - Header: record title (e.g. "BS-ONL 48902 · Navy Blazer"), ◀ ▶ to move to the previous and
+    next row without closing, and ×.
+  - Body: fields top to bottom in TWO columns; a long value (description, remarks) takes the
+    full width in one column. Fields grouped into collapsible sections.
+  - Starts READ-ONLY. An Edit button unlocks it. Save / Cancel pinned at the bottom.
+  - Validation appears beside the wrong field, with the reason, before Save is pressed.
+  - Fields a role may not change are read-only with "Set by <role>" beside them
+    (e.g. sample Present status belongs to Sample Planning only).
+  - Closing with unsaved changes asks first. Undo for a few seconds after a delete.
+  - A History section at the bottom — who changed what and when — visible to ADMIN only.
+    No server yet: keep it in component state with a clear TODO where the API call goes.
+  Props: open, onClose, title, subtitle?, sections:{name, fields:Field[]}[], onSave(values),
+  onPrev?, onNext?, canEdit?, readOnlyFields?, historyEntries?
+  Field = {key,label,value,type:'text'|'number'|'date'|'select'|'textarea',options?,fullWidth?,unit?,validate?}
+Wire it into app/modules/finished-fabric/page.tsx: a colour-wise row opens job, style, colour,
+fabric type, GSM, dia, required kg, received kg, balance, rack/shelf, status, remarks.
+
+=====================================================================
+TASK 2 — Dashboard kit (cross-filtering is the owner's main ask)
+=====================================================================
+New: apps/web/components/ui/DashboardKit.tsx + dashboard.css.
+
+2a. CrossFilterProvider — React context holding {field,value}[] plus toggle/clear.
+    Clicking a value in ANY chart filters EVERY other chart, card and table on that page.
+    Active filters as chips at the top ("Buyer: OVS ✕", "Clear all"). Clicking the same value
+    again removes it. The selected mark stays full colour, others drop to 30% — ON CLICK ONLY.
+    NOTHING may change on hover; hover flicker was a reported bug. Must work on every dashboard.
+
+2b. Slicer bar: Year, Month, Shipment week, Planning slot, Buyer, Factory. Works together with
+    cross-filtering. Default = current month. Months are counted by shipment date.
+
+2c. DrillPopup — double-click a chart value: a square bubble opens directly ABOVE the clicked
+    mark with a small arrow pointing at it, floating above everything, never cut off; it opens
+    below only when there is no room at the top of the page. Closes on outside click, Esc or ×;
+    a bottom sheet on phones. Inside, the breakdown chart suits the data: 2–5 parts → donut,
+    many → sorted bar, over time → trend, last level → job list. 2–3 buttons at the top switch
+    the breakdown (Factory / Buyer / Job). A "Show these jobs in the table →" link at the bottom
+    filters the page's main table. Never a popup inside a popup. Only build a breakdown the data
+    actually supports — check first, do not fake it.
+
+2d. Two chart heights only: small 180px, large 260px. Enforce the colour and label rules above.
+
+=====================================================================
+TASK 3 — Page layout standard
+=====================================================================
+3a. apps/web/components/ui/SectionNav.tsx — the frozen section-button row described above,
+    copying the behaviour already working in app/jobs/[id]/page.tsx. Apply to app/page.tsx
+    (Executive) and app/management/page.tsx.
+3b. Remove duplicate button rows (keep the inner design, move it up, delete the outer):
+    modules/dyeing-lab, modules/testing-lab, app/quality, modules/fabric-quality,
+    the IE pages (ie-overview, ie-mis-import, kpi-board), Executive → Fabric & Dyeing Meeting.
+3c. Replace all date and number formatting with lib/format.ts, app-wide.
+3d. Remove remaining demo / prototype wording from working screens.
+3e. "My pending tasks" becomes a small button at the top with a count badge, showing ONLY the
+    logged-in user's own pending work. It replaces the right-hand pending panel so the table can
+    be full width. Later it grows into a Dynamics-style workspace: count tiles per task type
+    opening filtered lists.
+3f. Add Favorites and Recent to the top of the sidebar; breadcrumbs on drill paths only.
+3g. Fix the /my-pending-work route — it returned 404.
+
+=====================================================================
+TASK 4 — Roll the grid out, one group per commit
+=====================================================================
+  4a. Stores: modules/yarn, modules/greige-store, modules/trims, and the job-wise view of
+      modules/finished-fabric
+  4b. Production: modules/knitting, modules/dyeing-lab, modules/testing-lab,
+      modules/fabric-quality, app/quality
+  4c. Planning: modules/ta, modules/capacity, modules/planning-approvals, modules/subcontract
+  4d. IE: ie-bulletin, ie-daily-target, ie-line-performance, ie-npt, ie-qco
+  4e. Jobs: app/jobs, app/tasks
+Every page follows the table rules above, and a row click opens the RecordPanel where that page
+allows editing.
+
+=====================================================================
+TASK 5 — Settings section
+=====================================================================
+New route app/settings/page.tsx, two levels.
+A. Company settings — ADMIN only, for everyone:
+   Master lists: factories by type (print, embroidery, sub-contract dyeing, knitting, washing),
+   buyers and sub-brands, merchandisers and teams, machines and capacity, racks and shelves,
+   reason lists (re-dye, NPT, delay, reject), finishing processes, sample types, statuses, units,
+   garment parts and fabric types per item, common trims per item (also per buyer / sub-brand).
+   Rules & targets: planning slot length (10 days), RFT / efficiency / on-time targets, job
+   number starting value, fabric wastage % per item, cutting excess % and shipment ± tolerance.
+   Default appearance for new users. Users & access.
+   A lock beside every appearance setting; locked ones show greyed with "Set by admin". Admin can
+   also set a limit instead of a full lock (e.g. table text only Medium or Large), per role or
+   department.
+B. My settings — each user for themselves, saved to their own ACCOUNT, not per computer:
+   text size per element (header, label, chart name, data label, table header, table data), each
+   Small / Medium / Large; card and chart size; table density Compact / Comfortable; Day / Night;
+   which page opens at login. Everyone gets the standard look by default.
+Always locked for everyone: the colour meanings, the date format, the master lists.
+Sizes are fixed steps, never free numbers, so labels cannot start overlapping.
+Every setting has Preview, Reset to default and a change history.
+No server yet: keep settings in localStorage behind apps/web/lib/settings.ts with a TODO where
+the API will replace it.
+
+=====================================================================
+TASK 6 — Dyeing dashboard (the owner has already chosen these charts)
+=====================================================================
+Build the new dashboard inside the Next.js app at app/modules/dyeing. Leave the old static page
+apps/web/public/dyeing/index.html untouched until the owner approves the new one.
+Selector at the top: Month / Shipment week / Planning slot (10-day). It updates everything.
+Cards: jobs, colours, kg, overall machine utilisation % of TOTAL capacity, RFT %,
+T&A-crossed (jobs + kg).
+Chart 1 "Supply status" — ONE group box, two halves:
+  Left: three donuts, % in the middle, total tons beneath — Knitting (done / balance),
+  NFL (dyed / grey ready / waiting knitting), Sub-con (dyed / ready to send / waiting knitting).
+  Right: FOUR separate columns — NFL ready, NFL balance, Sub-con ready, Sub-con balance — each
+  showing tons, jobs and colours. Not stacked. One legend for the whole box.
+Chart 2 "Finishing process" — AOP, Brush, Peach; three columns each: required (blue) /
+  delivered (green) / balance (red), with tons and jobs. Singeing left out for now.
+  Clicking a column drills down by factory.
+Chart 3 — RFT % trend by slot with the target line.
+Chart 4 — Sub-contract factory-wise: sent vs received vs balance.
+Then the main job-and-colour table, full width, using DataGrid.
+DO NOT build (the owner dropped these): weekly machine-load heatmap, per-machine utilisation %,
+batch-size evaluation, grey-ready lead time, test / shade-check failure charts.
+Data: apps/api/import-samples/dyeing-files/ — Finish_Fabric_Plan_Execution_Status.xls
+(factory, grey ready, additional process), Bulk_to_Bulk_RFT.xlsx, Dyeing_Machine_Schedule_26.xls,
+DYEING_PROFILE.xlsx, Buyer_Wise_Sub_Contract_Dyeing_Plan.xlsx.
+
+=====================================================================
+TASK 7 — Server foundation (everything below depends on it)
+=====================================================================
+Today the Merchandising module keeps all data in the browser (23 localStorage calls, zero server
+calls) and "Logged in as" is a simulation, not real login. Rack locations are browser-only too.
+Build, in apps/api and wired into apps/web:
+  - a database and real login with roles and departments; role and department checks enforced
+    on the SERVER, not only in the UI
+  - file storage for product photos and documents
+  - persistence for: orders and POs, BOM, fabric order sheets, trims checklists, follow-up
+    statuses, rack locations, pending tasks, change history, saved views, settings
+  - every record carries who changed it and when
+Work from the existing schema and code; back up before any destructive migration.
+
+=====================================================================
+TASK 8 — PO import (a known, unverified defect)
+=====================================================================
+Reported: different uploaded files produced the same "loaded and reconciled successfully"
+result. Never verified fixed. Also: in an OVS product brief a country (Italy) sits where other
+buyers put a PO number and must NOT be mapped as a PO number.
+  - Reproduce with real buyer files before changing anything.
+  - Trace the whole pipeline: upload → buyer/document detection → parse → field mapping →
+    normalise → validate → reconcile → review screen → database.
+  - Buyers: Bestseller family (ONLY, ONLY & SONS, NAME IT, Jack & Jones), OVS Italy, UTG.
+    Buyer-specific parsing kept separate from shared normalisation.
+  - Preserve PO-wise, colour-wise and size-wise breakdowns; a job can carry 2–20 POs, each with
+    its own colours, sizes and CCD. Never collapse them into one total.
+  - Show extracted data and reconciliation warnings BEFORE registering, and allow edits there —
+    the old ERP could not do this and the owner wants it fixed.
+  - Add regression tests with two files whose job, style and quantities genuinely differ.
+  - Importing a PO must immediately create the tasks in every section that should get one.
+  Parsers live in apps/api/src/order-import/ (bestseller, ovs, utg, excel-csv, parser-utils).
+  Ask the owner for the real PO files before starting.
+
+=====================================================================
+TASK 9 — Bulk Merchandising, rebuilt
+=====================================================================
+Do this only after Tasks 1, 2 and 7. Keep apps/web/public/merchandising/index.html (the 30 Oct
+version) working until each new part is approved; build the new one inside the Next.js app.
+
+Sub-menu order: Dashboard → Order entry → Create BOM → Fabric order sheet →
+Trims & accessories ordering → Follow-up.
+
+Flow: merchandiser imports the PO and enters the order → Create BOM (trims + fabric by garment
+part; CAD fills dia and consumption; thread consumption comes from central IE and lace from
+Technical as pending tasks) → merchandiser makes and prints the fabric order sheet → PLANNING
+does process selection and approves → only then do requests reach the fabric division and the
+trims store → merchandiser updates trims ordering status → Follow-up shows everything.
+
+9a. Order entry
+  - PO import first asks: New job or Repeat job. Job numbers are the factory's own (buyers use
+    style no.); a new job continues from the last number (starting value set in Settings);
+    a repeat job keeps the base job and changes only the lot (1st, 2nd …).
+  - At least 2 photos per item: front and back.
+  - Item name taken from the PO sheet.
+  - Separate sections: job info, country, PO-wise, CCD-wise. CCD-wise groups earlier CCD above,
+    later below, each with a tick box, all ticked by default; ticking sums colour-wise totals below.
+  - Size quantities change only after pressing Edit (remove the current up/down arrows — they
+    change quantities by accident).
+  - All missing or blank information gathered in one place.
+  - Frozen section buttons at the top of the page.
+9b. Create BOM (the factory calls it the trims & accessories checklist; stop using the word
+    "checklist" in the UI)
+  - Two parts: Trims & accessories, and Fabric.
+  - Fabric: pick garment parts and fabric types from dropdowns driven by the item
+    (e.g. hoodie: fleece body, rib cuff and bottom, single jersey hood inner). CAD fills dia and
+    consumption. Fabric requirement = consumption × quantity × wastage % (wastage from Settings).
+  - Trims: common items for that item appear automatically; others can be added; every item is a
+    dropdown with a "Custom" option at the top.
+  - Thread consumption goes to central IE as a pending task; lace to Technical. When they fill it
+    in, it lands here automatically.
+  - Incomplete saves are allowed and stay as pending work. Ordering stays blocked until the
+    consumption arrives, but the checklist itself can still be created.
+9c. Fabric order sheet — its own sub-button. A small button at the top shows the pending count;
+    clicking it gives a job dropdown; picking a job shows the whole sheet with a Print button.
+    Nothing reaches any division before Planning approves.
+9d. Trims & accessories ordering — a job list, each row with an arrow that opens its items; each
+    item has Ordered / Not ordered; the day the status changes IS the order date; a separate Save
+    column. After Planning approval the checklist goes to the trims store automatically.
+9e. Follow-up — job, style, product image, order quantity, production quantity by stage
+    (knitting, dyeing, cutting, print, embroidery, sewing, finishing), shipment dates.
+    Key dates each with its status beside it: sewing start, cutting, fabric delivery,
+    trims in-house, file handover, dyeing start (lab dip approval comes before it), PP meeting.
+    Trims in-house and file handover are the merchandiser's own responsibility — show them early.
+    Merchandiser-entered statuses: lab dip (per colour), file handover, trims ordering, PP meeting.
+    Auto statuses: checklist created / approved, fabric order sheet, planning.
+    Production quantities and lab dip / print / embroidery / wash statuses come FROM those
+    departments' own pages — the merchandiser never retypes them.
+    Clicking a job number opens Job 360. Every change is kept in history, ADMIN only.
+9f. Dashboard — filters Year, Month, timeline. "In hand" / "In progress" = orders created with
+    no shipment yet. Cards: in-hand jobs and quantity, total jobs and quantity, in-progress jobs
+    and quantity, item-type counts, USD order value, average FOB per item, CM, print and
+    embroidery values, total CM. Small per-stage charts (knitting, dyeing required/delivered/
+    balance, cutting order/cut/balance, print, embroidery only if present, sewing, shipment) as
+    donuts, green done / red balance, % and jobs in the middle; clicking a colour shows jobs and
+    quantity. Below, the filtered table: job, order quantity, image, PO or colour expandable,
+    country, CCD, print / wash status, present status.
+Process selection (yarn dye yes/no, and so on) belongs to the PLANNING system, not to
+merchandisers, and drives T&A generation. T&A's base data comes from the PO sheet.
+
+=====================================================================
+TASK 10 — Cutting module and Cut Planner
+=====================================================================
+The Cut Planner is the most important part: plan how to cut — how many cuttings, which sizes and
+how many pieces in each — with the fewest cuttings and safe fabric consumption. It must allow
+ticking several POs (e.g. all with one shipment date) and show their summed colour × size, with
+no manual adding. Source report: apps/api/import-samples/CUTTING_PRINT_INPUT.xlsx.
+
+=====================================================================
+TASK 11 — Bring the framed HTML pages into the app
+=====================================================================
+Seven pages still run as separate HTML files inside an iframe, so none of the app-wide rules,
+Night mode or components reach inside them: merchandising, sample-room, dyeing, greige-store,
+cutting, yarn-knitting, technical. Port them onto the shared components one at a time, keeping
+the old file until each is approved. Until then, at least make their Day/Night switch follow the
+app's switch instead of having their own.
+
+=====================================================================
+TASK 12 — Phone
+=====================================================================
+Large tables become cards on a phone. The framed HTML pages above are not phone-ready.
+Keep the desktop layout unchanged; desktop is the priority.
+
+=====================================================================
+OPEN QUESTIONS — ask the owner, do not decide alone
+=====================================================================
+  - Follow-up: one table or two views ("Order follow-up" for production and shipment,
+    "Work follow-up" for lab dip, file handover, trims, PP meeting)?
+  - Planning approval: fabric order sheet and checklist together or separately? Does a rejection
+    return to the merchandiser as "Returned" with a reason?
+  - After approval, if a PO or quantity changes: lock, or re-approve?
+  - Long lead-time trims (labels): may they be released before Planning approval in urgent cases?
+  - Where do the current Order value, Print and Cost rates tabs go in the new sub-menu order?
+  - Does a repeat job copy the previous job's BOM, fabric sheet and process selection?
+  - Partially shipped jobs: still "in progress", counting only the balance?
+  - Where do USD values (FOB, CM, print, embroidery) come from — order entry or cost rates?
+  - Hold / cancelled / split orders: where are they counted on the dashboard?
+  - When a date passes, is it only a red mark, or a notification to the merchandiser and manager?
+  - Who calculates yarn quantity from the fabric order sheet?
+  - Who decides which unit or sewing line a job goes to — Planning?
+  - Should Dyeing also keep: re-dye reason, dyed-but-not-delivered reason, buyer-wise dyeing?
+  - Is the reason for "ready but not sent" recorded anywhere today?
+  - Is a per-job completeness mark ("12/15 fields filled") wanted?
+  - What are the "building" and "temporary" processes the owner mentioned?
+
+FILES STILL NEEDED FROM THE OWNER (ask before the tasks that use them):
+  real PO files (Bestseller, OVS, UTG), the original T&A Excel workbook, and the current printed
+  fabric order sheet and BOM / checklist formats.
+
+=====================================================================
+HOW TO WORK
+=====================================================================
+  - `git pull` first. Small commits, one task area each, clear messages.
+  - Preserve existing working features and business logic. Change only what these tasks name;
+    ask before anything extra.
+  - DO NOT TOUCH: the Planning Board (sewing-planning Gantt, capacity, T&A scheduling logic) —
+    the owner is satisfied with it; the 30 Oct Merchandising static module until its replacement
+    is approved; the Sample Room, Yarn-Knitting and Cutting static HTML pages until Task 11.
+  - Keep `npm run build` passing — it runs check-chart-standard.mjs and check-ux-standard.mjs.
+  - Verify with the Firebase hosting emulator on the real bundle, in Day and Night, desktop and
+    phone, before calling anything done. Publishing is `npm run publish:hosting` from the PC.
+  - Never claim something is committed, deployed, tested or fixed without evidence.
+  - Report exactly which files changed, what you could not finish, and anything you were unsure of.

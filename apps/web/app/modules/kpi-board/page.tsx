@@ -151,8 +151,6 @@ export default function KpiBoardPage() {
 </div>
         <div className="module-actions">
           <button className="btn btn-secondary" onClick={() => window.print()}>Print Physical Board</button>
-          <a className="btn btn-secondary" href="/modules/ie-bulletin">IE Bulletin</a>
-          <a className="btn btn-primary" href="/modules/kaizen">Kaizen</a>
         </div>
       </section>
 

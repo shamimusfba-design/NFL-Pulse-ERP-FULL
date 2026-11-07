@@ -3,6 +3,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import Shell from '../../../components/Shell';
+import { DataGrid } from '../../../components/ui/DataGrid';
+import { RecordPanel } from '../../../components/ui/RecordPanel';
+import { fmtDate } from '../../../lib/format';
 import {
   Palette,
   FlaskConical,
@@ -468,6 +471,7 @@ export default function DyeingLabPage() {
 
   // Accept Request Modal State
   const [acceptingRequest, setAcceptingRequest] = useState<IncomingLabDipRequest | null>(null);
+  const [panelDipId, setPanelDipId] = useState<string | null>(null);
   const [selectedColorsForAccept, setSelectedColorsForAccept] = useState<string[]>([]);
   const [selectedOptionsForAccept, setSelectedOptionsForAccept] = useState<{ optA: boolean; optB: boolean; optC: boolean; optD: boolean }>({
     optA: true,
@@ -981,199 +985,196 @@ export default function DyeingLabPage() {
               </div>
             </div>
 
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left', minWidth: 1200 }}>
-                <thead style={{ background: '#F1F5F9' }}>
-                  <tr style={{ borderBottom: '2px solid #CBD5E1', color: '#334155' }}>
-                    <th style={{ padding: '10px 12px', fontWeight: 800 }}>Buyer &amp; Job No</th>
-                    <th style={{ padding: '10px 12px', fontWeight: 800 }}>Style, Item &amp; Fabric</th>
-                    <th style={{ padding: '10px 12px', fontWeight: 800 }}>Color Name &amp; Pantone Ref</th>
-                    <th style={{ padding: '10px 12px', fontWeight: 800 }}>Stage &amp; 10-Day Plan</th>
-                    <th style={{ padding: '10px 12px', fontWeight: 800 }}>Option &amp; Dyestuffs</th>
-                    <th style={{ padding: '10px 12px', fontWeight: 800, textAlign: 'center' }}>Spectro ΔE</th>
-                    <th style={{ padding: '10px 12px', fontWeight: 800, textAlign: 'center' }}>Buyer Status</th>
-                    <th style={{ padding: '10px 12px', fontWeight: 800 }}>Merchandiser Follow-Up</th>
-                    <th style={{ padding: '10px 12px', fontWeight: 800, textAlign: 'center' }}>Dossier</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredRecords.length === 0 ? (
-                    <tr>
-                      <td colSpan={9} style={{ padding: '30px', textAlign: 'center', color: '#64748B' }}>
-                        No lab dips match the selected filter criteria.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredRecords.map((r, idx) => {
-                      const isApproved = r.status === 'APPROVED';
-                      const isReDip = r.status === 'RE_DIP_REQUIRED';
-                      const isPending = r.status === 'PENDING_BUYER' || r.status === 'SUBMITTED';
-
-                      return (
-                        <tr
-                          key={r.id}
+            <DataGrid<LabDipMasterRecord>
+              tableId="dyeing-lab-master-register"
+              rows={filteredRecords}
+              rowKey={(r) => r.id}
+              onRowClick={(r) => setPanelDipId(r.id)}
+              searchPlaceholder="Filter Dip #, Job, Buyer, Color, Pantone..."
+              columns={[
+                {
+                  key: 'buyerJob',
+                  header: 'Buyer & Job No',
+                  accessor: (r) => `${r.buyer} ${r.jobNo} ${r.dipNo}`,
+                  cell: (r) => (
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontWeight: 800, color: '#0F274E' }}>{r.buyer}</span>
+                        <span style={{ color: '#64748B' }}>·</span>
+                        <span style={{ fontWeight: 800, color: '#2563EB' }}>#{r.jobNo}</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                        Dip: <strong>{r.dipNo}</strong>
+                      </div>
+                    </div>
+                  )
+                },
+                {
+                  key: 'styleItem',
+                  header: 'Style, Item & Fabric',
+                  accessor: (r) => `${r.styleNo} ${r.item} ${r.fabricType}`,
+                  cell: (r) => (
+                    <div>
+                      <div style={{ fontWeight: 750, color: '#1E293B' }}>{r.styleNo}</div>
+                      <div style={{ fontSize: 11.5, color: '#64748B' }}>{r.item}</div>
+                      <div style={{ fontSize: 11, color: '#475569', fontStyle: 'italic' }}>{r.fabricType}</div>
+                    </div>
+                  )
+                },
+                {
+                  key: 'colorName',
+                  header: 'Color & Pantone Ref',
+                  accessor: (r) => `${r.colorName} ${r.pantoneRef}`,
+                  cell: (r) => (
+                    <div>
+                      <div style={{ fontWeight: 800, color: '#0F172A' }}>{r.colorName}</div>
+                      <span style={{ background: '#F1F5F9', border: '1px solid #CBD5E1', padding: '1px 6px', borderRadius: 4, fontSize: 11, color: '#475569', fontWeight: 700 }}>
+                        {r.pantoneRef}
+                      </span>
+                    </div>
+                  )
+                },
+                {
+                  key: 'stagePlan',
+                  header: 'Stage & 10-Day Plan',
+                  accessor: (r) => `${r.stage} ${r.scheduledMachine || ''}`,
+                  cell: (r) => {
+                    const isApproved = r.status === 'APPROVED';
+                    return (
+                      <div>
+                        <span
                           style={{
-                            borderBottom: '1px solid #F1F5F9',
-                            background: r.inTenDayLoadingPlan && !isApproved ? '#FEF2F2' : idx % 2 === 0 ? '#FFFFFF' : '#FAFAFA'
+                            fontSize: 11,
+                            fontWeight: 800,
+                            padding: '2px 7px',
+                            borderRadius: 4,
+                            background: r.stage === 'SMS_SAMPLE' ? '#EFF6FF' : '#F1F5F9',
+                            color: r.stage === 'SMS_SAMPLE' ? '#1D4ED8' : '#334155'
                           }}
                         >
-                          {/* Column 1: Buyer & Job */}
-                          <td style={{ padding: '10px 12px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <span style={{ fontWeight: 800, color: '#0F274E', fontSize: 13.5 }}>{r.buyer}</span>
-                              <span style={{ color: '#64748B' }}>·</span>
-                              <span style={{ fontWeight: 800, color: '#2563EB', fontSize: 13.5 }}>#{r.jobNo}</span>
-                            </div>
-                            <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
-                              Dip: <strong>{r.dipNo}</strong>
-                            </div>
-                          </td>
-
-                          {/* Column 2: Style, Item & Fabric */}
-                          <td style={{ padding: '10px 12px' }}>
-                            <div style={{ fontWeight: 750, color: '#1E293B' }}>{r.styleNo}</div>
-                            <div style={{ fontSize: 11.5, color: '#64748B' }}>{r.item}</div>
-                            <div style={{ fontSize: 11, color: '#475569', fontStyle: 'italic' }}>{r.fabricType}</div>
-                          </td>
-
-                          {/* Column 3: Color & Pantone */}
-                          <td style={{ padding: '10px 12px' }}>
-                            <div style={{ fontWeight: 800, color: '#0F172A' }}>{r.colorName}</div>
-                            <span style={{ background: '#F1F5F9', border: '1px solid #CBD5E1', padding: '1px 6px', borderRadius: 4, fontSize: 11, color: '#475569', fontWeight: 700 }}>
-                              {r.pantoneRef}
-                            </span>
-                          </td>
-
-                          {/* Column 4: Stage & 10-Day Machine Loading Plan */}
-                          <td style={{ padding: '10px 12px' }}>
-                            <div>
-                              <span style={{
-                                fontSize: 11,
-                                fontWeight: 800,
-                                padding: '2px 7px',
-                                borderRadius: 4,
-                                background: r.stage === 'SMS_SAMPLE' ? '#EFF6FF' : '#F1F5F9',
-                                color: r.stage === 'SMS_SAMPLE' ? '#1D4ED8' : '#334155'
-                              }}>
-                                {r.stage === 'SMS_SAMPLE' ? 'SMS Sample' : 'Bulk Confirmed'}
-                              </span>
-                            </div>
-                            {r.inTenDayLoadingPlan && (
-                              <div style={{ marginTop: 4 }}>
-                                <span style={{
-                                  fontSize: 10.5,
-                                  fontWeight: 800,
-                                  padding: '2px 6px',
-                                  borderRadius: 4,
-                                  background: isApproved ? '#DCFCE7' : '#FEE2E2',
-                                  color: isApproved ? '#15803D' : '#DC2626',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 3
-                                }}>
-                                  <Flame size={11} /> 10-Day Plan: {r.scheduledMachine} ({r.scheduledDyeingDate})
-                                </span>
-                              </div>
-                            )}
-                          </td>
-
-                          {/* Column 5: Option & Recipe */}
-                          <td style={{ padding: '10px 12px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <span style={{ background: '#0F274E', color: '#FFF', padding: '1px 7px', borderRadius: 4, fontSize: 11, fontWeight: 800 }}>
-                                Option {r.optionCode}
-                              </span>
-                              <span style={{ fontSize: 11, color: '#64748B', fontWeight: 650 }}>{r.dyestuffFamily}</span>
-                            </div>
-                            <div style={{ fontSize: 11.5, color: '#334155', marginTop: 2, maxWidth: 220, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {r.recipe}
-                            </div>
-                          </td>
-
-                          {/* Column 6: Spectro Delta E */}
-                          <td style={{ padding: '10px 12px', textAlign: 'center' }}>
-                            <div style={{ fontSize: 13, fontWeight: 900, color: r.deltaE <= 0.6 ? '#15803D' : '#DC2626' }}>
-                              ΔE: {r.deltaE.toFixed(2)}
-                            </div>
-                            <div style={{ fontSize: 10.5, color: '#64748B' }}>
-                              D65: {r.d65Match}
-                            </div>
-                          </td>
-
-                          {/* Column 7: Buyer Status */}
-                          <td style={{ padding: '10px 12px', textAlign: 'center' }}>
-                            <span style={{
-                              display: 'inline-block',
-                              padding: '4px 10px',
-                              borderRadius: 999,
-                              fontSize: 11.5,
-                              fontWeight: 800,
-                              background: isApproved ? '#DCFCE7' : isReDip ? '#FEE2E2' : '#FEF3C7',
-                              color: isApproved ? '#15803D' : isReDip ? '#B91C1C' : '#B45309'
-                            }}>
-                              {r.status}
-                            </span>
-                          </td>
-
-                          {/* Column 8: Merchandiser Follow-Up */}
-                          <td style={{ padding: '10px 12px' }}>
-                            <div style={{ fontWeight: 750, color: '#0F172A' }}>{r.merchandiser}</div>
-                            <div style={{ fontSize: 11, color: '#64748B' }}>
-                              Sub: {r.submissionDate}
-                            </div>
-                            {r.inTenDayLoadingPlan && !isApproved && (
-                              <button
-                                type="button"
-                                onClick={() => alert(`Alert sent to Merchandiser ${r.merchandiser}:\nExpedite buyer approval for Job #${r.jobNo} (${r.colorName}). Machine ${r.scheduledMachine} is loading in ${r.daysToMachineLoading || 2} days!`)}
-                                style={{
-                                  fontSize: 10.5,
-                                  fontWeight: 800,
-                                  padding: '2px 6px',
-                                  borderRadius: 4,
-                                  background: '#DC2626',
-                                  color: '#FFFFFF',
-                                  border: 'none',
-                                  cursor: 'pointer',
-                                  marginTop: 3,
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 3
-                                }}
-                              >
-                                <Send size={10} /> Send Alert
-                              </button>
-                            )}
-                          </td>
-
-                          {/* Column 9: Dossier / View Action */}
-                          <td style={{ padding: '10px 12px', textAlign: 'center' }}>
-                            <button
-                              type="button"
-                              onClick={() => setSelectedModalDip(r)}
+                          {r.stage === 'SMS_SAMPLE' ? 'SMS Sample' : 'Bulk Confirmed'}
+                        </span>
+                        {r.inTenDayLoadingPlan && (
+                          <div style={{ marginTop: 4 }}>
+                            <span
                               style={{
-                                fontSize: 11.5,
-                                fontWeight: 750,
-                                padding: '5px 10px',
-                                borderRadius: 6,
-                                background: '#EFF6FF',
-                                border: '1px solid #BFDBFE',
-                                color: '#1D4ED8',
-                                cursor: 'pointer',
+                                fontSize: 10.5,
+                                fontWeight: 800,
+                                padding: '2px 6px',
+                                borderRadius: 4,
+                                background: isApproved ? '#DCFCE7' : '#FEE2E2',
+                                color: isApproved ? '#15803D' : '#DC2626',
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: 4
+                                gap: 3
                               }}
                             >
-                              <Eye size={13} /> View
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                              <Flame size={11} /> 10-Day Plan: {r.scheduledMachine} ({fmtDate(r.scheduledDyeingDate)})
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+                },
+                {
+                  key: 'optionRecipe',
+                  header: 'Option & Dyestuffs',
+                  accessor: (r) => `${r.optionCode} ${r.dyestuffFamily} ${r.recipe}`,
+                  cell: (r) => (
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ background: '#0F274E', color: '#FFF', padding: '1px 7px', borderRadius: 4, fontSize: 11, fontWeight: 800 }}>
+                          Option {r.optionCode}
+                        </span>
+                        <span style={{ fontSize: 11, color: '#64748B', fontWeight: 650 }}>{r.dyestuffFamily}</span>
+                      </div>
+                      <div style={{ fontSize: 11.5, color: '#334155', marginTop: 2, maxWidth: 220, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {r.recipe}
+                      </div>
+                    </div>
+                  )
+                },
+                {
+                  key: 'deltaE',
+                  header: 'Spectro ΔE',
+                  align: 'right',
+                  accessor: (r) => r.deltaE,
+                  cell: (r) => (
+                    <div>
+                      <div style={{ fontWeight: 900, color: r.deltaE <= 0.6 ? '#15803D' : '#DC2626' }}>
+                        ΔE: {r.deltaE.toFixed(2)}
+                      </div>
+                      <div style={{ fontSize: 10.5, color: '#64748B' }}>D65: {r.d65Match}</div>
+                    </div>
+                  )
+                },
+                {
+                  key: 'status',
+                  header: 'Buyer Status',
+                  accessor: (r) => r.status,
+                  cell: (r) => {
+                    const isApproved = r.status === 'APPROVED';
+                    const isReDip = r.status === 'RE_DIP_REQUIRED';
+                    return (
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          padding: '4px 10px',
+                          borderRadius: 999,
+                          fontSize: 11.5,
+                          fontWeight: 800,
+                          background: isApproved ? '#DCFCE7' : isReDip ? '#FEE2E2' : '#FEF3C7',
+                          color: isApproved ? '#15803D' : isReDip ? '#B91C1C' : '#B45309'
+                        }}
+                      >
+                        {r.status}
+                      </span>
+                    );
+                  }
+                },
+                {
+                  key: 'merchandiser',
+                  header: 'Merchandiser Follow-Up',
+                  accessor: (r) => `${r.merchandiser} ${r.submissionDate}`,
+                  cell: (r) => (
+                    <div>
+                      <div style={{ fontWeight: 750, color: '#0F172A' }}>{r.merchandiser}</div>
+                      <div style={{ fontSize: 11, color: '#64748B' }}>Sub: {fmtDate(r.submissionDate)}</div>
+                    </div>
+                  )
+                },
+                {
+                  key: 'dossier',
+                  header: 'Dossier',
+                  accessor: (r) => r.dipNo,
+                  cell: (r) => (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedModalDip(r);
+                      }}
+                      style={{
+                        fontSize: 11.5,
+                        fontWeight: 750,
+                        padding: '5px 10px',
+                        borderRadius: 6,
+                        background: '#EFF6FF',
+                        border: '1px solid #BFDBFE',
+                        color: '#1D4ED8',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4
+                      }}
+                    >
+                      <Eye size={13} /> Card
+                    </button>
+                  )
+                }
+              ]}
+            />
           </div>
         </>
       )}
@@ -1800,6 +1801,85 @@ export default function DyeingLabPage() {
           </div>
         </div>
       )}
+
+      {/* RecordPanel for row click */}
+      {(() => {
+        const idx = filteredRecords.findIndex((r) => r.id === panelDipId);
+        const rec = idx >= 0 ? filteredRecords[idx] : null;
+        return (
+          <RecordPanel<LabDipMasterRecord>
+            open={!!rec}
+            record={rec}
+            onClose={() => setPanelDipId(null)}
+            title={(r) => `${r.dipNo} · ${r.colorName}`}
+            subtitle={(r) => `${r.buyer} · Job #${r.jobNo} · Style ${r.styleNo}`}
+            statusBadge={(r) => ({
+              label: r.status,
+              tone: r.status === 'APPROVED' ? 'good' : r.status === 'RE_DIP_REQUIRED' ? 'bad' : 'warn'
+            })}
+            onPrev={idx > 0 ? () => setPanelDipId(filteredRecords[idx - 1].id) : undefined}
+            onNext={idx >= 0 && idx < filteredRecords.length - 1 ? () => setPanelDipId(filteredRecords[idx + 1].id) : undefined}
+            prevDisabled={idx <= 0}
+            nextDisabled={idx < 0 || idx >= filteredRecords.length - 1}
+            sections={[
+              {
+                key: 'job',
+                title: 'Job & Color Details',
+                fields: [
+                  { key: 'dipNo', label: 'Lab Dip No', readOnly: true },
+                  { key: 'jobNo', label: 'Job No', readOnly: true },
+                  { key: 'buyer', label: 'Buyer', readOnly: true },
+                  { key: 'styleNo', label: 'Style No', readOnly: true },
+                  { key: 'colorName', label: 'Color Name' },
+                  { key: 'pantoneRef', label: 'Pantone Ref' },
+                  { key: 'merchandiser', label: 'Merchandiser', lockedByRole: 'Merchandiser' },
+                  { key: 'submissionDate', label: 'Submission Date', type: 'date' }
+                ]
+              },
+              {
+                key: 'recipe',
+                title: 'Formulation & Buyer Decision',
+                fields: [
+                  {
+                    key: 'optionCode',
+                    label: 'Selected Option',
+                    type: 'select',
+                    options: [
+                      { value: 'A', label: 'Option A' },
+                      { value: 'B', label: 'Option B' },
+                      { value: 'C', label: 'Option C' },
+                      { value: 'D', label: 'Option D' },
+                      { value: 'R1', label: 'Re-Dip R1' },
+                      { value: 'R2', label: 'Re-Dip R2' }
+                    ]
+                  },
+                  {
+                    key: 'status',
+                    label: 'Approval Status',
+                    type: 'select',
+                    options: [
+                      { value: 'APPROVED', label: 'APPROVED' },
+                      { value: 'PENDING_BUYER', label: 'PENDING_BUYER' },
+                      { value: 'SUBMITTED', label: 'SUBMITTED' },
+                      { value: 'RE_DIP_REQUIRED', label: 'RE_DIP_REQUIRED' },
+                      { value: 'IN_FORMULATION', label: 'IN_FORMULATION' }
+                    ]
+                  },
+                  { key: 'dyestuffFamily', label: 'Dyestuff Family' },
+                  { key: 'deltaE', label: 'Spectro ΔE', type: 'number', required: true },
+                  { key: 'd65Match', label: 'D65 Match' },
+                  { key: 'tl84Match', label: 'TL84 Match' },
+                  { key: 'recipe', label: 'Dye Recipe Formulation', span: 2 },
+                  { key: 'comments', label: 'Lab & Buyer Comments', type: 'textarea', span: 2 }
+                ]
+              }
+            ]}
+            onSave={(updated) => {
+              setMasterRecords((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+            }}
+          />
+        );
+      })()}
     </Shell>
   );
 }

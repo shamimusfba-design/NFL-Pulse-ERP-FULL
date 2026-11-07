@@ -295,19 +295,75 @@ export function FabricManagementMeetingReview() {
           >
             🖨️ Print Meeting Pack
           </button>
-          <Link href="/modules/yarn-store" className="btn btn-primary" style={{ fontSize: '11px', padding: '6px 12px', background: '#0284c7', border: 'none', fontWeight: 700 }}>
-            🧶 Yarn Management &amp; SCM →
-          </Link>
-          <Link href="/modules/greige-store" className="btn btn-secondary" style={{ fontSize: '11px', padding: '6px 12px' }}>
-            🏬 Greige Store →
-          </Link>
-          <Link href="/modules/dyeing" className="btn btn-secondary" style={{ fontSize: '11px', padding: '6px 12px' }}>
-            ⚙️ Dyeing Winches →
-          </Link>
-          <Link href="/modules/lab" className="btn btn-primary" style={{ fontSize: '11px', padding: '6px 14px', background: '#2563eb', border: 'none', fontWeight: 700 }}>
-            🧪 Testing Lab Pipeline →
-          </Link>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => { setActiveTab('MEETING_MINUTES'); setShowAddActionModal(true); }}
+            style={{ fontSize: '11px', padding: '6px 14px', background: '#2563eb', border: 'none', fontWeight: 700 }}
+          >
+            + Record Action Item
+          </button>
         </div>
+      </div>
+
+      {/* MEETING SUB-TABS (MOVED UP TO TOP POSITION) */}
+      <div style={{ display: 'flex', gap: '6px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          className={activeTab === 'EXECUTIVE' ? 'mini-tab active' : 'mini-tab'}
+          onClick={() => setActiveTab('EXECUTIVE')}
+        >
+          📊 Executive Overview
+        </button>
+        <button
+          type="button"
+          className={activeTab === 'YARN_MANAGEMENT' ? 'mini-tab active' : 'mini-tab'}
+          onClick={() => setActiveTab('YARN_MANAGEMENT')}
+        >
+          🧶 Yarn Management &amp; SCM (148,200 kg)
+        </button>
+        <button
+          type="button"
+          className={activeTab === 'GREIGE_STORE' ? 'mini-tab active' : 'mini-tab'}
+          onClick={() => setActiveTab('GREIGE_STORE')}
+        >
+          🏬 Greige Fabric Store Inventory (124,500 kg)
+        </button>
+        <button
+          type="button"
+          className={activeTab === 'WINCH_STATUS' ? 'mini-tab active' : 'mini-tab'}
+          onClick={() => setActiveTab('WINCH_STATUS')}
+        >
+          ⚙️ 23 Dyeing Winches ({totalWinchCapacity.toLocaleString()} kg)
+        </button>
+        <button
+          type="button"
+          className={activeTab === 'TESTING_LAB' ? 'mini-tab active' : 'mini-tab'}
+          onClick={() => setActiveTab('TESTING_LAB')}
+        >
+          🧪 3-Stage Testing Lab Pipeline
+        </button>
+        <button
+          type="button"
+          className={activeTab === 'BOTTLENECKS' ? 'mini-tab active' : 'mini-tab'}
+          onClick={() => setActiveTab('BOTTLENECKS')}
+        >
+          ⚠️ RFT Quality &amp; Toppings ({rftLogs.length})
+        </button>
+        <button
+          type="button"
+          className={activeTab === 'BUYER_POSITION' ? 'mini-tab active' : 'mini-tab'}
+          onClick={() => setActiveTab('BUYER_POSITION')}
+        >
+          👔 Buyer-Wise Position ({buyerPositions.length} Brands)
+        </button>
+        <button
+          type="button"
+          className={activeTab === 'MEETING_MINUTES' ? 'mini-tab active' : 'mini-tab'}
+          onClick={() => setActiveTab('MEETING_MINUTES')}
+        >
+          📝 Management Meeting Action Items ({actionItems.length})
+        </button>
       </div>
 
       {/* FABRIC FLOW CONVERSION FUNNEL STRIP */}
@@ -367,66 +423,6 @@ export function FabricManagementMeetingReview() {
           <strong style={{ fontSize: '18px', color: '#dc2626', marginTop: '4px' }}>{num(summary.deliveryBalance)} kg</strong>
           <span style={{ fontSize: '10px', color: '#dc2626', marginTop: '2px', fontWeight: 700 }}>Cutting backlog alert</span>
         </div>
-      </div>
-
-      {/* MEETING SUB-TABS */}
-      <div style={{ display: 'flex', gap: '6px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px', flexWrap: 'wrap' }}>
-        <button
-          type="button"
-          className={activeTab === 'EXECUTIVE' ? 'mini-tab active' : 'mini-tab'}
-          onClick={() => setActiveTab('EXECUTIVE')}
-        >
-          📊 Executive Overview
-        </button>
-        <button
-          type="button"
-          className={activeTab === 'YARN_MANAGEMENT' ? 'mini-tab active' : 'mini-tab'}
-          onClick={() => setActiveTab('YARN_MANAGEMENT')}
-        >
-          🧶 Yarn Management &amp; SCM (148,200 kg)
-        </button>
-        <button
-          type="button"
-          className={activeTab === 'GREIGE_STORE' ? 'mini-tab active' : 'mini-tab'}
-          onClick={() => setActiveTab('GREIGE_STORE')}
-        >
-          🏬 Greige Fabric Store Inventory (124,500 kg)
-        </button>
-        <button
-          type="button"
-          className={activeTab === 'WINCH_STATUS' ? 'mini-tab active' : 'mini-tab'}
-          onClick={() => setActiveTab('WINCH_STATUS')}
-        >
-          ⚙️ 23 Dyeing Winches ({totalWinchCapacity.toLocaleString()} kg)
-        </button>
-        <button
-          type="button"
-          className={activeTab === 'TESTING_LAB' ? 'mini-tab active' : 'mini-tab'}
-          onClick={() => setActiveTab('TESTING_LAB')}
-        >
-          🧪 3-Stage Testing Lab Pipeline
-        </button>
-        <button
-          type="button"
-          className={activeTab === 'BOTTLENECKS' ? 'mini-tab active' : 'mini-tab'}
-          onClick={() => setActiveTab('BOTTLENECKS')}
-        >
-          ⚠️ RFT Quality &amp; Toppings ({rftLogs.length})
-        </button>
-        <button
-          type="button"
-          className={activeTab === 'BUYER_POSITION' ? 'mini-tab active' : 'mini-tab'}
-          onClick={() => setActiveTab('BUYER_POSITION')}
-        >
-          👔 Buyer-Wise Position ({buyerPositions.length} Brands)
-        </button>
-        <button
-          type="button"
-          className={activeTab === 'MEETING_MINUTES' ? 'mini-tab active' : 'mini-tab'}
-          onClick={() => setActiveTab('MEETING_MINUTES')}
-        >
-          📝 Management Meeting Action Items ({actionItems.length})
-        </button>
       </div>
 
       {/* TAB 1: EXECUTIVE SUMMARY & MEETING HIGHLIGHTS */}

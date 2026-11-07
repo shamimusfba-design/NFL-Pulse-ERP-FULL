@@ -7,6 +7,7 @@ import yarnStockMasterRaw from '../data/yarn-stock-master.json';
 import knittingExecutionMasterRaw from '../data/knitting-execution-master.json';
 import factoryKpiMasterRaw from '../data/factory-kpi-master.json';
 import dyeingFactoryDataRaw from '../data/dyeing-factory-data.json';
+import { SectionNav } from './ui/SectionNav';
 
 // Helper number formatters
 function n(v: any, decimals = 1) {
@@ -1003,6 +1004,21 @@ export function ExecutiveKpiDashboard() {
           </div>
         </div>
       </div>
+
+      <SectionNav
+        stickyTop={8}
+        sections={[
+          { id: 'yarn-section', code: '01', label: 'Yarn Store' },
+          { id: 'knitting-section', code: '02', label: 'Knitting' },
+          { id: 'dyeing-section', code: '03', label: 'Dyeing & RFT' },
+          { id: 'lab-section', code: '04', label: 'Testing & Color Lab' },
+          { id: 'fabric-store-section', code: '05', label: 'Fabric Store' },
+          { id: 'cutting-section', code: '06', label: 'Cutting' },
+          { id: 'printing-section', code: '07', label: 'Printing' },
+          { id: 'embroidery-section', code: '08', label: 'Embroidery' },
+          { id: 'sewing-section', code: '09', label: 'Sewing & Lines' },
+        ]}
+      />
 
       {/* ========================================================= */}
       {/* EXECUTIVE ALERT STRIP: IMMEDIATE DECISION REQUIRED        */}

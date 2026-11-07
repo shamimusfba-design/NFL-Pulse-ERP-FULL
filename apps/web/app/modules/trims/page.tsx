@@ -3,6 +3,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import Shell from '../../../components/Shell';
+import { DataGrid, DataGridColumn } from '../../../components/ui/DataGrid';
+import { RecordPanel, RecordSection } from '../../../components/ui/RecordPanel';
+import { Badge } from '../../../components/ui';
+import { fmtDate, fmtNum } from '../../../lib/format';
 import {
   Package,
   Layers,
@@ -891,6 +895,7 @@ export default function TrimsStorePage() {
   // Navigation Tabs:
   // CHECKLIST | RECEIVE | STOCK | DELIVERY | LOCATION | REUSE | TV
   const [activeTab, setActiveTab] = useState<'CHECKLIST' | 'RECEIVE' | 'STOCK' | 'DELIVERY' | 'LOCATION' | 'REUSE' | 'TV'>('CHECKLIST');
+  const [recordJob, setRecordJob] = useState<TrimsChecklistRecord | null>(null);
 
   // Master State with LocalStorage Persistence
   const [checklists, setChecklists] = useState<TrimsChecklistRecord[]>(() => {
@@ -2776,163 +2781,98 @@ export default function TrimsStorePage() {
             )}
           </div>
 
-          {/* Master Stock Table with ITEM DUE & QUALITY STATUS Columns */}
-          <div
-            style={{
-              background: 'var(--card-bg, #ffffff)',
-              border: '1px solid var(--border, #E2E8F0)',
-              borderRadius: '8px',
-              overflowX: 'auto',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-            }}
-          >
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ background: '#0F274E', color: '#FFFFFF', fontSize: '11px', textTransform: 'uppercase' }}>
-                  <th style={{ padding: '9px 12px' }}>Buyer</th>
-                  <th style={{ padding: '9px 10px' }}>Job No</th>
-                  <th style={{ padding: '9px 10px' }}>Style No</th>
-                  <th style={{ padding: '9px 10px' }}>Order Qty</th>
-                  <th style={{ padding: '9px 10px' }}>Present Status</th>
-                  <th style={{ padding: '9px 10px', background: '#78350F' }}>Items Due</th>
-                  <th style={{ padding: '9px 10px' }}>Quality Audit</th>
-                  <th style={{ padding: '9px 10px' }}>Merchandiser</th>
-                  <th style={{ padding: '9px 10px' }}>T&A Slot</th>
-                  <th style={{ padding: '9px 10px' }}>Racks Stored</th>
-                  <th style={{ padding: '9px 10px' }}>Delivery Progress</th>
-                  <th style={{ padding: '9px 12px' }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredStockJobs.map(j => {
-                  const dynamicStatus = computeJobStatus(j);
-                  const totalReq = j.items.reduce((acc, it) => acc + it.totalOrderQty, 0);
-                  const totalRecv = j.items.reduce((acc, it) => acc + it.receivedQty, 0);
-                  const totalDeliv = j.items.reduce((acc, it) => acc + it.deliveredQty, 0);
-                  const delivPct = totalRecv > 0 ? Math.round((totalDeliv / totalRecv) * 100) : 0;
-                  const uniqueRacks = Array.from(new Set(j.items.map(it => it.rackNo))).filter(Boolean);
-
-                  const dueItems = j.items.filter(it => it.receivedQty < it.totalOrderQty);
-                  const passCount = j.items.filter(it => it.qualityStatus === 'PASS').length;
-                  const failCount = j.items.filter(it => it.qualityStatus === 'FAIL').length;
-                  const pendingCount = j.items.filter(it => it.qualityStatus === 'PENDING').length;
-
+          {/* Master Stock Table with DataGrid + RecordPanel */}
+          <DataGrid<TrimsChecklistRecord>
+            tableId="trims-master-stock"
+            data={filteredStockJobs}
+            rowKey={(j) => j.id}
+            onRowClick={(j) => setRecordJob(j)}
+            searchPlaceholder="Search job no, buyer, style, merchandiser, rack…"
+            columns={[
+              { key: 'buyer', header: 'Buyer', width: 110, frozen: true, filterValues: uniqueBuyers, render: (j) => <strong style={{ color: 'var(--nos-brand-text)' }}>{j.buyer}</strong> },
+              { key: 'jobNo', header: 'Job No', width: 105, frozen: true, render: (j) => <strong>{j.jobNo}</strong> },
+              { key: 'styleNo', header: 'Style No', width: 130 },
+              { key: 'orderQty', header: 'Order Qty (pcs)', align: 'right', width: 130, sum: true, render: (j) => <strong>{fmtNum(j.orderQty)}</strong> },
+              {
+                key: 'presentStatus',
+                header: 'Present Status',
+                width: 155,
+                accessor: (j) => computeJobStatus(j),
+                render: (j) => {
+                  const st = computeJobStatus(j);
                   return (
-                    <tr
-                      key={j.id}
-                      style={{ borderBottom: '1px solid #F1F5F9' }}
-                    >
-                      <td style={{ padding: '9px 12px', fontWeight: 700, color: '#0284C7' }}>{j.buyer}</td>
-                      <td style={{ padding: '9px 10px' }}>
-                        <span style={{ fontWeight: 800, color: '#0F274E' }}>
-                          {j.jobNo}
-                        </span>
-                      </td>
-                      <td style={{ padding: '9px 10px', color: '#334155', fontWeight: 600 }}>{j.styleNo}</td>
-                      <td style={{ padding: '9px 10px', fontWeight: 700 }}>{j.orderQty.toLocaleString()} pcs</td>
-                      <td style={{ padding: '9px 10px' }}>
-                        <span
-                          style={{
-                            fontSize: '11px',
-                            fontWeight: 700,
-                            padding: '3px 8px',
-                            borderRadius: '12px',
-                            background:
-                              dynamicStatus === 'Receive OK' || dynamicStatus === 'Delivery Done' ? '#ECFDF5' :
-                              dynamicStatus === 'Inspection Fail' ? '#FEF2F2' :
-                              dynamicStatus === 'Partial Received Due' ? '#FFFBEB' : '#F1F5F9',
-                            color:
-                              dynamicStatus === 'Receive OK' || dynamicStatus === 'Delivery Done' ? '#047857' :
-                              dynamicStatus === 'Inspection Fail' ? '#B91C1C' :
-                              dynamicStatus === 'Partial Received Due' ? '#B45309' : '#334155'
-                          }}
-                        >
-                          {dynamicStatus}
-                        </span>
-                      </td>
-
-                      {/* ITEMS DUE COLUMN */}
-                      <td style={{ padding: '9px 10px', maxWidth: '240px' }}>
-                        {dueItems.length === 0 ? (
-                          <span style={{ fontSize: '11px', background: '#ECFDF5', color: '#047857', padding: '2px 8px', borderRadius: '10px', fontWeight: 700 }}>
-                            ✓ None (All In)
-                          </span>
-                        ) : (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                            <span style={{ fontSize: '11px', color: '#B45309', fontWeight: 750 }}>
-                              {dueItems.length} items due:
-                            </span>
-                            <div style={{ fontSize: '11px', color: '#475569', lineHeight: 1.3 }}>
-                              {dueItems.map((it, idx) => (
-                                <span key={it.id}>
-                                  <strong>{it.itemName}</strong> ({it.balanceQty.toLocaleString()} {it.unit}){idx < dueItems.length - 1 ? ', ' : ''}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </td>
-
-                      {/* QUALITY AUDIT STATUS */}
-                      <td style={{ padding: '9px 10px' }}>
-                        {failCount > 0 ? (
-                          <span style={{ fontSize: '11px', background: '#FEF2F2', color: '#DC2626', padding: '3px 8px', borderRadius: '12px', fontWeight: 800 }}>
-                            ⚠️ {failCount} Failed (Reject)
-                          </span>
-                        ) : pendingCount > 0 ? (
-                          <span style={{ fontSize: '11px', background: '#FFFBEB', color: '#B45309', padding: '3px 8px', borderRadius: '12px', fontWeight: 700 }}>
-                            ⏳ {passCount}/{j.items.length} Passed
-                          </span>
-                        ) : (
-                          <span style={{ fontSize: '11px', background: '#ECFDF5', color: '#059669', padding: '3px 8px', borderRadius: '12px', fontWeight: 750 }}>
-                            ✓ {passCount}/{j.items.length} Passed
-                          </span>
-                        )}
-                      </td>
-
-                      <td style={{ padding: '9px 10px', color: '#475569' }}>{j.merchandiser}</td>
-                      <td style={{ padding: '9px 10px', color: '#0284C7', fontWeight: 600 }}>{j.tnaSlot}</td>
-                      <td style={{ padding: '9px 10px' }}>
-                        <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap' }}>
-                          {uniqueRacks.map(r => (
-                            <span key={r} style={{ fontSize: '10.5px', background: '#EFF6FF', color: '#1D4ED8', padding: '1px 5px', borderRadius: '3px', fontWeight: 700 }}>
-                              {r}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                      <td style={{ padding: '9px 10px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <div style={{ flex: 1, background: '#E2E8F0', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
-                            <div style={{ width: `${delivPct}%`, background: delivPct === 100 ? '#059669' : '#0284C7', height: '100%' }} />
-                          </div>
-                          <span style={{ fontSize: '11px', fontWeight: 700, color: '#475569', minWidth: '30px' }}>{delivPct}%</span>
-                        </div>
-                      </td>
-                      <td style={{ padding: '9px 12px' }}>
-                        <button
-                          type="button"
-                          onClick={() => setDetailModalJob(j)}
-                          style={{
-                            padding: '4px 10px',
-                            borderRadius: '4px',
-                            background: '#0F274E',
-                            color: '#FFFFFF',
-                            border: 'none',
-                            fontSize: '11px',
-                            fontWeight: 700,
-                            cursor: 'pointer'
-                          }}
-                        >
-                          Inspect & Quality
-                        </button>
-                      </td>
-                    </tr>
+                    <Badge tone={st === 'Receive OK' || st === 'Delivery Done' ? 'ok' : st === 'Inspection Fail' ? 'bad' : st === 'Partial Received Due' ? 'warn' : 'info'}>
+                      {st}
+                    </Badge>
                   );
-                })}
-              </tbody>
-            </table>
-          </div>
+                }
+              },
+              {
+                key: 'itemsDue',
+                header: 'Items Due',
+                width: 220,
+                accessor: (j) => j.items.filter((it) => it.receivedQty < it.totalOrderQty).length,
+                render: (j) => {
+                  const due = j.items.filter((it) => it.receivedQty < it.totalOrderQty);
+                  if (due.length === 0) return <Badge tone="ok">All In</Badge>;
+                  return (
+                    <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--nos-warn)' }}>
+                      <strong>{due.length} due:</strong> {due.map((it) => `${it.itemName} (${fmtNum(it.balanceQty)})`).join(', ')}
+                    </span>
+                  );
+                }
+              },
+              {
+                key: 'qualityAudit',
+                header: 'Quality Audit',
+                width: 145,
+                accessor: (j) => j.items.filter((it) => it.qualityStatus === 'FAIL').length,
+                render: (j) => {
+                  const fail = j.items.filter((it) => it.qualityStatus === 'FAIL').length;
+                  const pass = j.items.filter((it) => it.qualityStatus === 'PASS').length;
+                  if (fail > 0) return <Badge tone="bad">{fail} Failed</Badge>;
+                  return <Badge tone={pass === j.items.length ? 'ok' : 'warn'}>{pass}/{j.items.length} Passed</Badge>;
+                }
+              },
+              { key: 'merchandiser', header: 'Merchandiser', width: 130, filterValues: uniqueMerchandisers },
+              { key: 'tnaSlot', header: 'T&A Slot', width: 140, filterValues: uniqueTnaSlots },
+              {
+                key: 'racks',
+                header: 'Racks Stored',
+                width: 130,
+                accessor: (j) => Array.from(new Set(j.items.map((it) => it.rackNo))).filter(Boolean).join(', '),
+                render: (j) => {
+                  const ur = Array.from(new Set(j.items.map((it) => it.rackNo))).filter(Boolean);
+                  return (
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      {ur.map((r) => (
+                        <Badge key={r} tone="info">{r}</Badge>
+                      ))}
+                    </div>
+                  );
+                }
+              },
+              {
+                key: 'action',
+                header: 'Inspect',
+                width: 120,
+                sortable: false,
+                render: (j) => (
+                  <button
+                    type="button"
+                    className="nos-btn"
+                    style={{ height: 26, padding: '0 8px', fontSize: 11 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDetailModalJob(j);
+                    }}
+                  >
+                    Items &amp; QC
+                  </button>
+                )
+              }
+            ]}
+          />
 
           {/* Detailed Job Checklist & Quality Inspection Modal (Only opened on explicit button click) */}
           {detailModalJob && (
@@ -3978,81 +3918,47 @@ export default function TrimsStorePage() {
             </div>
           </div>
 
-          {/* Surplus Table */}
-          <div
-            style={{
-              background: 'var(--card-bg, #ffffff)',
-              border: '1px solid var(--border, #E2E8F0)',
-              borderRadius: '8px',
-              overflowX: 'auto',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+          {/* Surplus Table via DataGrid */}
+          <DataGrid<SurplusTrimsRecord>
+            tableId="trims-surplus-reuse"
+            data={filteredSurplusTrims}
+            rowKey={(s) => s.id}
+            onRowClick={(s) => {
+              setAllocateModalItem(s);
+              setAllocateQty(s.availableQty);
             }}
-          >
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ background: '#78350F', color: '#FFFFFF', fontSize: '11px', textTransform: 'uppercase' }}>
-                  <th style={{ padding: '9px 12px' }}>Surplus Item</th>
-                  <th style={{ padding: '9px 10px' }}>Category</th>
-                  <th style={{ padding: '9px 10px' }}>Available Qty</th>
-                  <th style={{ padding: '9px 10px' }}>Unit</th>
-                  <th style={{ padding: '9px 10px' }}>Origin Job</th>
-                  <th style={{ padding: '9px 10px' }}>Buyer</th>
-                  <th style={{ padding: '9px 10px' }}>Current Location</th>
-                  <th style={{ padding: '9px 10px' }}>Condition</th>
-                  <th style={{ padding: '9px 12px' }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredSurplusTrims.map(s => (
-                  <tr key={s.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                    <td style={{ padding: '9px 12px', fontWeight: 700, color: '#0F274E' }}>{s.itemName}</td>
-                    <td style={{ padding: '9px 10px' }}>
-                      <span style={{ fontSize: '11px', background: '#FEF3C7', color: '#92400E', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
-                        {s.category}
-                      </span>
-                    </td>
-                    <td style={{ padding: '9px 10px', fontWeight: 800, color: '#059669', fontSize: '13px' }}>
-                      {s.availableQty.toLocaleString()}
-                    </td>
-                    <td style={{ padding: '9px 10px', fontWeight: 600, color: '#0284C7' }}>{s.unit}</td>
-                    <td style={{ padding: '9px 10px', fontWeight: 700, color: '#0F274E' }}>{s.originJobNo}</td>
-                    <td style={{ padding: '9px 10px', color: '#475569' }}>{s.buyer}</td>
-                    <td style={{ padding: '9px 10px' }}>
-                      <span style={{ fontSize: '11px', background: '#EFF6FF', color: '#1D4ED8', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
-                        {s.rackShelf}
-                      </span>
-                    </td>
-                    <td style={{ padding: '9px 10px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 700, color: '#059669' }}>
-                        {s.condition}
-                      </span>
-                    </td>
-                    <td style={{ padding: '9px 12px' }}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAllocateModalItem(s);
-                          setAllocateQty(s.availableQty);
-                        }}
-                        style={{
-                          padding: '5px 10px',
-                          borderRadius: '4px',
-                          background: '#B45309',
-                          color: '#FFFFFF',
-                          border: 'none',
-                          fontSize: '11.5px',
-                          fontWeight: 700,
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Allocate to Job
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+            searchPlaceholder="Search surplus item, category, origin job, buyer, rack…"
+            columns={[
+              { key: 'itemName', header: 'Surplus Item', width: 220, frozen: true, render: (s) => <strong>{s.itemName}</strong> },
+              { key: 'category', header: 'Category', width: 120, render: (s) => <Badge tone="warn">{s.category}</Badge> },
+              { key: 'availableQty', header: 'Available Qty', align: 'right', width: 130, sum: true, render: (s) => <strong style={{ color: 'var(--nos-ok)' }}>{fmtNum(s.availableQty)}</strong> },
+              { key: 'unit', header: 'Unit', width: 90 },
+              { key: 'originJobNo', header: 'Origin Job', width: 110, render: (s) => <strong>{s.originJobNo}</strong> },
+              { key: 'buyer', header: 'Buyer', width: 110 },
+              { key: 'rackShelf', header: 'Location', width: 130, render: (s) => <Badge tone="info">{s.rackShelf}</Badge> },
+              { key: 'condition', header: 'Condition', width: 130 },
+              {
+                key: 'action',
+                header: 'Action',
+                width: 130,
+                sortable: false,
+                render: (s) => (
+                  <button
+                    type="button"
+                    className="nos-btn nos-btn-primary"
+                    style={{ height: 26, padding: '0 8px', fontSize: 11 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setAllocateModalItem(s);
+                      setAllocateQty(s.availableQty);
+                    }}
+                  >
+                    Allocate to Job
+                  </button>
+                )
+              }
+            ]}
+          />
 
           {/* Allocate Modal */}
           {allocateModalItem && (
@@ -4439,6 +4345,60 @@ export default function TrimsStorePage() {
           )}
         </div>
       )}
+
+      <RecordPanel<TrimsChecklistRecord>
+        open={Boolean(recordJob)}
+        record={recordJob}
+        rows={filteredStockJobs}
+        getRowId={(r) => r.id}
+        onSelectRow={(r) => setRecordJob(r)}
+        onClose={() => setRecordJob(null)}
+        title={(r) => `Job ${r.jobNo} · ${r.buyer}`}
+        subtitle={(r) => `Style ${r.styleNo} · ${fmtNum(r.orderQty)} pcs · ${r.items.length} Trims Items`}
+        statusBadge={(r) => {
+          const st = computeJobStatus(r);
+          return {
+            label: st,
+            tone: st === 'Receive OK' || st === 'Delivery Done' ? 'ok' : st === 'Inspection Fail' ? 'bad' : 'warn'
+          };
+        }}
+        sections={[
+          {
+            id: 'trims-job-summary',
+            title: 'Job & Handover Details',
+            fields: [
+              { key: 'jobNo', label: 'Job No', lockedByRole: 'Merchandiser' },
+              { key: 'buyer', label: 'Buyer', lockedByRole: 'Merchandiser' },
+              { key: 'styleNo', label: 'Style No', lockedByRole: 'Merchandiser' },
+              { key: 'itemDescription', label: 'Garment Description', lockedByRole: 'Merchandiser' },
+              { key: 'orderQty', label: 'Order Qty', type: 'number', unit: 'pcs', lockedByRole: 'Merchandiser' },
+              { key: 'merchandiser', label: 'Merchandiser', lockedByRole: 'Merchandiser' },
+              { key: 'shipmentDate', label: 'Shipment Date', type: 'date', render: (v) => fmtDate(v) },
+              { key: 'tnaSlot', label: 'T&A Slot', lockedByRole: 'Central Planning' },
+              { key: 'sewingLine', label: 'Sewing Line' },
+              {
+                key: 'checklistStatus',
+                label: 'Checklist Verification',
+                type: 'select',
+                options: [
+                  { value: 'PENDING_REVIEW', label: 'Pending Review' },
+                  { value: 'REVIEW_REQUESTED', label: 'Review Requested' },
+                  { value: 'ACCEPTED', label: 'Accepted' }
+                ]
+              },
+              { key: 'storeReviewNote', label: 'Store Verification Notes', type: 'textarea', span: 2 }
+            ]
+          }
+        ]}
+        onSave={(updated) => {
+          const recomputed: TrimsChecklistRecord = {
+            ...updated,
+            presentStatus: computeJobStatus(updated)
+          };
+          setChecklists((prev) => prev.map((x) => (x.id === recomputed.id ? recomputed : x)));
+          setRecordJob(recomputed);
+        }}
+      />
     </Shell>
   );
 }
