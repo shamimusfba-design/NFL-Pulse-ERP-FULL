@@ -32,6 +32,8 @@ export function MerchFrame({ title, eyebrow, app }: { title: string; eyebrow: st
         document.documentElement.getAttribute('data-theme') === 'dark' ||
         localStorage.getItem('nos-theme') === 'dark';
       doc.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+      doc.documentElement.classList.add('embedded');
+      if (doc.body) doc.body.classList.add('embedded');
       if (doc.body) {
         doc.body.classList.toggle('dark', isDark);
         doc.body.classList.toggle('theme-dark', isDark);

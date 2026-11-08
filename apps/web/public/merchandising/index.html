@@ -338,19 +338,167 @@ tr.clk{cursor:pointer}
 .kpi .n{white-space:nowrap;overflow:hidden;display:block;max-width:100%}
 
 
-/* When embedded inside the ERP shell iframe, hide the duplicate header, mainnav, and demo controls */
-body.embedded header.top{display:none!important}
-body.embedded .mainnav{display:none!important}
-body.embedded .subnav{top:0!important}
-body.embedded .layout{grid-template-columns:1fr!important;gap:10px}
-body.embedded .layout .entry,body.embedded .layout .side{position:relative!important;top:0!important;height:auto!important;max-height:260px!important;overflow:auto;order:-1}
+/* When embedded inside the ERP shell iframe: Single Unified Header & Full-Width Layout */
+.embedded header.top {
+  display: none !important;
+}
+
+.embedded .mainnav {
+  display: none !important;
+}
+
+.embedded .subnav {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 20 !important;
+  background: var(--paper) !important;
+  border-bottom: 1px solid var(--line) !important;
+  padding: 0 14px !important;
+}
+
+/* Full Width Container */
+.embedded .layout,
+.embedded .split.withpanel {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  width: 100% !important;
+}
+
+/* Table container takes 100% full width and appears below pending work */
+.embedded .layout > div:first-child,
+.embedded .split.withpanel > div:first-child {
+  width: 100% !important;
+  order: 2 !important;
+}
+
+/* Pending tasks panel placed on TOP of table */
+.embedded .layout .entry,
+.embedded .layout .side,
+.embedded .split.withpanel .side {
+  position: relative !important;
+  top: 0 !important;
+  width: 100% !important;
+  height: auto !important;
+  max-height: none !important;
+  order: 1 !important;
+  margin-bottom: 10px !important;
+  border-radius: 10px !important;
+  border: 1px solid var(--line) !important;
+  background: var(--paper) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+}
+
+.embedded #side .rtabs {
+  background: var(--chip) !important;
+  border-bottom: 1px solid var(--line) !important;
+  padding: 6px 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.embedded #side .rtab {
+  font-weight: 700 !important;
+  font-size: 13px !important;
+}
+
+/* Pending tasks items inside pane arranged in responsive grid */
+.embedded #side .body {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important;
+  gap: 10px !important;
+  padding: 12px 14px !important;
+  max-height: 280px !important;
+  overflow-y: auto !important;
+}
+
+.embedded #side .body > .phint,
+.embedded #side .body > .empty {
+  grid-column: 1 / -1 !important;
+  margin-bottom: 4px !important;
+  font-size: 12.5px !important;
+  color: var(--ink-2) !important;
+}
+
+.embedded #side .tnaitem {
+  margin-bottom: 0 !important;
+  padding: 9px 12px !important;
+  border-radius: 8px !important;
+  border: 1px solid var(--line) !important;
+  background: var(--paper) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  transition: all 0.15s ease !important;
+  cursor: pointer !important;
+}
+
+.embedded #side .tnaitem:hover {
+  border-color: #2563eb !important;
+  background: var(--sel) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.12) !important;
+}
+
+/* When a job detail or form is opened, slide it in as a right drawer */
+.embedded #side.is-detail,
+.embedded #side.open:not(.tasks-mode) {
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: auto !important;
+  width: min(560px, 94vw) !important;
+  max-height: 100vh !important;
+  height: 100vh !important;
+  z-index: 99 !important;
+  border-radius: 0 !important;
+  box-shadow: -6px 0 28px rgba(0, 0, 0, 0.25) !important;
+  overflow-y: auto !important;
+  background: var(--paper) !important;
+  order: unset !important;
+  margin: 0 !important;
+}
+
+.embedded #side.is-detail .body,
+.embedded #side.open:not(.tasks-mode) .body {
+  display: block !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+/* Full Width Table Wrap */
+.embedded .tablewrap {
+  width: 100% !important;
+  min-height: 440px !important;
+  max-height: calc(100vh - 240px) !important;
+  overflow: auto !important;
+}
+
+.embedded .tablewrap table {
+  width: 100% !important;
+  min-width: 100% !important;
+}
+
+/* Clean up topsel dropdown in embedded mode */
+select.topsel-clean {
+  background: var(--paper) !important;
+  color: var(--ink) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 6px !important;
+  padding: 4px 8px !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+}
 
 </style>
 </head>
 <body>
 <script>
 // Detect if loaded inside the ERP shell iframe - if so, hide duplicate header/nav
-try{if(window.self!==window.top){document.body.classList.add('embedded')}}catch(e){}
+try{if(window.self!==window.top){document.documentElement.classList.add('embedded');if(document.body)document.body.classList.add('embedded');}}catch(e){}
 </script>
 <header class="top"><div class="logo">NOS<small>Merchandising · Northern Fashions Ltd.</small></div><div class="who"><span>Logged in as</span><span id="userSlot"></span></div><div class="asof">Report date 09.10.26</div><div class="sp"></div>
 <button class="topbtn" id="resetBtn">Reset demo</button><button class="topbtn" id="deskBtn" aria-pressed="false">Desktop view</button>
@@ -2163,8 +2311,28 @@ function render(){const ae=document.activeElement;const keep=ae&&ae.tagName==='I
  keepSearch(keep)}
 function keepSearch(keep){if(!keep)return;const nw=root.querySelector('#'+keep.id);if(nw&&nw!==keep){const hi=nw.oninput,hc=nw.onchange;keep.oninput=e=>{nw.value=keep.value;if(hi)hi.call(nw,e)};keep.onchange=e=>{nw.value=keep.value;if(hc)hc.call(nw,e)};nw.replaceWith(keep);try{keep.focus({preventScroll:true})}catch(e){}}}
 function roleBar(extra){const pc=pendingFor(me).length;
- return `<div class="rolebar"><button class="btn sm primary" id="rbTasks">My pending tasks (${pc})</button>${extra||''}</div>`}
-function bindBar(){const b=G('rbTasks');if(b)b.onclick=()=>{VIEW='follow';openRail('tasks')}}
+ return `<div class="rolebar" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="btn sm primary" id="rbTasks">My pending tasks (${pc})</button>
+    <span class="asof" style="font-size:12px;color:var(--ink-2);background:var(--chip);padding:4px 8px;border-radius:6px;font-weight:500">Report date: 09.10.26</span>
+  </div>
+  <div class="embedded-user-slot-wrap" style="display:inline-flex;align-items:center;gap:6px">
+    <span style="font-size:12px;color:var(--ink-2);font-weight:500">Logged in as:</span>
+    <span id="roleUserSlot"></span>
+  </div>
+  ${extra||''}
+ </div>`}
+function bindBar(){
+  const b=G('rbTasks');
+  if(b)b.onclick=()=>{VIEW='follow';openRail('tasks')};
+  const rus = G('roleUserSlot');
+  const who = G('whoSel');
+  if (rus && who && !rus.contains(who)) {
+    who.style.display = 'inline-block';
+    who.className = 'topsel-clean';
+    rus.appendChild(who);
+  }
+}
 function page(m){
  const vis=JOBS.filter(seeJob);const scoped=JOBS.filter(j=>match(j,'quick')),rows=JOBS.filter(j=>match(j));
  const bCnt={};vis.forEach(j=>{bCnt[j.buyerName]=(bCnt[j.buyerName]||0)+1});const bList=Object.keys(bCnt).sort((a,b)=>bCnt[b]-bCnt[a]);
@@ -2688,7 +2856,9 @@ document.querySelectorAll('[data-th]').forEach(b=>{b.onclick=()=>setTheme(b.data
 const sels={sample:$('app-sample').querySelector('#whoSel'),bulk:$('app-bulk').querySelector('#whoSel')};
 const apps={sample:mountSample($('app-sample'),SAMPLE_RAW,SAMPLE_PO),bulk:mountBulk($('app-bulk'),BULK_TRACK)};
 let cur='sample';try{cur=localStorage.getItem('nos-app')||'sample'}catch(e){}try{const q=new URLSearchParams(location.search).get('app');if(q==='bulk'||q==='sample')cur=q}catch(e){}if(!apps[cur])cur='sample';
-function showApp(a){cur=a;const slot=$('userSlot');slot.innerHTML='';if(sels[a])slot.appendChild(sels[a]);try{localStorage.setItem('nos-app',a)}catch(e){}['sample','bulk'].forEach(k=>$('app-'+k).classList.toggle('on',k===a));apps[a].rerender();renderNav()}
+function showApp(a){cur=a;const slot=$('userSlot');if(slot){slot.innerHTML='';if(sels[a])slot.appendChild(sels[a])}
+ const rus=document.querySelector('#roleUserSlot');if(rus&&sels[a]){sels[a].className='topsel-clean';sels[a].style.display='inline-block';rus.appendChild(sels[a])}
+ try{localStorage.setItem('nos-app',a)}catch(e){}['sample','bulk'].forEach(k=>$('app-'+k).classList.toggle('on',k===a));apps[a].rerender();renderNav()}
 const MAIN={sample:'Sample Merchandising',bulk:'Bulk Merchandising'};
 function renderNav(){$('mainnav').innerHTML=Object.keys(MAIN).map(k=>`<button class="${cur===k?'on':''}" data-a="${k}">${MAIN[k]}</button>`).join('');
  const api=apps[cur];$('subnav').innerHTML=api.views.map(([k,l])=>`<button class="${api.view===k?'on':''}" data-v="${k}">${l}</button>`).join('');
