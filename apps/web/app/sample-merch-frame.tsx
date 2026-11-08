@@ -63,7 +63,7 @@ export function MerchFrame({ title, eyebrow, app }: { title: string; eyebrow: st
           src={src}
           title={title}
           onLoad={syncThemeToIframe}
-          style={{ width: '100%', height: 'calc(100vh - 140px)', border: '1px solid var(--line, #e1e5ec)', borderRadius: 12, background: '#fff' }}
+          style={{ width: '100%', height: 'calc(100vh - 120px)', border: 'none', borderRadius: 0, background: '#fff' }}
         />
       )}
     </Shell>

@@ -337,9 +337,21 @@ tr.clk{cursor:pointer}
 
 .kpi .n{white-space:nowrap;overflow:hidden;display:block;max-width:100%}
 
+
+/* When embedded inside the ERP shell iframe, hide the duplicate header, mainnav, and demo controls */
+body.embedded header.top{display:none!important}
+body.embedded .mainnav{display:none!important}
+body.embedded .subnav{top:0!important}
+body.embedded .layout{grid-template-columns:1fr!important;gap:10px}
+body.embedded .layout .entry,body.embedded .layout .side{position:relative!important;top:0!important;height:auto!important;max-height:260px!important;overflow:auto;order:-1}
+
 </style>
 </head>
 <body>
+<script>
+// Detect if loaded inside the ERP shell iframe - if so, hide duplicate header/nav
+try{if(window.self!==window.top){document.body.classList.add('embedded')}}catch(e){}
+</script>
 <header class="top"><div class="logo">NOS<small>Merchandising · Northern Fashions Ltd.</small></div><div class="who"><span>Logged in as</span><span id="userSlot"></span></div><div class="asof">Report date 09.10.26</div><div class="sp"></div>
 <button class="topbtn" id="resetBtn">Reset demo</button><button class="topbtn" id="deskBtn" aria-pressed="false">Desktop view</button>
 <div class="themebtn" id="themeBtn" role="group" aria-label="Day or Night mode"><span data-th="light" tabindex="0" role="button">☀ Day</span><span data-th="dark" tabindex="0" role="button">☾ Night</span></div></header>

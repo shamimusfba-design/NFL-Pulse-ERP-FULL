@@ -13,9 +13,11 @@ export function generateStaticParams() {
 
 export default async function JobDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  let decodedId = id;
+  try { decodedId = decodeURIComponent(id); } catch {}
   return (
     <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center', color: '#0F274E', fontWeight: 700 }}>Loading Job 360 Life-Cycle...</div>}>
-      <Job360Client initialJobId={id} />
+      <Job360Client initialJobId={decodedId} />
     </Suspense>
   );
 }

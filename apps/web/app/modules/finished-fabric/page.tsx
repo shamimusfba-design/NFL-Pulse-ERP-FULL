@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
+import Link from 'next/link';
 import Shell from '../../../components/Shell';
 import {
   Package,
@@ -45,7 +46,7 @@ import {
   YAxis,
   Tooltip,
 } from 'recharts';
-import { DataGrid, GridColumn, DrillPopup, DrillTarget, CrossFilterProvider, CrossFilterBar, useCrossFilter } from '../../../components/ui';
+import { DataGrid, GridColumn, RecordPanel, DrillPopup, DrillTarget, CrossFilterProvider, CrossFilterBar, useCrossFilter } from '../../../components/ui';
 import { FX_SERIES, FX_BAR, FxResponsiveContainer as ResponsiveContainer } from '../../../components/fx';
 import { fmtNum } from '../../../lib/format';
 import FabricRackLocation, { RackLocations, LocationPicker, LocationPick, emptyPick, pickIsValid, pickLabel, assignLocation, locLabel, isShelfKey } from '../../../components/fabric/FabricRackLocation';
@@ -198,6 +199,10 @@ function FinishedFabricPageInner() {
 
   // Master Data & Loading State
   const [rawLines, setRawLines] = useState<FabricColorLine[]>([]);
+  const selectedLine = useMemo(() => {
+    if (!selectedLineId) return null;
+    return rawLines.find(l => l.id === selectedLineId) || null;
+  }, [selectedLineId, rawLines]);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedJobs, setExpandedJobs] = useState<Record<string, boolean>>({});
   const [showAllColors, setShowAllColors] = useState(false);
@@ -661,7 +666,24 @@ function FinishedFabricPageInner() {
 
   const colorGridColumns: GridColumn<ColorGridRow>[] = useMemo(
     () => [
-      { key: 'buyerJob', header: 'Buyer - Job No', width: 150 },
+      {
+        key: 'buyerJob',
+        header: 'Buyer - Job No',
+        width: 150,
+        render: (r: any) => (
+          <div>
+            <span className="text-[10px] text-slate-500 block leading-none">{r.buyer}</span>
+            <Link
+              href={`/jobs?q=${encodeURIComponent(r.jobNo)}`}
+              onClick={(e) => e.stopPropagation()}
+              style={{ color: '#0284C7', fontWeight: 700, textDecoration: 'none' }}
+              className="hover:underline"
+            >
+              {r.jobNo}
+            </Link>
+          </div>
+        )
+      },
       { key: 'style', header: 'Style No', width: 110 },
       { key: 'color', header: 'Colorway', width: 170 },
       { key: 'pantone', header: 'Pantone', width: 110, hiddenByDefault: true },
@@ -705,7 +727,14 @@ function FinishedFabricPageInner() {
         render: (j) => (
           <div>
             <span className="text-[10px] text-slate-500 block leading-none">{j.buyer}</span>
-            <strong className="text-slate-900">{j.jobNo}</strong>
+            <Link
+              href={`/jobs?q=${encodeURIComponent(j.jobNo)}`}
+              onClick={(e) => e.stopPropagation()}
+              style={{ color: '#0284C7', fontWeight: 700, textDecoration: 'none' }}
+              className="hover:underline"
+            >
+              {j.jobNo}
+            </Link>
           </div>
         ),
       },
@@ -3099,6 +3128,40 @@ function FinishedFabricPageInner() {
           </div>
         </div>
       )}
+
+      {/* Task 1: RecordPanel on Row Click with Two-Column Fabric & Store Fields */}
+      <RecordPanel
+        open={!!selectedLine}
+        onClose={() => setSelectedLineId(null)}
+        title={`Job #${selectedLine?.jobNo || ''}`}
+        subtitle={`${selectedLine?.buyer || ''} · ${selectedLine?.style || ''} · ${selectedLine?.color || ''}`}
+        sections={[
+          {
+            name: 'Fabric Identification',
+            fields: [
+              { key: 'jobNo', label: 'Job', value: selectedLine?.jobNo, readOnly: true },
+              { key: 'buyer', label: 'Buyer', value: selectedLine?.buyer, readOnly: true },
+              { key: 'style', label: 'Style', value: selectedLine?.style, readOnly: true },
+              { key: 'color', label: 'Colour', value: selectedLine?.color, readOnly: true },
+              { key: 'fabric', label: 'Fabric Type', value: selectedLine?.fabric || selectedLine?.fabricType, readOnly: true },
+              { key: 'gsm', label: 'GSM', value: selectedLine?.gsm, readOnly: true },
+              { key: 'dia', label: 'Dia', value: selectedLine?.dia, readOnly: true },
+              { key: 'process', label: 'Process', value: selectedLine?.process || 'Standard Finish', readOnly: true },
+            ]
+          },
+          {
+            name: 'Store Inventory & Allocation',
+            fields: [
+              { key: 'totalReq', label: 'Required (kg)', value: selectedLine?.totalReq, type: 'number', unit: 'kg', readOnly: true },
+              { key: 'totalRecv', label: 'Received (kg)', value: selectedLine?.totalRecv, type: 'number', unit: 'kg', readOnly: true },
+              { key: 'dyeingBalance', label: 'Balance (kg)', value: selectedLine?.dyeingBalance, type: 'number', unit: 'kg', readOnly: true },
+              { key: 'rackLocation', label: 'Rack / Shelf', value: selectedLine ? (lineShelf[selectedLine.id] ? locLabel(lineShelf[selectedLine.id], rackLoc) : 'F.ST / Rack 01A') : '', readOnly: true },
+              { key: 'qualityStatus', label: 'Status', value: selectedLine?.qualityStatus || 'PASS', type: 'status', readOnly: true },
+              { key: 'remarks', label: 'Remarks', value: selectedLine?.stockState || 'In Stock', fullWidth: true, readOnly: true }
+            ]
+          }
+        ]}
+      />
     </Shell>
   );
 }

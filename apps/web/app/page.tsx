@@ -10,7 +10,7 @@ import { BuyerQuotaBoard } from '../components/BuyerQuotaBoard';
 import { FactoryKpiPhysicalBoard } from '../components/FactoryKpiPhysicalBoard';
 import { FabricManagementMeetingReview } from '../components/FabricManagementMeetingReview';
 import { ExecutiveKpiDashboard } from '../components/ExecutiveKpiDashboard';
-import { DataGrid, GridColumn } from '../components/ui';
+import { DataGrid, GridColumn, SectionNav } from '../components/ui';
 import { CrossFilterProvider, DrillPopup, DrillTarget } from '../components/ui/DashboardKit';
 import { fmtDate, fmtNum } from '../lib/format';
 import demo2000DataRaw from '../data/demo-2000-master.json';
@@ -438,111 +438,32 @@ export default function Dashboard() {
     <Shell title="Executive Dashboard" eyebrow="Daily Operational Factory Execution">
       <CrossFilterProvider>
       <DrillPopup target={drill} onClose={() => setDrill(null)} />
-      {/* EXECUTIVE TOP VIEW SWITCHER TABS - DIRECTLY AT THE TOP */}
-      <section style={{ display: 'flex', gap: '8px', margin: '4px 0 16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px', flexWrap: 'wrap' }}>
-        <button
-          type="button"
-          onClick={() => setMainView('EXECUTIVE_KPI')}
-          style={{
-            padding: '8px 16px',
-            borderRadius: '8px',
-            border: mainView === 'EXECUTIVE_KPI' ? '1px solid #0284c7' : '1px solid #e2e8f0',
-            background: mainView === 'EXECUTIVE_KPI' ? '#0F274E' : '#ffffff',
-            color: mainView === 'EXECUTIVE_KPI' ? '#ffffff' : '#334155',
-            fontWeight: 800,
-            fontSize: '12px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            boxShadow: mainView === 'EXECUTIVE_KPI' ? '0 2px 4px rgba(15,39,78,0.15)' : 'none',
-            transition: 'all .15s ease'
+      {/* Task 3: Sticky SectionNav per docs/UX-STANDARD.md §3a */}
+      <div style={{ marginBottom: '14px' }}>
+        <SectionNav
+          stickyTop={0}
+          sections={[
+            { id: 'sec-kpi', code: '01', label: 'Executive KPIs' },
+            { id: 'sec-register', code: '02', label: 'Order Register' },
+            { id: 'sec-physical', code: '03', label: 'KPI Physical Board' },
+            { id: 'sec-quota', code: '04', label: 'Buyer Quota' },
+            { id: 'sec-fabric', code: '05', label: 'Fabric Meeting' },
+          ]}
+          activeId={
+            mainView === 'EXECUTIVE_KPI' ? 'sec-kpi' :
+            mainView === 'REGISTER' ? 'sec-register' :
+            mainView === 'PHYSICAL_BOARD' ? 'sec-physical' :
+            mainView === 'BUYER_QUOTA' ? 'sec-quota' : 'sec-fabric'
+          }
+          onSelect={(id) => {
+            if (id === 'sec-kpi') setMainView('EXECUTIVE_KPI');
+            else if (id === 'sec-register') setMainView('REGISTER');
+            else if (id === 'sec-physical') setMainView('PHYSICAL_BOARD');
+            else if (id === 'sec-quota') setMainView('BUYER_QUOTA');
+            else if (id === 'sec-fabric') setMainView('FABRIC_MEETING');
           }}
-        >
-          <span>👑</span> Executive Section KPIs
-        </button>
-        <button
-          type="button"
-          onClick={() => setMainView('REGISTER')}
-          style={{
-            padding: '8px 16px',
-            borderRadius: '8px',
-            border: mainView === 'REGISTER' ? '1px solid #0284c7' : '1px solid #e2e8f0',
-            background: mainView === 'REGISTER' ? '#0F274E' : '#ffffff',
-            color: mainView === 'REGISTER' ? '#ffffff' : '#334155',
-            fontWeight: 800,
-            fontSize: '12px',
-            cursor: 'pointer',
-            boxShadow: mainView === 'REGISTER' ? '0 2px 4px rgba(15,39,78,0.15)' : 'none',
-            transition: 'all .15s ease'
-          }}
-        >
-          Executive Order Register
-        </button>
-        <button
-          type="button"
-          onClick={() => setMainView('PHYSICAL_BOARD')}
-          style={{
-            padding: '8px 16px',
-            borderRadius: '8px',
-            border: mainView === 'PHYSICAL_BOARD' ? '1px solid #0284c7' : '1px solid #e2e8f0',
-            background: mainView === 'PHYSICAL_BOARD' ? '#0F274E' : '#ffffff',
-            color: mainView === 'PHYSICAL_BOARD' ? '#ffffff' : '#334155',
-            fontWeight: 800,
-            fontSize: '12px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            boxShadow: mainView === 'PHYSICAL_BOARD' ? '0 2px 4px rgba(15,39,78,0.15)' : 'none',
-            transition: 'all .15s ease'
-          }}
-        >
-          <span>📋</span> Factory 2026 KPI Tracker &amp; Board
-        </button>
-        <button
-          type="button"
-          onClick={() => setMainView('BUYER_QUOTA')}
-          style={{
-            padding: '8px 16px',
-            borderRadius: '8px',
-            border: mainView === 'BUYER_QUOTA' ? '1px solid #0284c7' : '1px solid #e2e8f0',
-            background: mainView === 'BUYER_QUOTA' ? '#0F274E' : '#ffffff',
-            color: mainView === 'BUYER_QUOTA' ? '#ffffff' : '#334155',
-            fontWeight: 800,
-            fontSize: '12px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            boxShadow: mainView === 'BUYER_QUOTA' ? '0 2px 4px rgba(15,39,78,0.15)' : 'none',
-            transition: 'all .15s ease'
-          }}
-        >
-          <span>📊</span> Buyer Quota (Bulk & Sample)
-        </button>
-        <button
-          type="button"
-          onClick={() => setMainView('FABRIC_MEETING')}
-          style={{
-            padding: '8px 16px',
-            borderRadius: '8px',
-            border: mainView === 'FABRIC_MEETING' ? '1px solid #0284c7' : '1px solid #e2e8f0',
-            background: mainView === 'FABRIC_MEETING' ? '#0F274E' : '#ffffff',
-            color: mainView === 'FABRIC_MEETING' ? '#ffffff' : '#334155',
-            fontWeight: 800,
-            fontSize: '12px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            boxShadow: mainView === 'FABRIC_MEETING' ? '0 2px 4px rgba(15,39,78,0.15)' : 'none',
-            transition: 'all .15s ease'
-          }}
-        >
-          <span>🧵</span> Fabric &amp; Dyeing Meeting
-        </button>
-      </section>
+        />
+      </div>
 
       {mainView === 'EXECUTIVE_KPI' && (
         <section style={{ margin: '8px 0 20px' }}>

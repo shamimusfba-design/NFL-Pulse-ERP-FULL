@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import Shell from '../../../components/Shell';
+import demo2000DataRaw from '../../../data/demo-2000-master.json';
 import {
   ActiveFiltersBar,
   CrossFilterProvider,
@@ -579,7 +580,7 @@ function TestingLabModuleContent() {
   // Master State with LocalStorage Persistence
   const [masterRecords, setMasterRecords] = useState<LabJobMasterRecord[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('nfl_testing_lab_v2');
+      const saved = localStorage.getItem('nfl_testing_lab_v3');
       if (saved) {
         try {
           return JSON.parse(saved);
@@ -608,7 +609,7 @@ function TestingLabModuleContent() {
   // Save to LocalStorage whenever modified
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('nfl_testing_lab_v2', JSON.stringify(masterRecords));
+      localStorage.setItem('nfl_testing_lab_v3', JSON.stringify(masterRecords));
     }
   }, [masterRecords]);
 
@@ -907,7 +908,7 @@ function TestingLabModuleContent() {
     setMasterRecords(INITIAL_MASTER_RECORDS);
     setPlanningRequests(INITIAL_PLANNING_REQUESTS);
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('nfl_testing_lab_v2');
+      localStorage.removeItem('nfl_testing_lab_v3');
       localStorage.removeItem('nfl_lab_requests_v2');
     }
     setEntrySuccessMessage('Lab data reset to standard factory default records.');
@@ -1298,7 +1299,7 @@ function TestingLabModuleContent() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span style={{ fontWeight: 800, color: '#0F274E' }}>{r.buyer}</span>
                         <span style={{ color: '#64748B' }}>·</span>
-                        <span style={{ fontWeight: 800, color: '#2563EB' }}>#{r.jobNo}</span>
+                        <Link href={`/jobs?q=${encodeURIComponent(r.jobNo)}`} onClick={e => e.stopPropagation()} style={{ fontWeight: 800, color: '#2563EB', textDecoration: 'none' }} className="hover:underline">#{r.jobNo}</Link>
                       </div>
                       <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
                         Batch: {r.batchNo} · {r.merchandiser}

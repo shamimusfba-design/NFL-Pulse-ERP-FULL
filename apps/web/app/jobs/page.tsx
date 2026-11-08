@@ -118,10 +118,12 @@ export interface Job360Props {
 export function Job360Content({ initialJobId }: Job360Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialQ = initialJobId || searchParams.get('q') || searchParams.get('jobNo') || '';
+  const rawQ = initialJobId || searchParams.get('q') || searchParams.get('jobNo') || '';
+  let initialQ = String(rawQ || '').trim();
+  try { initialQ = decodeURIComponent(initialQ); } catch {}
 
   const masterJobs: any[] = useMemo(() => (demo2000DataRaw as any)?.jobs || [], []);
-  const [selectedJobNo, setSelectedJobNo] = useState<string>(initialQ ? String(initialQ).trim() : '46755');
+  const [selectedJobNo, setSelectedJobNo] = useState<string>(initialQ || (masterJobs[0]?.jobNo ? String(masterJobs[0].jobNo) : '44001 1st'));
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [activeSectionId, setActiveSectionId] = useState<string>('section-job-info');
@@ -206,7 +208,8 @@ export function Job360Content({ initialJobId }: Job360Props) {
   // Match Job based on selectedJobNo
   const job = useMemo(() => {
     if (!masterJobs.length) return null;
-    const clean = String(selectedJobNo || '').toLowerCase().trim();
+    let clean = String(selectedJobNo || '').toLowerCase().trim();
+    try { clean = decodeURIComponent(clean); } catch {}
     const stripped = clean.replace(/^job\s*(#|no\.?|num\.?)?\s*/i, '').replace(/^#\s*/, '').trim();
     return (
       masterJobs.find((j: any) => {

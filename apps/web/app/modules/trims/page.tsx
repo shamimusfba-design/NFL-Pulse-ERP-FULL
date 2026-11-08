@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import Shell from '../../../components/Shell';
+import demo2000DataRaw from '../../../data/demo-2000-master.json';
 import { Badge, DataGrid, GridColumn, RecordPanel, DrillPopup, DrillTarget } from '../../../components/ui';
 import { fmtDate, fmtNum } from '../../../lib/format';
 import {
@@ -899,7 +900,7 @@ export default function TrimsStorePage() {
   // Master State with LocalStorage Persistence
   const [checklists, setChecklists] = useState<TrimsChecklistRecord[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('nfl_trims_checklists_v4');
+      const saved = localStorage.getItem('nfl_trims_checklists_v5');
       if (saved) {
         try { return JSON.parse(saved); } catch {}
       }
@@ -963,7 +964,7 @@ export default function TrimsStorePage() {
   // Save changes
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('nfl_trims_checklists_v4', JSON.stringify(checklists));
+      localStorage.setItem('nfl_trims_checklists_v5', JSON.stringify(checklists));
     }
   }, [checklists]);
 
@@ -2896,7 +2897,22 @@ export default function TrimsStorePage() {
             onRowClick={(j) => setRecordJob(j)}
             columns={[
               { key: 'buyer', header: 'Buyer', width: 110, value: (j) => j.buyer, render: (j) => <strong style={{ color: 'var(--nos-brand-text)' }}>{j.buyer}</strong> },
-              { key: 'jobNo', header: 'Job No', width: 105, value: (j) => j.jobNo, render: (j) => <strong>{j.jobNo}</strong> },
+              {
+              key: 'jobNo',
+              header: 'Job No',
+              width: 105,
+              value: (j) => j.jobNo,
+              render: (j) => (
+                <Link
+                  href={`/jobs?q=${encodeURIComponent(j.jobNo)}`}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ color: '#0284C7', fontWeight: 700, textDecoration: 'none' }}
+                  className="hover:underline"
+                >
+                  {j.jobNo}
+                </Link>
+              ),
+            },
               { key: 'styleNo', header: 'Style No', width: 130, value: (j) => j.styleNo },
               { key: 'orderQty', header: 'Order Qty (pcs)', align: 'right', width: 130, numeric: true, total: true, unit: 'pcs', value: (j) => j.orderQty, render: (j) => <strong>{fmtNum(j.orderQty)}</strong> },
               {
@@ -4042,7 +4058,22 @@ export default function TrimsStorePage() {
               { key: 'category', header: 'Category', width: 120, value: (s) => s.category, render: (s) => <Badge tone="mid">{s.category}</Badge> },
               { key: 'availableQty', header: 'Available Qty', align: 'right', width: 130, numeric: true, total: true, value: (s) => s.availableQty, render: (s) => <strong style={{ color: 'var(--nos-ok)' }}>{fmtNum(s.availableQty)}</strong> },
               { key: 'unit', header: 'Unit', width: 90, value: (s) => s.unit },
-              { key: 'originJobNo', header: 'Origin Job', width: 110, value: (s) => s.originJobNo, render: (s) => <strong>{s.originJobNo}</strong> },
+              {
+              key: 'originJobNo',
+              header: 'Origin Job',
+              width: 110,
+              value: (s) => s.originJobNo,
+              render: (s) => (
+                <Link
+                  href={`/jobs?q=${encodeURIComponent(s.originJobNo)}`}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ color: '#0284C7', fontWeight: 700, textDecoration: 'none' }}
+                  className="hover:underline"
+                >
+                  {s.originJobNo}
+                </Link>
+              ),
+            },
               { key: 'buyer', header: 'Buyer', width: 110, value: (s) => s.buyer },
               { key: 'rackShelf', header: 'Location', width: 130, value: (s) => s.rackShelf, render: (s) => <Badge tone="info">{s.rackShelf}</Badge> },
               { key: 'condition', header: 'Condition', width: 130, value: (s) => s.condition },

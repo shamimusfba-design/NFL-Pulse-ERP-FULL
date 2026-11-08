@@ -10,6 +10,7 @@
  * The page keeps ONE vertical scroll: the grid never puts the table in its own
  * scroll box, so rows are never half cut and no empty space is left underneath.
  */
+import Link from 'next/link';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './datagrid.css';
 
@@ -278,7 +279,16 @@ export function DataGrid<T>({
       className={`${i < frozenColumns ? 'nos-dg-frozen' : ''} ${c.numeric || c.align === 'right' ? 'ta-r' : c.align === 'center' ? 'ta-c' : ''}`}
       style={{ left: i < frozenColumns ? leftOffsets[i] : undefined, width: colW(c), paddingLeft: inGroup && i === 0 ? 22 : undefined }}
     >
-      {c.render ? c.render(r) : txt(valueOf(c, r))}
+      {c.render ? c.render(r) : (c.key === 'jobNo' || c.key === 'job') && valueOf(c, r) ? (
+        <Link
+          href={`/jobs?q=${encodeURIComponent(txt(valueOf(c, r)))}`}
+          onClick={e => e.stopPropagation()}
+          style={{ color: '#0284C7', fontWeight: 700, textDecoration: 'none' }}
+          className="nos-dg-joblink hover:underline"
+        >
+          {txt(valueOf(c, r))}
+        </Link>
+      ) : txt(valueOf(c, r))}
     </td>
   ));
 
