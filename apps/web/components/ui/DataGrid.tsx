@@ -406,7 +406,7 @@ export function DataGrid<T>({
       )}
 
       {/* the table: page keeps one vertical scroll; only sideways scrolls here */}
-      <div className={`nos-dg-scroller ${density}`} ref={scrollerRef} onScroll={syncFromTable} style={{ height: scrollerH }}>
+      <div className={`nos-dg-scroller ${density}`} ref={scrollerRef} onScroll={syncFromTable} style={{ height: scrollerH ? Math.min(scrollerH, Math.max(120, (sorted.length + (hasTotals ? 2 : 1)) * rowH + 48)) : undefined, maxHeight: scrollerH }}>
         <table className="nos-dg-table" style={{ width: totalW, minWidth: '100%' }}>
           <colgroup>
             {selectable && <col style={{ width: 36 }} />}
@@ -415,7 +415,7 @@ export function DataGrid<T>({
           <thead style={{ top: stickyTop }}>
             <tr>
               {selectable && (
-                <th className="nos-dg-frozen nos-dg-tick" style={{ left: 0 }}>
+                <th className="nos-dg-frozen nos-dg-tick" style={{ left: 0, top: stickyTop }}>
                   <input
                     type="checkbox" aria-label="Select all rows"
                     checked={sorted.length > 0 && selected.size === sorted.length}

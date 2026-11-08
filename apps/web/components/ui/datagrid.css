@@ -28,7 +28,7 @@
 .nos-dg-table th,.nos-dg-table td{padding:7px 10px;border-bottom:1px solid var(--nos-line);text-align:left;white-space:nowrap;background:var(--nos-card)}
 .nos-dg-scroller.compact .nos-dg-table th,.nos-dg-scroller.compact .nos-dg-table td{padding:4px 8px}
 .nos-dg-table td{overflow:hidden;text-overflow:ellipsis}
-.nos-dg-table thead th{overflow:visible;position:sticky;z-index:20;background:var(--nos-inset);color:var(--nos-ink);font-weight:var(--fw-medium);border-bottom:1px solid var(--nos-line-strong)}
+.nos-dg-table thead th{overflow:visible;position:sticky;top:0;z-index:20;background:var(--nos-inset);color:var(--nos-ink);font-weight:var(--fw-medium);border-bottom:1px solid var(--nos-line-strong)}
 .nos-dg-table tbody tr:hover > td{background:var(--nos-inset)}
 .nos-dg-table tbody tr.is-selected > td{background:rgba(37,99,235,.10)}
 .nos-dg-table .ta-r{text-align:right}
@@ -36,10 +36,11 @@
 
 /* frozen left columns */
 .nos-dg-frozen{position:sticky;z-index:10}
-.nos-dg-table thead th.nos-dg-frozen{z-index:30}
+.nos-dg-table thead th.nos-dg-frozen{position:sticky;top:0;z-index:30}
 .nos-dg-table tbody tr:hover > td.nos-dg-frozen{background:var(--nos-inset)}
 .nos-dg-table tbody tr.is-selected > td.nos-dg-frozen{background:rgba(37,99,235,.10)}
 .nos-dg-tick{width:36px;text-align:center}
+.nos-dg-table thead th.nos-dg-tick{position:sticky;top:0;z-index:35}
 
 /* header cell with the filter button */
 .nos-dg-th{display:inline-flex;align-items:center;gap:4px;max-width:100%}
