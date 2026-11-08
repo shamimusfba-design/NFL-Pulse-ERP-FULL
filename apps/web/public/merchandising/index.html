@@ -356,7 +356,7 @@ tr.clk{cursor:pointer}
   padding: 0 14px !important;
 }
 
-/* Full Width Container */
+/* Full Width Container for both bulk (.layout) and sample (.split.withpanel) */
 .embedded .layout,
 .embedded .split.withpanel {
   display: flex !important;
@@ -372,21 +372,26 @@ tr.clk{cursor:pointer}
   order: 2 !important;
 }
 
-/* Pending tasks panel placed on TOP of table */
+/* Pending tasks / TNA pending panel placed on TOP of table in normal document flow - NEVER floating over content */
 .embedded .layout .entry,
 .embedded .layout .side,
-.embedded .split.withpanel .side {
+.embedded .split.withpanel .side,
+.embedded #side {
   position: relative !important;
   top: 0 !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
   width: 100% !important;
   height: auto !important;
   max-height: none !important;
   order: 1 !important;
-  margin-bottom: 10px !important;
+  margin-bottom: 12px !important;
   border-radius: 10px !important;
   border: 1px solid var(--line) !important;
   background: var(--paper) !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+  z-index: 5 !important;
 }
 
 .embedded #side .rtabs {
@@ -401,6 +406,17 @@ tr.clk{cursor:pointer}
 .embedded #side .rtab {
   font-weight: 700 !important;
   font-size: 13px !important;
+  cursor: pointer !important;
+}
+
+.embedded #side .rtab .rcnt {
+  background: var(--warn-bg) !important;
+  color: var(--warn) !important;
+  border-radius: 999px !important;
+  padding: 1px 7px !important;
+  margin-left: 6px !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
 }
 
 /* Pending tasks items inside pane arranged in responsive grid */
@@ -414,11 +430,14 @@ tr.clk{cursor:pointer}
 }
 
 .embedded #side .body > .phint,
-.embedded #side .body > .empty {
+.embedded #side .body > .empty,
+.embedded #side .body > .secttl,
+.embedded #side .body > header,
+.embedded #side .body > .lockbox,
+.embedded #side .body > .kv,
+.embedded #side .body > table,
+.embedded #side .body > .form {
   grid-column: 1 / -1 !important;
-  margin-bottom: 4px !important;
-  font-size: 12.5px !important;
-  color: var(--ink-2) !important;
 }
 
 .embedded #side .tnaitem {
@@ -441,31 +460,12 @@ tr.clk{cursor:pointer}
   box-shadow: 0 2px 6px rgba(37, 99, 235, 0.12) !important;
 }
 
-/* When a job detail or form is opened, slide it in as a right drawer */
-.embedded #side.is-detail,
-.embedded #side.open:not(.tasks-mode) {
-  position: fixed !important;
-  top: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  left: auto !important;
-  width: min(560px, 94vw) !important;
-  max-height: 100vh !important;
-  height: 100vh !important;
-  z-index: 99 !important;
-  border-radius: 0 !important;
-  box-shadow: -6px 0 28px rgba(0, 0, 0, 0.25) !important;
-  overflow-y: auto !important;
-  background: var(--paper) !important;
-  order: unset !important;
-  margin: 0 !important;
-}
-
+/* When viewing a full form or job details inside #side, make the body scrollable and full-width */
 .embedded #side.is-detail .body,
-.embedded #side.open:not(.tasks-mode) .body {
+.embedded #side.has-form .body {
   display: block !important;
-  max-height: none !important;
-  overflow: visible !important;
+  max-height: 520px !important;
+  overflow-y: auto !important;
 }
 
 /* Full Width Table Wrap */
