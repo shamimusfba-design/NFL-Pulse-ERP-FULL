@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import {
   BarChart,
   Bar,
@@ -796,7 +797,25 @@ function DyeingDashboardInner() {
   // Main DataGrid columns (Job and Style frozen left: frozenColumns={2})
   const columns: GridColumn<DyeingBatchRow>[] = useMemo(
     () => [
-      { key: 'buyerJob', header: 'Buyer - Job No', width: 150, value: (r) => r.buyerJob },
+      {
+        key: 'buyerJob',
+        header: 'Buyer - Job No',
+        width: 160,
+        value: (r) => r.buyerJob,
+        render: (r) => (
+          <span>
+            {r.buyer} ·{' '}
+            <Link
+              href={`/jobs/${encodeURIComponent(r.jobNo)}`}
+              className="dg-job-link"
+              onClick={(e) => e.stopPropagation()}
+              title={`Open Job 360 for #${r.jobNo}`}
+            >
+              #{r.jobNo}
+            </Link>
+          </span>
+        ),
+      },
       { key: 'style', header: 'Style No', width: 115, value: (r) => r.style },
       { key: 'color', header: 'Colour', width: 170, value: (r) => r.color },
       { key: 'fabric', header: 'Fabric Type', width: 120, value: (r) => r.fabric },

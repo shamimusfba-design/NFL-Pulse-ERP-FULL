@@ -177,25 +177,109 @@ export function computeJobStatus(job: TrimsChecklistRecord): PresentJobStatus {
 // DEFAULT INITIAL RACKS (40 RACKS × 12 SHELVES)
 // ============================================================================
 
-function generateDefaultRacks(): StoreRack[] {
+const catList: TrimsCategory[] = ['LABEL', 'THREAD', 'ELASTIC', 'ZIPPER', 'BUTTON', 'TAPE', 'PACKAGING', 'POLY'];
+
+const INITIAL_CHECKLISTS: TrimsChecklistRecord[] = ((demo2000DataRaw as any)?.jobs || []).map((j: any) => {
+  const tr = j.trims || {};
+  const isAccepted = tr.checklistStatus === 'ACCEPTED';
+  const isOrdered = tr.status === 'ORDERED' || tr.status === 'IN_HOUSE';
+  const isInHouse = tr.status === 'IN_HOUSE';
+
+  let presentStatus: PresentJobStatus = 'Order Confirmed';
+  if (isInHouse) presentStatus = 'Receive OK';
+  else if (isOrdered) presentStatus = 'Partial Received Due';
+  else if (tr.status === 'ORDERING_DUE') presentStatus = 'Ordering Due';
+  else if (tr.checklistStatus === 'PENDING_REVIEW') presentStatus = 'Checklist Due';
+
+  const items: TrimsItem[] = (tr.items || []).map((it: any, idx: number) => {
+    let cat: TrimsCategory = 'OTHER';
+    let unit: TrimsUnit = 'PCS';
+    if (it.name.includes('Label')) { cat = 'LABEL'; unit = 'PCS'; }
+    else if (it.name.includes('Thread')) { cat = 'THREAD'; unit = 'CONES'; }
+    else if (it.name.includes('Polybag') || it.name.includes('Poly')) { cat = 'POLY'; unit = 'PCS'; }
+    else if (it.name.includes('Carton')) { cat = 'CARTON'; unit = 'PCS'; }
+    else if (it.name.includes('Elastic')) { cat = 'ELASTIC'; unit = 'METER'; }
+    else if (it.name.includes('Button')) { cat = 'BUTTON'; unit = 'GROSS'; }
+    else if (it.name.includes('Zipper')) { cat = 'ZIPPER'; unit = 'PCS'; }
+
+    const wastage = 3;
+    const requiredQty = it.name.includes('Thread') ? Math.round(j.orderQty / 50) : j.orderQty;
+    const totalOrderQty = Math.round(requiredQty * 1.03);
+    const receivedQty = isInHouse ? totalOrderQty : isOrdered ? Math.round(totalOrderQty * 0.5) : 0;
+    const balanceQty = Math.max(0, totalOrderQty - receivedQty);
+    const deliveredQty = ['Shipment', 'Packing', 'Finishing', 'Sewing'].includes(j.overallStage) ? totalOrderQty : 0;
+    const deliveryBalance = Math.max(0, receivedQty - deliveredQty);
+    const rackNo = 'R-' + String(((idx * 7 + (parseInt(j.jobNo) || 1)) % 40) + 1).padStart(2, '0');
+    const shelfNo = 'S-' + String(((idx * 3 + (parseInt(j.jobNo) || 1)) % 12) + 1).padStart(2, '0');
+
+    return {
+      id: `T-${j.jobNo}-${idx + 1}`,
+      itemName: it.name,
+      category: cat,
+      unit,
+      consumption: it.name.includes('Thread') ? 140 : 1,
+      consumptionUnit: it.name.includes('Thread') ? 'm/garment' : 'pc/garment',
+      consumptionSource: 'SAMPLE_IE',
+      requiredQty,
+      wastagePct: wastage,
+      totalOrderQty,
+      receivedQty,
+      balanceQty,
+      deliveredQty,
+      deliveryBalance,
+      rackNo,
+      shelfNo,
+      qualityStatus: isInHouse ? 'PASS' : 'PENDING',
+      supplierName: it.supplier || 'Avery Dennison',
+      lotBatchNo: `LOT-${String(j.jobNo).split(' ')[0]}-${idx + 1}`
+    };
+  });
+
+  return {
+    id: `TRIM-CHK-${String(j.jobNo).replace(/\s+/g, '-')}`,
+    jobNo: j.jobNo,
+    buyer: j.buyer,
+    styleNo: j.styleNo,
+    itemDescription: j.itemDescription || j.item,
+    orderQty: j.orderQty,
+    merchandiser: j.merchandiser,
+    shipmentDate: j.dates?.exFactory || '2026-09-30',
+    tnaSlot: j.planMonth || 'Aug 26',
+    sewingLine: j.lineAllocation?.line || 'Line 01',
+    requestDate: j.dates?.poReceived || '2026-06-15',
+    checklistStatus: isAccepted ? 'ACCEPTED' : tr.checklistStatus === 'PENDING_REVIEW' ? 'PENDING_REVIEW' : 'REVIEW_REQUESTED',
+    presentStatus,
+    acceptedAt: isAccepted ? j.dates?.poReceived : undefined,
+    acceptedBy: isAccepted ? 'Rezaul Karim (Trims Store In-charge)' : undefined,
+    items
+  };
+});
+
+function generateDefaultRacks(checklistsList: TrimsChecklistRecord[] = INITIAL_CHECKLISTS): StoreRack[] {
+  const buyerMap: Record<number, string> = {
+    1: 'ONLY', 2: 'ONLY', 3: 'ONLY', 4: 'ONLY', 5: 'ONLY', 6: 'ONLY', 7: 'ONLY', 8: 'ONLY',
+    9: 'OVS', 10: 'OVS', 11: 'OVS', 12: 'OVS', 13: 'OVS', 14: 'OVS', 15: 'OVS', 16: 'OVS',
+    17: 'Name It', 18: 'Name It', 19: 'Name It', 20: 'Name It', 21: 'Name It', 22: 'Name It', 23: 'Name It', 24: 'Name It',
+    25: 'Only & Sons', 26: 'Only & Sons', 27: 'Only & Sons', 28: 'Only & Sons', 29: 'Only & Sons', 30: 'Only & Sons',
+    31: 'UTG', 32: 'UTG', 33: 'UTG', 34: 'UTG', 35: 'UTG', 36: 'UTG',
+    37: 'New Look', 38: 'T.M Lewin', 39: 'Miss Selfridge', 40: 'GENERAL'
+  };
+
+  const shelfItemMap: Record<string, { jobs: Set<string>; summary: string; qty: number }> = {};
+  checklistsList.forEach(c => {
+    (c.items || []).forEach(it => {
+      if (it.receivedQty > 0) {
+        const key = `${it.rackNo}-${it.shelfNo}`;
+        if (!shelfItemMap[key]) {
+          shelfItemMap[key] = { jobs: new Set<string>(), summary: `${it.itemName} (${it.receivedQty.toLocaleString()} ${it.unit})`, qty: 0 };
+        }
+        shelfItemMap[key].jobs.add(c.jobNo);
+        shelfItemMap[key].qty += it.receivedQty;
+      }
+    });
+  });
+
   const racks: StoreRack[] = [];
-  const buyerMap: Record<number, string> = {};
-
-  // R-01 to R-08: ONLY
-  for (let i = 1; i <= 8; i++) buyerMap[i] = 'ONLY';
-  // R-09 to R-16: OVS
-  for (let i = 9; i <= 16; i++) buyerMap[i] = 'OVS';
-  // R-17 to R-24: BS-ONS
-  for (let i = 17; i <= 24; i++) buyerMap[i] = 'BS-ONS';
-  // R-25 to R-30: BS-NMT
-  for (let i = 25; i <= 30; i++) buyerMap[i] = 'BS-NMT';
-  // R-31 to R-36: UTG
-  for (let i = 31; i <= 36; i++) buyerMap[i] = 'UTG';
-  // R-37 to R-40: GENERAL
-  for (let i = 37; i <= 40; i++) buyerMap[i] = 'GENERAL';
-
-  const catList: TrimsCategory[] = ['LABEL', 'THREAD', 'ELASTIC', 'ZIPPER', 'BUTTON', 'TAPE', 'PACKAGING', 'POLY'];
-
   for (let r = 1; r <= 40; r++) {
     const rackId = `R-${r.toString().padStart(2, '0')}`;
     const dedicatedBuyer = buyerMap[r] || 'GENERAL';
@@ -204,39 +288,12 @@ function generateDefaultRacks(): StoreRack[] {
     const shelves: StoreShelf[] = [];
     for (let s = 1; s <= 12; s++) {
       const assignedCategory = catList[(s - 1) % catList.length];
-      let occupancy = 0;
-      let jobs: string[] = [];
-      let summary = 'Empty shelf';
+      const shelfKey = `${rackId}-S-${s.toString().padStart(2, '0')}`;
+      const found = shelfItemMap[shelfKey];
 
-      if (r === 1 && s === 1) {
-        occupancy = 85;
-        jobs = ['48002'];
-        summary = "Main Label 'ONLY' (2,500 pcs)";
-      } else if (r === 1 && s === 2) {
-        occupancy = 90;
-        jobs = ['48002'];
-        summary = 'Care Label (2,500 pcs)';
-      } else if (r === 2 && s === 3) {
-        occupancy = 70;
-        jobs = ['48002'];
-        summary = 'Waist Elastic 3.5cm (1,625 m)';
-      } else if (r === 9 && s === 1) {
-        occupancy = 95;
-        jobs = ['46755'];
-        summary = 'Care Label OVS (6,500 pcs)';
-      } else if (r === 9 && s === 4) {
-        occupancy = 80;
-        jobs = ['46755'];
-        summary = 'Sewing Thread 40/2 Black (52 Cones)';
-      } else if (r === 17 && s === 2) {
-        occupancy = 75;
-        jobs = ['48903'];
-        summary = 'Hood Drawcord Round (3,600 m)';
-      } else if (r <= 20 && s <= 6) {
-        occupancy = Math.floor(Math.random() * 40) + 30;
-        jobs = [`4${Math.floor(Math.random() * 800) + 6000}`];
-        summary = `${assignedCategory} active storage`;
-      }
+      const jobs = found ? Array.from(found.jobs).slice(0, 3) : [];
+      const occupancy = found ? Math.min(100, Math.max(35, Math.round((found.qty / 5000) * 100))) : 0;
+      const summary = found ? found.summary : 'Empty shelf';
 
       shelves.push({
         shelfNo: s,
@@ -259,636 +316,33 @@ function generateDefaultRacks(): StoreRack[] {
   return racks;
 }
 
-// ============================================================================
-// INITIAL CHECKLIST JOBS MASTER
-// ============================================================================
-
-const INITIAL_CHECKLISTS: TrimsChecklistRecord[] = [
-  {
-    id: 'TRIM-CHK-48002',
-    jobNo: '48002',
-    buyer: 'ONLY',
-    styleNo: '13251512',
-    itemDescription: 'Ladies Cotton Fleece Hoodie with Kangaroo Pocket',
-    orderQty: 2500,
-    merchandiser: 'Ayub Ali',
-    shipmentDate: '2026-08-25',
-    tnaSlot: "Aug 2 '26",
-    sewingLine: 'Line 04',
-    requestDate: '2026-07-10',
-    checklistStatus: 'ACCEPTED',
-    presentStatus: 'Partial Received Due',
-    acceptedAt: '2026-07-12',
-    acceptedBy: 'Rezaul Karim (Trims Store In-charge)',
-    items: [
-      {
-        id: 'T-48002-1',
-        itemName: "Main Label Woven Damask 'ONLY'",
-        category: 'LABEL',
-        unit: 'PCS',
-        consumption: 1.0,
-        consumptionUnit: 'pc/garment',
-        consumptionSource: 'SAMPLE_IE',
-        requiredQty: 2500,
-        wastagePct: 3.0,
-        totalOrderQty: 2575,
-        receivedQty: 2575,
-        balanceQty: 0,
-        deliveredQty: 2575,
-        deliveryBalance: 0,
-        rackNo: 'R-01',
-        shelfNo: 'S-01',
-        qualityStatus: 'PASS',
-        supplierName: 'Dekko Accessories Ltd',
-        lotBatchNo: 'DK-26-8812'
-      },
-      {
-        id: 'T-48002-2',
-        itemName: 'Care & Wash Label Satin Printed',
-        category: 'LABEL',
-        unit: 'PCS',
-        consumption: 1.0,
-        consumptionUnit: 'pc/garment',
-        consumptionSource: 'SAMPLE_IE',
-        requiredQty: 2500,
-        wastagePct: 3.0,
-        totalOrderQty: 2575,
-        receivedQty: 2575,
-        balanceQty: 0,
-        deliveredQty: 2575,
-        deliveryBalance: 0,
-        rackNo: 'R-01',
-        shelfNo: 'S-02',
-        qualityStatus: 'PASS',
-        supplierName: 'Dekko Accessories Ltd',
-        lotBatchNo: 'DK-26-8813'
-      },
-      {
-        id: 'T-48002-3',
-        itemName: 'Sewing Thread 40/2 DTM Navy',
-        category: 'THREAD',
-        unit: 'CONES',
-        consumption: 140.0,
-        consumptionUnit: 'm/garment',
-        consumptionSource: 'SAMPLE_IE',
-        requiredQty: 70,
-        wastagePct: 5.0,
-        totalOrderQty: 74,
-        receivedQty: 74,
-        balanceQty: 0,
-        deliveredQty: 60,
-        deliveryBalance: 14,
-        rackNo: 'R-02',
-        shelfNo: 'S-04',
-        qualityStatus: 'PASS',
-        supplierName: 'Coats Bangladesh',
-        lotBatchNo: 'CB-NV-901'
-      },
-      {
-        id: 'T-48002-4',
-        itemName: 'Waist Elastic Braided 3.5cm',
-        category: 'ELASTIC',
-        unit: 'METER',
-        consumption: 65.0,
-        consumptionUnit: 'cm/garment',
-        consumptionSource: 'SAMPLE_IE',
-        requiredQty: 1625,
-        wastagePct: 4.0,
-        totalOrderQty: 1690,
-        receivedQty: 1200,
-        balanceQty: 490,
-        deliveredQty: 1200,
-        deliveryBalance: 0,
-        rackNo: 'R-02',
-        shelfNo: 'S-03',
-        qualityStatus: 'PASS',
-        supplierName: 'Aman Graphics & Trims',
-        lotBatchNo: 'AGT-EL-441'
-      },
-      {
-        id: 'T-48002-5',
-        itemName: 'Round Cotton Drawcord with Aglets',
-        category: 'TAPE',
-        unit: 'METER',
-        consumption: 120.0,
-        consumptionUnit: 'cm/garment',
-        consumptionSource: 'TECHNICAL',
-        requiredQty: 3000,
-        wastagePct: 3.0,
-        totalOrderQty: 3090,
-        receivedQty: 3090,
-        balanceQty: 0,
-        deliveredQty: 3090,
-        deliveryBalance: 0,
-        rackNo: 'R-03',
-        shelfNo: 'S-01',
-        qualityStatus: 'PASS',
-        supplierName: 'KDS Accessories',
-        lotBatchNo: 'KDS-DC-109'
-      },
-      {
-        id: 'T-48002-6',
-        itemName: 'Nickel-Free Metal Eyelets 8mm',
-        category: 'BUTTON',
-        unit: 'PCS',
-        consumption: 2.0,
-        consumptionUnit: 'pcs/garment',
-        consumptionSource: 'TECHNICAL',
-        requiredQty: 5000,
-        wastagePct: 4.0,
-        totalOrderQty: 5200,
-        receivedQty: 5200,
-        balanceQty: 0,
-        deliveredQty: 5200,
-        deliveryBalance: 0,
-        rackNo: 'R-03',
-        shelfNo: 'S-02',
-        qualityStatus: 'PASS',
-        supplierName: 'YKK Bangladesh',
-        lotBatchNo: 'YKK-EY-55'
-      },
-      {
-        id: 'T-48002-7',
-        itemName: 'Self-Adhesive Poly Bag 12x18 with Warning',
-        category: 'PACKAGING',
-        unit: 'PCS',
-        consumption: 1.0,
-        consumptionUnit: 'pc/garment',
-        consumptionSource: 'MERCHANDISER',
-        requiredQty: 2500,
-        wastagePct: 3.0,
-        totalOrderQty: 2575,
-        receivedQty: 0,
-        balanceQty: 2575,
-        deliveredQty: 0,
-        deliveryBalance: 0,
-        rackNo: 'R-04',
-        shelfNo: 'S-01',
-        qualityStatus: 'PENDING',
-        supplierName: 'Bengal Poly Industries'
-      }
-    ]
-  },
-  {
-    id: 'TRIM-CHK-46755',
-    jobNo: '46755',
-    buyer: 'OVS',
-    styleNo: '262SWT028-222',
-    itemDescription: 'LS Swt shirt w back pleat and slve frings',
-    orderQty: 6501,
-    merchandiser: 'Shaker Hossain',
-    shipmentDate: '2026-08-05',
-    tnaSlot: "Jul 3 '26",
-    sewingLine: 'Line 16B',
-    requestDate: '2026-06-25',
-    checklistStatus: 'ACCEPTED',
-    presentStatus: 'Delivery Running',
-    acceptedAt: '2026-06-27',
-    acceptedBy: 'Rezaul Karim',
-    items: [
-      {
-        id: 'T-46755-1',
-        itemName: "Main Label Woven OVS Heritage",
-        category: 'LABEL',
-        unit: 'PCS',
-        consumption: 1.0,
-        consumptionUnit: 'pc/garment',
-        consumptionSource: 'SAMPLE_IE',
-        requiredQty: 6501,
-        wastagePct: 3.0,
-        totalOrderQty: 6696,
-        receivedQty: 6696,
-        balanceQty: 0,
-        deliveredQty: 6696,
-        deliveryBalance: 0,
-        rackNo: 'R-09',
-        shelfNo: 'S-01',
-        qualityStatus: 'PASS',
-        supplierName: 'Avery Dennison',
-        lotBatchNo: 'AD-26-901'
-      },
-      {
-        id: 'T-46755-2',
-        itemName: 'Care & Content Label Multilingual',
-        category: 'LABEL',
-        unit: 'PCS',
-        consumption: 1.0,
-        consumptionUnit: 'pc/garment',
-        consumptionSource: 'SAMPLE_IE',
-        requiredQty: 6501,
-        wastagePct: 3.0,
-        totalOrderQty: 6696,
-        receivedQty: 6696,
-        balanceQty: 0,
-        deliveredQty: 6696,
-        deliveryBalance: 0,
-        rackNo: 'R-09',
-        shelfNo: 'S-02',
-        qualityStatus: 'PASS',
-        supplierName: 'Avery Dennison',
-        lotBatchNo: 'AD-26-902'
-      },
-      {
-        id: 'T-46755-3',
-        itemName: 'Sewing Thread 40/2 Black Beauty',
-        category: 'THREAD',
-        unit: 'CONES',
-        consumption: 120.0,
-        consumptionUnit: 'm/garment',
-        consumptionSource: 'SAMPLE_IE',
-        requiredQty: 156,
-        wastagePct: 5.0,
-        totalOrderQty: 164,
-        receivedQty: 164,
-        balanceQty: 0,
-        deliveredQty: 160,
-        deliveryBalance: 4,
-        rackNo: 'R-09',
-        shelfNo: 'S-04',
-        qualityStatus: 'PASS',
-        supplierName: 'Coats Bangladesh',
-        lotBatchNo: 'CB-BK-402'
-      },
-      {
-        id: 'T-46755-4',
-        itemName: 'Herringbone Neck Tape 10mm Cotton',
-        category: 'TAPE',
-        unit: 'METER',
-        consumption: 35.0,
-        consumptionUnit: 'cm/garment',
-        consumptionSource: 'TECHNICAL',
-        requiredQty: 2275,
-        wastagePct: 4.0,
-        totalOrderQty: 2366,
-        receivedQty: 2366,
-        balanceQty: 0,
-        deliveredQty: 2366,
-        deliveryBalance: 0,
-        rackNo: 'R-10',
-        shelfNo: 'S-01',
-        qualityStatus: 'PASS',
-        supplierName: 'Montrims Limited',
-        lotBatchNo: 'MT-HB-220'
-      },
-      {
-        id: 'T-46755-5',
-        itemName: 'Hangtag Art Card 350 GSM + Barcode Sticker',
-        category: 'PACKAGING',
-        unit: 'PCS',
-        consumption: 1.0,
-        consumptionUnit: 'pc/garment',
-        consumptionSource: 'MERCHANDISER',
-        requiredQty: 6501,
-        wastagePct: 2.0,
-        totalOrderQty: 6631,
-        receivedQty: 6631,
-        balanceQty: 0,
-        deliveredQty: 6631,
-        deliveryBalance: 0,
-        rackNo: 'R-11',
-        shelfNo: 'S-01',
-        qualityStatus: 'PASS',
-        supplierName: 'SML Group',
-        lotBatchNo: 'SML-HT-77'
-      }
-    ]
-  },
-  {
-    id: 'TRIM-CHK-48085',
-    jobNo: '48085',
-    buyer: 'BS-NMT',
-    styleNo: '13251506',
-    itemDescription: 'Girls Slub Single Jersey T-Shirt with Frills',
-    orderQty: 4200,
-    merchandiser: 'Tariqul Islam',
-    shipmentDate: '2026-09-02',
-    tnaSlot: "Aug 3 '26",
-    sewingLine: 'Line 08',
-    requestDate: '2026-07-20',
-    checklistStatus: 'PENDING_REVIEW',
-    presentStatus: 'Ordering Due',
-    items: [
-      {
-        id: 'T-48085-1',
-        itemName: "Main Label Satin Loop Fold 'BS-NMT'",
-        category: 'LABEL',
-        unit: 'PCS',
-        consumption: 1.0,
-        consumptionUnit: 'pc/garment',
-        consumptionSource: 'SAMPLE_IE',
-        requiredQty: 4200,
-        wastagePct: 3.0,
-        totalOrderQty: 4326,
-        receivedQty: 0,
-        balanceQty: 4326,
-        deliveredQty: 0,
-        deliveryBalance: 0,
-        rackNo: 'R-25',
-        shelfNo: 'S-01',
-        qualityStatus: 'PENDING',
-        supplierName: 'Dekko Accessories Ltd'
-      },
-      {
-        id: 'T-48085-2',
-        itemName: 'Printed Wash Care Satin Label',
-        category: 'LABEL',
-        unit: 'PCS',
-        consumption: 1.0,
-        consumptionUnit: 'pc/garment',
-        consumptionSource: 'SAMPLE_IE',
-        requiredQty: 4200,
-        wastagePct: 3.0,
-        totalOrderQty: 4326,
-        receivedQty: 0,
-        balanceQty: 4326,
-        deliveredQty: 0,
-        deliveryBalance: 0,
-        rackNo: 'R-25',
-        shelfNo: 'S-02',
-        qualityStatus: 'PENDING',
-        supplierName: 'Dekko Accessories Ltd'
-      },
-      {
-        id: 'T-48085-3',
-        itemName: 'Sewing Thread 50/2 Nosegay Pink',
-        category: 'THREAD',
-        unit: 'CONES',
-        consumption: 95.0,
-        consumptionUnit: 'm/garment',
-        consumptionSource: 'SAMPLE_IE',
-        requiredQty: 80,
-        wastagePct: 5.0,
-        totalOrderQty: 84,
-        receivedQty: 0,
-        balanceQty: 84,
-        deliveredQty: 0,
-        deliveryBalance: 0,
-        rackNo: 'R-26',
-        shelfNo: 'S-04',
-        qualityStatus: 'PENDING',
-        supplierName: 'Coats Bangladesh'
-      },
-      {
-        id: 'T-48085-4',
-        itemName: 'Crochet Lace Trimming 1.5cm',
-        category: 'OTHER',
-        unit: 'METER',
-        consumption: 45.0,
-        consumptionUnit: 'cm/garment',
-        consumptionSource: 'TECHNICAL',
-        requiredQty: 1890,
-        wastagePct: 5.0,
-        totalOrderQty: 1985,
-        receivedQty: 0,
-        balanceQty: 1985,
-        deliveredQty: 0,
-        deliveryBalance: 0,
-        rackNo: 'R-27',
-        shelfNo: 'S-01',
-        qualityStatus: 'PENDING',
-        supplierName: 'Euro Fashion Trims'
-      }
-    ]
-  },
-  {
-    id: 'TRIM-CHK-48903',
-    jobNo: '48903',
-    buyer: 'BS-ONS',
-    styleNo: '22040271',
-    itemDescription: 'ONSKANE SWEAT HOODIE',
-    orderQty: 3000,
-    merchandiser: 'Mahamud Hassan',
-    shipmentDate: '2027-01-20',
-    tnaSlot: "Dec 3 '26",
-    sewingLine: 'Line 11',
-    requestDate: '2026-09-22',
-    checklistStatus: 'REVIEW_REQUESTED',
-    presentStatus: 'Inspection Fail',
-    storeReviewNote: 'Zipper teeth color mismatch: Approved swatch shows Gunmetal tooth finish, but supplier sent Shiny Silver sample. Merchandiser please confirm.',
-    reviewRequestedAt: '2026-09-24',
-    items: [
-      {
-        id: 'T-48903-1',
-        itemName: "Main Label Woven Bestseller ONS",
-        category: 'LABEL',
-        unit: 'PCS',
-        consumption: 1.0,
-        consumptionUnit: 'pc/garment',
-        consumptionSource: 'SAMPLE_IE',
-        requiredQty: 3000,
-        wastagePct: 3.0,
-        totalOrderQty: 3090,
-        receivedQty: 0,
-        balanceQty: 3090,
-        deliveredQty: 0,
-        deliveryBalance: 0,
-        rackNo: 'R-17',
-        shelfNo: 'S-01',
-        qualityStatus: 'PENDING',
-        supplierName: 'Avery Dennison'
-      },
-      {
-        id: 'T-48903-2',
-        itemName: 'Metal Zipper #5 Open End 65cm Gunmetal',
-        category: 'ZIPPER',
-        unit: 'PCS',
-        consumption: 1.0,
-        consumptionUnit: 'pc/garment',
-        consumptionSource: 'TECHNICAL',
-        requiredQty: 3000,
-        wastagePct: 2.0,
-        totalOrderQty: 3060,
-        receivedQty: 1500,
-        balanceQty: 1560,
-        deliveredQty: 0,
-        deliveryBalance: 0,
-        rackNo: 'R-18',
-        shelfNo: 'S-01',
-        qualityStatus: 'FAIL',
-        failRemarks: 'Wrong plating: Dispatched sample shiny silver instead of gunmetal. REJECTED.',
-        supplierName: 'YKK Bangladesh'
-      },
-      {
-        id: 'T-48903-3',
-        itemName: 'Hood Tubular Drawcord with Engraved Metal End',
-        category: 'TAPE',
-        unit: 'METER',
-        consumption: 120.0,
-        consumptionUnit: 'cm/garment',
-        consumptionSource: 'TECHNICAL',
-        requiredQty: 3600,
-        wastagePct: 3.0,
-        totalOrderQty: 3708,
-        receivedQty: 3708,
-        balanceQty: 0,
-        deliveredQty: 0,
-        deliveryBalance: 0,
-        rackNo: 'R-17',
-        shelfNo: 'S-02',
-        qualityStatus: 'PASS',
-        supplierName: 'Montrims Limited'
-      }
-    ]
-  },
-  {
-    id: 'TRIM-CHK-48906',
-    jobNo: '48906',
-    buyer: 'UTG',
-    styleNo: 'UTG-AF-5521',
-    itemDescription: 'CREW SWEAT with Rib Trim',
-    orderQty: 5000,
-    merchandiser: 'Rokonuzzaman',
-    shipmentDate: '2026-12-01',
-    tnaSlot: "Nov 2 '26",
-    sewingLine: 'Line 14',
-    requestDate: '2026-09-24',
-    checklistStatus: 'ACCEPTED',
-    presentStatus: 'Receive OK',
-    acceptedAt: '2026-09-26',
-    acceptedBy: 'Rezaul Karim',
-    items: [
-      {
-        id: 'T-48906-1',
-        itemName: "Main Label Woven 'UTG ACTIVE'",
-        category: 'LABEL',
-        unit: 'PCS',
-        consumption: 1.0,
-        consumptionUnit: 'pc/garment',
-        consumptionSource: 'SAMPLE_IE',
-        requiredQty: 5000,
-        wastagePct: 3.0,
-        totalOrderQty: 5150,
-        receivedQty: 5150,
-        balanceQty: 0,
-        deliveredQty: 0,
-        deliveryBalance: 0,
-        rackNo: 'R-31',
-        shelfNo: 'S-01',
-        qualityStatus: 'PASS',
-        supplierName: 'Dekko Accessories Ltd'
-      },
-      {
-        id: 'T-48906-2',
-        itemName: 'Care & Wash Instruction Printed',
-        category: 'LABEL',
-        unit: 'PCS',
-        consumption: 1.0,
-        consumptionUnit: 'pc/garment',
-        consumptionSource: 'SAMPLE_IE',
-        requiredQty: 5000,
-        wastagePct: 3.0,
-        totalOrderQty: 5150,
-        receivedQty: 5150,
-        balanceQty: 0,
-        deliveredQty: 0,
-        deliveryBalance: 0,
-        rackNo: 'R-31',
-        shelfNo: 'S-02',
-        qualityStatus: 'PASS',
-        supplierName: 'Dekko Accessories Ltd'
-      },
-      {
-        id: 'T-48906-3',
-        itemName: 'Sewing Thread 40/2 Charcoal',
-        category: 'THREAD',
-        unit: 'CONES',
-        consumption: 110.0,
-        consumptionUnit: 'm/garment',
-        consumptionSource: 'SAMPLE_IE',
-        requiredQty: 110,
-        wastagePct: 5.0,
-        totalOrderQty: 116,
-        receivedQty: 116,
-        balanceQty: 0,
-        deliveredQty: 0,
-        deliveryBalance: 0,
-        rackNo: 'R-32',
-        shelfNo: 'S-04',
-        qualityStatus: 'PASS',
-        supplierName: 'Coats Bangladesh'
-      }
-    ]
-  }
-];
-
-// ============================================================================
-// DEFAULT SURPLUS TRIMS FOR REUSE
-// ============================================================================
-
-const INITIAL_SURPLUS_TRIMS: SurplusTrimsRecord[] = [
-  {
-    id: 'SURPLUS-01',
-    itemName: 'Sewing Thread 40/2 Black 5,000m Cones',
-    category: 'THREAD',
-    availableQty: 18,
-    unit: 'CONES',
-    rackShelf: 'R-37 | S-01',
-    originJobNo: '46755',
-    buyer: 'OVS',
-    condition: 'PRISTINE_NEW',
-    colorShade: 'Black Beauty 19-4008',
-    remarks: 'Unopened factory sealed cones from finished bulk shipment.',
-    addedDate: '2026-08-10'
-  },
-  {
-    id: 'SURPLUS-02',
-    itemName: 'Waist Elastic Knitted 3.5cm White',
-    category: 'ELASTIC',
-    availableQty: 320,
-    unit: 'METER',
-    rackShelf: 'R-37 | S-03',
-    originJobNo: '47900',
-    buyer: 'ONLY',
-    condition: 'PARTIAL_ROLL',
-    colorShade: 'Optic White',
-    remarks: 'Elasticity tested: Recovery 98.4%. Certified for reuse.',
-    addedDate: '2026-07-28'
-  },
-  {
-    id: 'SURPLUS-03',
-    itemName: 'Self-Adhesive Poly Bag 12x18 with Warning',
-    category: 'PACKAGING',
-    availableQty: 450,
-    unit: 'PCS',
-    rackShelf: 'R-38 | S-01',
-    originJobNo: '48002',
-    buyer: 'ONLY',
-    condition: 'PRISTINE_NEW',
-    remarks: 'Surplus carton left after packing exact PO quantity.',
-    addedDate: '2026-08-15'
-  },
-  {
-    id: 'SURPLUS-04',
-    itemName: 'Metal Eyelets 8mm Gunmetal Nickel-Free',
-    category: 'BUTTON',
-    availableQty: 680,
-    unit: 'PCS',
-    rackShelf: 'R-39 | S-02',
-    originJobNo: '48002',
-    buyer: 'ONLY',
-    condition: 'OPEN_BOX',
-    colorShade: 'Gunmetal Shiny',
-    remarks: 'Clean undamaged eyelets with matching washers.',
-    addedDate: '2026-08-16'
-  },
-  {
-    id: 'SURPLUS-05',
-    itemName: 'Round Cotton Drawcord Natural Unbleached',
-    category: 'TAPE',
-    availableQty: 240,
-    unit: 'METER',
-    rackShelf: 'R-40 | S-01',
-    originJobNo: '48903',
-    buyer: 'BS-ONS',
-    condition: 'PARTIAL_ROLL',
-    remarks: 'High-density cotton cord suitable for hoodies or joggers.',
-    addedDate: '2026-09-28'
-  }
-];
-
-// ============================================================================
-// MAIN COMPONENT
-// ============================================================================
+const INITIAL_SURPLUS_TRIMS: SurplusTrimsRecord[] = ((demo2000DataRaw as any)?.jobs || [])
+  .filter((j: any) => j.overallStage === 'Shipment')
+  .slice(0, 15)
+  .map((j: any, idx: number) => {
+    const surplusItems = [
+      { name: 'Sewing Thread 40/2 Black 5,000m Cones', cat: 'THREAD', unit: 'CONES', qty: 18, color: 'Black Beauty 19-4008' },
+      { name: 'Cotton Drawcord Round 8mm Natural', cat: 'TAPE', unit: 'METER', qty: 450, color: 'Natural Unbleached' },
+      { name: 'Metal Snap Fastener 15mm Antique Brass', cat: 'BUTTON', unit: 'GROSS', qty: 12, color: 'Antique Brass' },
+      { name: 'Polybag Self-Adhesive 12x18 with Warning', cat: 'PACKAGING', unit: 'PCS', qty: 1200, color: 'Clear Transparent' },
+      { name: 'Elastic Woven 3.8cm White', cat: 'ELASTIC', unit: 'METER', qty: 320, color: 'Optic White' }
+    ];
+    const item = surplusItems[idx % surplusItems.length];
+    return {
+      id: `SURPLUS-${String(idx + 1).padStart(2, '0')}`,
+      itemName: item.name,
+      category: item.cat as TrimsCategory,
+      availableQty: item.qty,
+      unit: item.unit as TrimsUnit,
+      rackShelf: `R-${35 + (idx % 5)} | S-${String((idx % 12) + 1).padStart(2, '0')}`,
+      originJobNo: j.jobNo,
+      buyer: j.buyer,
+      condition: 'PRISTINE_NEW',
+      colorShade: item.color,
+      remarks: `Unopened factory sealed balance from finished bulk shipment of Job #${j.jobNo}.`,
+      addedDate: j.dates?.exFactory || '2026-08-10'
+    };
+  });
 
 export default function TrimsStorePage() {
   // Navigation Tabs:
@@ -900,7 +354,7 @@ export default function TrimsStorePage() {
   // Master State with LocalStorage Persistence
   const [checklists, setChecklists] = useState<TrimsChecklistRecord[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('nfl_trims_checklists_v5');
+      const saved = localStorage.getItem('nfl_trims_checklists_v6');
       if (saved) {
         try { return JSON.parse(saved); } catch {}
       }
@@ -910,17 +364,17 @@ export default function TrimsStorePage() {
 
   const [racks, setRacks] = useState<StoreRack[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('nfl_trims_racks_v4');
+      const saved = localStorage.getItem('nfl_trims_racks_v5');
       if (saved) {
         try { return JSON.parse(saved); } catch {}
       }
     }
-    return generateDefaultRacks();
+    return generateDefaultRacks(INITIAL_CHECKLISTS);
   });
 
   const [surplusTrims, setSurplusTrims] = useState<SurplusTrimsRecord[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('nfl_trims_surplus_v4');
+      const saved = localStorage.getItem('nfl_trims_surplus_v5');
       if (saved) {
         try { return JSON.parse(saved); } catch {}
       }
@@ -2904,7 +2358,7 @@ export default function TrimsStorePage() {
               value: (j) => j.jobNo,
               render: (j) => (
                 <Link
-                  href={`/jobs?q=${encodeURIComponent(j.jobNo)}`}
+                  href={`/jobs/${encodeURIComponent(j.jobNo)}`}
                   onClick={(e) => e.stopPropagation()}
                   style={{ color: '#0284C7', fontWeight: 700, textDecoration: 'none' }}
                   className="hover:underline"
@@ -3706,7 +3160,7 @@ export default function TrimsStorePage() {
                       </div>
                       {s.currentJobNos.length > 0 && (
                         <div style={{ fontSize: '11px', color: '#0284C7', fontWeight: 600, marginTop: '2px' }}>
-                          Jobs: {s.currentJobNos.join(', ')}
+                          Jobs: {s.currentJobNos.map((jn, i) => (<React.Fragment key={jn}>{i > 0 && ', '}<Link href={'/jobs/' + encodeURIComponent(jn)} onClick={(e) => e.stopPropagation()} style={{ color: '#0284C7', textDecoration: 'underline' }}>#{jn}</Link></React.Fragment>))}
                         </div>
                       )}
                     </div>
@@ -4065,7 +3519,7 @@ export default function TrimsStorePage() {
               value: (s) => s.originJobNo,
               render: (s) => (
                 <Link
-                  href={`/jobs?q=${encodeURIComponent(s.originJobNo)}`}
+                  href={`/jobs/${encodeURIComponent(s.originJobNo)}`}
                   onClick={(e) => e.stopPropagation()}
                   style={{ color: '#0284C7', fontWeight: 700, textDecoration: 'none' }}
                   className="hover:underline"
@@ -4502,7 +3956,7 @@ export default function TrimsStorePage() {
                     {
                       name: 'Job & Handover Details',
                       fields: [
-                        { key: 'jobNo', label: 'Job No', value: recordJob.jobNo, setByRole: 'Merchandiser' },
+                        { key: 'jobNo', label: 'Job No', value: recordJob.jobNo, setByRole: 'Merchandiser', renderReadOnly: (v) => <Link href={'/jobs/' + encodeURIComponent(String(v ?? ''))} onClick={(e) => e.stopPropagation()} style={{ color: '#0284C7', fontWeight: 700, textDecoration: 'underline' }}>#{v} (Open Job 360)</Link> },
                         { key: 'buyer', label: 'Buyer', value: recordJob.buyer, setByRole: 'Merchandiser' },
                         { key: 'styleNo', label: 'Style No', value: recordJob.styleNo, setByRole: 'Merchandiser' },
                         { key: 'itemDescription', label: 'Garment Description', value: recordJob.itemDescription, setByRole: 'Merchandiser' },

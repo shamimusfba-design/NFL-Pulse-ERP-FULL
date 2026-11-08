@@ -3840,11 +3840,188 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   // 15. /api/knitting/data
   if (pathStr === 'knitting/data') {
+    const knitJobs = masterJobs.filter((j: any) => j.knitting && j.knitting.greyReqKg > 0);
+    const activeKnitJobs = knitJobs.filter((j: any) => j.overallStage === 'Knitting' || j.knitting.status === 'RUNNING');
+
+    const totalGreyReq = knitJobs.reduce((s: number, j: any) => s + (j.knitting?.greyReqKg || 0), 0);
+    const totalGreyProd = knitJobs.reduce((s: number, j: any) => s + (j.knitting?.greyProducedKg || 0), 0);
+
+    const executionRows = (activeKnitJobs.length > 0 ? activeKnitJobs : knitJobs.slice(0, 120)).map((j: any, i: number) => ({
+      id: `KNT-ROW-${j.jobNo}`,
+      jobNo: j.jobNo,
+      buyer: j.buyer,
+      styleNo: j.styleNo,
+      colour: j.fabric?.colors || 'Navy',
+      fabricDescription: j.fabric?.fabricType || 'Single Jersey',
+      gsm: j.fabric?.gsm || '160',
+      dia: j.fabric?.widthDia || '76" Open',
+      yarnBrand: j.yarn?.spinningMill || 'Square Textiles Ltd',
+      count: '30/1 Combed Cotton',
+      lotNo: j.yarn?.yarnLotNo || `LOT-KNT-${1000 + i}`,
+      reqKg: j.knitting.greyReqKg,
+      producedKg: j.knitting.greyProducedKg,
+      balanceKg: j.knitting.greyBalanceKg,
+      machineNo: `MC-${String((i % 24) + 1).padStart(2, '0')}`,
+      operator: ['Md. Al-Amin', 'Abdul Mannan', 'Rashedul', 'Shohel Rana', 'Kamrul'][i % 5],
+      status: j.knitting.status,
+      startDate: j.dates?.cuttingStart ? '2026-10-01' : '2026-10-15',
+      endDate: j.dates?.cuttingEnd ? '2026-10-25' : '2026-11-05',
+      remarks: j.remarks || ''
+    }));
+
+    const dailyProductionRows = executionRows.slice(0, 20).map((r: any, idx: number) => ({
+      id: `DP-${r.jobNo}-${idx}`,
+      date: `2026-11-0${(idx % 7) + 1}`,
+      shift: idx % 2 === 0 ? 'Day' : 'Night',
+      machine: r.machineNo,
+      machineNo: r.machineNo,
+      operator: r.operator,
+      jobNo: r.jobNo,
+      buyer: r.buyer,
+      fabricDescription: r.fabricDescription,
+      color: r.colour,
+      colour: r.colour,
+      component: 'Body',
+      yarnBrand: r.yarnBrand,
+      lotNo: r.lotNo,
+      s1Target: Math.round(r.reqKg * 0.06),
+      s1Actual: Math.round(r.reqKg * 0.062),
+      s2Target: Math.round(r.reqKg * 0.06),
+      s2Actual: Math.round(r.reqKg * 0.059),
+      rollsProduced: Math.round(r.reqKg / 25),
+      weightKg: Math.round(r.reqKg * 0.12),
+      efficiencyPct: 88 + (idx % 8),
+      stopHours: 0.5,
+      stopReason: 'Yarn changeover'
+    }));
+
+    const criticalJobs = knitJobs
+      .filter((j: any) => j.overallStage === 'Knitting' || j.overallStage === 'Yarn Store')
+      .slice(0, 6)
+      .map((j: any) => ({
+        jobNo: j.jobNo,
+        buyer: j.buyer,
+        styleNo: j.styleNo,
+        color: j.fabric?.colors || 'Navy',
+        delayDays: 3,
+        shortageKg: Math.round(j.yarn.yarnReqKg * 0.15),
+        count: '30/1 Combed Cotton',
+        reason: 'Yarn delivery running partial from spinning mill'
+      }));
+
+    const ganttRows = executionRows.slice(0, 24).map((r: any, idx: number) => ({
+      id: `GANTT-${r.jobNo}`,
+      machineNo: r.machineNo,
+      machineName: `Circular Knitting ${r.machineNo}`,
+      brand: idx % 3 === 0 ? 'Mayer & Cie' : idx % 2 === 0 ? 'Terrot' : 'Fukuhara',
+      mcDia: '34',
+      gauge: '28',
+      factory: 'NFL Unit-1',
+      isInHouse: true,
+      jobNo: r.jobNo,
+      buyer: r.buyer,
+      fabric: r.fabricDescription,
+      fabricComponent: 'Body',
+      yarnDetails: '30/1 Combed Cotton Square Textiles',
+      yarnCount: '30/1',
+      yarnBrand: r.yarnBrand,
+      yarnLot: r.lotNo,
+      slot: 'Slot 1',
+      targetKg: r.reqKg,
+      plannedKg: r.reqKg,
+      dailyCapacity: 650,
+      producedKg: r.producedKg,
+      startDate: '2026-10-18',
+      endDate: '2026-11-04',
+      status: r.status,
+      sequence: idx + 1
+    }));
+
+    const processLossRows = executionRows.slice(0, 15).map((r: any, idx: number) => ({
+      id: `PL-${r.jobNo}`,
+      jobNo: r.jobNo,
+      buyer: r.buyer,
+      styleNo: r.styleNo,
+      color: r.colour,
+      component: 'Body',
+      fabric: r.fabricDescription,
+      fabricDescription: r.fabricDescription,
+      finishedKg: Math.round(r.reqKg * 0.88),
+      greyReqKg: r.reqKg,
+      yarnIssuedKg: Math.round(r.reqKg * 1.05),
+      processLossPct: 15,
+      excessKg: 0,
+      status: idx % 2 === 0 ? 'APPROVED' : 'PENDING'
+    }));
+
+    const yarnReqRows = [
+      { count: '30/1 Combed Cotton', composition: '100% Cotton', spinningMill: 'Square Textiles Ltd', totalReqKg: 48500, allocatedKg: 48500, stockKg: 12000, shortageKg: 0, status: 'AVAILABLE' },
+      { count: '28/1 Cotton Melange', composition: '95% Cotton 5% Poly', spinningMill: 'Badsha Textiles Ltd', totalReqKg: 28400, allocatedKg: 21600, stockKg: 1200, shortageKg: 6800, status: 'CRITICAL' },
+      { count: '34/1 Combed Cotton', composition: '100% Combed', spinningMill: 'Shurwid Spinning', totalReqKg: 32000, allocatedKg: 24100, stockKg: 2100, shortageKg: 7900, status: 'CRITICAL' },
+      { count: '26/1 CVC 60/40', composition: '60% Cotton 40% Poly', spinningMill: 'Matin Spinning', totalReqKg: 19500, allocatedKg: 14450, stockKg: 950, shortageKg: 5050, status: 'CRITICAL' },
+      { count: '20/1 Carded Cotton', composition: '100% Carded', spinningMill: 'Akij Textiles', totalReqKg: 54000, allocatedKg: 54000, stockKg: 18400, shortageKg: 0, status: 'AVAILABLE' }
+    ];
+
+    const followUpRows = executionRows.slice(0, 12).map((r: any) => ({
+      jobNo: r.jobNo,
+      buyer: r.buyer,
+      styleNo: r.styleNo,
+      color: r.colour,
+      component: 'Body',
+      fabric: r.fabricDescription,
+      stage: 'Circular Knitting',
+      fosReceived: '2026-10-10',
+      reqConfirmed: '2026-10-12',
+      planOk: '2026-10-14',
+      yarnReady: '2026-10-16',
+      mcAllocated: '2026-10-18',
+      knittingRunning: '2026-10-20',
+      completed: r.status === 'COMPLETED' ? '2026-11-02' : '',
+      targetDate: r.endDate,
+      actualKg: r.producedKg,
+      reqKg: r.reqKg,
+      balanceKg: r.balanceKg,
+      status: r.status
+    }));
+
+    const outsideFactories = [
+      { factory: 'Robin Knitting Mills Ltd', capacityKg: 8500, assignedKg: 6200, producedKg: 5400, balanceKg: 800, status: 'ON_TRACK' },
+      { factory: 'Ananta Knitting Complex', capacityKg: 12000, assignedKg: 9500, producedKg: 8100, balanceKg: 1400, status: 'ON_TRACK' }
+    ];
+
+    const outsideChallans = [
+      { challanNo: 'CH-OUT-1021', date: '2026-10-24', factory: 'Robin Knitting Mills', jobNo: executionRows[0]?.jobNo || '44001', fabric: 'Single Jersey', rolls: 42, weightKg: 1050, status: 'RECEIVED' },
+      { challanNo: 'CH-OUT-1022', date: '2026-10-26', factory: 'Ananta Knitting Complex', jobNo: executionRows[1]?.jobNo || '44002', fabric: 'Fleece Brushed', rolls: 38, weightKg: 950, status: 'RECEIVED' }
+    ];
+
     return NextResponse.json({
-      orders: knittingExecution.rows || [],
+      kpis: {
+        totalReqKg: totalGreyReq,
+        todayProdKg: 14850,
+        totalProdKg: totalGreyProd,
+        runningJobsCount: activeKnitJobs.length,
+        machinesRunning: 107,
+        loadedCapacityPct: 89,
+        processLossAvgPct: 14.8
+      },
+      executionRows,
+      dailyProductionRows,
+      criticalJobs,
+      ganttRows,
+      processLossRows,
+      yarnReqRows,
+      deadStockSummary: { deadCount: 3, deadQty: 4280 },
+      deadStockRows: [
+        { composition: '100% Cotton Waste', count: '16/1 O/E Grey Waste', spinningMill: 'Rahim Spinning', stockKg: 2400, agingDays: 140, godown: 'Godown B', remarks: 'Residual lot' },
+        { composition: 'Cotton Poly', count: '24/1 Slub Scrap', spinningMill: 'Viyellatex', stockKg: 1880, agingDays: 120, godown: 'Godown B', remarks: 'Unallocated remnant' }
+      ],
+      followUpRows,
+      outsideFactories,
+      outsideChallans,
+      orders: knittingExecution.rows || executionRows,
       summary: knittingExecution.summary || {},
       slots: knittingExecution.slots || [],
-      yarnNilAlerts: knittingExecution.yarnNilAlerts || []
+      yarnNilAlerts: knittingExecution.yarnNilAlerts || criticalJobs
     });
   }
 

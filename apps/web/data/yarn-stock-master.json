@@ -1,31 +1,51 @@
 {
-  "reportDate": "2026-09-28",
+  "reportDate": "2026-11-08",
   "summary": {
-    "totalStockKg": 988965,
-    "totalStockTons": 988.97,
-    "whiteStockKg": 157652,
-    "whiteStockTons": 157.65,
-    "colorStockKg": 831313,
-    "colorStockTons": 831.32,
-    "pipelineLcOpenKg": 119528,
-    "pipelineLcOpenTons": 119.53,
-    "openRequisitionsKg": 342500,
-    "openRequisitionsTons": 342.50,
-    "deadStockKg": 18400,
-    "deadStockTons": 18.4,
-    "deadStockCount": 14,
-    "safetyStockShortageCount": 8,
-    "avgDailyDeliveryKg": 38200,
-    "avgDailyDeliveryTons": 38.2
+    "totalStockKg": 3747114,
+    "totalStockTons": 3747.11,
+    "whiteStockKg": 1686201,
+    "whiteStockTons": 1686.2,
+    "colorStockKg": 2060913,
+    "colorStockTons": 2060.91,
+    "pipelineLcOpenKg": 308833,
+    "pipelineLcOpenTons": 308.83,
+    "openRequisitionsKg": 113296,
+    "openRequisitionsTons": 113.3,
+    "deadStockKg": 14200,
+    "deadStockTons": 14.2,
+    "deadStockCount": 8,
+    "safetyStockShortageCount": 4,
+    "avgDailyDeliveryKg": 38500,
+    "avgDailyDeliveryTons": 38.5
   },
   "safetyStockAlerts": [
-    { "count": "28/1 Cotton Melange", "currentStockKg": 1200, "safetyBufferKg": 8000, "deficitKg": 6800, "status": "CRITICAL" },
-    { "count": "34/1 Combed Cotton", "currentStockKg": 2100, "safetyBufferKg": 10000, "deficitKg": 7900, "status": "CRITICAL" },
-    { "count": "26/1 CVC 60/40", "currentStockKg": 950, "safetyBufferKg": 6000, "deficitKg": 5050, "status": "CRITICAL" },
-    { "count": "30/1 Lycra 5%", "currentStockKg": 400, "safetyBufferKg": 3500, "deficitKg": 3100, "status": "CRITICAL" },
-    { "count": "24/1 Organic Cotton", "currentStockKg": 3200, "safetyBufferKg": 9000, "deficitKg": 5800, "status": "WARN" },
-    { "count": "32/2 Dyed Yarn Red", "currentStockKg": 600, "safetyBufferKg": 2500, "deficitKg": 1900, "status": "WARN" },
-    { "count": "20/1 Slub Yarn", "currentStockKg": 1800, "safetyBufferKg": 5000, "deficitKg": 3200, "status": "WARN" },
-    { "count": "40/1 Modal Cotton", "currentStockKg": 850, "safetyBufferKg": 3000, "deficitKg": 2150, "status": "WARN" }
+    {
+      "count": "28/1 Cotton Melange",
+      "currentStockKg": 1200,
+      "safetyBufferKg": 8000,
+      "deficitKg": 6800,
+      "status": "CRITICAL"
+    },
+    {
+      "count": "34/1 Combed Cotton",
+      "currentStockKg": 2100,
+      "safetyBufferKg": 10000,
+      "deficitKg": 7900,
+      "status": "CRITICAL"
+    },
+    {
+      "count": "26/1 CVC 60/40",
+      "currentStockKg": 950,
+      "safetyBufferKg": 6000,
+      "deficitKg": 5050,
+      "status": "CRITICAL"
+    },
+    {
+      "count": "30/1 Lycra 5%",
+      "currentStockKg": 400,
+      "safetyBufferKg": 3500,
+      "deficitKg": 3100,
+      "status": "CRITICAL"
+    }
   ]
 }

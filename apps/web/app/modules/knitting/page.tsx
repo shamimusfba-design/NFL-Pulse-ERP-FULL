@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 import React, { useEffect, useMemo, useState } from 'react';
 import Shell from '../../../components/Shell';
 import { api } from '../../../lib/api';
@@ -404,7 +406,7 @@ function KnittingModuleContent() {
               rowKey={(j) => j._key}
               columns={[
                 { key: 'buyer', header: 'Buyer', width: 110, value: (j) => j.buyer, render: (j) => <strong>{j.buyer}</strong> },
-                { key: 'jobNo', header: 'Job No', width: 100, value: (j) => j.jobNo, render: (j) => <strong>{j.jobNo}</strong> },
+                { key: 'jobNo', header: 'Job No', width: 105, value: (j) => j.jobNo, render: (j) => <Link href={'/jobs/' + encodeURIComponent(j.jobNo)} className="dg-job-link" onClick={(e) => e.stopPropagation()} title={'Open Job 360 for #' + j.jobNo}>#{j.jobNo}</Link> },
                 { key: 'color', header: 'Color', width: 130, value: (j) => j.color },
                 { key: 'component', header: 'Component', width: 110, value: (j) => j.component || 'Body', render: (j) => <span className="status-pill neutral">{j.component || 'Body'}</span> },
                 { key: 'orderQty', header: 'Order Qty', width: 110, numeric: true, total: true, unit: 'kg', value: (j) => Number(j.orderQty || 0), render: (j) => `${num(j.orderQty)} KG` },
@@ -446,7 +448,7 @@ function KnittingModuleContent() {
             onRowClick={(r) => setSelectedExecKey(r._key)}
             columns={[
               { key: 'buyer', header: '1. Buyer', width: 110, value: (r) => r.buyer, render: (r) => <strong>{r.buyer}</strong> },
-              { key: 'jobNo', header: '2. Job No', width: 100, value: (r) => r.jobNo, render: (r) => <strong>{r.jobNo}</strong> },
+              { key: 'jobNo', header: '2. Job No', width: 105, value: (r) => r.jobNo, render: (r) => <Link href={'/jobs/' + encodeURIComponent(r.jobNo)} className="dg-job-link" onClick={(e) => e.stopPropagation()} title={'Open Job 360 for #' + r.jobNo}>#{r.jobNo}</Link> },
               { key: 'count', header: '3. Count', width: 95, value: (r) => r.count },
               { key: 'countType', header: '4. Count Type', width: 110, value: (r) => r.countType },
               { key: 'yarnBrand', header: '5. Yarn Brand', width: 120, value: (r) => r.yarnBrand },
@@ -500,7 +502,7 @@ function KnittingModuleContent() {
               { key: 'diaGauge', header: 'Dia & Gauge', width: 110, value: (m) => `${m.mcDia}" × ${m.gauge}G` },
               { key: 'factory', header: 'Factory', width: 120, value: (m) => m.factory || 'NFL Unit-1' },
               { key: 'isInHouse', header: 'In/Out', width: 100, value: (m) => (m.isInHouse ? 'In-House' : 'Outside'), render: (m) => <span className={`status-pill ${m.isInHouse ? 'neutral' : 'warn'}`}>{m.isInHouse ? 'In-House' : 'Outside'}</span> },
-              { key: 'jobNo', header: 'Job No', width: 100, value: (m) => m.jobNo, render: (m) => <strong>{m.jobNo}</strong> },
+              { key: 'jobNo', header: 'Job No', width: 105, value: (m) => m.jobNo, render: (m) => <Link href={'/jobs/' + encodeURIComponent(m.jobNo)} className="dg-job-link" onClick={(e) => e.stopPropagation()} title={'Open Job 360 for #' + m.jobNo}>#{m.jobNo}</Link> },
               { key: 'color', header: 'Color', width: 125, value: (m) => m.color },
               { key: 'fabricComponent', header: 'Component', width: 115, value: (m) => m.fabricComponent, render: (m) => <span className="status-pill neutral">{m.fabricComponent}</span> },
               { key: 'yarnDetails', header: 'Yarn Details', width: 170, value: (m) => `${m.yarnCount} ${m.yarnBrand} (Lot ${m.yarnLot})` },
@@ -534,7 +536,7 @@ function KnittingModuleContent() {
             frozenColumns={2}
             rowKey={(r) => r.id}
             columns={[
-              { key: 'jobNo', header: 'Job No', width: 100, value: (r) => r.jobNo, render: (r) => <strong>{r.jobNo}</strong> },
+              { key: 'jobNo', header: 'Job No', width: 105, value: (r) => r.jobNo, render: (r) => <Link href={'/jobs/' + encodeURIComponent(r.jobNo)} className="dg-job-link" onClick={(e) => e.stopPropagation()} title={'Open Job 360 for #' + r.jobNo}>#{r.jobNo}</Link> },
               { key: 'buyer', header: 'Buyer', width: 110, value: (r) => r.buyer },
               { key: 'styleNo', header: 'Style No', width: 115, value: (r) => r.styleNo },
               { key: 'color', header: 'Color', width: 120, value: (r) => r.color },
@@ -758,7 +760,7 @@ function KnittingModuleContent() {
             frozenColumns={2}
             rowKey={(f) => f._key}
             columns={[
-              { key: 'jobNo', header: 'Job No', width: 100, value: (f) => f.jobNo, render: (f) => <strong>{f.jobNo}</strong> },
+              { key: 'jobNo', header: 'Job No', width: 105, value: (f) => f.jobNo, render: (f) => <Link href={'/jobs/' + encodeURIComponent(f.jobNo)} className="dg-job-link" onClick={(e) => e.stopPropagation()} title={'Open Job 360 for #' + f.jobNo}>#{f.jobNo}</Link> },
               { key: 'buyer', header: 'Buyer', width: 110, value: (f) => f.buyer },
               { key: 'colorComp', header: 'Color / Component', width: 150, value: (f) => `${f.color} ${f.component}`, render: (f) => <span>{f.color} · <span className="status-pill neutral">{f.component}</span></span> },
               { key: 'fosReceived', header: 'FOS Rcvd', width: 105, value: (f) => f.fosReceived, render: (f) => dt(f.fosReceived) },
@@ -833,7 +835,7 @@ function KnittingModuleContent() {
               columns={[
                 { key: 'challanNo', header: 'Challan / Ref', width: 120, value: (ch) => ch.challanNo, render: (ch) => <strong>{ch.challanNo}</strong> },
                 { key: 'factory', header: 'Outside Factory', width: 145, value: (ch) => ch.factory },
-                { key: 'jobNo', header: 'Job No', width: 100, value: (ch) => ch.jobNo, render: (ch) => <strong>{ch.jobNo}</strong> },
+                { key: 'jobNo', header: 'Job No', width: 105, value: (ch) => ch.jobNo, render: (ch) => <Link href={'/jobs/' + encodeURIComponent(ch.jobNo)} className="dg-job-link" onClick={(e) => e.stopPropagation()} title={'Open Job 360 for #' + ch.jobNo}>#{ch.jobNo}</Link> },
                 { key: 'color', header: 'Color', width: 120, value: (ch) => ch.color },
                 { key: 'component', header: 'Component', width: 110, value: (ch) => ch.component, render: (ch) => <span className="status-pill neutral">{ch.component}</span> },
                 { key: 'sendDate', header: 'Send Date', width: 105, value: (ch) => ch.sendDate, render: (ch) => dt(ch.sendDate) },

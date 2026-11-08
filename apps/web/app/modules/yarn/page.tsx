@@ -16,6 +16,7 @@ import {
 } from '../../../components/ui';
 import { fmtDate, fmtNum, fmtQty } from '../../../lib/format';
 import yarnMasterRaw from '../../../data/yarn-stock-master.json';
+import demo2000DataRaw from '../../../data/demo-2000-master.json';
 
 interface SafetyAlertItem {
   id?: string;
@@ -71,14 +72,24 @@ const INITIAL_STOCK: YarnStockItem[] = [
   { id: 'YS-112', lotNo: 'LOT-OLD-02', count: '24/1 Slub Navy Scrap', type: 'COLOR', spinningMill: 'Viyellatex', composition: '100% Cotton Dyed', godown: 'Godown B', stockKg: 4200, safetyBufferKg: 0, allocatedKg: 0, availableKg: 4200, status: 'DEAD_STOCK', daysAging: 110 }
 ];
 
-const REQUISITIONS_DATA: YarnRequisitionItem[] = [
-  { id: 'REQ-48085', jobNo: '48085', buyer: 'BS-NMT', styleNo: '13251506', count: '30/1 Combed Cotton', reqKg: 4850, allocatedKg: 4850, status: 'ALLOCATED', date: '2026-09-22' },
-  { id: 'REQ-48002', jobNo: '48002', buyer: 'ONLY', styleNo: '13251512', count: '34/1 Combed Cotton', reqKg: 4200, allocatedKg: 2100, status: 'SHORTAGE', date: '2026-09-23' },
-  { id: 'REQ-46755', jobNo: '46755', buyer: 'OVS', styleNo: '13251480', count: '26/1 CVC 60/40', reqKg: 2800, allocatedKg: 950, status: 'SHORTAGE', date: '2026-09-24' },
-  { id: 'REQ-46758', jobNo: '46758', buyer: 'UTG', styleNo: '13251495', count: '30/1 Lycra 5%', reqKg: 1950, allocatedKg: 400, status: 'SHORTAGE', date: '2026-09-24' },
-  { id: 'REQ-48061', jobNo: '48061', buyer: 'Name It', styleNo: '13251509', count: '24/1 Organic Cotton', reqKg: 5100, allocatedKg: 3200, status: 'SHORTAGE', date: '2026-09-25' },
-  { id: 'REQ-48110', jobNo: '48110', buyer: 'Only&Sons', styleNo: '13251532', count: '32/2 Dyed Yarn Red', reqKg: 2350, allocatedKg: 600, status: 'SHORTAGE', date: '2026-09-26' }
-];
+const REQUISITIONS_DATA: YarnRequisitionItem[] = ((demo2000DataRaw as any)?.jobs || [])
+  .filter((j: any) => j.yarn && j.yarn.yarnReqKg > 0)
+  .slice(0, 300)
+  .map((j: any) => {
+    const yr = j.yarn;
+    const isAllocated = yr.status === 'COMPLETED' || yr.status === 'ISSUED_TO_KNITTING';
+    return {
+      id: `REQ-${String(j.jobNo).replace(/\s+/g, '-')}`,
+      jobNo: j.jobNo,
+      buyer: j.buyer,
+      styleNo: j.styleNo,
+      count: j.fabric?.fabricType || '30/1 Combed Cotton',
+      reqKg: yr.yarnReqKg,
+      allocatedKg: yr.yarnIssuedKg || yr.yarnReceivedKg || 0,
+      status: isAllocated ? 'ALLOCATED' : 'SHORTAGE',
+      date: j.dates?.poReceived || '2026-08-15'
+    };
+  });
 
 export default function YarnModulePage() {
   const [stockItems, setStockItems] = useState<YarnStockItem[]>(INITIAL_STOCK);
@@ -334,7 +345,16 @@ export default function YarnModulePage() {
 
   const reqColumns = useMemo<GridColumn<YarnRequisitionItem>[]>(
     () => [
-      { key: 'jobNo', header: 'Job No', width: 110, value: (r) => r.jobNo, render: (r) => <strong>#{r.jobNo}</strong> },
+      { key: 'jobNo', header: 'Job No', width: 110, value: (r) => r.jobNo, render: (r) => (
+        <Link
+          href={'/jobs/' + encodeURIComponent(r.jobNo)}
+          className="dg-job-link"
+          onClick={(e) => e.stopPropagation()}
+          title={'Open Job 360 for #' + r.jobNo}
+        >
+          #{r.jobNo}
+        </Link>
+      ) },
       { key: 'buyer', header: 'Buyer', width: 120, value: (r) => r.buyer },
       { key: 'styleNo', header: 'Style', width: 130, value: (r) => r.styleNo },
       { key: 'count', header: 'Yarn Count', width: 200, value: (r) => r.count },

@@ -98,6 +98,13 @@ function formatYearMonth(d) {
   return `${y}-${m}`;
 }
 
+function formatDateISO(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function addDays(d, days) {
   const res = new Date(d);
   res.setDate(res.getDate() + days);
@@ -124,6 +131,12 @@ console.log('Generating 2,000 jobs across 5-6 months factory history...');
 const jobs = [];
 const finishedBootstrapLines = [];
 const cuttingRecords = [];
+const dyeingBootstrapLines = [];
+const greigeLinesG = [];
+const dyeingBatches = [];
+const cuttingHtmlDataL = [];
+const cuttingHtmlDataP = [];
+const knittingExecRows = [];
 
 let jobCounter = 44001;
 let idCounter = 1;
@@ -575,6 +588,189 @@ STAGE_DISTRIBUTION.forEach(dist => {
       presentStatus: dist.statusText,
       remarks: job.remarks
     });
+
+    // Synchronize Dyeing Bootstrap line
+    const rb = Math.round(fabricReqKg * 0.92);
+    const rl = Math.round(fabricReqKg * 0.08);
+    const db = Math.round(dyeDelivered * 0.92);
+    const dl = Math.round(dyeDelivered * 0.08);
+    const vb = Math.round(dyeDelivered * 0.92);
+    const vl = Math.round(dyeDelivered * 0.08);
+
+    const aopTuple = processStr.includes('AOP')
+      ? ['DB Tex', formatDateISO(addDays(dyeStartDate, 4)), '', rb, formatDateISO(addDays(dyeStartDate, 10)), '', rb - 4, -4]
+      : undefined;
+    const brushTuple = processStr.includes('Brush')
+      ? ['Ceylon', formatDateISO(addDays(dyeStartDate, 5)), '', rb, formatDateISO(addDays(dyeStartDate, 8)), '', rb - 2, -2]
+      : undefined;
+    const peachTuple = processStr.includes('Peach')
+      ? ['U-02', formatDateISO(addDays(dyeStartDate, 4)), '', rb, formatDateISO(addDays(dyeStartDate, 7)), '', rb - 1, -1]
+      : undefined;
+
+    const dLine = {
+      id: `dl-${idCounter}`,
+      m: formatYearMonth(exFactoryDate),
+      b: buyer.code,
+      j: jobNo,
+      st: styleNo,
+      ap: processStr,
+      gsm: itemObj.gsm,
+      dia: itemObj.dia,
+      c: colorObj.name,
+      f: itemObj.fabric.split(' ')[0] || 'S/J',
+      rb,
+      rl,
+      rt: fabricReqKg,
+      gb: Math.round(greyReqKg * 0.92),
+      gl: Math.round(greyReqKg * 0.08),
+      ks: formatDateISO(knitStartDate),
+      ke: formatDateISO(knitEndDate),
+      df: factory === 'NCL' ? 'NFL' : factory,
+      bn: `B-${26000 + (jobCounter % 4000)}`,
+      dd: formatDateISO(dyeEndDate),
+      db,
+      dl,
+      dt: dyeDelivered,
+      tps: formatDateISO(dyeStartDate),
+      tpe: formatDateISO(dyeEndDate),
+      as: formatDateISO(addDays(dyeStartDate, 1)),
+      ae: formatDateISO(dyeEndDate),
+      ch: `CH-NFL-${2600 + (jobCounter % 500)}`,
+      vb,
+      vl,
+      vt: dyeDelivered,
+      mr: merchandiser,
+      sl: String((i % 4) + 1)
+    };
+    if (aopTuple) dLine.aop = aopTuple;
+    if (brushTuple) dLine.brush = brushTuple;
+    if (peachTuple) dLine.peach = peachTuple;
+
+    dyeingBootstrapLines.push(dLine);
+
+    // Synchronize Greige Store Line G
+    greigeLinesG.push({
+      m: formatYearMonth(exFactoryDate),
+      b: buyer.code,
+      j: jobNo,
+      c: colorObj.name,
+      ft: itemObj.fabric.split(' ')[0] || 'S/J',
+      gsm: itemObj.gsm,
+      dia: itemObj.dia,
+      yb: job.yarn.spinningMill,
+      yl: job.yarn.yarnLotNo,
+      fq: fabricReqKg,
+      gq: greyReqKg,
+      rq: greyProd,
+      rd: formatDateISO(knitEndDate),
+      rc: `RC-GR-${2000 + (jobCounter % 400)}`,
+      iq: dyeDelivered,
+      id: formatDateISO(dyeStartDate),
+      ic: `IC-GR-${3000 + (jobCounter % 400)}`,
+      l1: (i % 5) + 1,
+      kc: 'NFL',
+      ks: formatDateISO(knitStartDate),
+      ke: formatDateISO(knitEndDate),
+      ds: formatDateISO(dyeStartDate),
+      de: formatDateISO(dyeEndDate),
+      sl: `${(i % 4) + 1}st`,
+      sdf: factory === 'NCL' ? 'NFL' : factory
+    });
+
+    // Synchronize Dyeing Batch for Factory Data
+    dyeingBatches.push({
+      id: `BATCH-${jobNo}-${i + 1}`,
+      batchNo: `B-${26000 + (jobCounter % 4000)}`,
+      jobNo,
+      buyer: buyer.name,
+      styleNo,
+      color: colorObj.name,
+      fabricType: itemObj.fabric,
+      gsm: itemObj.gsm,
+      dia: itemObj.dia,
+      factory: factory === 'NCL' ? 'NFL' : factory,
+      status: dyeStatus === 'COMPLETED' ? 'DELIVERED' : dyeStatus === 'RUNNING' ? 'IN_PROCESS' : 'SCHEDULED',
+      batchQtyKg: fabricReqKg,
+      dyedQtyKg: dyeDelivered,
+      deliveredQtyKg: dyeDelivered,
+      balanceQtyKg: Math.max(0, fabricReqKg - dyeDelivered),
+      startDate: formatDate(dyeStartDate),
+      deliveryDate: formatDate(dyeEndDate),
+      rftStatus: 'PASS',
+      remarks: job.remarks
+    });
+
+    // Synchronize HTML Cutting & Input Dataset
+    cuttingHtmlDataL.push({
+      b: buyer.code,
+      j: jobNo,
+      st: styleNo,
+      c: colorObj.name,
+      oq: orderQty,
+      fl: floor === 'Floor 1' ? 'S1' : floor === 'Floor 2' ? 'S2' : 'S3',
+      sd: formatDateISO(exFactoryDate),
+      cut: cutQty,
+      psd: printSend,
+      prc: printRecv,
+      rfi: Math.max(0, cutQty - sewInput),
+      inp: sewInput,
+      pe: processStr.includes('Print') && processStr.includes('Embroidery') ? 'P+E' : processStr.includes('Print') ? 'P' : processStr.includes('Embroidery') ? 'E' : '',
+      pf: factory
+    });
+
+    cuttingHtmlDataP.push({
+      ln: line.replace('Line ', ''),
+      b: buyer.code,
+      j: jobNo,
+      st: styleNo,
+      it: itemObj.name,
+      ped: processStr,
+      ss: formatDateISO(sewStartDate),
+      ccd: formatDateISO(cargoClosingDate),
+      oq: orderQty,
+      mc: itemObj.ie ? itemObj.ie.machineQty : (itemObj.name.includes('Hoodie') || itemObj.name.includes('Jacket') ? 28 : 18),
+      smv: itemObj.smv,
+      tgt: Math.round((60 / itemObj.smv) * 24 * 8 * 0.825),
+      fq: fabricReqKg,
+      fr: dyeDelivered,
+      ps: dist.statusText,
+      tr: trimsStatus === 'IN_HOUSE' ? 'ok' : 'Due ' + trimsStatus,
+      cut: cutQty,
+      psd: printSend,
+      prc: printRecv,
+      rfi: Math.max(0, cutQty - sewInput),
+      inp: sewInput,
+      ppos: processStr.includes('Print') ? 'Chest' : '',
+      epos: processStr.includes('Embroidery') ? 'Chest' : '',
+      mr: merchandiser,
+      rm: job.remarks
+    });
+
+    // Synchronize Knitting Execution Row
+    if (dist.stage === 'Knitting' || (dist.stage === 'Dyeing' && i < 20) || (dist.stage === 'Yarn Store' && i < 15)) {
+      knittingExecRows.push({
+        id: `KNT-${jobNo}`,
+        jobNo,
+        buyer: buyer.name,
+        styleNo,
+        colour: colorObj.name,
+        fabricDescription: itemObj.fabric,
+        gsm: itemObj.gsm,
+        dia: itemObj.dia,
+        yarnBrand: job.yarn.spinningMill,
+        count: '30/1 Combed Cotton',
+        lotNo: job.yarn.yarnLotNo,
+        reqKg: greyReqKg,
+        producedKg: greyProd,
+        balanceKg: Math.max(0, greyReqKg - greyProd),
+        machineNo: `MC-${String((i % 24) + 1).padStart(2, '0')}`,
+        operator: ['Md. Al-Amin', 'Abdul Mannan', 'Rashedul', 'Shohel Rana', 'Kamrul'][i % 5],
+        status: dist.stage === 'Knitting' ? 'RUNNING' : dist.stage === 'Yarn Store' ? 'WAITING_YARN' : 'COMPLETED',
+        startDate: formatDate(knitStartDate),
+        endDate: formatDate(knitEndDate),
+        remarks: job.remarks
+      });
+    }
   }
 });
 
@@ -629,6 +825,185 @@ const cuttingPayload = {
 };
 const cuttingPath = path.join(__dirname, '../apps/web/data/cutting-production-master.json');
 fs.writeFileSync(cuttingPath, JSON.stringify(cuttingPayload, null, 2));
+
+// 4. Write dyeing-bootstrap.json
+const dyeingBootstrapPath = path.join(__dirname, '../apps/web/public/data/dyeing-bootstrap.json');
+let dyeingMachines = [];
+try {
+  const existingDyeing = JSON.parse(fs.readFileSync(dyeingBootstrapPath, 'utf8'));
+  dyeingMachines = existingDyeing.machines || [];
+} catch (e) {}
+
+const dyeingPayload = {
+  user: {
+    id: 'u-admin',
+    name: 'Managing Director / Factory Owner',
+    roles: ['ADMIN', 'DYEING', 'MANAGEMENT'],
+    uiRoles: ['Dyeing Planner', 'Greige Store', 'Dyeing Production', 'Planning & Control', 'Dyeing Lab']
+  },
+  asOf: '2026-11-08',
+  machines: dyeingMachines.length > 0 ? dyeingMachines : [
+    { id: 'MC-01', cap: 45, brand: 'FONGS' },
+    { id: 'MC-02', cap: 50, brand: 'DILMENLER' },
+    { id: 'MC-03', cap: 175, brand: 'DILMENLER' },
+    { id: 'MC-04', cap: 525, brand: 'DILMENLER' },
+    { id: 'MC-05', cap: 700, brand: 'DILMENLER' },
+    { id: 'MC-06', cap: 1050, brand: 'DILMENLER' },
+    { id: 'MC-07', cap: 1400, brand: 'DILMENLER' },
+    { id: 'MC-08', cap: 1200, brand: 'DILMENLER' },
+    { id: 'MC-09', cap: 75, brand: 'THIES' },
+    { id: 'MC-10', cap: 450, brand: 'DILMENLER' },
+    { id: 'MC-11', cap: 150, brand: 'DILMENLER' },
+    { id: 'SM-01', cap: 10, brand: 'DILMENLER' },
+    { id: 'SM-02', cap: 15, brand: 'DILMENLER' },
+    { id: 'SM-03', cap: 15, brand: 'DILMENLER' },
+    { id: 'SM-04', cap: 15, brand: 'DILMENLER' },
+    { id: 'SM-05', cap: 25, brand: 'DILMENLER' },
+    { id: 'SM-06', cap: 25, brand: 'DILMENLER' },
+    { id: 'SM-07', cap: 25, brand: 'DILMENLER' },
+    { id: 'SM-08', cap: 50, brand: 'DILMENLER' },
+    { id: 'SM-09', cap: 50, brand: 'DILMENLER' }
+  ],
+  lines: dyeingBootstrapLines
+};
+fs.writeFileSync(dyeingBootstrapPath, JSON.stringify(dyeingPayload));
+
+// 5. Write greige-bootstrap.json
+const greigeBootstrapPath = path.join(__dirname, '../apps/web/public/data/greige-bootstrap.json');
+let greigeAdvanceLines = [];
+try {
+  const existingGreige = JSON.parse(fs.readFileSync(greigeBootstrapPath, 'utf8'));
+  greigeAdvanceLines = existingGreige.lines?.A || [];
+} catch (e) {}
+
+const greigePayload = {
+  user: {
+    id: 'u-admin',
+    name: 'Managing Director / Factory Owner',
+    roles: ['ADMIN', 'GREIGE_STORE', 'MANAGEMENT'],
+    uiRoles: ['Greige Store', 'Knitting', 'Knit Quality', 'Dyeing Planner', 'Merchandiser', 'Management']
+  },
+  asOf: '2026-11-08',
+  lines: {
+    G: greigeLinesG,
+    A: greigeAdvanceLines
+  },
+  state: {
+    lastSync: new Date().toISOString()
+  }
+};
+fs.writeFileSync(greigeBootstrapPath, JSON.stringify(greigePayload));
+
+// 6. Write dyeing-factory-data.json
+const dyeingFactoryDataPath = path.join(__dirname, '../apps/web/data/dyeing-factory-data.json');
+let dfMachines = [];
+let dfSubContractors = ['Pakiza', 'Scandex', 'Newage', 'Rupa', 'Knitex', 'DB Tex', 'Ceylon'];
+try {
+  const existingDF = JSON.parse(fs.readFileSync(dyeingFactoryDataPath, 'utf8'));
+  if (existingDF.machines) dfMachines = existingDF.machines;
+  if (existingDF.subContractors) dfSubContractors = existingDF.subContractors;
+} catch (e) {}
+
+const dfPayload = {
+  company: 'Northern Fashion Ltd.',
+  importedAt: new Date().toISOString(),
+  machines: dfMachines,
+  subContractors: dfSubContractors,
+  dyeingBatches: dyeingBatches,
+  executionRows: dyeingBatches,
+  deliveryRows: dyeingBatches.filter(b => b.status === 'DELIVERED'),
+  summary: {
+    totalBatches: dyeingBatches.length,
+    totalBatchKg: dyeingBatches.reduce((s, b) => s + b.batchQtyKg, 0),
+    deliveredKg: dyeingBatches.reduce((s, b) => s + b.deliveredQtyKg, 0),
+    inProcessKg: dyeingBatches.filter(b => b.status === 'IN_PROCESS').reduce((s, b) => s + b.batchQtyKg, 0),
+    rftRatePct: 98.4
+  }
+};
+fs.writeFileSync(dyeingFactoryDataPath, JSON.stringify(dfPayload, null, 2));
+
+// 7. Write yarn-stock-master.json
+const totalYarnReq = jobs.reduce((s, j) => s + (j.yarn?.yarnReqKg || 0), 0);
+const totalYarnRcv = jobs.reduce((s, j) => s + (j.yarn?.yarnReceivedKg || 0), 0);
+const yarnPayload = {
+  reportDate: '2026-11-08',
+  summary: {
+    totalStockKg: totalYarnRcv,
+    totalStockTons: Number((totalYarnRcv / 1000).toFixed(2)),
+    whiteStockKg: Math.round(totalYarnRcv * 0.45),
+    whiteStockTons: Number(((totalYarnRcv * 0.45) / 1000).toFixed(2)),
+    colorStockKg: Math.round(totalYarnRcv * 0.55),
+    colorStockTons: Number(((totalYarnRcv * 0.55) / 1000).toFixed(2)),
+    pipelineLcOpenKg: Math.round(totalYarnReq * 0.08),
+    pipelineLcOpenTons: Number(((totalYarnReq * 0.08) / 1000).toFixed(2)),
+    openRequisitionsKg: Math.max(0, totalYarnReq - totalYarnRcv),
+    openRequisitionsTons: Number((Math.max(0, totalYarnReq - totalYarnRcv) / 1000).toFixed(2)),
+    deadStockKg: 14200,
+    deadStockTons: 14.2,
+    deadStockCount: 8,
+    safetyStockShortageCount: 4,
+    avgDailyDeliveryKg: 38500,
+    avgDailyDeliveryTons: 38.5
+  },
+  safetyStockAlerts: [
+    { count: '28/1 Cotton Melange', currentStockKg: 1200, safetyBufferKg: 8000, deficitKg: 6800, status: 'CRITICAL' },
+    { count: '34/1 Combed Cotton', currentStockKg: 2100, safetyBufferKg: 10000, deficitKg: 7900, status: 'CRITICAL' },
+    { count: '26/1 CVC 60/40', currentStockKg: 950, safetyBufferKg: 6000, deficitKg: 5050, status: 'CRITICAL' },
+    { count: '30/1 Lycra 5%', currentStockKg: 400, safetyBufferKg: 3500, deficitKg: 3100, status: 'CRITICAL' }
+  ]
+};
+const yarnPath = path.join(__dirname, '../apps/web/data/yarn-stock-master.json');
+fs.writeFileSync(yarnPath, JSON.stringify(yarnPayload, null, 2));
+
+// 8. Write knitting-execution-master.json
+const totalGreyReq = jobs.reduce((s, j) => s + (j.knitting?.greyReqKg || 0), 0);
+const totalGreyProd = jobs.reduce((s, j) => s + (j.knitting?.greyProducedKg || 0), 0);
+const knittingPayload = {
+  reportDate: '2026-11-08',
+  productionDate: '2026-11-07',
+  summary: {
+    totalKnittingPlanKg: totalGreyReq,
+    totalKnittingPlanTons: Number((totalGreyReq / 1000).toFixed(2)),
+    totalKnittingProductionKg: totalGreyProd,
+    totalKnittingProductionTons: Number((totalGreyProd / 1000).toFixed(2)),
+    totalMachinesRunning: 107,
+    totalActiveJobs: knittingExecRows.length,
+    bookedCapacityPct: 94,
+    loadedCapacityPct: 89
+  },
+  slotDeliveryComparison: [
+    { slot: 'Slot 1 (D01-08)', requiredDeliveryTons: 118.5, deliveredTons: 121.2, status: 'ON_TRACK' },
+    { slot: 'Slot 2 (D09-16)', requiredDeliveryTons: 115.0, deliveredTons: 112.4, status: 'SLIGHT_DELAY' },
+    { slot: 'Slot 3 (D17-24)', requiredDeliveryTons: 122.0, deliveredTons: 119.8, status: 'ON_TRACK' },
+    { slot: 'Slot 4 (D25-30)', requiredDeliveryTons: 113.1, deliveredTons: 115.2, status: 'ON_TRACK' }
+  ],
+  yarnShortageDelayedJobs: jobs
+    .filter(j => j.overallStage === 'Knitting' || j.overallStage === 'Yarn Store')
+    .slice(0, 8)
+    .map(j => ({
+      jobNo: j.jobNo,
+      buyer: j.buyer,
+      count: '30/1 Combed Cotton',
+      shortageKg: Math.round(j.yarn.yarnReqKg * 0.15),
+      delayDays: 3
+    })),
+  rows: knittingExecRows
+};
+const knittingPath = path.join(__dirname, '../apps/web/data/knitting-execution-master.json');
+fs.writeFileSync(knittingPath, JSON.stringify(knittingPayload, null, 2));
+
+// 9. Synchronize cutting HTML
+const cuttingHtmlPath = path.join(__dirname, '../apps/web/public/cutting/index.html');
+if (fs.existsSync(cuttingHtmlPath)) {
+  let html = fs.readFileSync(cuttingHtmlPath, 'utf8');
+  const cuttingDataRegex = /const DATA=\{.*?\};<\/script>/s;
+  const newCuttingDataStr = `const DATA=${JSON.stringify({ L: cuttingHtmlDataL, P: cuttingHtmlDataP })};</script>`;
+  if (cuttingDataRegex.test(html)) {
+    html = html.replace(cuttingDataRegex, newCuttingDataStr);
+    fs.writeFileSync(cuttingHtmlPath, html, 'utf8');
+    console.log('Cutting HTML (public/cutting/index.html) successfully updated with synchronized dataset.');
+  }
+}
 
 console.log('=== SUCCESS: COMPILED 2,000 COHESIVE JOBS MASTER DATA ===');
 console.log('Master file written to:', masterPath);
