@@ -394,6 +394,10 @@ tr.clk{cursor:pointer}
   z-index: 5 !important;
 }
 
+.embedded #side:not(.open) {
+  display: none !important;
+}
+
 .embedded #side .rtabs {
   background: var(--chip) !important;
   border-bottom: 1px solid var(--line) !important;
@@ -1908,7 +1912,7 @@ function renderRail(){
  const el=G('side');if(!el)return;const mob=mobile();overlay.classList.toggle('open',mob&&railOpen);
  const cur=selKey&&GROUPS.find(g=>g.key===selKey);let mode=railMode;if((mode==='detail'||mode==='tnaform'||mode==='cost')&&!cur)mode='tna';
  const pc=pendingGroups().length;
- el.innerHTML=`<div class="rtabs"><button class="rtab ${mode==='tna'?'on':''}" data-rm="tna">TNA pending<span class="rcnt">${pc}</span></button>${canNew()?`<button class="rtab ${mode==='yarn'?'on':''}" data-rm="yarn">Yarn requisition</button>`:''}${cur&&mode==='cost'?'<button class="rtab on">Cost sheet</button>':''}${cur&&mode==='detail'?'<button class="rtab on">Style detail</button>':''}${cur&&mode==='tnaform'?'<button class="rtab on">Give TNA</button>':''}${mob?'<button class="rtab" data-rm="close" style="margin-left:auto">Close</button>':''}</div><div class="rpane" id="rpane"></div>`;
+ el.innerHTML=`<div class="rtabs"><button class="rtab ${mode==='tna'?'on':''}" data-rm="tna">TNA pending<span class="rcnt">${pc}</span></button>${canNew()?`<button class="rtab ${mode==='yarn'?'on':''}" data-rm="yarn">Yarn requisition</button>`:''}${cur&&mode==='cost'?'<button class="rtab on">Cost sheet</button>':''}${cur&&mode==='detail'?'<button class="rtab on">Style detail</button>':''}${cur&&mode==='tnaform'?'<button class="rtab on">Give TNA</button>':''}<button class="rtab" data-rm="close" style="margin-left:auto;cursor:pointer;font-weight:700">✕ Close</button></div><div class="rpane" id="rpane"></div>`;
  el.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{const m=b.dataset.rm;if(m==='close'){closeRail();return}selKey=null;PREFILL=null;railMode=m;render()});
  const p=G('rpane');
  if(mode==='tna')tnaList(p);else if(mode==='new')newForm(p);else if(mode==='tnaform')tnaForm(p,cur);else if(mode==='cost')costForm(p,cur);else if(mode==='yarn')yarnForm(p,cur||null);else detail(p,cur);
