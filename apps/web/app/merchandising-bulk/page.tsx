@@ -559,43 +559,45 @@ export default function BulkMerchandisingPage() {
           }}>
             <KpiCard
               label="Total Order in Hand"
-              value={fmtNum(dashboardStats.totalVolume) + ' pcs'}
-              subtext={fmtNum(dashboardStats.totalJobs) + ' active jobs'}
+              value={fmtNum(dashboardStats.totalVolume)}
+              unit="pcs"
+              delta={fmtNum(dashboardStats.totalJobs) + ' jobs'}
             />
             <KpiCard
               label="Order in Progress"
-              value={fmtNum(dashboardStats.inProductionVolume) + ' pcs'}
-              subtext={fmtNum(dashboardStats.inProductionJobs) + ' jobs on floor'}
+              value={fmtNum(dashboardStats.inProductionVolume)}
+              unit="pcs"
+              delta={fmtNum(dashboardStats.inProductionJobs) + ' on floor'}
             />
             <KpiCard
               label="Total Order Value ($)"
               value={'$' + (dashboardStats.totalOrderValue / 1000000).toFixed(2) + 'M'}
-              subtext={'FOB Booked Value'}
+              delta="FOB Booked"
             />
             <KpiCard
               label="Avg FOB ($)"
               value={'$' + dashboardStats.avgFob.toFixed(2)}
-              subtext={'Per garment piece'}
+              delta="Per piece"
             />
             <KpiCard
               label="CM / Piece ($)"
               value={'$' + dashboardStats.cmPerPiece.toFixed(2)}
-              subtext={'Standard cut & make'}
+              delta="Standard CM"
             />
             <KpiCard
               label="Total CM Value ($)"
               value={'$' + (dashboardStats.totalCmValue / 1000000).toFixed(2) + 'M'}
-              subtext={'Gross factory earnings'}
+              delta="Gross earnings"
             />
             <KpiCard
               label="Print / Emb Value ($)"
               value={'$' + (dashboardStats.printEmbValue / 1000).toFixed(0) + 'K'}
-              subtext={'Value-addition total'}
+              delta="Value addition"
             />
             <KpiCard
               label="Item Breakdown"
               value="T-Shirt 62%"
-              subtext="Hoodie 18% · Polo 12% · Trs 8%"
+              delta="Hdy 18% · Polo 12%"
             />
           </div>
 
