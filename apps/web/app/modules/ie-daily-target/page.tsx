@@ -439,7 +439,7 @@ export default function TargetGivingPage() {
           storageKey="ie-daily-target-summary-v1"
           exportName={`ie-daily-targets-${section}`}
           frozenColumns={2}
-          emptyMessage="No active line targets scheduled for this floor yet."
+          emptyText="No active line targets scheduled for this floor yet."
         />
       </section>
 

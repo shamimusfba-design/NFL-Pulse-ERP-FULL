@@ -455,7 +455,7 @@ function TasksContent() {
           rowKey={(t) => t.id}
           selectedRowKey={selectedTask?.id ?? null}
           onRowClick={(t) => setSelectedTask(t)}
-          emptyMessage="No pending tasks found for this filter."
+          emptyText="No pending tasks found for this filter."
         />
 
         <RecordPanel

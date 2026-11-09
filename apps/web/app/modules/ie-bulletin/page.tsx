@@ -428,7 +428,7 @@ export default function IeBulletinPage() {
           storageKey="ie-bulletin-weekly-req-v1"
           exportName="ie-bulletin-weekly-req"
           frozenColumns={2}
-          emptyMessage="No Gantt machine requirement found for this 7-day window."
+          emptyText="No Gantt machine requirement found for this 7-day window."
         />
       </section>
 
@@ -488,7 +488,7 @@ export default function IeBulletinPage() {
           exportName="ie-bulletin-followup"
           frozenColumns={2}
           onRowClick={(r) => choose(r)}
-          emptyMessage="No matching jobs."
+          emptyText="No matching jobs."
         />
       </section>
 
