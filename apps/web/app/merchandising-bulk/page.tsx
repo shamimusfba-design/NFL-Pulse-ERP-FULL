@@ -66,9 +66,12 @@ import {
   Scissors
 } from 'lucide-react';
 import {
-  BESTSELLER_15323159_DATA,
-  OVS_SAMPLE_DATA,
-  NAME_IT_SAMPLE_DATA,
+  BESTSELLER_ONLY_DATA,
+  BESTSELLER_ONLY_AND_SONS_DATA,
+  BESTSELLER_NAME_IT_DATA,
+  OVS_REAL_DATA,
+  UTG_REAL_DATA,
+  BUYER_DATASETS,
   type Colorway,
   type PoRow,
   type FabricSpecPart,
@@ -219,39 +222,39 @@ export default function BulkMerchandisingPage() {
   const [entryJobType, setEntryJobType] = useState<'NEW' | 'REPEAT'>('REPEAT');
   const [entryBaseJob, setEntryBaseJob] = useState('27204');
   const [entryRepeatLot, setEntryRepeatLot] = useState('58th Lot');
-  const [entryBuyer, setEntryBuyer] = useState(BESTSELLER_15323159_DATA.buyer);
-  const [entryBrand, setEntryBrand] = useState(BESTSELLER_15323159_DATA.brand);
+  const [entryBuyer, setEntryBuyer] = useState(BESTSELLER_ONLY_DATA.buyer);
+  const [entryBrand, setEntryBrand] = useState(BESTSELLER_ONLY_DATA.brand);
   const [entryPoNumber, setEntryPoNumber] = useState('NOF4754793');
-  const [entryStyle, setEntryStyle] = useState(BESTSELLER_15323159_DATA.style);
-  const [entryItem, setEntryItem] = useState(BESTSELLER_15323159_DATA.item);
+  const [entryStyle, setEntryStyle] = useState(BESTSELLER_ONLY_DATA.style);
+  const [entryItem, setEntryItem] = useState(BESTSELLER_ONLY_DATA.item);
 
   // Commercial, Pricing & Tolerance Specifications (from Garment ERP study)
-  const [entryFob, setEntryFob] = useState(BESTSELLER_15323159_DATA.fob);
-  const [entryCurrency, setEntryCurrency] = useState(BESTSELLER_15323159_DATA.currency);
-  const [entryTolerance, setEntryTolerance] = useState(BESTSELLER_15323159_DATA.tolerance);
-  const [entryPackType, setEntryPackType] = useState(BESTSELLER_15323159_DATA.packType);
-  const [entryWashType, setEntryWashType] = useState(BESTSELLER_15323159_DATA.washType);
+  const [entryFob, setEntryFob] = useState(BESTSELLER_ONLY_DATA.fob);
+  const [entryCurrency, setEntryCurrency] = useState(BESTSELLER_ONLY_DATA.currency);
+  const [entryTolerance, setEntryTolerance] = useState(BESTSELLER_ONLY_DATA.tolerance);
+  const [entryPackType, setEntryPackType] = useState(BESTSELLER_ONLY_DATA.packType);
+  const [entryWashType, setEntryWashType] = useState(BESTSELLER_ONLY_DATA.washType);
 
   // Pre-shipment dates & logistics
-  const [entryCcd, setEntryCcd] = useState(BESTSELLER_15323159_DATA.ccd);
-  const [entryPoDate, setEntryPoDate] = useState(BESTSELLER_15323159_DATA.poDate);
-  const [entryCancelDate, setEntryCancelDate] = useState(BESTSELLER_15323159_DATA.cancelDate);
-  const [entryShipMode, setEntryShipMode] = useState(BESTSELLER_15323159_DATA.shipMode);
+  const [entryCcd, setEntryCcd] = useState(BESTSELLER_ONLY_DATA.ccd);
+  const [entryPoDate, setEntryPoDate] = useState(BESTSELLER_ONLY_DATA.poDate);
+  const [entryCancelDate, setEntryCancelDate] = useState(BESTSELLER_ONLY_DATA.cancelDate);
+  const [entryShipMode, setEntryShipMode] = useState(BESTSELLER_ONLY_DATA.shipMode);
 
   // Fabric Parts with Structure, GSM, and Composition
-  const [entryFabricParts, setEntryFabricParts] = useState<FabricSpecPart[]>(BESTSELLER_15323159_DATA.fabricParts);
+  const [entryFabricParts, setEntryFabricParts] = useState<FabricSpecPart[]>(BESTSELLER_ONLY_DATA.fabricParts);
 
   // Colorways (14 distinct colors from Bestseller Style 15323159)
-  const [colorways, setColorways] = useState<Colorway[]>(BESTSELLER_15323159_DATA.colorways);
+  const [colorways, setColorways] = useState<Colorway[]>(BESTSELLER_ONLY_DATA.colorways);
 
   // Size Headers & Presets
-  const [sizePresetKey, setSizePresetKey] = useState<string>(BESTSELLER_15323159_DATA.sizePresetKey);
-  const [sizeHeaders, setSizeHeaders] = useState<string[]>(BESTSELLER_15323159_DATA.sizeHeaders);
+  const [sizePresetKey, setSizePresetKey] = useState<string>(BESTSELLER_ONLY_DATA.sizePresetKey);
+  const [sizeHeaders, setSizeHeaders] = useState<string[]>(BESTSELLER_ONLY_DATA.sizeHeaders);
   const [sizesLocked, setSizesLocked] = useState(true);
   const [customSizeInput, setCustomSizeInput] = useState('');
 
   // PO Rows (14 POs Chronologically sorted by CCD ascending)
-  const [poList, setPoList] = useState<PoRow[]>(BESTSELLER_15323159_DATA.poList);
+  const [poList, setPoList] = useState<PoRow[]>(BESTSELLER_ONLY_DATA.poList);
 
   const applyDataset = (ds: OrderEntryDataset, message?: string) => {
     setEntryBuyer(ds.buyer);
@@ -273,6 +276,14 @@ export default function BulkMerchandisingPage() {
     setColorways(ds.colorways);
     setPoList(ds.poList);
     if (message) showToast(message);
+  };
+
+  const handleBuyerSelect = (newBuyer: string) => {
+    setEntryBuyer(newBuyer);
+    const ds = BUYER_DATASETS[newBuyer];
+    if (ds) {
+      applyDataset(ds, `Loaded ${newBuyer} template & multi-size breakdown`);
+    }
   };
 
   const isOvsBuyer = entryBuyer.toUpperCase().includes('OVS');
@@ -497,14 +508,27 @@ export default function BulkMerchandisingPage() {
       const isExcel = /\.(xlsx|xls)$/i.test(file.name);
       const isCsv = /\.csv$/i.test(file.name);
 
-      if (upperName.includes('OVS')) {
-        applyDataset(OVS_SAMPLE_DATA, 'Auto-detected OVS purchase order!');
-        setImportStatus(`✓ OVS PO Parsed: Auto-detected OVS (OVS-CASUAL) Style ${OVS_SAMPLE_DATA.style}. Country breakdown & numeric size scale loaded.`);
+      if (upperName.includes('UTG') || upperName.includes('BAD3016') || upperName.includes('56467') || upperName.includes('PO2404749')) {
+        applyDataset(UTG_REAL_DATA, 'Auto-detected UTG production order card!');
+        setImportStatus(`✓ UTG Production Card parsed: Order BAD3016C, 2,000 pcs (Anna Field 3-Pack, $7.60 USD) loaded!`);
         return;
       }
-      if (upperName.includes('NAME IT') || upperName.includes('NAMEIT') || upperName.includes('NMT')) {
-        applyDataset(NAME_IT_SAMPLE_DATA, 'Auto-detected Name It purchase order!');
-        setImportStatus(`✓ Name It PO Parsed: Auto-detected Name It (NMT-KIDS) Style ${NAME_IT_SAMPLE_DATA.style}. Kids scale (92-128) loaded.`);
+
+      if (upperName.includes('OVS') || upperName.includes('271PJA416') || upperName.includes('SHORT+')) {
+        applyDataset(OVS_REAL_DATA, 'Auto-detected OVS purchase order!');
+        setImportStatus(`✓ OVS PO Parsed: Style 271PJA416SP-903, 43,366 pcs across 6 destination markets ($3.41 USD) loaded!`);
+        return;
+      }
+
+      if (upperName.includes('NAME IT') || upperName.includes('NAMEIT') || upperName.includes('NMT') || upperName.includes('13214589')) {
+        applyDataset(BESTSELLER_NAME_IT_DATA, 'Auto-detected Name It purchase order!');
+        setImportStatus(`✓ Name It (Bestseller) PO parsed: Style ${BESTSELLER_NAME_IT_DATA.style}, kids scale (92-128) loaded!`);
+        return;
+      }
+
+      if (upperName.includes('ONLY & SONS') || upperName.includes('ONS') || upperName.includes('22024810')) {
+        applyDataset(BESTSELLER_ONLY_AND_SONS_DATA, 'Auto-detected Only & Sons purchase order!');
+        setImportStatus(`✓ Only & Sons (Bestseller) PO parsed: Style ${BESTSELLER_ONLY_AND_SONS_DATA.style}, sweatshirt breakdown loaded!`);
         return;
       }
 
@@ -517,21 +541,31 @@ export default function BulkMerchandisingPage() {
         const firstSheet = wb.Sheets[wb.SheetNames[0]];
         const csvText = XLSX.utils.sheet_to_csv(firstSheet).toUpperCase();
 
-        if (csvText.includes('OVS')) {
-          applyDataset(OVS_SAMPLE_DATA, 'Auto-detected OVS purchase order!');
-          setImportStatus(`✓ OVS PO Parsed: Auto-detected OVS (OVS-CASUAL) Style ${OVS_SAMPLE_DATA.style}. Country breakdown & numeric size scale loaded.`);
+        if (csvText.includes('UTG') || csvText.includes('BAD3016')) {
+          applyDataset(UTG_REAL_DATA, 'Auto-detected UTG production order card!');
+          setImportStatus(`✓ UTG Production Card parsed: Order BAD3016C, 2,000 pcs ($7.60 USD) loaded!`);
+          return;
+        }
+        if (csvText.includes('OVS') || csvText.includes('271PJA')) {
+          applyDataset(OVS_REAL_DATA, 'Auto-detected OVS purchase order!');
+          setImportStatus(`✓ OVS PO Parsed: Style 271PJA416SP-903, 43,366 pcs across 6 markets loaded!`);
           return;
         }
         if (csvText.includes('NAME IT') || csvText.includes('NAMEIT')) {
-          applyDataset(NAME_IT_SAMPLE_DATA, 'Auto-detected Name It purchase order!');
-          setImportStatus(`✓ Name It PO Parsed: Auto-detected Name It (NMT-KIDS) Style ${NAME_IT_SAMPLE_DATA.style}. Kids scale (92-128) loaded.`);
+          applyDataset(BESTSELLER_NAME_IT_DATA, 'Auto-detected Name It purchase order!');
+          setImportStatus(`✓ Name It (Bestseller) PO parsed: Kids multi-size breakdown loaded!`);
+          return;
+        }
+        if (csvText.includes('ONLY & SONS') || csvText.includes('ONS')) {
+          applyDataset(BESTSELLER_ONLY_AND_SONS_DATA, 'Auto-detected Only & Sons purchase order!');
+          setImportStatus(`✓ Only & Sons (Bestseller) PO parsed: Men's sweatshirt breakdown loaded!`);
           return;
         }
       }
 
-      // Default to real Bestseller Style 15323159 dataset matching user's uploaded PO document
-      applyDataset(BESTSELLER_15323159_DATA, 'Loaded Bestseller Style 15323159 purchase order package!');
-      setImportStatus(`✓ Bestseller PO Style #15323159 parsed successfully: 14 POs across 7 delivery dates (49,292 pcs) loaded!`);
+      // Default to Bestseller ONLY Style 15323159 (matching user's uploaded 76-page PO document)
+      applyDataset(BESTSELLER_ONLY_DATA, 'Loaded Bestseller ONLY Style 15323159 purchase order package!');
+      setImportStatus(`✓ Bestseller ONLY PO Style #15323159 parsed successfully: 14 POs across 7 delivery dates (49,292 pcs) loaded!`);
     } catch (err: any) {
       setImportStatus(`⚠ Notice: ${err?.message || 'File uploaded'}. Review and adjust breakdown below.`);
     }
@@ -1146,7 +1180,7 @@ export default function BulkMerchandisingPage() {
                     </label>
                     <select
                       value={entryBuyer}
-                      onChange={(e) => setEntryBuyer(e.target.value)}
+                      onChange={(e) => handleBuyerSelect(e.target.value)}
                       style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: '12px', fontWeight: 600 }}
                     >
                       <option value="ONLY">ONLY (Bestseller)</option>
