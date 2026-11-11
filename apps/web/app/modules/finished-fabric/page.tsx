@@ -1276,16 +1276,16 @@ function FinishedFabricPageInner() {
         <button
           type="button"
           onClick={() => setActiveTab('STOCK')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-md text-xs font-semibold transition-all ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-md text-xs font-semibold transition-all border ${
             activeTab === 'STOCK'
-              ? 'bg-blue-600 text-white border border-blue-600 shadow-xs'
-              : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
+              ? 'bg-blue-50 text-blue-900 border-blue-500 shadow-xs font-bold'
+              : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
           }`}
         >
-          <Boxes size={15} color={activeTab === 'STOCK' ? '#FFFFFF' : '#2563EB'} />
+          <Boxes size={15} color={activeTab === 'STOCK' ? '#1D4ED8' : '#64748B'} />
           <span>1. Finished Fabric Stock Statement</span>
           <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-            activeTab === 'STOCK' ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700 border border-slate-200'
+            activeTab === 'STOCK' ? 'bg-blue-200 text-blue-900' : 'bg-slate-100 text-slate-700 border border-slate-200'
           }`}>
             {jobGroups.length} Jobs
           </span>
@@ -1294,16 +1294,16 @@ function FinishedFabricPageInner() {
         <button
           type="button"
           onClick={() => setActiveTab('RECEIVE')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-md text-xs font-semibold transition-all ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-md text-xs font-semibold transition-all border ${
             activeTab === 'RECEIVE'
-              ? 'bg-blue-600 text-white border border-blue-600 shadow-xs'
-              : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
+              ? 'bg-emerald-50 text-emerald-900 border-emerald-500 shadow-xs font-bold'
+              : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
           }`}
         >
-          <Truck size={15} color={activeTab === 'RECEIVE' ? '#FFFFFF' : '#059669'} />
+          <Truck size={15} color={activeTab === 'RECEIVE' ? '#047857' : '#64748B'} />
           <span>2. Imported & New Receive</span>
           <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-            activeTab === 'RECEIVE' ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700 border border-slate-200'
+            activeTab === 'RECEIVE' ? 'bg-emerald-200 text-emerald-900' : 'bg-slate-100 text-slate-700 border border-slate-200'
           }`}>
             {challans.length} Challans
           </span>
@@ -1312,42 +1312,42 @@ function FinishedFabricPageInner() {
         <button
           type="button"
           onClick={() => setActiveTab('ISSUE')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-md text-xs font-semibold transition-all ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-md text-xs font-semibold transition-all border ${
             activeTab === 'ISSUE'
-              ? 'bg-blue-600 text-white border border-blue-600 shadow-xs'
-              : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
+              ? 'bg-purple-50 text-purple-900 border-purple-500 shadow-xs font-bold'
+              : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
           }`}
         >
-          <Scissors size={15} color={activeTab === 'ISSUE' ? '#FFFFFF' : '#7C3AED'} />
+          <Scissors size={15} color={activeTab === 'ISSUE' ? '#7E22CE' : '#64748B'} />
           <span>3. Issue to Cutting Floor</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('LOCATION')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-md text-xs font-semibold transition-all ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-md text-xs font-semibold transition-all border ${
             activeTab === 'LOCATION'
-              ? 'bg-blue-600 text-white border border-blue-600 shadow-xs'
-              : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
+              ? 'bg-amber-50 text-amber-900 border-amber-500 shadow-xs font-bold'
+              : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
           }`}
         >
-          <MapPin size={15} color={activeTab === 'LOCATION' ? '#FFFFFF' : '#D97706'} />
+          <MapPin size={15} color={activeTab === 'LOCATION' ? '#B45309' : '#64748B'} />
           <span>4. Location Tracking (20 Racks × 20 Shelves)</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('REUSE')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-md text-xs font-semibold transition-all ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-md text-xs font-semibold transition-all border ${
             activeTab === 'REUSE'
-              ? 'bg-blue-600 text-white border border-blue-600 shadow-xs'
-              : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
+              ? 'bg-sky-50 text-sky-900 border-sky-500 shadow-xs font-bold'
+              : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
           }`}
         >
-          <RotateCcw size={15} color={activeTab === 'REUSE' ? '#FFFFFF' : '#0284C7'} />
+          <RotateCcw size={15} color={activeTab === 'REUSE' ? '#0369A1' : '#64748B'} />
           <span>5. Stock for Leftover & Reuse</span>
           <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-            activeTab === 'REUSE' ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700 border border-slate-200'
+            activeTab === 'REUSE' ? 'bg-sky-200 text-sky-900' : 'bg-slate-100 text-slate-700 border border-slate-200'
           }`}>
             {leftoverLedger.length}
           </span>
@@ -1462,8 +1462,8 @@ function FinishedFabricPageInner() {
           {/* =================================================================== */}
           <div className="flex flex-wrap items-center justify-between gap-2 mb-3 p-2 bg-slate-50 rounded-md border border-slate-200 text-xs">
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="font-bold text-slate-600 mr-1 flex items-center gap-1 text-[11px] uppercase tracking-wider">
-                <SlidersHorizontal className="w-3 h-3 text-slate-500" />
+              <span className="font-bold text-slate-700 mr-1 flex items-center gap-1 text-[11px] uppercase tracking-wider">
+                <SlidersHorizontal className="w-3 h-3 text-slate-600" />
                 Columns:
               </span>
 
@@ -1471,13 +1471,13 @@ function FinishedFabricPageInner() {
               <button
                 type="button"
                 onClick={() => setVisibleSections(v => ({ ...v, jobSpecs: !v.jobSpecs }))}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 transition-all ${
+                className={`px-2.5 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all border ${
                   visibleSections.jobSpecs
-                    ? 'bg-slate-700 text-white border border-slate-700 shadow-2xs font-semibold'
-                    : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-100'
+                    ? 'bg-slate-200 text-slate-900 border-slate-400 shadow-xs'
+                    : 'bg-white text-slate-500 border-slate-300 hover:bg-slate-100'
                 }`}
               >
-                {visibleSections.jobSpecs && <Check className="w-3 h-3 text-white" />}
+                {visibleSections.jobSpecs && <Check className="w-3.5 h-3.5 text-slate-900 stroke-[2.5]" />}
                 <span>Job & Specs</span>
               </button>
 
@@ -1485,13 +1485,13 @@ function FinishedFabricPageInner() {
               <button
                 type="button"
                 onClick={() => setVisibleSections(v => ({ ...v, orderQty: !v.orderQty }))}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 transition-all ${
+                className={`px-2.5 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all border ${
                   visibleSections.orderQty
-                    ? 'bg-blue-600 text-white border border-blue-600 shadow-2xs font-semibold'
-                    : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-100'
+                    ? 'bg-blue-100 text-blue-900 border-blue-400 shadow-xs'
+                    : 'bg-white text-slate-500 border-slate-300 hover:bg-slate-100'
                 }`}
               >
-                {visibleSections.orderQty && <Check className="w-3 h-3 text-white" />}
+                {visibleSections.orderQty && <Check className="w-3.5 h-3.5 text-blue-900 stroke-[2.5]" />}
                 <span>Order Qty (Body/Rib/SJ)</span>
               </button>
 
@@ -1499,13 +1499,13 @@ function FinishedFabricPageInner() {
               <button
                 type="button"
                 onClick={() => setVisibleSections(v => ({ ...v, receivedQty: !v.receivedQty }))}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 transition-all ${
+                className={`px-2.5 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all border ${
                   visibleSections.receivedQty
-                    ? 'bg-emerald-600 text-white border border-emerald-600 shadow-2xs font-semibold'
-                    : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-100'
+                    ? 'bg-emerald-100 text-emerald-900 border-emerald-400 shadow-xs'
+                    : 'bg-white text-slate-500 border-slate-300 hover:bg-slate-100'
                 }`}
               >
-                {visibleSections.receivedQty && <Check className="w-3 h-3 text-white" />}
+                {visibleSections.receivedQty && <Check className="w-3.5 h-3.5 text-emerald-900 stroke-[2.5]" />}
                 <span>Received (Body/Rib/SJ)</span>
               </button>
 
@@ -1513,13 +1513,13 @@ function FinishedFabricPageInner() {
               <button
                 type="button"
                 onClick={() => setVisibleSections(v => ({ ...v, deliveryQty: !v.deliveryQty }))}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 transition-all ${
+                className={`px-2.5 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all border ${
                   visibleSections.deliveryQty
-                    ? 'bg-purple-600 text-white border border-purple-600 shadow-2xs font-semibold'
-                    : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-100'
+                    ? 'bg-purple-100 text-purple-900 border-purple-400 shadow-xs'
+                    : 'bg-white text-slate-500 border-slate-300 hover:bg-slate-100'
                 }`}
               >
-                {visibleSections.deliveryQty && <Check className="w-3 h-3 text-white" />}
+                {visibleSections.deliveryQty && <Check className="w-3.5 h-3.5 text-purple-900 stroke-[2.5]" />}
                 <span>Issue / Delivery (Body/Rib/SJ)</span>
               </button>
 
@@ -1527,13 +1527,13 @@ function FinishedFabricPageInner() {
               <button
                 type="button"
                 onClick={() => setVisibleSections(v => ({ ...v, closingStock: !v.closingStock }))}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 transition-all ${
+                className={`px-2.5 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all border ${
                   visibleSections.closingStock
-                    ? 'bg-sky-600 text-white border border-sky-600 shadow-2xs font-semibold'
-                    : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-100'
+                    ? 'bg-sky-100 text-sky-900 border-sky-400 shadow-xs'
+                    : 'bg-white text-slate-500 border-slate-300 hover:bg-slate-100'
                 }`}
               >
-                {visibleSections.closingStock && <Check className="w-3 h-3 text-white" />}
+                {visibleSections.closingStock && <Check className="w-3.5 h-3.5 text-sky-900 stroke-[2.5]" />}
                 <span>Closing Stock (Body/Rib/SJ)</span>
               </button>
 
@@ -1541,13 +1541,13 @@ function FinishedFabricPageInner() {
               <button
                 type="button"
                 onClick={() => setVisibleSections(v => ({ ...v, locationInfo: !v.locationInfo }))}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 transition-all ${
+                className={`px-2.5 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all border ${
                   visibleSections.locationInfo
-                    ? 'bg-amber-700 text-white border border-amber-700 shadow-2xs font-semibold'
-                    : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-100'
+                    ? 'bg-amber-100 text-amber-900 border-amber-400 shadow-xs'
+                    : 'bg-white text-slate-500 border-slate-300 hover:bg-slate-100'
                 }`}
               >
-                {visibleSections.locationInfo && <Check className="w-3 h-3 text-white" />}
+                {visibleSections.locationInfo && <Check className="w-3.5 h-3.5 text-amber-900 stroke-[2.5]" />}
                 <span>Location & Leftover</span>
               </button>
             </div>

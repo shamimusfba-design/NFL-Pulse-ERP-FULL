@@ -409,26 +409,26 @@ export default function FabricRackLocation({
           <button
             type="button"
             onClick={() => setSubTab('LAYOUT')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all border ${
               subTab === 'LAYOUT'
-                ? 'bg-[#0F274E] text-white shadow-xs'
-                : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                ? 'bg-blue-50 text-blue-900 border-blue-600 shadow-xs'
+                : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
             }`}
           >
-            <Warehouse size={15} color={subTab === 'LAYOUT' ? '#38BDF8' : '#64748B'} />
+            <Warehouse size={15} color={subTab === 'LAYOUT' ? '#1D4ED8' : '#64748B'} />
             <span>1. Present Store Layout (20 Master Racks × 20 Shelves)</span>
           </button>
 
           <button
             type="button"
             onClick={() => setSubTab('JOB_SEARCH')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all border ${
               subTab === 'JOB_SEARCH'
-                ? 'bg-[#0F274E] text-white shadow-xs'
-                : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                ? 'bg-blue-50 text-blue-900 border-blue-600 shadow-xs'
+                : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
             }`}
           >
-            <Search size={15} color={subTab === 'JOB_SEARCH' ? '#38BDF8' : '#64748B'} />
+            <Search size={15} color={subTab === 'JOB_SEARCH' ? '#1D4ED8' : '#64748B'} />
             <span>2. Job-wise Location Search</span>
           </button>
         </div>
@@ -517,7 +517,7 @@ export default function FabricRackLocation({
                     }}
                     className={`cursor-pointer rounded-xl border p-3 transition-all text-center flex flex-col justify-between ${
                       isSelected
-                        ? 'bg-[#0F274E] text-white border-[#0F274E] shadow-md ring-2 ring-sky-400/50'
+                        ? 'bg-blue-50 text-blue-950 border-2 border-blue-600 shadow-md ring-2 ring-blue-300 font-bold'
                         : hasMatch
                         ? 'bg-amber-50 border-amber-400 text-slate-900 shadow-xs'
                         : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-800'
@@ -525,23 +525,23 @@ export default function FabricRackLocation({
                     style={{ minHeight: '92px' }}
                   >
                     <div>
-                      <div className={`text-xs font-black tracking-wider ${isSelected ? 'text-white' : 'text-[#0F274E]'}`}>
+                      <div className={`text-xs font-black tracking-wider ${isSelected ? 'text-blue-950 font-black' : 'text-slate-900 font-extrabold'}`}>
                         {rId}
                       </div>
-                      <div className={`text-[10px] uppercase font-bold mt-0.5 ${isSelected ? 'text-sky-300' : 'text-slate-500'}`}>
+                      <div className={`text-[10px] uppercase font-bold mt-0.5 ${isSelected ? 'text-blue-700' : 'text-slate-500'}`}>
                         General Fabric
                       </div>
                     </div>
 
-                    <div className="mt-2 pt-2 border-t border-slate-100/20">
-                      <div className={`text-[11px] font-semibold ${isSelected ? 'text-slate-200' : occ > 0 ? 'text-sky-700' : 'text-slate-400'}`}>
+                    <div className="mt-2 pt-2 border-t border-slate-100">
+                      <div className={`text-[11px] font-bold ${isSelected ? 'text-blue-900' : occ > 0 ? 'text-sky-800' : 'text-slate-400'}`}>
                         {occ} / 20 Shelves
                       </div>
                       {/* Mini visual occupancy bar */}
-                      <div className="w-full h-1.5 bg-slate-200/40 rounded-full mt-1 overflow-hidden">
+                      <div className="w-full h-1.5 bg-slate-200 rounded-full mt-1 overflow-hidden">
                         <div
                           className={`h-full rounded-full transition-all ${
-                            isSelected ? 'bg-sky-400' : occ > 15 ? 'bg-rose-500' : occ > 0 ? 'bg-sky-600' : 'bg-transparent'
+                            isSelected ? 'bg-blue-600' : occ > 15 ? 'bg-rose-500' : occ > 0 ? 'bg-sky-600' : 'bg-transparent'
                           }`}
                           style={{ width: `${(occ / 20) * 100}%` }}
                         />
