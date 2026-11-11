@@ -179,81 +179,183 @@ export function computeJobStatus(job: TrimsChecklistRecord): PresentJobStatus {
 
 const catList: TrimsCategory[] = ['LABEL', 'THREAD', 'ELASTIC', 'ZIPPER', 'BUTTON', 'TAPE', 'PACKAGING', 'POLY'];
 
-const INITIAL_CHECKLISTS: TrimsChecklistRecord[] = ((demo2000DataRaw as any)?.jobs || []).map((j: any) => {
-  const tr = j.trims || {};
-  const isAccepted = tr.checklistStatus === 'ACCEPTED';
-  const isOrdered = tr.status === 'ORDERED' || tr.status === 'IN_HOUSE';
-  const isInHouse = tr.status === 'IN_HOUSE';
+const failReasons = [
+  'Tensile pull strength below 70N on snap button (ASTM D4846)',
+  'Care label QR code link redirects to wrong portal',
+  'Color shade mismatch under D65 daylight source (Delta E > 1.6)',
+  'Zipper slider tooth slippage under lateral cross-load',
+  'Interlining adhesive delamination during 60°C wash test'
+];
 
-  let presentStatus: PresentJobStatus = 'Order Confirmed';
-  if (isInHouse) presentStatus = 'Receive OK';
-  else if (isOrdered) presentStatus = 'Partial Received Due';
-  else if (tr.status === 'ORDERING_DUE') presentStatus = 'Ordering Due';
-  else if (tr.checklistStatus === 'PENDING_REVIEW') presentStatus = 'Checklist Due';
+const reviewNotes = [
+  'Main brand label placement spec differs from buyer tech pack v2',
+  'Thread consumption calculated at 110m/garment, store recommends 135m',
+  'Polybag perforation holes missing as per buyer child-safety clause',
+  'Hangtag price sticker barcode unreadable on Datalogic scanners',
+  'Elastic recovery after 3x wash cycle is 82% (buyer standard >= 90%)'
+];
 
-  const items: TrimsItem[] = (tr.items || []).map((it: any, idx: number) => {
-    let cat: TrimsCategory = 'OTHER';
-    let unit: TrimsUnit = 'PCS';
-    if (it.name.includes('Label')) { cat = 'LABEL'; unit = 'PCS'; }
-    else if (it.name.includes('Thread')) { cat = 'THREAD'; unit = 'CONES'; }
-    else if (it.name.includes('Polybag') || it.name.includes('Poly')) { cat = 'POLY'; unit = 'PCS'; }
-    else if (it.name.includes('Carton')) { cat = 'CARTON'; unit = 'PCS'; }
-    else if (it.name.includes('Elastic')) { cat = 'ELASTIC'; unit = 'METER'; }
-    else if (it.name.includes('Button')) { cat = 'BUTTON'; unit = 'GROSS'; }
-    else if (it.name.includes('Zipper')) { cat = 'ZIPPER'; unit = 'PCS'; }
+function getBuyerRack(buyer: string, idx: number): string {
+  const b = (buyer || '').toLowerCase();
+  let start = 37, end = 40;
+  if (b.includes('only &')) { start = 25; end = 30; }
+  else if (b.includes('only')) { start = 1; end = 8; }
+  else if (b.includes('ovs')) { start = 9; end = 16; }
+  else if (b.includes('name')) { start = 17; end = 24; }
+  else if (b.includes('utg')) { start = 31; end = 36; }
+  const range = end - start + 1;
+  const rackNum = start + (Math.abs(idx) % range);
+  return 'R-' + String(rackNum).padStart(2, '0');
+}
 
-    const wastage = 3;
-    const requiredQty = it.name.includes('Thread') ? Math.round(j.orderQty / 50) : j.orderQty;
-    const totalOrderQty = Math.round(requiredQty * 1.03);
-    const receivedQty = isInHouse ? totalOrderQty : isOrdered ? Math.round(totalOrderQty * 0.5) : 0;
-    const balanceQty = Math.max(0, totalOrderQty - receivedQty);
-    const deliveredQty = ['Shipment', 'Packing', 'Finishing', 'Sewing'].includes(j.overallStage) ? totalOrderQty : 0;
-    const deliveryBalance = Math.max(0, receivedQty - deliveredQty);
-    const rackNo = 'R-' + String(((idx * 7 + (parseInt(j.jobNo) || 1)) % 40) + 1).padStart(2, '0');
-    const shelfNo = 'S-' + String(((idx * 3 + (parseInt(j.jobNo) || 1)) % 12) + 1).padStart(2, '0');
+export function generateInitialChecklists(): TrimsChecklistRecord[] {
+  return ((demo2000DataRaw as any)?.jobs || []).map((j: any, idx: number) => {
+    const tr = j.trims || {};
+    const mod = idx % 12;
 
-    return {
-      id: `T-${j.jobNo}-${idx + 1}`,
-      itemName: it.name,
-      category: cat,
-      unit,
-      consumption: it.name.includes('Thread') ? 140 : 1,
-      consumptionUnit: it.name.includes('Thread') ? 'm/garment' : 'pc/garment',
-      consumptionSource: 'SAMPLE_IE',
-      requiredQty,
-      wastagePct: wastage,
-      totalOrderQty,
-      receivedQty,
-      balanceQty,
-      deliveredQty,
-      deliveryBalance,
-      rackNo,
-      shelfNo,
-      qualityStatus: isInHouse ? 'PASS' : 'PENDING',
-      supplierName: it.supplier || 'Avery Dennison',
-      lotBatchNo: `LOT-${String(j.jobNo).split(' ')[0]}-${idx + 1}`
+    let chkStatus: ChecklistStatus = 'ACCEPTED';
+    let storeReviewNote: string | undefined;
+    let reviewRequestedAt: string | undefined;
+    let acceptedAt: string | undefined = j.dates?.poReceived || '2026-07-01';
+    let acceptedBy: string | undefined = 'Rezaul Karim (Trims Store In-charge)';
+
+    if (mod === 0) {
+      chkStatus = 'REVIEW_REQUESTED';
+      storeReviewNote = reviewNotes[idx % reviewNotes.length];
+      reviewRequestedAt = j.dates?.poReceived || '2026-07-15';
+      acceptedAt = undefined;
+      acceptedBy = undefined;
+    } else if (mod === 1) {
+      chkStatus = 'PENDING_REVIEW';
+      acceptedAt = undefined;
+      acceptedBy = undefined;
+    }
+
+    const rawItems = (tr.items && tr.items.length > 0) ? tr.items : [
+      { name: 'Main Woven Brand Label', supplier: 'Avery Dennison' },
+      { name: 'Care & Size Printed Label', supplier: 'SML Group' },
+      { name: 'Sewing Thread 100% Spun Poly', supplier: 'Coats Bangladesh' },
+      { name: 'Polybag Self-Adhesive', supplier: 'Prime Packaging' },
+      { name: 'Export Master Carton 5-Ply', supplier: 'Eco Carton Ltd' }
+    ];
+
+    const items: TrimsItem[] = rawItems.map((it: any, itemIdx: number) => {
+      let cat: TrimsCategory = 'OTHER';
+      let unit: TrimsUnit = 'PCS';
+      if (it.name.includes('Label')) { cat = 'LABEL'; unit = 'PCS'; }
+      else if (it.name.includes('Thread')) { cat = 'THREAD'; unit = 'CONES'; }
+      else if (it.name.includes('Polybag') || it.name.includes('Poly')) { cat = 'POLY'; unit = 'PCS'; }
+      else if (it.name.includes('Carton')) { cat = 'CARTON'; unit = 'PCS'; }
+      else if (it.name.includes('Elastic')) { cat = 'ELASTIC'; unit = 'METER'; }
+      else if (it.name.includes('Button')) { cat = 'BUTTON'; unit = 'GROSS'; }
+      else if (it.name.includes('Zipper')) { cat = 'ZIPPER'; unit = 'PCS'; }
+
+      const wastage = 3;
+      const requiredQty = it.name.includes('Thread') ? Math.round(j.orderQty / 50) : j.orderQty;
+      const totalOrderQty = Math.round(requiredQty * 1.03);
+
+      let receivedQty = 0;
+      let deliveredQty = 0;
+      let qualityStatus: QualityStatus = 'PASS';
+      let failRemarks: string | undefined;
+
+      if (mod === 0 || mod === 1) {
+        // Review Requested or Pending Review
+        receivedQty = 0;
+        deliveredQty = 0;
+        qualityStatus = 'PENDING';
+      } else if (mod === 2) {
+        // Inspection Fail sample job
+        receivedQty = Math.round(totalOrderQty * 0.85);
+        deliveredQty = 0;
+        if (itemIdx === 0) {
+          qualityStatus = 'FAIL';
+          failRemarks = failReasons[idx % failReasons.length];
+        } else {
+          qualityStatus = 'PASS';
+        }
+      } else if (mod === 3) {
+        // Ordering Due sample job (0 received)
+        receivedQty = 0;
+        deliveredQty = 0;
+        qualityStatus = 'PENDING';
+      } else if (mod === 4) {
+        // Partial Received Due sample job
+        receivedQty = itemIdx % 2 === 0 ? totalOrderQty : Math.round(totalOrderQty * 0.45);
+        deliveredQty = 0;
+        qualityStatus = 'PASS';
+      } else if (mod === 5) {
+        // Delivery Running sample job (partial floor delivery)
+        receivedQty = totalOrderQty;
+        deliveredQty = Math.round(totalOrderQty * 0.5);
+        qualityStatus = 'PASS';
+      } else if (mod === 6) {
+        // Receive OK sample job: 100% in store, 0 delivered
+        receivedQty = totalOrderQty;
+        deliveredQty = 0;
+        qualityStatus = 'PASS';
+      } else {
+        // Delivery Done sample job
+        receivedQty = totalOrderQty;
+        deliveredQty = totalOrderQty;
+        qualityStatus = 'PASS';
+      }
+
+      const balanceQty = Math.max(0, totalOrderQty - receivedQty);
+      const deliveryBalance = Math.max(0, receivedQty - deliveredQty);
+      const rackNo = getBuyerRack(j.buyer, idx + itemIdx);
+      const shelfNo = 'S-' + String(((itemIdx * 2 + (parseInt(j.jobNo) || 1)) % 12) + 1).padStart(2, '0');
+
+      return {
+        id: `T-${j.jobNo}-${itemIdx + 1}`,
+        itemName: it.name,
+        category: cat,
+        unit,
+        consumption: it.name.includes('Thread') ? 140 : 1,
+        consumptionUnit: it.name.includes('Thread') ? 'm/garment' : 'pc/garment',
+        consumptionSource: 'SAMPLE_IE',
+        requiredQty,
+        wastagePct: wastage,
+        totalOrderQty,
+        receivedQty,
+        balanceQty,
+        deliveredQty,
+        deliveryBalance,
+        rackNo,
+        shelfNo,
+        qualityStatus,
+        failRemarks,
+        supplierName: it.supplier || 'Avery Dennison',
+        lotBatchNo: `LOT-${String(j.jobNo).split(' ')[0]}-${itemIdx + 1}`
+      };
+    });
+
+    const record: TrimsChecklistRecord = {
+      id: `TRIM-CHK-${String(j.jobNo).replace(/\s+/g, '-')}`,
+      jobNo: j.jobNo,
+      buyer: j.buyer,
+      styleNo: j.styleNo,
+      itemDescription: j.itemDescription || j.item,
+      orderQty: j.orderQty,
+      merchandiser: j.merchandiser,
+      shipmentDate: j.dates?.exFactory || '2026-09-30',
+      tnaSlot: j.planMonth || 'Aug 26',
+      sewingLine: j.lineAllocation?.line || 'Line 01',
+      requestDate: j.dates?.poReceived || '2026-06-15',
+      checklistStatus: chkStatus,
+      presentStatus: 'Order Confirmed',
+      storeReviewNote,
+      reviewRequestedAt,
+      acceptedAt,
+      acceptedBy,
+      items
     };
+    record.presentStatus = computeJobStatus(record);
+    return record;
   });
+}
 
-  return {
-    id: `TRIM-CHK-${String(j.jobNo).replace(/\s+/g, '-')}`,
-    jobNo: j.jobNo,
-    buyer: j.buyer,
-    styleNo: j.styleNo,
-    itemDescription: j.itemDescription || j.item,
-    orderQty: j.orderQty,
-    merchandiser: j.merchandiser,
-    shipmentDate: j.dates?.exFactory || '2026-09-30',
-    tnaSlot: j.planMonth || 'Aug 26',
-    sewingLine: j.lineAllocation?.line || 'Line 01',
-    requestDate: j.dates?.poReceived || '2026-06-15',
-    checklistStatus: isAccepted ? 'ACCEPTED' : tr.checklistStatus === 'PENDING_REVIEW' ? 'PENDING_REVIEW' : 'REVIEW_REQUESTED',
-    presentStatus,
-    acceptedAt: isAccepted ? j.dates?.poReceived : undefined,
-    acceptedBy: isAccepted ? 'Rezaul Karim (Trims Store In-charge)' : undefined,
-    items
-  };
-});
+const INITIAL_CHECKLISTS: TrimsChecklistRecord[] = generateInitialChecklists();
 
 function generateDefaultRacks(checklistsList: TrimsChecklistRecord[] = INITIAL_CHECKLISTS): StoreRack[] {
   const buyerMap: Record<number, string> = {
@@ -318,14 +420,17 @@ function generateDefaultRacks(checklistsList: TrimsChecklistRecord[] = INITIAL_C
 
 const INITIAL_SURPLUS_TRIMS: SurplusTrimsRecord[] = ((demo2000DataRaw as any)?.jobs || [])
   .filter((j: any) => j.overallStage === 'Shipment')
-  .slice(0, 15)
+  .slice(0, 20)
   .map((j: any, idx: number) => {
     const surplusItems = [
-      { name: 'Sewing Thread 40/2 Black 5,000m Cones', cat: 'THREAD', unit: 'CONES', qty: 18, color: 'Black Beauty 19-4008' },
+      { name: 'Sewing Thread 40/2 Black 5,000m Cones', cat: 'THREAD', unit: 'CONES', qty: 28, color: 'Black Beauty 19-4008' },
       { name: 'Cotton Drawcord Round 8mm Natural', cat: 'TAPE', unit: 'METER', qty: 450, color: 'Natural Unbleached' },
-      { name: 'Metal Snap Fastener 15mm Antique Brass', cat: 'BUTTON', unit: 'GROSS', qty: 12, color: 'Antique Brass' },
-      { name: 'Polybag Self-Adhesive 12x18 with Warning', cat: 'PACKAGING', unit: 'PCS', qty: 1200, color: 'Clear Transparent' },
-      { name: 'Elastic Woven 3.8cm White', cat: 'ELASTIC', unit: 'METER', qty: 320, color: 'Optic White' }
+      { name: 'Metal Snap Fastener 15mm Antique Brass', cat: 'BUTTON', unit: 'GROSS', qty: 16, color: 'Antique Brass' },
+      { name: 'Polybag Self-Adhesive 12x18 with Warning', cat: 'PACKAGING', unit: 'PCS', qty: 1500, color: 'Clear Transparent' },
+      { name: 'Elastic Woven 3.8cm White', cat: 'ELASTIC', unit: 'METER', qty: 380, color: 'Optic White' },
+      { name: 'Nylon Coil Zipper #5 Close-End 18cm', cat: 'ZIPPER', unit: 'PCS', qty: 620, color: 'Navy Peacoat 19-3920' },
+      { name: 'Care Label Satin Printed English/Arabic', cat: 'LABEL', unit: 'PCS', qty: 850, color: 'White / Black' },
+      { name: 'Export Master Carton 5-Ply 60x40x30cm', cat: 'CARTON', unit: 'PCS', qty: 95, color: 'Kraft Brown' }
     ];
     const item = surplusItems[idx % surplusItems.length];
     return {
@@ -364,7 +469,7 @@ export default function TrimsStorePage() {
 
   const [racks, setRacks] = useState<StoreRack[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('nfl_trims_racks_v5');
+      const saved = localStorage.getItem('nfl_trims_racks_v6');
       if (saved) {
         try { return JSON.parse(saved); } catch {}
       }
@@ -374,7 +479,7 @@ export default function TrimsStorePage() {
 
   const [surplusTrims, setSurplusTrims] = useState<SurplusTrimsRecord[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('nfl_trims_surplus_v5');
+      const saved = localStorage.getItem('nfl_trims_surplus_v6');
       if (saved) {
         try { return JSON.parse(saved); } catch {}
       }
@@ -385,12 +490,12 @@ export default function TrimsStorePage() {
   // Recent Searches state
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('nfl_trims_recent_searches_v3');
+      const saved = localStorage.getItem('nfl_trims_recent_searches_v4');
       if (saved) {
         try { return JSON.parse(saved); } catch {}
       }
     }
-    return ['48002', '46755', '48085'];
+    return ['44001', '44004', '44006', '44007'];
   });
 
   const addRecentSearch = (jobNo: string) => {
@@ -399,7 +504,7 @@ export default function TrimsStorePage() {
     setRecentSearches(prev => {
       const next = [clean, ...prev.filter(j => j !== clean)].slice(0, 5);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('nfl_trims_recent_searches_v3', JSON.stringify(next));
+        localStorage.setItem('nfl_trims_recent_searches_v4', JSON.stringify(next));
       }
       return next;
     });
@@ -409,7 +514,7 @@ export default function TrimsStorePage() {
     setRecentSearches(prev => {
       const next = prev.filter(j => j !== jobNo);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('nfl_trims_recent_searches_v3', JSON.stringify(next));
+        localStorage.setItem('nfl_trims_recent_searches_v4', JSON.stringify(next));
       }
       return next;
     });
@@ -418,19 +523,19 @@ export default function TrimsStorePage() {
   // Save changes
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('nfl_trims_checklists_v5', JSON.stringify(checklists));
+      localStorage.setItem('nfl_trims_checklists_v8', JSON.stringify(checklists));
     }
   }, [checklists]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('nfl_trims_racks_v4', JSON.stringify(racks));
+      localStorage.setItem('nfl_trims_racks_v6', JSON.stringify(racks));
     }
   }, [racks]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('nfl_trims_surplus_v4', JSON.stringify(surplusTrims));
+      localStorage.setItem('nfl_trims_surplus_v6', JSON.stringify(surplusTrims));
     }
   }, [surplusTrims]);
 
@@ -456,6 +561,25 @@ export default function TrimsStorePage() {
     }
   };
 
+    const handleResetSampleData = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('nfl_trims_checklists_v8');
+      localStorage.removeItem('nfl_trims_racks_v6');
+      localStorage.removeItem('nfl_trims_surplus_v6');
+      localStorage.removeItem('nfl_trims_recent_searches_v4');
+    }
+    const freshChecklists = generateInitialChecklists();
+    setChecklists(freshChecklists);
+    setRacks(generateDefaultRacks(freshChecklists));
+    setSurplusTrims(INITIAL_SURPLUS_TRIMS);
+    setRecentSearches(['44001', '44004', '44006', '44007']);
+    setReceiveSearchJob('44004');
+    setDeliverySearchJob('44007');
+    setLocationJobQuery('44007');
+    setTvSearchJob('44007');
+    showNotification('success', 'Sample data successfully reloaded across all trims store sections.');
+  };
+
   // Toast / Banner alert notification
   const [notification, setNotification] = useState<{ type: 'success' | 'danger' | 'info'; message: string } | null>(null);
 
@@ -468,6 +592,9 @@ export default function TrimsStorePage() {
   // TAB 1: CHECKLIST REQUESTS STATE & ACTIONS (WITH INLINE ACCORDION UNFOLD)
   // ==========================================================================
   const [checklistFilter, setChecklistFilter] = useState<'ALL' | 'PENDING' | 'ACCEPTED' | 'REVIEW_REQUESTED'>('ALL');
+  const [checklistSearchQuery, setChecklistSearchQuery] = useState('');
+  const [checklistPage, setChecklistPage] = useState(1);
+  const checklistPageSize = 25;
   const [unfoldedJobIds, setUnfoldedJobIds] = useState<Record<string, boolean>>({});
   const [reviewModalJob, setReviewModalJob] = useState<TrimsChecklistRecord | null>(null);
   const [reviewNoteInput, setReviewNoteInput] = useState('');
@@ -481,12 +608,27 @@ export default function TrimsStorePage() {
 
   const filteredChecklistRequests = useMemo(() => {
     return checklists.filter(c => {
-      if (checklistFilter === 'PENDING') return c.checklistStatus === 'PENDING_REVIEW';
-      if (checklistFilter === 'ACCEPTED') return c.checklistStatus === 'ACCEPTED';
-      if (checklistFilter === 'REVIEW_REQUESTED') return c.checklistStatus === 'REVIEW_REQUESTED';
+      if (checklistFilter === 'PENDING' && c.checklistStatus !== 'PENDING_REVIEW') return false;
+      if (checklistFilter === 'ACCEPTED' && c.checklistStatus !== 'ACCEPTED') return false;
+      if (checklistFilter === 'REVIEW_REQUESTED' && c.checklistStatus !== 'REVIEW_REQUESTED') return false;
+      if (checklistSearchQuery.trim()) {
+        const q = checklistSearchQuery.replace(/#/g, '').toLowerCase();
+        return c.jobNo.toLowerCase().includes(q) ||
+               c.buyer.toLowerCase().includes(q) ||
+               c.styleNo.toLowerCase().includes(q) ||
+               c.merchandiser.toLowerCase().includes(q) ||
+               c.itemDescription.toLowerCase().includes(q);
+      }
       return true;
     });
-  }, [checklists, checklistFilter]);
+  }, [checklists, checklistFilter, checklistSearchQuery]);
+
+  const pagedChecklistRequests = useMemo(() => {
+    const start = (checklistPage - 1) * checklistPageSize;
+    return filteredChecklistRequests.slice(start, start + checklistPageSize);
+  }, [filteredChecklistRequests, checklistPage, checklistPageSize]);
+
+  const totalChecklistPages = Math.ceil(filteredChecklistRequests.length / checklistPageSize) || 1;
 
   const handleAcceptChecklist = (jobId: string) => {
     setChecklists(prev => prev.map(c => {
@@ -534,7 +676,7 @@ export default function TrimsStorePage() {
   // ==========================================================================
   // TAB 2: ORDER RECEIVE STATE & ACTIONS
   // ==========================================================================
-  const [receiveSearchJob, setReceiveSearchJob] = useState('48002');
+  const [receiveSearchJob, setReceiveSearchJob] = useState('44004');
   const selectedReceiveJob = useMemo(() => {
     const clean = receiveSearchJob.replace(/#/g, '').trim();
     return checklists.find(c => c.jobNo === clean) || null;
@@ -871,7 +1013,7 @@ export default function TrimsStorePage() {
   // ==========================================================================
   // TAB 4: ORDER DELIVERY STATE & ACTIONS
   // ==========================================================================
-  const [deliverySearchJob, setDeliverySearchJob] = useState('48002');
+  const [deliverySearchJob, setDeliverySearchJob] = useState('44007');
   const selectedDeliveryJob = useMemo(() => {
     const clean = deliverySearchJob.replace(/#/g, '').trim();
     return checklists.find(c => c.jobNo === clean) || null;
@@ -954,7 +1096,7 @@ export default function TrimsStorePage() {
   // ==========================================================================
   const [locationSubTab, setLocationSubTab] = useState<'LAYOUT' | 'JOB_SEARCH' | 'CUSTOMIZE'>('LAYOUT');
   const [selectedRackId, setSelectedRackId] = useState<string>('R-01');
-  const [locationJobQuery, setLocationJobQuery] = useState('48002');
+  const [locationJobQuery, setLocationJobQuery] = useState('44007');
 
   const activeRack = useMemo(() => {
     return racks.find(r => r.rackId === selectedRackId) || racks[0];
@@ -1051,6 +1193,18 @@ export default function TrimsStorePage() {
     return checklists.find(c => c.jobNo === clean) || null;
   }, [checklists, tvSearchJob]);
 
+    // Sample Jobs helpers across areas
+  const sampleReceiveJobs = useMemo(() => {
+    return checklists.filter(c => c.checklistStatus === 'ACCEPTED' && c.items.some(it => it.balanceQty > 0)).slice(0, 7);
+  }, [checklists]);
+
+  const sampleDeliveryJobs = useMemo(() => {
+    return checklists.filter(c => c.items.some(it => (it.receivedQty - it.deliveredQty) > 0)).slice(0, 7);
+  }, [checklists]);
+
+  const sampleStoredJobs = useMemo(() => {
+    return checklists.filter(c => c.items.some(it => it.receivedQty > 0)).slice(0, 8);
+  }, [checklists]);
   const uniqueBuyers = useMemo(() => Array.from(new Set(checklists.map(c => c.buyer))), [checklists]);
   const uniqueMerchandisers = useMemo(() => Array.from(new Set(checklists.map(c => c.merchandiser))), [checklists]);
   const uniqueTnaSlots = useMemo(() => Array.from(new Set(checklists.map(c => c.tnaSlot))), [checklists]);
@@ -1337,8 +1491,8 @@ export default function TrimsStorePage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px', textAlign: 'left' }}>
               <thead>
                 <tr style={{ background: '#0F274E', color: '#FFFFFF', fontSize: '11px', textTransform: 'uppercase' }}>
-                  <th style={{ padding: '10px 14px' }}>Job No</th>
-                  <th style={{ padding: '10px 10px' }}>Buyer</th>
+                  <th style={{ padding: '10px 14px' }}>Buyer</th>
+                  <th style={{ padding: '10px 10px' }}>Job No</th>
                   <th style={{ padding: '10px 10px' }}>Style No</th>
                   <th style={{ padding: '10px 10px' }}>Item Description</th>
                   <th style={{ padding: '10px 10px' }}>Order Qty</th>
@@ -1350,7 +1504,7 @@ export default function TrimsStorePage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredChecklistRequests.map((job) => {
+                {pagedChecklistRequests.map((job: TrimsChecklistRecord) => {
                   const isUnfolded = !!unfoldedJobIds[job.id];
 
                   return (
@@ -1362,10 +1516,14 @@ export default function TrimsStorePage() {
                           transition: 'background 0.15s ease'
                         }}
                       >
-                        <td style={{ padding: '10px 14px', fontWeight: 800, color: '#0F274E' }}>
-                          {job.jobNo}
+                        <td style={{ padding: '10px 14px', fontWeight: 750, color: '#0284C7' }}>
+                          {job.buyer}
                         </td>
-                        <td style={{ padding: '10px 10px', fontWeight: 650, color: '#0284C7' }}>{job.buyer}</td>
+                        <td style={{ padding: '10px 10px', fontWeight: 800, color: '#0F274E' }}>
+                          <Link href={'/jobs/' + encodeURIComponent(job.jobNo)} onClick={e => e.stopPropagation()} style={{ color: '#0F274E', textDecoration: 'none' }} className="hover:underline">
+                            #{job.jobNo}
+                          </Link>
+                        </td>
                         <td style={{ padding: '10px 10px', color: '#334155' }}>{job.styleNo}</td>
                         <td style={{ padding: '10px 10px', color: '#475569', maxWidth: '240px' }}>{job.itemDescription}</td>
                         <td style={{ padding: '10px 10px', fontWeight: 700 }}>{job.orderQty.toLocaleString()} pcs</td>
@@ -1570,7 +1728,7 @@ export default function TrimsStorePage() {
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {job.items.map((it) => (
+                                  {job.items.map((it: TrimsItem) => (
                                     <tr key={it.id} style={{ borderBottom: '1px solid #E2E8F0' }}>
                                       <td style={{ padding: '8px 10px', fontWeight: 700, color: '#0F274E' }}>{it.itemName}</td>
                                       <td style={{ padding: '8px 8px' }}>
@@ -2495,7 +2653,7 @@ export default function TrimsStorePage() {
                     <Boxes size={22} color="#38BDF8" />
                     <div>
                       <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800 }}>
-                        Job {detailModalJob.jobNo} — Complete Trims Specification & Quality Audit
+                        {detailModalJob.buyer} — Job #{detailModalJob.jobNo} (Complete Trims Spec & QC)
                       </h3>
                       <div style={{ fontSize: '12px', color: '#93C5FD', marginTop: '2px' }}>
                         {detailModalJob.buyer} • Style {detailModalJob.styleNo} • Order {detailModalJob.orderQty.toLocaleString()} pcs • Merchandiser: {detailModalJob.merchandiser}
@@ -3198,7 +3356,7 @@ export default function TrimsStorePage() {
               {searchedJobLocations ? (
                 <div>
                   <div style={{ background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '6px', padding: '10px 14px', marginBottom: '12px', fontSize: '13px' }}>
-                    <strong>Job {searchedJobLocations.jobNo}</strong> ({searchedJobLocations.buyer} - {searchedJobLocations.styleNo}) — {searchedJobLocations.itemDescription}
+                    <strong style={{ color: '#0284C7' }}>{searchedJobLocations.buyer}</strong> • <strong>Job #{searchedJobLocations.jobNo}</strong> ({searchedJobLocations.styleNo}) — {searchedJobLocations.itemDescription}
                   </div>
 
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
@@ -3764,7 +3922,7 @@ export default function TrimsStorePage() {
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.3)', padding: '12px 16px', borderRadius: '8px', marginBottom: '14px' }}>
                     <div>
-                      <span style={{ fontSize: '13px', color: '#93C5FD' }}>JOB {tvSelectedJob.jobNo} • {tvSelectedJob.buyer}</span>
+                      <span style={{ fontSize: '13px', color: '#93C5FD' }}>BUYER: <strong style={{ color: '#FFFFFF' }}>{tvSelectedJob.buyer}</strong> • JOB #{tvSelectedJob.jobNo}</span>
                       <div style={{ fontSize: '18px', fontWeight: 800, color: '#FFFFFF' }}>{tvSelectedJob.styleNo} — {tvSelectedJob.itemDescription}</div>
                     </div>
                     <div style={{ textAlign: 'right' }}>

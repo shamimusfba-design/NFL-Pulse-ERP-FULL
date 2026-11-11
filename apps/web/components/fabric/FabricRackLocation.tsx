@@ -1,51 +1,193 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { Warehouse, Search, MapPin, ArrowRight, X, Check } from 'lucide-react';
+import {
+  Warehouse,
+  Search,
+  MapPin,
+  ArrowRight,
+  X,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Plus,
+  Trash2,
+  Package,
+  Layers,
+  ExternalLink,
+  FileSpreadsheet
+} from 'lucide-react';
 
 /**
- * Finished Fabric Store — rack & shelf location tracking.
- * 20 racks × 9 shelves. A shelf holds one colour of one job. Racks are NOT buyer-fixed:
- * a colour is placed on whichever shelf is free when it arrives, and the system keeps track.
+ * Finished Fabric Store — 20 Master Racks × 20 Shelves location tracking.
+ * Mirrors the Trims & Accessories location tracking layout.
+ * Racks are general (not buyer-fixed). A shelf can hold multiple jobs/colors.
  */
 
 export const FABRIC_RACKS = 20;
-export const FABRIC_SHELVES = 9;
+export const FABRIC_SHELVES = 20;
 
-export type ShelfAssignment = { lineId: string; placedOn: string; custom?: string };
-/** key = shelfId "R01-S1" for a rack shelf, or "X:<lineId>" for a place outside the racks (custom text) */
-export type RackLocations = Record<string, ShelfAssignment>;
+export interface ShelfItem {
+  lineId: string;
+  jobNo: string;
+  buyer: string;
+  style: string;
+  color: string;
+  fabric?: string;
+  kg: number;
+  rolls?: number;
+  placedOn: string;
+  custom?: string;
+}
+
+/**
+ * Key = "R01-S01" to "R20-S20", or "X:<lineId>" for custom locations outside racks.
+ * Supports array of ShelfItem per shelf (multi-job / multi-color shelf support).
+ */
+export type RackLocations = Record<string, ShelfItem[] | any>;
+
 export const isShelfKey = (k: string) => /^R\d+-S\d+$/.test(k);
 export const customKey = (lineId: string) => `X:${lineId}`;
-/** Human label for any location key */
+
+export const shelfId = (rack: number, shelf: number) =>
+  `R${String(rack).padStart(2, '0')}-S${String(shelf).padStart(2, '0')}`;
+
+export const shelfLabel = (id: string) => {
+  const m = /^R(\d+)-S(\d+)$/.exec(id);
+  if (!m) return id;
+  return `Rack ${m[1]} · Shelf ${m[2]}`;
+};
+
+export const ALL_SHELVES: string[] = Array.from({ length: FABRIC_RACKS }, (_, r) =>
+  Array.from({ length: FABRIC_SHELVES }, (_, s) => shelfId(r + 1, s + 1))
+).flat();
+
+/** Normalize any stored shelf value into an array of ShelfItem */
+export function getShelfItems(locations: RackLocations, sid: string): ShelfItem[] {
+  const val = locations[sid];
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  // Backwards compatibility with v1 single assignment { lineId, placedOn, custom }
+  if (val && typeof val === 'object' && val.lineId) {
+    return [{
+      lineId: val.lineId,
+      jobNo: val.jobNo || '',
+      buyer: val.buyer || '',
+      style: val.style || '',
+      color: val.color || '',
+      fabric: val.fabric || '',
+      kg: Number(val.kg) || 0,
+      rolls: Number(val.rolls) || 1,
+      placedOn: val.placedOn || '',
+      custom: val.custom,
+    }];
+  }
+  return [];
+}
+
+/** Human label for any location */
 export function locLabel(key: string | undefined, locations: RackLocations): string {
   if (!key) return '';
   if (isShelfKey(key)) return shelfLabel(key);
-  return `Other: ${locations[key]?.custom || '—'}`;
+  const items = getShelfItems(locations, key);
+  return items[0]?.custom ? `Other: ${items[0].custom}` : key;
 }
-/** Put a colour at a shelf or a custom place; removes its previous location. Returns the new map. */
-export function assignLocation(locations: RackLocations, lineId: string, pick: LocationPick, placedOn: string): RackLocations {
-  const next: RackLocations = {};
-  Object.entries(locations).forEach(([k, a]) => { if (a.lineId !== lineId) next[k] = a; });
-  if (pick.mode === 'shelf' && pick.shelf) next[pick.shelf] = { lineId, placedOn };
-  if (pick.mode === 'other' && pick.other.trim()) next[customKey(lineId)] = { lineId, placedOn, custom: pick.other.trim() };
-  return next;
-}
+
 export type LocationPick = { mode: 'shelf' | 'other'; rack: string; shelf: string; other: string };
 export const emptyPick = (): LocationPick => ({ mode: 'shelf', rack: '', shelf: '', other: '' });
-export const pickIsValid = (p: LocationPick, locations: RackLocations) =>
-  p.mode === 'shelf' ? !!p.shelf && !locations[p.shelf] : p.other.trim().length > 0;
-export const pickLabel = (p: LocationPick) => (p.mode === 'shelf' ? (p.shelf ? shelfLabel(p.shelf) : '') : p.other.trim() ? `Other: ${p.other.trim()}` : '');
+
+export const pickIsValid = (p: LocationPick, _locations?: RackLocations) => {
+  if (p.mode === 'shelf') return !!p.shelf;
+  return p.other.trim().length > 0;
+};
+
+export const pickLabel = (p: LocationPick) => {
+  if (p.mode === 'shelf') return p.shelf ? shelfLabel(p.shelf) : '';
+  return p.other.trim() ? `Other: ${p.other.trim()}` : '';
+};
+
+/** Put a colour at a shelf or a custom place. Returns the updated map. */
+export function assignLocation(
+  locations: RackLocations,
+  lineId: string,
+  pick: LocationPick,
+  placedOn: string,
+  extra?: Partial<ShelfItem>
+): RackLocations {
+  const next: RackLocations = {};
+
+  // Copy existing, removing this lineId from any previous shelf
+  Object.entries(locations).forEach(([k, val]) => {
+    const list = getShelfItems(locations, k).filter(it => it.lineId !== lineId);
+    if (list.length > 0) next[k] = list;
+  });
+
+  const newItem: ShelfItem = {
+    lineId,
+    jobNo: extra?.jobNo || '',
+    buyer: extra?.buyer || '',
+    style: extra?.style || '',
+    color: extra?.color || '',
+    fabric: extra?.fabric || '',
+    kg: Number(extra?.kg) || 0,
+    rolls: Number(extra?.rolls) || 1,
+    placedOn,
+    custom: pick.mode === 'other' ? pick.other.trim() : undefined,
+  };
+
+  const targetKey = pick.mode === 'shelf' ? pick.shelf : customKey(lineId);
+  if (targetKey) {
+    const current = next[targetKey] ? [...next[targetKey]] : [];
+    current.push(newItem);
+    next[targetKey] = current;
+  }
+
+  return next;
+}
+
+export interface RackLine {
+  id: string;
+  buyer: string;
+  jobNo: string;
+  style: string;
+  color: string;
+  fabric: string;
+  fabricType?: string;
+  composition?: string;
+  gsm: string;
+  dia: string;
+  reqBody?: number;
+  reqRib?: number;
+  reqSJ?: number;
+  totalReq?: number;
+  recvBody?: number;
+  recvRib?: number;
+  recvSJ?: number;
+  totalRecv?: number;
+  issuedBody?: number;
+  issuedRib?: number;
+  issuedSJ?: number;
+  totalIssued?: number;
+  stockBalance: number;
+  deliveryDate?: string;
+}
+
+const BUYER_COLORS = ['#2563eb', '#7c3aed', '#db2777', '#d97706', '#059669', '#0891b2', '#dc2626', '#4f46e5', '#65a30d', '#0f766e'];
+export function buyerColor(buyer: string) {
+  let h = 0;
+  for (const ch of buyer || '') h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return BUYER_COLORS[h % BUYER_COLORS.length];
+}
+
+const today = () => new Date().toISOString().slice(0, 10);
 
 /**
- * Rack → Shelf dropdowns (taken shelves are shown but cannot be chosen) and an
- * "Other place" option for fabric kept anywhere outside the 20 racks — typed by the store keeper.
+ * Dropdown picker for selecting Rack & Shelf
  */
 export function LocationPicker({
   locations,
   value,
   onChange,
-  lineLabel,
   compact = false,
 }: {
   locations: RackLocations;
@@ -54,8 +196,7 @@ export function LocationPicker({
   lineLabel?: (lineId: string) => string;
   compact?: boolean;
 }) {
-  const freeIn = (rack: number) => Array.from({ length: FABRIC_SHELVES }, (_, i) => shelfId(rack, i + 1)).filter(s => !locations[s]).length;
-  const sel = 'border border-slate-400 rounded-md px-2 py-1.5 text-[13px] text-slate-900 bg-white';
+  const sel = 'border border-slate-300 rounded-md px-2.5 py-1.5 text-xs text-slate-800 bg-white font-medium focus:outline-none focus:ring-1 focus:ring-slate-900';
   return (
     <div className={`flex ${compact ? 'flex-wrap' : 'flex-wrap'} items-center gap-2`}>
       <select
@@ -67,17 +208,18 @@ export function LocationPicker({
           else onChange({ ...value, mode: 'shelf', rack: v, shelf: '' });
         }}
       >
-        <option value="">Rack…</option>
+        <option value="">Select Rack...</option>
         {Array.from({ length: FABRIC_RACKS }, (_, r) => {
-          const f = freeIn(r + 1);
+          const rNum = r + 1;
           return (
-            <option key={r} value={String(r + 1)} disabled={f === 0}>
-              Rack {String(r + 1).padStart(2, '0')} — {f ? `${f} free` : 'full'}
+            <option key={r} value={String(rNum)}>
+              Rack R-{String(rNum).padStart(2, '0')} (Finished Store)
             </option>
           );
         })}
-        <option value="__other">Other place (write it)…</option>
+        <option value="__other">Other Store Location (Custom Text)...</option>
       </select>
+
       {value.mode === 'shelf' && (
         <select
           className={sel}
@@ -85,24 +227,26 @@ export function LocationPicker({
           disabled={!value.rack}
           onChange={e => onChange({ ...value, shelf: e.target.value })}
         >
-          <option value="">Shelf…</option>
+          <option value="">Select Shelf (1-20)...</option>
           {value.rack &&
             Array.from({ length: FABRIC_SHELVES }, (_, i) => {
               const sid = shelfId(Number(value.rack), i + 1);
-              const a = locations[sid];
+              const items = getShelfItems(locations, sid);
+              const count = items.length;
               return (
-                <option key={sid} value={sid} disabled={!!a}>
-                  Shelf {i + 1}{a ? ` — taken${lineLabel ? ` (${lineLabel(a.lineId)})` : ''}` : ' — free'}
+                <option key={sid} value={sid}>
+                  Shelf {String(i + 1).padStart(2, '0')}{count > 0 ? ` (${count} items stored)` : ' (Free)'}
                 </option>
               );
             })}
         </select>
       )}
+
       {value.mode === 'other' && (
         <input
           autoFocus
           className={`${sel} min-w-[220px]`}
-          placeholder="e.g. Floor near gate 2, Cutting buffer, Bay 3"
+          placeholder="e.g. Floor buffer gate 2, Bay 3, NCL Store"
           value={value.other}
           onChange={e => onChange({ ...value, other: e.target.value })}
         />
@@ -111,50 +255,9 @@ export function LocationPicker({
   );
 }
 
-export type RackLine = {
-  id: string;
-  buyer: string;
-  jobNo: string;
-  style: string;
-  color: string;
-  fabric: string;
-  gsm: string;
-  dia: string;
-  stockBalance: number;
-  deliveryDate: string;
-};
-
-export const shelfId = (rack: number, shelf: number) => `R${String(rack).padStart(2, '0')}-S${shelf}`;
-export const shelfLabel = (id: string) => {
-  const m = /^R(\d+)-S(\d+)$/.exec(id);
-  return m ? `Rack ${m[1]} · Shelf ${m[2]}` : id;
-};
-export const ALL_SHELVES: string[] = Array.from({ length: FABRIC_RACKS }, (_, r) =>
-  Array.from({ length: FABRIC_SHELVES }, (_, s) => shelfId(r + 1, s + 1))
-).flat();
-
-/** (Demo only — no longer used: real placements are entered by the store.) */
-export function seedRackLocations(lines: RackLine[]): RackLocations {
-  const inStore = lines
-    .filter(l => l.stockBalance > 0.5)
-    .sort((a, b) => String(b.deliveryDate).localeCompare(String(a.deliveryDate)));
-  const out: RackLocations = {};
-  const fill = Math.round(ALL_SHELVES.length * 0.82);
-  ALL_SHELVES.slice(0, fill).forEach((sid, i) => {
-    const l = inStore[i];
-    if (l) out[sid] = { lineId: l.id, placedOn: l.deliveryDate };
-  });
-  return out;
-}
-
-const BUYER_COLORS = ['#2563eb', '#7c3aed', '#db2777', '#d97706', '#059669', '#0891b2', '#dc2626', '#4f46e5', '#65a30d', '#0f766e'];
-export function buyerColor(buyer: string) {
-  let h = 0;
-  for (const ch of buyer || '') h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return BUYER_COLORS[h % BUYER_COLORS.length];
-}
-
-const today = () => new Date().toISOString().slice(0, 10);
+// ============================================================================
+// MAIN COMPONENT: FABRIC RACK LOCATION TRACKING (20 RACKS × 20 SHELVES)
+// ============================================================================
 
 export default function FabricRackLocation({
   lines,
@@ -169,390 +272,559 @@ export default function FabricRackLocation({
   initialSub?: 'racks' | 'tracking';
   initialQuery?: string;
 }) {
-  const [sub, setSub] = useState<'racks' | 'tracking'>(initialSub);
-  const [query, setQuery] = useState(initialQuery);
-  const [selShelf, setSelShelf] = useState<string | null>(null);
-  const [jobQuery, setJobQuery] = useState(initialQuery);
-  const [selJob, setSelJob] = useState<string | null>(initialQuery || null);
-  const [moveTo, setMoveTo] = useState('');
-  const [placeLine, setPlaceLine] = useState('');
+  const [subTab, setSubTab] = useState<'LAYOUT' | 'JOB_SEARCH'>(
+    initialSub === 'tracking' ? 'JOB_SEARCH' : 'LAYOUT'
+  );
+  const [selectedRackNum, setSelectedRackNum] = useState<number>(1);
+  const [expandedShelf, setExpandedShelf] = useState<string | null>(null);
+  const [jobSearchQuery, setJobSearchQuery] = useState(initialQuery || '48002');
+  const [floorPlanSearch, setFloorPlanSearch] = useState('');
+  const [addFabricLineId, setAddFabricLineId] = useState('');
 
+  // Map of lineId -> line
   const byId = useMemo(() => {
     const m = new Map<string, RackLine>();
     lines.forEach(l => m.set(l.id, l));
     return m;
   }, [lines]);
 
-  const lineShelf = useMemo(() => {
-    const m: Record<string, string> = {};
-    Object.entries(locations).forEach(([sid, a]) => (m[a.lineId] = sid));
+  // Lookup of lineId -> shelf keys where it is placed
+  const lineShelfMap = useMemo(() => {
+    const m: Record<string, string[]> = {};
+    Object.entries(locations).forEach(([sid, val]) => {
+      const items = getShelfItems(locations, sid);
+      items.forEach(it => {
+        if (!m[it.lineId]) m[it.lineId] = [];
+        m[it.lineId].push(sid);
+      });
+    });
     return m;
   }, [locations]);
-  const otherCount = Object.keys(locations).filter(k => !isShelfKey(k)).length;
-  const lineName = (id: string) => { const l = byId.get(id); return l ? `${l.jobNo} ${l.color}` : ''; };
 
-  const freeShelves = useMemo(() => ALL_SHELVES.filter(s => !locations[s]), [locations]);
-  const inStore = useMemo(() => lines.filter(l => l.stockBalance > 0.5), [lines]);
-  const unplaced = useMemo(() => inStore.filter(l => !lineShelf[l.id]), [inStore, lineShelf]);
-  const occupied = ALL_SHELVES.length - freeShelves.length;
-  const savePick = (lineId: string, pick: LocationPick) => {
-    if (!pickIsValid(pick, locations)) return;
-    const l = byId.get(lineId);
-    onChange(assignLocation(locations, lineId, pick, today()), `${l?.jobNo} · ${l?.color} → ${pickLabel(pick)}`);
-  };
+  // Stats across the 400 shelves
+  const shelfStats = useMemo(() => {
+    let occupiedCount = 0;
+    let totalItems = 0;
+    let totalKg = 0;
+    const rackOccMap: Record<number, number> = {};
 
-  const q = query.trim().toLowerCase();
-  const matches = (sid: string) => {
-    if (!q) return true;
-    const a = locations[sid];
-    const l = a && byId.get(a.lineId);
-    if (!l) return false;
-    return `${l.jobNo} ${l.color} ${l.style} ${l.buyer}`.toLowerCase().includes(q);
-  };
-  const matchCount = q ? ALL_SHELVES.filter(matches).length : 0;
+    for (let r = 1; r <= FABRIC_RACKS; r++) {
+      let rOcc = 0;
+      for (let s = 1; s <= FABRIC_SHELVES; s++) {
+        const sid = shelfId(r, s);
+        const items = getShelfItems(locations, sid);
+        if (items.length > 0) {
+          occupiedCount++;
+          rOcc++;
+          totalItems += items.length;
+          items.forEach(it => { totalKg += Number(it.kg) || 0; });
+        }
+      }
+      rackOccMap[r] = rOcc;
+    }
 
-  // ---- actions ----
-  const move = (from: string, to: string) => {
-    const a = locations[from];
-    if (!a || !to || locations[to]) return;
-    const next = { ...locations };
-    delete next[from];
-    next[to] = { lineId: a.lineId, placedOn: today() };
-    const l = byId.get(a.lineId);
-    onChange(next, `${l?.jobNo} · ${l?.color} moved to ${shelfLabel(to)}`);
-    setSelShelf(to);
-    setMoveTo('');
-  };
-  const clear = (sid: string) => {
-    const a = locations[sid];
-    if (!a) return;
-    const next = { ...locations };
-    delete next[sid];
-    const l = byId.get(a.lineId);
-    onChange(next, `${shelfLabel(sid)} is now free (${l?.jobNo} · ${l?.color} taken out)`);
-  };
-  const place = (sid: string, lineId: string) => {
-    if (!lineId || locations[sid]) return;
-    const existing = lineShelf[lineId];
-    const next = { ...locations };
-    if (existing) delete next[existing];
-    next[sid] = { lineId, placedOn: today() };
-    const l = byId.get(lineId);
-    onChange(next, `${l?.jobNo} · ${l?.color} placed on ${shelfLabel(sid)}`);
-    setPlaceLine('');
-    setSelShelf(sid);
-  };
+    return {
+      totalShelves: ALL_SHELVES.length,
+      occupiedCount,
+      freeCount: ALL_SHELVES.length - occupiedCount,
+      totalItems,
+      totalKg,
+      rackOccMap,
+    };
+  }, [locations]);
 
-  // ---- job-wise tracking data ----
-  const jobs = useMemo(() => {
-    const m = new Map<string, { key: string; buyer: string; jobNo: string; style: string; colors: RackLine[] }>();
-    inStore.forEach(l => {
-      const key = `${l.buyer}|${l.jobNo}`;
-      if (!m.has(key)) m.set(key, { key, buyer: l.buyer, jobNo: l.jobNo, style: l.style, colors: [] });
-      m.get(key)!.colors.push(l);
+  // Available in-store lines not yet on a rack
+  const unplacedLines = useMemo(() => {
+    return lines.filter(l => l.stockBalance > 0.5 && (!lineShelfMap[l.id] || lineShelfMap[l.id].length === 0));
+  }, [lines, lineShelfMap]);
+
+  // Handle adding an item to currently expanded shelf
+  const handleAddItemToShelf = (sid: string, lineId: string) => {
+    if (!lineId) return;
+    const line = byId.get(lineId);
+    if (!line) return;
+
+    const next = assignLocation(locations, lineId, { mode: 'shelf', rack: String(selectedRackNum), shelf: sid, other: '' }, today(), {
+      jobNo: line.jobNo,
+      buyer: line.buyer,
+      style: line.style,
+      color: line.color,
+      fabric: `${line.fabric} ${line.gsm} GSM`,
+      kg: line.stockBalance,
+      rolls: 1,
     });
-    const placedCount = (j: { colors: RackLine[] }) => j.colors.filter(c => lineShelf[c.id]).length;
-    return Array.from(m.values()).sort((a, b) => placedCount(b) - placedCount(a) || a.jobNo.localeCompare(b.jobNo));
-  }, [inStore, lineShelf]);
-  const jq = jobQuery.trim().toLowerCase();
-  const jobList = useMemo(
-    () => jobs.filter(j => !jq || `${j.jobNo} ${j.buyer} ${j.style} ${j.colors.map(c => c.color).join(' ')}`.toLowerCase().includes(jq)).slice(0, 80),
-    [jobs, jq]
-  );
-  const activeJob = jobs.find(j => j.key === selJob) || (jq ? jobList[0] : undefined);
 
-  const showOnRack = (sid: string, jobNo: string) => {
-    setSub('racks');
-    setQuery(jobNo);
-    setSelShelf(sid);
+    onChange(next, `Added ${line.jobNo} (${line.color}) to ${shelfLabel(sid)}`);
+    setAddFabricLineId('');
   };
 
-  const sel = selShelf ? locations[selShelf] : undefined;
-  const selLine = sel ? byId.get(sel.lineId) : undefined;
+  // Handle removing item from shelf
+  const handleRemoveItem = (sid: string, lineId: string) => {
+    const items = getShelfItems(locations, sid).filter(it => it.lineId !== lineId);
+    const next = { ...locations };
+    if (items.length > 0) {
+      next[sid] = items;
+    } else {
+      delete next[sid];
+    }
+    const line = byId.get(lineId);
+    onChange(next, `Removed ${line?.jobNo || ''} from ${shelfLabel(sid)}`);
+  };
 
-  const subBtn = (k: 'racks' | 'tracking', label: string, icon: React.ReactNode) => (
-    <button
-      type="button"
-      onClick={() => setSub(k)}
-      className={`px-4 py-2 rounded-lg text-[13px] font-bold flex items-center gap-2 border ${
-        sub === k ? 'nos-tab-on' : 'bg-white text-slate-800 border-slate-300 hover:bg-slate-50'
-      }`}
-    >
-      {icon}
-      {label}
-    </button>
-  );
+  // Job Search matching
+  const searchedJob = useMemo(() => {
+    const q = jobSearchQuery.trim().toLowerCase();
+    if (!q) return null;
+
+    // Find all lines matching jobNo
+    const matched = lines.filter(l =>
+      l.jobNo.toLowerCase().includes(q) ||
+      l.buyer.toLowerCase().includes(q) ||
+      l.style.toLowerCase().includes(q)
+    );
+
+    if (matched.length === 0) return null;
+
+    const first = matched[0];
+    return {
+      jobNo: first.jobNo,
+      buyer: first.buyer,
+      style: first.style,
+      fabric: first.fabric,
+      gsm: first.gsm,
+      dia: first.dia,
+      colors: matched,
+    };
+  }, [lines, jobSearchQuery]);
+
+  const selectedRackId = `R-${String(selectedRackNum).padStart(2, '0')}`;
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2">
-        {subBtn('racks', `Store Rack View (${FABRIC_RACKS} Racks × ${FABRIC_SHELVES} Shelves)`, <Warehouse className="w-4 h-4" />)}
-        {subBtn('tracking', 'Job-wise Location Tracking', <MapPin className="w-4 h-4" />)}
-        <div className="ml-auto flex flex-wrap gap-2 text-[12.5px] font-semibold">
-          <span className="px-2.5 py-1 rounded-md border border-slate-300 bg-white text-slate-800">Shelves: {ALL_SHELVES.length}</span>
-          <span className="px-2.5 py-1 rounded-md border border-sky-300 bg-sky-50 text-sky-900">Occupied: {occupied}</span>
-          <span className="px-2.5 py-1 rounded-md border border-emerald-300 bg-emerald-50 text-emerald-900">Free: {freeShelves.length}</span>
-          <span className="px-2.5 py-1 rounded-md border border-violet-300 bg-violet-50 text-violet-900">Other places: {otherCount}</span>
-          <span className="px-2.5 py-1 rounded-md border border-amber-300 bg-amber-50 text-amber-900">In store, location not entered: {unplaced.length}</span>
+      {/* =================================================================== */}
+      {/* SUB-TABS: 1. Present Store Layout | 2. Job-wise Location Search */}
+      {/* =================================================================== */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setSubTab('LAYOUT')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+              subTab === 'LAYOUT'
+                ? 'bg-[#0F274E] text-white shadow-xs'
+                : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <Warehouse size={15} color={subTab === 'LAYOUT' ? '#38BDF8' : '#64748B'} />
+            <span>1. Present Store Layout (20 Master Racks × 20 Shelves)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSubTab('JOB_SEARCH')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+              subTab === 'JOB_SEARCH'
+                ? 'bg-[#0F274E] text-white shadow-xs'
+                : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <Search size={15} color={subTab === 'JOB_SEARCH' ? '#38BDF8' : '#64748B'} />
+            <span>2. Job-wise Location Search</span>
+          </button>
+        </div>
+
+        {/* Global Summary Badge Counters */}
+        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
+          <span className="px-2.5 py-1 rounded-md bg-white border border-slate-200 text-slate-700">
+            Total Shelves: <strong className="text-slate-900">{shelfStats.totalShelves}</strong>
+          </span>
+          <span className="px-2.5 py-1 rounded-md bg-sky-50 border border-sky-200 text-sky-800">
+            Occupied: <strong className="text-sky-900">{shelfStats.occupiedCount}</strong>
+          </span>
+          <span className="px-2.5 py-1 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800">
+            Free: <strong className="text-emerald-900">{shelfStats.freeCount}</strong>
+          </span>
+          <span className="px-2.5 py-1 rounded-md bg-purple-50 border border-purple-200 text-purple-800">
+            In Store Total: <strong className="text-purple-900">{Math.round(shelfStats.totalKg).toLocaleString()} kg</strong>
+          </span>
+          {unplacedLines.length > 0 && (
+            <span className="px-2.5 py-1 rounded-md bg-amber-50 border border-amber-200 text-amber-800">
+              Unplaced Fabrics: <strong className="text-amber-900">{unplacedLines.length}</strong>
+            </span>
+          )}
         </div>
       </div>
 
-      {sub === 'racks' && (
-        <div className="grid gap-4" style={{ gridTemplateColumns: 'minmax(0,1fr) 330px' }}>
-          <div className="bg-white rounded-xl border border-slate-300 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-              <h3 className="text-[15px] font-extrabold text-slate-900 m-0">Finished Fabric Store — Rack Floor Plan</h3>
+      {/* =================================================================== */}
+      {/* SUB-TAB 1: PRESENT STORE LAYOUT (20 RACKS GRID + SELECTED RACK MATRIX) */}
+      {/* =================================================================== */}
+      {subTab === 'LAYOUT' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+          {/* LEFT 7-8 COLS: Warehouse Floor Plan (20 Master Racks) */}
+          <div className="lg:col-span-8 bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-100">
+              <div>
+                <h3 className="text-sm font-extrabold text-[#0F274E] m-0 flex items-center gap-2">
+                  <Warehouse className="w-4 h-4 text-sky-600" />
+                  Warehouse Floor Plan (20 Master Racks)
+                </h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  General Fabric Storage Racks · Each rack contains 20 storage shelves
+                </p>
+              </div>
+
+              {/* Floor Plan Quick Filter */}
               <div className="relative">
-                <Search className="w-4 h-4 text-slate-600 absolute left-2.5 top-2" />
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
                 <input
-                  value={query}
-                  onChange={e => setQuery(e.target.value)}
-                  placeholder="Find job, colour or style on the racks"
-                  className="pl-8 pr-8 py-1.5 text-[13px] rounded-lg border border-slate-300 w-[300px] text-slate-900"
+                  type="text"
+                  value={floorPlanSearch}
+                  onChange={e => setFloorPlanSearch(e.target.value)}
+                  placeholder="Find Job / Color on racks..."
+                  className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 w-[220px] focus:outline-none focus:ring-1 focus:ring-slate-900"
                 />
-                {query && (
-                  <button onClick={() => setQuery('')} className="absolute right-2 top-1.5 text-slate-600" title="Clear">
-                    <X className="w-4 h-4" />
+                {floorPlanSearch && (
+                  <button onClick={() => setFloorPlanSearch('')} className="absolute right-2 top-2 text-slate-400 hover:text-slate-700">
+                    <X className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
             </div>
-            {q && (
-              <div className="mb-3 text-[13px] font-semibold text-slate-800">
-                {matchCount ? `${matchCount} shelf${matchCount > 1 ? 'ves' : ''} found for “${query}” — highlighted below` : `Nothing on the racks matches “${query}”`}
-              </div>
-            )}
-            <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(178px, 1fr))' }}>
-              {Array.from({ length: FABRIC_RACKS }, (_, r) => {
-                const rack = r + 1;
-                const shelves = Array.from({ length: FABRIC_SHELVES }, (_, s) => shelfId(rack, FABRIC_SHELVES - s)); // top shelf first
-                const used = shelves.filter(s => locations[s]).length;
+
+            {/* 20 RACKS GRID (5 Columns × 4 Rows) */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
+              {Array.from({ length: FABRIC_RACKS }, (_, i) => {
+                const rNum = i + 1;
+                const rId = `R-${String(rNum).padStart(2, '0')}`;
+                const isSelected = selectedRackNum === rNum;
+                const occ = shelfStats.rackOccMap[rNum] || 0;
+
+                // Check if this rack matches floor search
+                const hasMatch = floorPlanSearch.trim() && Array.from({ length: FABRIC_SHELVES }, (_, s) => {
+                  const sid = shelfId(rNum, s + 1);
+                  const items = getShelfItems(locations, sid);
+                  return items.some(it =>
+                    `${it.jobNo} ${it.color} ${it.buyer} ${it.style}`.toLowerCase().includes(floorPlanSearch.toLowerCase())
+                  );
+                }).some(Boolean);
+
                 return (
-                  <div key={rack} className="rounded-lg border border-slate-300 bg-slate-50 overflow-hidden">
-                    <div className="flex items-center justify-between px-2.5 py-1.5 bg-slate-100 border-b border-slate-300">
-                      <span className="text-[13px] font-extrabold text-slate-900">Rack {String(rack).padStart(2, '0')}</span>
-                      <span className={`text-[11.5px] font-bold ${used === FABRIC_SHELVES ? 'text-rose-700' : 'text-slate-700'}`}>
-                        {used}/{FABRIC_SHELVES}
-                      </span>
+                  <div
+                    key={rNum}
+                    onClick={() => {
+                      setSelectedRackNum(rNum);
+                      setExpandedShelf(null);
+                    }}
+                    className={`cursor-pointer rounded-xl border p-3 transition-all text-center flex flex-col justify-between ${
+                      isSelected
+                        ? 'bg-[#0F274E] text-white border-[#0F274E] shadow-md ring-2 ring-sky-400/50'
+                        : hasMatch
+                        ? 'bg-amber-50 border-amber-400 text-slate-900 shadow-xs'
+                        : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-800'
+                    }`}
+                    style={{ minHeight: '92px' }}
+                  >
+                    <div>
+                      <div className={`text-xs font-black tracking-wider ${isSelected ? 'text-white' : 'text-[#0F274E]'}`}>
+                        {rId}
+                      </div>
+                      <div className={`text-[10px] uppercase font-bold mt-0.5 ${isSelected ? 'text-sky-300' : 'text-slate-500'}`}>
+                        General Fabric
+                      </div>
                     </div>
-                    <div className="flex flex-col gap-1 p-1.5">
-                      {shelves.map(sid => {
-                        const a = locations[sid];
-                        const l = a && byId.get(a.lineId);
-                        const hit = matches(sid);
-                        const isSel = sid === selShelf;
-                        const sNo = sid.split('-S')[1];
-                        return (
-                          <button
-                            key={sid}
-                            type="button"
-                            onClick={() => setSelShelf(sid)}
-                            title={l ? `${shelfLabel(sid)}\n${l.buyer} ${l.jobNo} · ${l.color}\n${Math.round(l.stockBalance)} kg` : `${shelfLabel(sid)} — empty`}
-                            className="text-left rounded-md flex items-center gap-1.5 px-1.5 py-1 transition-opacity"
-                            style={{
-                              background: l ? '#ffffff' : 'transparent',
-                              border: isSel ? '2px solid #0f274e' : l ? '1px solid #cbd5e1' : '1px dashed #94a3b8',
-                              borderLeft: l ? `4px solid ${buyerColor(l.buyer)}` : undefined,
-                              opacity: q && !hit ? 0.28 : 1,
-                              boxShadow: q && hit && l ? '0 0 0 2px #f59e0b' : undefined,
-                              minHeight: 30,
-                            }}
-                          >
-                            <span className="text-[10.5px] font-bold text-slate-600 w-5 shrink-0">S{sNo}</span>
-                            {l ? (
-                              <span className="min-w-0 leading-tight">
-                                <span className="block text-[11.5px] font-extrabold text-slate-900 truncate">{l.jobNo}</span>
-                                <span className="block text-[10.5px] font-semibold text-slate-700 truncate">{l.color}</span>
-                              </span>
-                            ) : (
-                              <span className="text-[11px] font-semibold text-slate-500">Empty</span>
-                            )}
-                          </button>
-                        );
-                      })}
+
+                    <div className="mt-2 pt-2 border-t border-slate-100/20">
+                      <div className={`text-[11px] font-semibold ${isSelected ? 'text-slate-200' : occ > 0 ? 'text-sky-700' : 'text-slate-400'}`}>
+                        {occ} / 20 Shelves
+                      </div>
+                      {/* Mini visual occupancy bar */}
+                      <div className="w-full h-1.5 bg-slate-200/40 rounded-full mt-1 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${
+                            isSelected ? 'bg-sky-400' : occ > 15 ? 'bg-rose-500' : occ > 0 ? 'bg-sky-600' : 'bg-transparent'
+                          }`}
+                          style={{ width: `${(occ / 20) * 100}%` }}
+                        />
+                      </div>
                     </div>
                   </div>
                 );
               })}
             </div>
+
+            <div className="mt-5 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between text-[11px] text-slate-500">
+              <span>● Click any Rack above to view its 20 Storage Shelves on the right.</span>
+              <span>● Click on any shelf row to fold/unfold items stored inside.</span>
+            </div>
           </div>
 
-          {/* selected shelf */}
-          <div className="bg-white rounded-xl border border-slate-300 p-4 self-start sticky top-4">
-            {!selShelf && (
-              <div className="text-[13px] text-slate-700 font-medium">
-                Click any shelf to see what is stored there, move it, take it out, or place a newly received colour on an empty shelf.
+          {/* RIGHT 4-5 COLS: Selected Rack Matrix (Shelf 01 to Shelf 20) */}
+          <div className="lg:col-span-4 bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex flex-col sticky top-4">
+            <div className="border-b border-slate-100 pb-3 mb-3">
+              <div className="text-[10px] text-slate-400 uppercase font-black tracking-wider">
+                SELECTED RACK MATRIX
               </div>
-            )}
-            {selShelf && (
-              <>
-                <div className="text-[11.5px] font-bold uppercase tracking-wide text-slate-600">Selected shelf</div>
-                <div className="text-[18px] font-extrabold text-slate-900 mb-3">{shelfLabel(selShelf)}</div>
-                {selLine ? (
-                  <>
-                    <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-[13px] mb-4">
-                      <div><div className="text-[11.5px] font-semibold text-slate-600">Buyer - Job</div><div className="font-bold text-slate-900">{selLine.buyer} - {selLine.jobNo}</div></div>
-                      <div><div className="text-[11.5px] font-semibold text-slate-600">Style</div><div className="font-bold text-slate-900">{selLine.style || '—'}</div></div>
-                      <div className="col-span-2"><div className="text-[11.5px] font-semibold text-slate-600">Colour</div><div className="font-bold text-slate-900">{selLine.color}</div></div>
-                      <div><div className="text-[11.5px] font-semibold text-slate-600">Fabric</div><div className="font-semibold text-slate-900">{selLine.fabric} · {selLine.gsm} GSM · {selLine.dia}</div></div>
-                      <div><div className="text-[11.5px] font-semibold text-slate-600">In stock</div><div className="font-bold text-sky-800">{Math.round(selLine.stockBalance).toLocaleString()} kg</div></div>
-                      <div className="col-span-2"><div className="text-[11.5px] font-semibold text-slate-600">Placed on</div><div className="font-semibold text-slate-900">{sel?.placedOn}</div></div>
+              <div className="text-base font-extrabold text-[#0F274E] mt-0.5 flex items-center justify-between">
+                <span>{selectedRackId} (General Store)</span>
+                <span className="text-xs font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded border border-sky-200">
+                  {shelfStats.rackOccMap[selectedRackNum] || 0} / 20 Shelves
+                </span>
+              </div>
+              <div className="text-xs text-slate-500 mt-0.5">
+                Zone: Finished Fabric Bay · 20 Storage Shelves
+              </div>
+            </div>
+
+            {/* 20 Storage Shelves Accordion List */}
+            <div className="overflow-y-auto max-h-[580px] space-y-2 pr-1 divide-y divide-slate-100">
+              {Array.from({ length: FABRIC_SHELVES }, (_, sIdx) => {
+                const sNum = sIdx + 1;
+                const sid = shelfId(selectedRackNum, sNum);
+                const items = getShelfItems(locations, sid);
+                const isFolded = expandedShelf !== sid;
+                const isOccupied = items.length > 0;
+                const shelfTotalKg = items.reduce((sum, it) => sum + (Number(it.kg) || 0), 0);
+
+                return (
+                  <div key={sid} className="pt-2 first:pt-0">
+                    {/* Shelf Header Row (Click to toggle fold/unfold) */}
+                    <div
+                      onClick={() => setExpandedShelf(isFolded ? sid : null)}
+                      className={`flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-colors border ${
+                        isOccupied
+                          ? isFolded
+                            ? 'bg-sky-50/60 hover:bg-sky-100/60 border-sky-200'
+                            : 'bg-sky-100 border-sky-300 shadow-xs'
+                          : 'bg-slate-50 hover:bg-slate-100/80 border-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        {isFolded ? (
+                          <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5 text-sky-700" />
+                        )}
+                        <div>
+                          <span className="text-xs font-bold text-slate-900 block leading-tight">
+                            Shelf {String(sNum).padStart(2, '0')}
+                          </span>
+                          <span className="text-[10px] text-slate-500">
+                            {isOccupied
+                              ? `${items.length} Color${items.length > 1 ? 's' : ''} stored`
+                              : 'Empty shelf'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        {isOccupied ? (
+                          <span className="text-[11px] font-black text-sky-800 bg-white px-2 py-0.5 rounded border border-sky-200">
+                            {Math.round(shelfTotalKg).toLocaleString()} kg
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-semibold text-slate-400 uppercase">
+                            FREE
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <label className="block text-[12px] font-bold text-slate-800 mb-1">Move to another shelf</label>
-                    <div className="flex gap-2 mb-3">
-                      <select value={moveTo} onChange={e => setMoveTo(e.target.value)} className="flex-1 border border-slate-300 rounded-lg px-2 py-1.5 text-[13px] text-slate-900">
-                        <option value="">Choose a free shelf…</option>
-                        {freeShelves.map(s => <option key={s} value={s}>{shelfLabel(s)}</option>)}
-                      </select>
-                      <button disabled={!moveTo} onClick={() => move(selShelf, moveTo)} className="px-3 py-1.5 rounded-lg text-[13px] font-bold nos-btn-primary disabled:opacity-50">
-                        Move
-                      </button>
-                    </div>
-                    <button onClick={() => clear(selShelf)} className="w-full px-3 py-1.5 rounded-lg text-[13px] font-bold border border-rose-300 bg-rose-50 text-rose-800 hover:bg-rose-100">
-                      Take out — shelf becomes free
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <div className="text-[13px] text-slate-800 font-medium mb-2">This shelf is empty. Place a colour that is in store but not on a rack yet:</div>
-                    <select value={placeLine} onChange={e => setPlaceLine(e.target.value)} className="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-[13px] text-slate-900 mb-2">
-                      <option value="">Choose a colour… ({unplaced.length} waiting)</option>
-                      {unplaced.slice(0, 400).map(l => (
-                        <option key={l.id} value={l.id}>{l.buyer} {l.jobNo} · {l.color} · {Math.round(l.stockBalance)} kg</option>
-                      ))}
-                    </select>
-                    <button disabled={!placeLine} onClick={() => place(selShelf, placeLine)} className="w-full px-3 py-1.5 rounded-lg text-[13px] font-bold nos-btn-primary disabled:opacity-50">
-                      Place on this shelf
-                    </button>
-                  </>
-                )}
-              </>
-            )}
-            <div className="mt-4 pt-3 border-t border-slate-200 text-[12px] text-slate-700">
-              Left colour bar = buyer. Racks are not buyer-fixed: a colour goes on whichever shelf is free when it arrives.
+
+                    {/* Unfolded Content (Multi-job / Multi-color list) */}
+                    {!isFolded && (
+                      <div className="mt-2 pl-4 pr-1 pb-2 space-y-2 border-l-2 border-sky-400 ml-2 animate-in fade-in duration-150">
+                        {isOccupied ? (
+                          items.map((it, idx) => (
+                            <div
+                              key={`${it.lineId}-${idx}`}
+                              className="bg-white rounded-lg border border-slate-200 p-2.5 shadow-xs text-xs"
+                            >
+                              <div className="flex items-center justify-between font-bold text-slate-900">
+                                <span>{it.buyer} - {it.jobNo}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveItem(sid, it.lineId)}
+                                  className="text-rose-500 hover:text-rose-700 p-1 rounded hover:bg-rose-50"
+                                  title="Take out from shelf"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                              <div className="text-[11px] text-slate-600 mt-0.5">
+                                Style: <strong className="text-slate-800">{it.style || '—'}</strong>
+                              </div>
+                              <div className="text-[11px] text-sky-800 font-bold mt-0.5">
+                                Color: {it.color}
+                              </div>
+                              <div className="flex items-center justify-between text-[10px] text-slate-500 mt-1 pt-1 border-t border-slate-100">
+                                <span>Weight: <strong className="text-slate-800 font-bold">{Math.round(it.kg)} kg</strong></span>
+                                <span>Placed: {it.placedOn || 'Recent'}</span>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-[11px] text-slate-500 italic py-1">
+                            No fabric currently placed on this shelf.
+                          </div>
+                        )}
+
+                        {/* Add Fabric to this Shelf Form */}
+                        <div className="pt-2">
+                          <div className="flex items-center gap-1.5">
+                            <select
+                              value={addFabricLineId}
+                              onChange={e => setAddFabricLineId(e.target.value)}
+                              className="w-full px-2 py-1 text-xs border border-slate-200 rounded-md bg-white text-slate-800 focus:outline-none"
+                            >
+                              <option value="">+ Add Fabric to Shelf {String(sNum).padStart(2, '0')}...</option>
+                              {unplacedLines.slice(0, 50).map(l => (
+                                <option key={l.id} value={l.id}>
+                                  {l.buyer} · Job {l.jobNo} · {l.color} ({Math.round(l.stockBalance)} kg)
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              disabled={!addFabricLineId}
+                              onClick={() => handleAddItemToShelf(sid, addFabricLineId)}
+                              className="px-2.5 py-1 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold rounded-md disabled:opacity-40 transition-colors shrink-0"
+                            >
+                              Add
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
       )}
 
-      {sub === 'tracking' && (
-        <div className="grid gap-4" style={{ gridTemplateColumns: '320px minmax(0,1fr)' }}>
-          <div className="bg-white rounded-xl border border-slate-300 p-3 self-start">
-            <div className="relative mb-2">
-              <Search className="w-4 h-4 text-slate-600 absolute left-2.5 top-2" />
-              <input
-                value={jobQuery}
-                onChange={e => { setJobQuery(e.target.value); setSelJob(null); }}
-                placeholder="Search job, buyer, style or colour"
-                className="pl-8 pr-2 py-1.5 text-[13px] rounded-lg border border-slate-300 w-full text-slate-900"
-              />
-            </div>
-            <div className="text-[12px] font-semibold text-slate-700 mb-2">{jobs.length.toLocaleString()} jobs have fabric in store</div>
-            <div className="flex flex-col gap-1 max-h-[560px] overflow-auto">
-              {jobList.map(j => {
-                const placed = j.colors.filter(c => lineShelf[c.id]).length;
-                const on = activeJob?.key === j.key;
-                return (
-                  <button
-                    key={j.key}
-                    onClick={() => setSelJob(j.key)}
-                    className={`text-left px-2.5 py-2 rounded-lg border ${on ? 'border-[#0f274e] bg-sky-50' : 'border-slate-200 hover:bg-slate-50'}`}
-                    style={{ borderLeft: `4px solid ${buyerColor(j.buyer)}` }}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[13px] font-extrabold text-slate-900">{j.buyer} - {j.jobNo}</span>
-                      <ArrowRight className="w-4 h-4 text-slate-600" />
-                    </div>
-                    <div className="text-[12px] font-semibold text-slate-700">
-                      {j.colors.length} colour{j.colors.length > 1 ? 's' : ''} · {placed} on rack{placed !== j.colors.length ? ` · ${j.colors.length - placed} not placed` : ''}
-                    </div>
-                  </button>
-                );
-              })}
-              {!jobList.length && <div className="text-[13px] text-slate-700 p-2">No job with fabric in store matches.</div>}
+      {/* =================================================================== */}
+      {/* SUB-TAB 2: JOB-WISE LOCATION SEARCH (MATCHING SCREENSHOT 1) */}
+      {/* =================================================================== */}
+      {subTab === 'JOB_SEARCH' && (
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
+          {/* Job Search Input Bar */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              Search Job No to Locate Finished Fabric:
+            </label>
+            <div className="flex items-center gap-2 max-w-xl">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  value={jobSearchQuery}
+                  onChange={e => setJobSearchQuery(e.target.value)}
+                  placeholder="e.g. 48002, 48283, 48845..."
+                  className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => {}}
+                className="px-4 py-2 bg-[#0F274E] text-white text-xs font-bold rounded-lg hover:bg-slate-800 transition-colors"
+              >
+                GO
+              </button>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-300 p-4 self-start">
-            {!activeJob ? (
-              <div className="text-[13px] text-slate-700 font-medium">Choose a job on the left to see where each of its colours is stored.</div>
-            ) : (
-              <>
-                <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
-                  <div>
-                    <div className="text-[11.5px] font-bold uppercase tracking-wide text-slate-600">Job location</div>
-                    <div className="text-[18px] font-extrabold text-slate-900">{activeJob.buyer} - {activeJob.jobNo} <span className="text-[13px] font-semibold text-slate-700">Style {activeJob.style || '—'}</span></div>
-                  </div>
-                  <div className="text-[13px] font-semibold text-slate-800">
-                    {Math.round(activeJob.colors.reduce((s, c) => s + c.stockBalance, 0)).toLocaleString()} kg in store
-                  </div>
-                </div>
-                <table className="w-full text-[13px] border-collapse">
-                  <thead>
-                    <tr className="text-left border-b-2 border-slate-300">
-                      <th className="py-2 pr-2 font-bold text-slate-800">#</th>
-                      <th className="py-2 pr-2 font-bold text-slate-800">Colour</th>
-                      <th className="py-2 pr-2 font-bold text-slate-800 text-right">In stock</th>
-                      <th className="py-2 pr-2 font-bold text-slate-800">Location</th>
-                      <th className="py-2 pr-2 font-bold text-slate-800">Placed on</th>
-                      <th className="py-2 font-bold text-slate-800">Action</th>
+          {/* Job Details Banner (Matching Screenshot 1) */}
+          {searchedJob ? (
+            <div className="space-y-4">
+              <div className="p-3 bg-sky-50 border border-sky-200 rounded-lg text-xs font-bold text-[#0F274E] flex items-center justify-between">
+                <span>
+                  Job {searchedJob.jobNo} ({searchedJob.buyer} - {searchedJob.style}) — {searchedJob.fabric} · {searchedJob.gsm} GSM · Dia {searchedJob.dia}
+                </span>
+                <span className="text-[11px] font-semibold text-slate-600 bg-white px-2 py-0.5 rounded border border-sky-100">
+                  {searchedJob.colors.length} Color{searchedJob.colors.length > 1 ? 's' : ''}
+                </span>
+              </div>
+
+              {/* Exact Location & Stock Summary Table */}
+              <div className="overflow-x-auto rounded-lg border border-slate-200">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-[#0F274E] text-white text-[11px]">
+                    <tr>
+                      <th className="px-3 py-2.5 font-bold">Color / Item</th>
+                      <th className="px-3 py-2.5 font-semibold">Fabric Type & Process</th>
+                      <th className="px-3 py-2.5 text-right font-semibold">Order Qty (Kg)</th>
+                      <th className="px-3 py-2.5 text-right font-semibold">Received (Kg)</th>
+                      <th className="px-3 py-2.5 text-right font-semibold">Delivery / Issue</th>
+                      <th className="px-3 py-2.5 text-right font-bold bg-sky-950 text-sky-200">In-Stock Qty</th>
+                      <th className="px-3 py-2.5 font-bold text-center bg-[#0d2244]">Exact Shelf Location</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {activeJob.colors.map((c, i) => {
-                      const sid = lineShelf[c.id];
+                  <tbody className="divide-y divide-slate-100 text-xs">
+                    {searchedJob.colors.map(c => {
+                      const shelfKeys = lineShelfMap[c.id] || [];
                       return (
-                        <tr key={c.id} className="border-b border-slate-200">
-                          <td className="py-2 pr-2 font-semibold text-slate-700">{i + 1}</td>
-                          <td className="py-2 pr-2 font-bold text-slate-900">{c.color}</td>
-                          <td className="py-2 pr-2 text-right font-semibold text-slate-900">{Math.round(c.stockBalance).toLocaleString()} kg</td>
-                          <td className="py-2 pr-2">
-                            {sid ? (
-                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border font-bold ${isShelfKey(sid) ? 'border-sky-300 bg-sky-50 text-sky-900' : 'border-violet-300 bg-violet-50 text-violet-900'}`}>
-                                <MapPin className="w-3.5 h-3.5" /> {locLabel(sid, locations)}
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded-md border border-amber-300 bg-amber-50 text-amber-900 font-bold">Location not entered</span>
-                            )}
+                        <tr key={c.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-3 py-2.5 font-bold text-slate-900">
+                            {c.color}
                           </td>
-                          <td className="py-2 pr-2 font-semibold text-slate-800">{sid ? locations[sid].placedOn : '—'}</td>
-                          <td className="py-2">
-                            <div className="flex flex-col gap-1.5 items-start">
-                              {sid && isShelfKey(sid) && (
-                                <button onClick={() => showOnRack(sid, activeJob.jobNo)} className="px-2.5 py-1 rounded-md text-[12.5px] font-bold border border-slate-400 bg-white text-slate-900 hover:bg-slate-50">
-                                  Show on rack
-                                </button>
-                              )}
-                              <AssignPick locations={locations} lineName={lineName} label={sid ? 'Change' : 'Save'} onSave={pick => savePick(c.id, pick)} />
-                            </div>
+                          <td className="px-3 py-2.5 text-slate-600">
+                            {c.fabric} ({c.gsm} GSM)
+                          </td>
+                          <td className="px-3 py-2.5 text-right font-medium text-slate-700">
+                            {Math.round(c.totalReq || 0).toLocaleString()} kg
+                          </td>
+                          <td className="px-3 py-2.5 text-right font-semibold text-emerald-700">
+                            {Math.round(c.totalRecv || 0).toLocaleString()} kg
+                          </td>
+                          <td className="px-3 py-2.5 text-right font-medium text-purple-700">
+                            {Math.round(c.totalIssued || 0).toLocaleString()} kg
+                          </td>
+                          <td className="px-3 py-2.5 text-right font-black text-sky-800 bg-sky-50/50">
+                            {Math.round(c.stockBalance || 0).toLocaleString()} kg
+                          </td>
+                          <td className="px-3 py-2.5 text-center">
+                            {shelfKeys.length > 0 ? (
+                              <div className="flex flex-wrap justify-center gap-1">
+                                {shelfKeys.map(sid => (
+                                  <button
+                                    key={sid}
+                                    type="button"
+                                    onClick={() => {
+                                      const m = /^R(\d+)-S(\d+)$/.exec(sid);
+                                      if (m) {
+                                        setSelectedRackNum(Number(m[1]));
+                                        setExpandedShelf(sid);
+                                        setSubTab('LAYOUT');
+                                      }
+                                    }}
+                                    className="px-2 py-0.5 rounded text-[11px] font-bold bg-sky-100 hover:bg-sky-200 text-sky-900 border border-sky-300 transition-colors"
+                                  >
+                                    {shelfLabel(sid)}
+                                  </button>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-[11px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 font-semibold">
+                                Not assigned yet
+                              </span>
+                            )}
                           </td>
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
-              </>
-            )}
-          </div>
+              </div>
+            </div>
+          ) : (
+            <div className="py-12 text-center text-slate-400">
+              <Search className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+              <p className="text-xs font-semibold text-slate-600">No matching job found for “{jobSearchQuery}”</p>
+              <p className="text-[11px] text-slate-400 mt-1">Try searching for job numbers like 48002, 48283, 48845, 48858, 48153</p>
+            </div>
+          )}
         </div>
       )}
-    </div>
-  );
-}
-
-function AssignPick({ locations, onSave, lineName, label }: { locations: RackLocations; onSave: (p: LocationPick) => void; lineName: (id: string) => string; label: string }) {
-  const [v, setV] = useState<LocationPick>(emptyPick());
-  const ok = pickIsValid(v, locations);
-  return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      <LocationPicker locations={locations} value={v} onChange={setV} lineLabel={lineName} compact />
-      <button
-        disabled={!ok}
-        onClick={() => { onSave(v); setV(emptyPick()); }}
-        className="px-2.5 py-1.5 rounded-md text-[12.5px] font-bold nos-btn-primary disabled:opacity-50 inline-flex items-center gap-1"
-      >
-        <Check className="w-4 h-4" /> {label}
-      </button>
     </div>
   );
 }

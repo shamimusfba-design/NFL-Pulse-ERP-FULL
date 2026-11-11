@@ -2,10 +2,16 @@ const fs = require('fs');
 const path = require('path');
 
 const outDir = path.resolve('.firebase/nfl-erp/hosting');
-if (fs.existsSync(outDir)) {
-  fs.rmSync(outDir, { recursive: true, force: true });
+try {
+  if (fs.existsSync(outDir)) {
+    fs.rmSync(outDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+  }
+} catch (e) {
+  console.warn('[prepare-hosting] Note: rmSync non-fatal warning:', e.message);
 }
-fs.mkdirSync(outDir, { recursive: true });
+if (!fs.existsSync(outDir)) {
+  fs.mkdirSync(outDir, { recursive: true });
+}
 
 // 1. Copy public directory
 const pubDir = path.resolve('apps/web/public');
@@ -24,9 +30,6 @@ if (fs.existsSync(staticSrc)) {
 }
 
 // 3. Copy html files from .next/server/app
-// Never overwrite a file that came from apps/web/public: e.g. public/merchandising/index.html is the real
-// Sales & Merchandising module, and a page route named /merchandising used to replace it (the module then showed
-// another page inside its own frame).
 const fromPublic = new Set();
 (function collect(dir, sub) {
   if (!fs.existsSync(dir)) return;
@@ -36,10 +39,14 @@ const fromPublic = new Set();
   }
 })(pubDir, '');
 const safeCopy = (src, dest) => {
-  if (fromPublic.has(dest)) { console.log(`[prepare-hosting] kept public file ${path.relative(outDir, dest)} (not overwritten by a page)`); return; }
+  if (fromPublic.has(dest)) {
+    console.log(`[prepare-hosting] kept public file ${path.relative(outDir, dest)} (not overwritten by a page)`);
+    return;
+  }
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.copyFileSync(src, dest);
 };
+
 const serverApp = path.resolve('apps/web/.next/server/app');
 function copyHtml(dir, targetSub) {
   for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -62,6 +69,28 @@ function copyHtml(dir, targetSub) {
 if (fs.existsSync(serverApp)) {
   copyHtml(serverApp, '');
   console.log('[prepare-hosting] Copied pre-rendered HTML routes');
+}
+
+// Ensure root index.html exists
+const rootIndex = path.join(outDir, 'index.html');
+if (!fs.existsSync(rootIndex) && fs.existsSync(serverApp)) {
+  const serverIndex = path.join(serverApp, 'index.html');
+  if (fs.existsSync(serverIndex)) {
+    fs.copyFileSync(serverIndex, rootIndex);
+    console.log('[prepare-hosting] Copied server root index.html to hosting root');
+  }
+}
+
+// Ensure 404.html exists
+const notFoundHtml = path.join(outDir, '404.html');
+if (!fs.existsSync(notFoundHtml)) {
+  const nf = path.join(outDir, '_not-found.html');
+  if (fs.existsSync(nf)) {
+    fs.copyFileSync(nf, notFoundHtml);
+  } else if (fs.existsSync(rootIndex)) {
+    fs.copyFileSync(rootIndex, notFoundHtml);
+  }
+  console.log('[prepare-hosting] Created 404.html for SPA fallback');
 }
 
 console.log('[prepare-hosting] Firebase Hosting bundle ready at .firebase/nfl-erp/hosting');
