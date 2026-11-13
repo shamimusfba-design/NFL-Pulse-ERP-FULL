@@ -133,6 +133,7 @@ function generateInitialRackLocations(lines: FabricColorLine[]): RackLocations {
 export interface FabricColorLine {
   id: string;
   idx: number;
+  sl?: string;
   month: string;
   buyer: string;
   jobNo: string;
@@ -387,7 +388,7 @@ function FinishedFabricPageInner() {
       setRawLines([]);
       setRackLoc({});
       try {
-        localStorage.removeItem('nfl_finished_fabric_lines_v3');
+        localStorage.removeItem('nfl_finished_fabric_lines_v4');
         localStorage.removeItem(RACK_STORE_KEY);
       } catch {}
       showToast('All finished fabric data removed. Store is clean.');
@@ -463,7 +464,7 @@ function FinishedFabricPageInner() {
     setRawLines(nextLines);
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem('nfl_finished_fabric_lines_v3', JSON.stringify(nextLines));
+        localStorage.setItem('nfl_finished_fabric_lines_v4', JSON.stringify(nextLines));
       } catch {}
     }
 
@@ -506,116 +507,230 @@ function FinishedFabricPageInner() {
 
       wb.SheetNames.forEach((sheetName) => {
         const ws = wb.Sheets[sheetName];
-        const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: '' });
-        if (!rows || rows.length === 0) return;
+        const rawMatrix: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
+        if (!rawMatrix || rawMatrix.length === 0) return;
 
         let sheetRowsCount = 0;
         const sheetMonth = sheetName.trim();
 
-        rows.forEach((row) => {
-          const findVal = (regex: RegExp) => {
-            const key = Object.keys(row).find(k => regex.test(k.trim()));
-            return key ? row[key] : '';
-          };
+        // 1. Detect 2-Tier Header (Northern Fashions finish fabric stock.xlsx layout)
+        let headerRowIdx = -1;
+        for (let i = 0; i < Math.min(rawMatrix.length, 10); i++) {
+          const row = rawMatrix[i];
+          if (row && Array.isArray(row) && row.some(cell => /order\s*qty|fabric\s*type|received|style/i.test(String(cell)))) {
+            headerRowIdx = i;
+            break;
+          }
+        }
 
-          const jobVal = String(findVal(/^(job|job\s*no|job#|order|order\s*no|po)/i) || '').trim();
-          const colorVal = String(findVal(/^(color|shade|fabric\s*color)/i) || '').trim();
-          if (!jobVal && !colorVal) return;
+        if (headerRowIdx !== -1) {
+          let currentBuyer = 'Bestseller (Only & Sons)';
+          for (let rIdx = headerRowIdx + 2; rIdx < rawMatrix.length; rIdx++) {
+            const r = rawMatrix[rIdx];
+            if (!r || !Array.isArray(r)) continue;
 
-          const buyerVal = String(findVal(/^(buyer|customer|brand)/i) || 'Bestseller').trim();
-          const styleVal = String(findVal(/^(style|style\s*no|style#)/i) || '').trim();
-          const fabricVal = String(findVal(/^(fabric|fabric\s*type|construction|description|item)/i) || 'Single Jersey').trim();
-          const compVal = String(findVal(/^(comp|composition)/i) || '100% Organic Cotton').trim();
-          const gsmVal = String(findVal(/^(gsm|weight)/i) || '180').trim();
-          const diaVal = String(findVal(/^(dia|width)/i) || '68\" Open').trim();
-          const processVal = String(findVal(/^(process|finishing|finish)/i) || 'Reactive Dyeing').trim();
+            const nonNull = r.filter(x => x !== null && x !== undefined && String(x).trim() !== '');
+            if (nonNull.length === 0) continue;
 
-          const reqBody = Number(findVal(/^(req\s*body|order\s*body|booking\s*body|req\s*kg|order\s*kg|required)/i)) || 0;
-          const reqRib = Number(findVal(/^(req\s*rib|order\s*rib)/i)) || 0;
-          const reqSJ = Number(findVal(/^(req\s*sj|order\s*sj)/i)) || 0;
-          const totalReq = (reqBody + reqRib + reqSJ) || Number(findVal(/^(total\s*req|total\s*order|total\s*booking)/i)) || 0;
+            if (r[1] && (r[2] === undefined || r[2] === null || String(r[2]).trim() === '') && nonNull.length <= 3) {
+              const txt = String(r[1]).trim();
+              if (!txt.toLowerCase().includes('total')) currentBuyer = txt;
+              continue;
+            }
+            if (r[1] && String(r[1]).toLowerCase().includes('total')) continue;
 
-          const recvBody = Number(findVal(/^(recv\s*body|rec\s*body|received\s*body|delivery\s*body|weighed\s*body|recv\s*kg|received\s*kg|received|recv)/i)) || 0;
-          const recvRib = Number(findVal(/^(recv\s*rib|rec\s*rib|received\s*rib|delivery\s*rib)/i)) || 0;
-          const recvSJ = Number(findVal(/^(recv\s*sj|rec\s*sj|received\s*sj|delivery\s*sj)/i)) || 0;
-          const totalRecv = (recvBody + recvRib + recvSJ) || Number(findVal(/^(total\s*recv|total\s*received)/i)) || recvBody;
+            const slVal = r[0] ? String(r[0]).trim() : '';
+            const jobVal = r[1] ? String(r[1]).trim() : '';
+            const styleVal = r[2] ? String(r[2]).trim() : '';
+            const fabricVal = r[3] ? String(r[3]).trim() : '';
+            const compVal = r[4] ? String(r[4]).trim() : '';
+            const procVal = r[5] ? String(r[5]).trim() : '';
+            const gsmVal = r[6] ? String(r[6]).trim() : '';
+            const diaVal = r[7] ? String(r[7]).trim() : '';
+            const colorVal = r[8] ? String(r[8]).trim() : '';
 
-          const issuedBody = Number(findVal(/^(issue\s*body|issued\s*body|delivery\s*cutting|issue\s*kg|issued\s*kg|issued|issue)/i)) || 0;
-          const issuedRib = Number(findVal(/^(issue\s*rib|issued\s*rib)/i)) || 0;
-          const issuedSJ = Number(findVal(/^(issue\s*sj|issued\s*sj)/i)) || 0;
-          const totalIssued = (issuedBody + issuedRib + issuedSJ) || issuedBody;
+            if (!styleVal && !colorVal && !jobVal) continue;
 
-          const dyeingBalance = Math.max(0, totalReq - totalRecv);
-          const stockBody = Math.max(0, recvBody - issuedBody);
-          const stockRib = Math.max(0, recvRib - issuedRib);
-          const stockSJ = Math.max(0, recvSJ - issuedSJ);
-          const stockBalance = Math.max(0, totalRecv - totalIssued);
+            const ordBody = Number(r[9]) || 0;
+            const ordRib = Number(r[10]) || 0;
+            const ordSJ = Number(r[11]) || 0;
+            const totalReq = ordBody + ordRib + ordSJ;
 
-          const locationVal = String(findVal(/^(location|rack|bin|shelf|store\s*loc|store\s*location)/i) || '').trim() ||
-            (stockBalance > 0 ? `R-${String((importedIdx % 20) + 1).padStart(2, '0')} · Shelf ${String((Math.floor(importedIdx / 20) % 20) + 1).padStart(2, '0')}` : 'F.ST');
+            const recBody = Number(r[12]) || 0;
+            const recRib = Number(r[13]) || 0;
+            const recSJ = Number(r[14]) || 0;
+            const totalRecv = recBody + recRib + recSJ;
 
-          const challanVal = String(findVal(/^(challan|challan\s*no|gate\s*pass)/i) || `CH-IMP-${1000 + importedIdx}`).trim();
-          const dateVal = String(findVal(/^(date|recv\s*date|delivery\s*date|inward\s*date)/i) || new Date().toISOString().slice(0, 10)).trim();
-          const rowMonth = String(findVal(/^(month|mon)/i) || sheetMonth || 'November').trim();
+            const issBody = Number(r[15]) || 0;
+            const issRib = Number(r[16]) || 0;
+            const issSJ = Number(r[17]) || 0;
+            const totalIssued = issBody + issRib + issSJ;
 
-          let stockState: FabricColorLine['stockState'] = 'In Stock';
-          if (totalRecv <= 0) stockState = 'Waiting Dyeing';
-          else if (dyeingBalance > totalReq * 0.05 && stockBalance > 0.5) stockState = 'Partly Received';
-          else if (stockBalance <= 0) stockState = 'Fully Issued';
+            let stockBody = Number(r[18]) || 0;
+            let stockRib = Number(r[19]) || 0;
+            let stockSJ = 0;
+            if (stockBody === 0 && recBody > 0) stockBody = Math.max(0, recBody - issBody);
+            if (stockRib === 0 && recRib > 0) stockRib = Math.max(0, recRib - issRib);
+            if (stockSJ === 0 && recSJ > 0) stockSJ = Math.max(0, recSJ - issSJ);
+            const stockBalance = stockBody + stockRib + stockSJ;
 
-          importedIdx++;
-          sheetRowsCount++;
+            let locVal = '';
+            if (r[20] && typeof r[20] === 'string' && isNaN(Number(r[20]))) {
+              locVal = String(r[20]).trim();
+            } else if (r[21] && typeof r[21] === 'string') {
+              locVal = String(r[21]).trim();
+            }
 
-          parsedLines.push({
-            id: `f-imp-${importedIdx}-${Date.now()}`,
-            idx: importedIdx,
-            month: rowMonth,
-            buyer: buyerVal,
-            jobNo: jobVal || `JOB-${importedIdx}`,
-            style: styleVal || `STY-${importedIdx}`,
-            color: colorVal || 'Solid Color',
-            fabric: fabricVal,
-            fabricType: parseFabricType(fabricVal),
-            construction: parseConstruction(fabricVal),
-            composition: compVal,
-            gsm: gsmVal,
-            dia: diaVal,
-            process: processVal,
-            isImported: /imported|woven|chiffon/i.test(fabricVal),
-            reqBody,
-            reqRib,
-            reqSJ,
-            totalReq: totalReq || totalRecv,
-            recvBody,
-            recvRib,
-            recvSJ,
-            totalRecv,
-            dyeingBalance,
-            issuedBody,
-            issuedRib,
-            issuedSJ,
-            totalIssued,
-            stockBody,
-            stockRib,
-            stockSJ,
-            stockBalance,
-            location: locationVal,
-            cuttingLeftover: 0,
-            excessQty: Math.max(0, totalRecv - totalReq),
-            date: dateVal,
-            challans: challanVal,
-            deliveryDate: dateVal,
-            supplier: String(findVal(/^(supplier|factory|mill|source)/i) || 'Northern Dyeing').trim(),
-            dyeingFactory: String(findVal(/^(supplier|factory|mill|source)/i) || 'Northern Dyeing').trim(),
-            exFactoryDate: dateVal,
-            slot: '1',
-            merchandiser: 'Store In-charge',
-            qualityStatus: 'PASS',
-            stockState,
-            isCuttingOk: stockBalance <= 5 && totalIssued > 0,
+            importedIdx++;
+            sheetRowsCount++;
+
+            parsedLines.push({
+              id: `f-imp-${importedIdx}-${Date.now()}`,
+              idx: importedIdx,
+              sl: slVal || String(importedIdx),
+              month: sheetMonth,
+              buyer: currentBuyer,
+              jobNo: jobVal || `JOB-${importedIdx}`,
+              style: styleVal || '—',
+              color: colorVal || 'Solid',
+              fabric: fabricVal || 'Single Jersey',
+              fabricType: parseFabricType(fabricVal),
+              construction: parseConstruction(fabricVal),
+              composition: compVal || '100% Cotton',
+              gsm: gsmVal || '160',
+              dia: diaVal || '68"',
+              process: procVal || '—',
+              isImported: /imported|woven|chiffon|poplin/i.test(fabricVal),
+              reqBody: ordBody,
+              reqRib: ordRib,
+              reqSJ: ordSJ,
+              totalReq,
+              recvBody: recBody,
+              recvRib: recRib,
+              recvSJ: recSJ,
+              totalRecv,
+              dyeingBalance: Math.max(0, totalReq - totalRecv),
+              issuedBody: issBody,
+              issuedRib: issRib,
+              issuedSJ: issSJ,
+              totalIssued,
+              stockBody,
+              stockRib,
+              stockSJ,
+              stockBalance,
+              location: locVal || (stockBalance > 0 ? 'F.ST' : '—'),
+              cuttingLeftover: 0,
+              excessQty: Math.max(0, totalRecv - totalReq),
+              date: new Date().toLocaleDateString('en-GB'),
+              challans: `CH-IMP-${1000 + importedIdx}`,
+              deliveryDate: new Date().toISOString().slice(0, 10),
+              exFactoryDate: new Date().toISOString().slice(0, 10),
+              supplier: 'Northern Dyeing',
+              slot: '1',
+              merchandiser: 'Store Manager',
+              qualityStatus: 'PASS',
+              stockState: stockBalance > 0 ? 'In Stock' : totalRecv > 0 ? 'Fully Issued' : 'Waiting Dyeing',
+              isCuttingOk: false,
+            });
+          }
+        } else {
+          // 2. Fallback to flat 1-tier parser
+          const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: '' });
+          rows.forEach((row) => {
+            const findVal = (regex: RegExp) => {
+              const key = Object.keys(row).find(k => regex.test(k.trim()));
+              return key ? row[key] : '';
+            };
+
+            const jobVal = String(findVal(/^(job|job\s*no|job#|order|order\s*no|po)/i) || '').trim();
+            const colorVal = String(findVal(/^(color|shade|fabric\s*color)/i) || '').trim();
+            if (!jobVal && !colorVal) return;
+
+            const buyerVal = String(findVal(/^(buyer|customer|brand)/i) || 'Bestseller').trim();
+            const styleVal = String(findVal(/^(style|style\s*no|style#)/i) || '').trim();
+            const fabricVal = String(findVal(/^(fabric|fabric\s*type|construction|description|item)/i) || 'Single Jersey').trim();
+            const compVal = String(findVal(/^(comp|composition)/i) || '100% Organic Cotton').trim();
+            const gsmVal = String(findVal(/^(gsm|weight)/i) || '180').trim();
+            const diaVal = String(findVal(/^(dia|width)/i) || '68\" Open').trim();
+            const processVal = String(findVal(/^(process|finishing|finish)/i) || 'Reactive Dyeing').trim();
+
+            const reqBody = Number(findVal(/^(req\s*body|order\s*body|booking\s*body|req\s*kg|order\s*kg|required)/i)) || 0;
+            const reqRib = Number(findVal(/^(req\s*rib|order\s*rib)/i)) || 0;
+            const reqSJ = Number(findVal(/^(req\s*sj|order\s*sj)/i)) || 0;
+            const totalReq = (reqBody + reqRib + reqSJ) || Number(findVal(/^(total\s*req|total\s*order|total\s*booking)/i)) || 0;
+
+            const recvBody = Number(findVal(/^(recv\s*body|rec\s*body|received\s*body|delivery\s*body|weighed\s*body|recv\s*kg|received\s*kg|received|recv)/i)) || 0;
+            const recvRib = Number(findVal(/^(recv\s*rib|rec\s*rib|received\s*rib|delivery\s*rib)/i)) || 0;
+            const recvSJ = Number(findVal(/^(recv\s*sj|rec\s*sj|received\s*sj|delivery\s*sj)/i)) || 0;
+            const totalRecv = (recvBody + recvRib + recvSJ) || Number(findVal(/^(total\s*recv|total\s*received)/i)) || recvBody;
+
+            const issuedBody = Number(findVal(/^(issue\s*body|issued\s*body|delivery\s*cutting|issue\s*kg|issued\s*kg|issued|issue)/i)) || 0;
+            const issuedRib = Number(findVal(/^(issue\s*rib|issued\s*rib)/i)) || 0;
+            const issuedSJ = Number(findVal(/^(issue\s*sj|issued\s*sj)/i)) || 0;
+            const totalIssued = (issuedBody + issuedRib + issuedSJ) || issuedBody;
+
+            const dyeingBalance = Math.max(0, totalReq - totalRecv);
+            const stockBody = Math.max(0, recvBody - issuedBody);
+            const stockRib = Math.max(0, recvRib - issuedRib);
+            const stockSJ = Math.max(0, recvSJ - issuedSJ);
+            const stockBalance = Math.max(0, totalRecv - totalIssued);
+
+            const locationVal = String(findVal(/^(location|rack|bin|shelf|store\s*loc|store\s*location)/i) || '').trim() || 'F.ST';
+            const rowMonth = String(findVal(/^(month|mon)/i) || sheetMonth || 'November').trim();
+
+            importedIdx++;
+            sheetRowsCount++;
+
+            parsedLines.push({
+              id: `f-imp-${importedIdx}-${Date.now()}`,
+              idx: importedIdx,
+              sl: String(importedIdx),
+              month: rowMonth,
+              buyer: buyerVal,
+              jobNo: jobVal || `JOB-${importedIdx}`,
+              style: styleVal || `STY-${importedIdx}`,
+              color: colorVal || 'Solid Color',
+              fabric: fabricVal,
+              fabricType: parseFabricType(fabricVal),
+              construction: parseConstruction(fabricVal),
+              composition: compVal,
+              gsm: gsmVal,
+              dia: diaVal,
+              process: processVal,
+              isImported: /imported|woven|chiffon|poplin/i.test(fabricVal),
+              reqBody,
+              reqRib,
+              reqSJ,
+              totalReq,
+              recvBody,
+              recvRib,
+              recvSJ,
+              totalRecv,
+              dyeingBalance,
+              issuedBody,
+              issuedRib,
+              issuedSJ,
+              totalIssued,
+              stockBody,
+              stockRib,
+              stockSJ,
+              stockBalance,
+              location: locationVal,
+              cuttingLeftover: 0,
+              excessQty: Math.max(0, totalRecv - totalReq),
+              date: new Date().toLocaleDateString('en-GB'),
+              challans: `CH-IMP-${1000 + importedIdx}`,
+              deliveryDate: new Date().toISOString().slice(0, 10),
+              exFactoryDate: new Date().toISOString().slice(0, 10),
+              supplier: 'Northern Dyeing',
+              slot: '1',
+              merchandiser: 'Store Manager',
+              qualityStatus: 'PASS',
+              stockState: stockBalance > 0 ? 'In Stock' : totalRecv > 0 ? 'Fully Issued' : 'Waiting Dyeing',
+              isCuttingOk: false,
+            });
           });
-        });
-
+        }
         sheetSummaries.push({ name: sheetName, count: sheetRowsCount });
       });
 
@@ -629,7 +744,7 @@ function FinishedFabricPageInner() {
       setRawLines(nextLines);
       if (typeof window !== 'undefined') {
         try {
-          localStorage.setItem('nfl_finished_fabric_lines_v3', JSON.stringify(nextLines));
+          localStorage.setItem('nfl_finished_fabric_lines_v4', JSON.stringify(nextLines));
         } catch {}
       }
 
@@ -697,6 +812,26 @@ function FinishedFabricPageInner() {
   // --------------------------------------------------------------------------
   const [receiveSourceFilter, setReceiveSourceFilter] = useState<'ALL' | 'SUPPLIER' | 'IMPORT' | 'CUTTING_LEFTOVER'>('ALL');
   const [receiveSearchQuery, setReceiveSearchQuery] = useState('');
+  const inwardLines = useMemo(() => {
+    return rawLines.filter(line => {
+      if (receiveSourceFilter === 'IMPORT' && !line.isImported) return false;
+      if (receiveSourceFilter === 'SUPPLIER' && line.isImported) return false;
+      if (!receiveSearchQuery) return true;
+      const q = receiveSearchQuery.toLowerCase();
+      return `${line.jobNo} ${line.style} ${line.color} ${line.buyer} ${line.fabric} ${line.location}`.toLowerCase().includes(q);
+    });
+  }, [rawLines, receiveSourceFilter, receiveSearchQuery]);
+
+  const handleAcceptFabricLine = (lineId: string) => {
+    const updated = rawLines.map(l => l.id === lineId ? { ...l, qualityStatus: 'PASS' as const, stockState: 'In Stock' as const } : l);
+    setRawLines(updated);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('nfl_finished_fabric_lines_v4', JSON.stringify(updated));
+      } catch {}
+    }
+    showToast('Fabric lot verified and accepted into stock successfully!');
+  };
   const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
   const [receiveForm, setReceiveForm] = useState({
     challanNo: '',
@@ -946,7 +1081,7 @@ function FinishedFabricPageInner() {
       try {
         let storedLines: FabricColorLine[] | null = null;
         try {
-          const raw = localStorage.getItem('nfl_finished_fabric_lines_v3');
+          const raw = localStorage.getItem('nfl_finished_fabric_lines_v4');
           if (raw) storedLines = JSON.parse(raw);
         } catch {
           storedLines = null;
@@ -2946,7 +3081,7 @@ function FinishedFabricPageInner() {
 
               <button
                 type="button"
-                onClick={() => setIsReceiveModalOpen(true)}
+                onClick={() => setIsManualModalOpen(true)}
                 className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-md flex items-center gap-1.5 shadow-xs transition-colors"
               >
                 <Plus className="w-3.5 h-3.5 text-white" />
