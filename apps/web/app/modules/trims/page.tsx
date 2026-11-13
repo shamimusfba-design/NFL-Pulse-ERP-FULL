@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import Shell from '../../../components/Shell';
+import * as XLSX from 'xlsx';
 import demo2000DataRaw from '../../../data/demo-2000-master.json';
 import { Badge, DataGrid, GridColumn, RecordPanel, DrillPopup, DrillTarget } from '../../../components/ui';
 import { fmtDate, fmtNum } from '../../../lib/format';
@@ -28,6 +29,9 @@ import {
   Save,
   ShieldAlert,
   Boxes,
+  FolderUp,
+  Upload,
+  Trash2,
   FileCheck,
   CheckSquare,
   Sparkles,
@@ -101,6 +105,7 @@ export interface TrimsChecklistRecord {
   merchandiser: string;
   shipmentDate: string;
   tnaSlot: string;
+  month?: string;
   sewingLine: string;
   requestDate: string;
   checklistStatus: ChecklistStatus;
@@ -456,36 +461,320 @@ export default function TrimsStorePage() {
   const [recordJob, setRecordJob] = useState<TrimsChecklistRecord | null>(null);
   const [drillTarget, setDrillTarget] = useState<DrillTarget | null>(null);
 
-  // Master State with LocalStorage Persistence
+  // Master State with LocalStorage Persistence (Starts Clean)
   const [checklists, setChecklists] = useState<TrimsChecklistRecord[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('nfl_trims_checklists_v6');
+      const saved = localStorage.getItem('nfl_trims_checklists_v9');
       if (saved) {
         try { return JSON.parse(saved); } catch {}
       }
     }
-    return INITIAL_CHECKLISTS;
+    return [];
   });
 
   const [racks, setRacks] = useState<StoreRack[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('nfl_trims_racks_v6');
+      const saved = localStorage.getItem('nfl_trims_racks_v9');
       if (saved) {
         try { return JSON.parse(saved); } catch {}
       }
     }
-    return generateDefaultRacks(INITIAL_CHECKLISTS);
+    return generateDefaultRacks([]);
   });
 
   const [surplusTrims, setSurplusTrims] = useState<SurplusTrimsRecord[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('nfl_trims_surplus_v6');
+      const saved = localStorage.getItem('nfl_trims_surplus_v9');
       if (saved) {
         try { return JSON.parse(saved); } catch {}
       }
     }
-    return INITIAL_SURPLUS_TRIMS;
+    return [];
   });
+
+  // Import & Manual Trims Entry State
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState('ALL');
+
+  interface ManualTrimsItemRow {
+    id: string;
+    itemName: string;
+    category: TrimsCategory;
+    unit: TrimsUnit;
+    requiredQty: number;
+    receivedQty: number;
+    rackNo: string;
+    shelfNo: string;
+  }
+
+  const [manualTrimsForm, setManualTrimsForm] = useState({
+    jobNo: '',
+    buyer: 'Bestseller (ONLY)',
+    styleNo: '',
+    month: 'November 2026',
+    orderQty: 2500,
+  });
+
+  const [manualTrimsItems, setManualTrimsItems] = useState<ManualTrimsItemRow[]>([
+    { id: '1', itemName: 'Sewing Thread 40/2 Black 5,000m', category: 'THREAD', unit: 'CONES', requiredQty: 60, receivedQty: 60, rackNo: 'R-01', shelfNo: '1' },
+    { id: '2', itemName: 'Self-Adhesive Polybag 12x18', category: 'PACKAGING', unit: 'PCS', requiredQty: 2500, receivedQty: 2500, rackNo: 'R-02', shelfNo: '3' },
+    { id: '3', itemName: 'Main Label Woven Satin', category: 'LABEL', unit: 'PCS', requiredQty: 2600, receivedQty: 2600, rackNo: 'R-03', shelfNo: '1' },
+  ]);
+
+  const addManualTrimsItemRow = () => {
+    const nextIdx = manualTrimsItems.length + 1;
+    setManualTrimsItems(prev => [
+      ...prev,
+      {
+        id: String(Date.now() + Math.random()),
+        itemName: '',
+        category: 'LABEL',
+        unit: 'PCS',
+        requiredQty: 1000,
+        receivedQty: 1000,
+        rackNo: `R-${String((nextIdx % 40) + 1).padStart(2, '0')}`,
+        shelfNo: String((nextIdx % 12) + 1),
+      }
+    ]);
+  };
+
+  const removeManualTrimsItemRow = (id: string) => {
+    if (manualTrimsItems.length <= 1) return;
+    setManualTrimsItems(prev => prev.filter(it => it.id !== id));
+  };
+
+  const updateManualTrimsItemRow = (id: string, field: keyof ManualTrimsItemRow, val: any) => {
+    setManualTrimsItems(prev => prev.map(it => it.id === id ? { ...it, [field]: val } : it));
+  };
+
+  // Clear all Trims Data
+  const handleClearAllTrimsData = () => {
+    if (typeof window !== 'undefined' && window.confirm('Are you sure you want to delete all Trims & Accessories Store data? This will clear all records and rack locations.')) {
+      setChecklists([]);
+      setRacks(generateDefaultRacks([]));
+      setSurplusTrims([]);
+      try {
+        localStorage.removeItem('nfl_trims_checklists_v9');
+        localStorage.removeItem('nfl_trims_racks_v9');
+        localStorage.removeItem('nfl_trims_surplus_v9');
+      } catch {}
+      showNotification('success', 'All trims store records cleared successfully.');
+    }
+  };
+
+  // Manual Submit
+  const handleManualTrimsSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualTrimsForm.jobNo.trim()) {
+      alert('Job No is required!');
+      return;
+    }
+
+    const items: TrimsItem[] = manualTrimsItems.map((row, idx) => ({
+      id: `TRIM-MAN-${Date.now()}-${idx}`,
+      category: row.category,
+      itemName: row.itemName.trim() || `Trims Item #${idx + 1}`,
+      supplierName: 'Northern Apparels Sourcing',
+      unit: row.unit,
+      consumption: 1,
+      consumptionUnit: 'PCS/GARMENT',
+      consumptionSource: 'MERCHANDISER',
+      requiredQty: Number(row.requiredQty) || 0,
+      wastagePct: 3,
+      totalOrderQty: Number(row.requiredQty) || 0,
+      receivedQty: Number(row.receivedQty) || 0,
+      balanceQty: Math.max(0, (Number(row.requiredQty) || 0) - (Number(row.receivedQty) || 0)),
+      deliveredQty: 0,
+      deliveryBalance: Number(row.receivedQty) || 0,
+      rackNo: row.rackNo || 'R-01',
+      shelfNo: String(row.shelfNo || '1'),
+      qualityStatus: 'PASS',
+      lastUpdated: new Date().toLocaleDateString('en-GB')
+    }));
+
+    const newRecord: TrimsChecklistRecord = {
+      id: `CHK-MAN-${Date.now()}`,
+      jobNo: manualTrimsForm.jobNo.trim(),
+      buyer: manualTrimsForm.buyer.trim(),
+      styleNo: manualTrimsForm.styleNo.trim() || 'STD-STYLE',
+      orderQty: Number(manualTrimsForm.orderQty) || 1000,
+      merchandiser: 'Store Manager',
+      shipmentDate: new Date().toISOString().slice(0, 10),
+      tnaSlot: 'Slot-1',
+      month: manualTrimsForm.month,
+      sewingLine: 'Line-01',
+      requestDate: new Date().toLocaleDateString('en-GB'),
+      itemDescription: items.map(i => i.itemName).slice(0, 3).join(', '),
+      checklistStatus: 'ACCEPTED',
+      presentStatus: 'Receive OK',
+      items
+    };
+    newRecord.presentStatus = computeJobStatus(newRecord);
+
+    const next = [newRecord, ...checklists];
+    setChecklists(next);
+    setRacks(generateDefaultRacks(next));
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('nfl_trims_checklists_v9', JSON.stringify(next));
+      } catch {}
+    }
+
+    setIsManualModalOpen(false);
+    showNotification('success', `Job #${manualTrimsForm.jobNo} saved with ${items.length} trims items!`);
+    setManualTrimsForm({
+      jobNo: '',
+      buyer: 'Bestseller (ONLY)',
+      styleNo: '',
+      month: 'November 2026',
+      orderQty: 2500,
+    });
+  };
+
+  // Multi-Month Excel Workbook Importer for Trims
+  const handleTrimsWorkbookUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsImporting(true);
+      const data = await file.arrayBuffer();
+      const wb = XLSX.read(data, { type: 'array' });
+
+      const jobMap = new Map<string, TrimsChecklistRecord>();
+      const sheetSummaries: { name: string; count: number }[] = [];
+
+      wb.SheetNames.forEach((sheetName) => {
+        const ws = wb.Sheets[sheetName];
+        const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: '' });
+        if (!rows || rows.length === 0) return;
+
+        let sheetCount = 0;
+        const sheetMonth = sheetName.trim();
+
+        rows.forEach((row, rIdx) => {
+          const findVal = (regex: RegExp) => {
+            const key = Object.keys(row).find(k => regex.test(k.trim()));
+            return key ? row[key] : '';
+          };
+
+          const jobVal = String(findVal(/^(job|job\s*no|job#|order|order\s*no|po)/i) || '').trim();
+          const itemVal = String(findVal(/^(item|item\s*name|trims|description|material)/i) || '').trim();
+          if (!jobVal && !itemVal) return;
+
+          const buyerVal = String(findVal(/^(buyer|customer|brand)/i) || 'Default Buyer').trim();
+          const styleVal = String(findVal(/^(style|style\s*no|style#)/i) || '').trim();
+          const catValRaw = String(findVal(/^(cat|category|type)/i) || 'OTHER').toUpperCase();
+          const unitValRaw = String(findVal(/^(unit|uom)/i) || 'PCS').toUpperCase();
+          const reqQty = Number(findVal(/^(req|required|order\s*qty|booking)/i)) || 0;
+          const recvQty = Number(findVal(/^(recv|received|delivery\s*qty|inward)/i)) || 0;
+          const rackVal = String(findVal(/^(rack|location|bin)/i) || `R-${String((rIdx % 40) + 1).padStart(2, '0')}`).trim();
+          const shelfVal = String(findVal(/^(shelf|shelf\s*no)/i) || String((rIdx % 12) + 1)).trim();
+          const supplierVal = String(findVal(/^(supplier|source|mill)/i) || 'Sourcing Vendor').trim();
+          const rowMonth = String(findVal(/^(month|mon)/i) || sheetMonth || 'November').trim();
+
+          let cat: TrimsCategory = 'OTHER';
+          if (/thread/i.test(catValRaw) || /thread/i.test(itemVal)) cat = 'THREAD';
+          else if (/zipper/i.test(catValRaw) || /zipper/i.test(itemVal)) cat = 'ZIPPER';
+          else if (/button/i.test(catValRaw) || /button/i.test(itemVal)) cat = 'BUTTON';
+          else if (/label/i.test(catValRaw) || /label/i.test(itemVal)) cat = 'LABEL';
+          else if (/elastic/i.test(catValRaw) || /elastic/i.test(itemVal)) cat = 'ELASTIC';
+          else if (/carton/i.test(catValRaw) || /carton/i.test(itemVal)) cat = 'CARTON';
+          else if (/poly|packaging|pack/i.test(catValRaw) || /poly/i.test(itemVal)) cat = 'PACKAGING';
+          else if (/tape/i.test(catValRaw) || /tape/i.test(itemVal)) cat = 'TAPE';
+          else if (/hangtag/i.test(catValRaw) || /hangtag/i.test(itemVal)) cat = 'HANGTAG';
+
+          let unit: TrimsUnit = 'PCS';
+          if (/cone/i.test(unitValRaw)) unit = 'CONES';
+          else if (/yard/i.test(unitValRaw) || /yds/i.test(unitValRaw)) unit = 'YARDS';
+          else if (/meter/i.test(unitValRaw) || /mtr/i.test(unitValRaw)) unit = 'METER';
+          else if (/gross/i.test(unitValRaw)) unit = 'GROSS';
+          else if (/roll/i.test(unitValRaw)) unit = 'ROLL';
+          else if (/cm/i.test(unitValRaw)) unit = 'CM';
+
+          const jKey = `${buyerVal}|${jobVal || `JOB-${rIdx}`}`;
+          if (!jobMap.has(jKey)) {
+            jobMap.set(jKey, {
+              id: `CHK-IMP-${Date.now()}-${rIdx}`,
+              jobNo: jobVal || `JOB-${rIdx}`,
+              buyer: buyerVal,
+              styleNo: styleVal || 'STD-STYLE',
+              orderQty: reqQty || 1000,
+              merchandiser: 'Store Team',
+              shipmentDate: new Date().toISOString().slice(0, 10),
+              tnaSlot: 'Slot-1',
+              month: rowMonth,
+              sewingLine: 'Line-01',
+              requestDate: new Date().toLocaleDateString('en-GB'),
+              itemDescription: itemVal || 'Trims Items',
+              checklistStatus: 'ACCEPTED',
+              presentStatus: 'Receive OK',
+              items: []
+            });
+          }
+
+          const record = jobMap.get(jKey)!;
+          record.items.push({
+            id: `TRIM-IMP-${Date.now()}-${rIdx}`,
+            category: cat,
+            itemName: itemVal || `Item #${record.items.length + 1}`,
+            supplierName: supplierVal,
+            unit,
+            consumption: 1,
+            consumptionUnit: 'PCS/GARMENT',
+            consumptionSource: 'MERCHANDISER',
+            requiredQty: reqQty,
+            wastagePct: 3,
+            totalOrderQty: reqQty,
+            receivedQty: recvQty,
+            balanceQty: Math.max(0, reqQty - recvQty),
+            deliveredQty: 0,
+            deliveryBalance: recvQty,
+            rackNo: rackVal,
+            shelfNo: shelfVal,
+            qualityStatus: 'PASS',
+            lastUpdated: new Date().toLocaleDateString('en-GB')
+          });
+
+          sheetCount++;
+        });
+
+        sheetSummaries.push({ name: sheetName, count: sheetCount });
+      });
+
+      const parsedRecords = Array.from(jobMap.values());
+      if (parsedRecords.length === 0) {
+        alert('No valid records found in workbook.');
+        setIsImporting(false);
+        return;
+      }
+
+      parsedRecords.forEach(rec => {
+        rec.presentStatus = computeJobStatus(rec);
+      });
+
+      const nextChecklists = [...parsedRecords, ...checklists];
+      setChecklists(nextChecklists);
+      setRacks(generateDefaultRacks(nextChecklists));
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('nfl_trims_checklists_v9', JSON.stringify(nextChecklists));
+        } catch {}
+      }
+
+      setIsImportModalOpen(false);
+      setIsImporting(false);
+      const summaryText = sheetSummaries.map(s => `${s.name}: ${s.count} rows`).join(', ');
+      showNotification('success', `Successfully imported ${parsedRecords.length} jobs across sheets (${summaryText})!`);
+    } catch (err: any) {
+      console.error('Import error:', err);
+      alert('Import failed: ' + (err.message || 'Unknown error'));
+      setIsImporting(false);
+    }
+  };
+
 
   // Recent Searches state
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
@@ -523,19 +812,19 @@ export default function TrimsStorePage() {
   // Save changes
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('nfl_trims_checklists_v8', JSON.stringify(checklists));
+      localStorage.setItem('nfl_trims_checklists_v9', JSON.stringify(checklists));
     }
   }, [checklists]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('nfl_trims_racks_v6', JSON.stringify(racks));
+      localStorage.setItem('nfl_trims_racks_v9', JSON.stringify(racks));
     }
   }, [racks]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('nfl_trims_surplus_v6', JSON.stringify(surplusTrims));
+      localStorage.setItem('nfl_trims_surplus_v9', JSON.stringify(surplusTrims));
     }
   }, [surplusTrims]);
 
@@ -563,9 +852,9 @@ export default function TrimsStorePage() {
 
     const handleResetSampleData = () => {
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('nfl_trims_checklists_v8');
-      localStorage.removeItem('nfl_trims_racks_v6');
-      localStorage.removeItem('nfl_trims_surplus_v6');
+      localStorage.removeItem('nfl_trims_checklists_v9');
+      localStorage.removeItem('nfl_trims_racks_v9');
+      localStorage.removeItem('nfl_trims_surplus_v9');
       localStorage.removeItem('nfl_trims_recent_searches_v4');
     }
     const freshChecklists = generateInitialChecklists();
@@ -611,6 +900,15 @@ export default function TrimsStorePage() {
       if (checklistFilter === 'PENDING' && c.checklistStatus !== 'PENDING_REVIEW') return false;
       if (checklistFilter === 'ACCEPTED' && c.checklistStatus !== 'ACCEPTED') return false;
       if (checklistFilter === 'REVIEW_REQUESTED' && c.checklistStatus !== 'REVIEW_REQUESTED') return false;
+      if (selectedMonth !== 'ALL') {
+        const sm = selectedMonth.toLowerCase();
+        const jm = (c.month || c.tnaSlot || '').toLowerCase();
+        const monthNames = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+        const smIdx = monthNames.indexOf(sm);
+        const matches = jm.includes(sm) || 
+          (smIdx !== -1 && (jm.includes(String(smIdx + 1).padStart(2, '0')) || jm.includes(monthNames[smIdx].slice(0, 3))));
+        if (!matches) return false;
+      }
       if (checklistSearchQuery.trim()) {
         const q = checklistSearchQuery.replace(/#/g, '').toLowerCase();
         return c.jobNo.toLowerCase().includes(q) ||
@@ -1415,6 +1713,72 @@ export default function TrimsStorePage() {
           <Tv size={16} color={activeTab === 'TV' ? '#071F42' : '#FFFFFF'} />
           <span>Store TV Display</span>
         </button>
+
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            type="button"
+            onClick={() => setIsImportModalOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '7px 14px',
+              borderRadius: '6px',
+              fontSize: '12px',
+              fontWeight: 700,
+              background: '#059669',
+              color: '#FFFFFF',
+              border: 'none',
+              cursor: 'pointer'
+            }}
+            title="Import Excel workbook with multi-month sheets"
+          >
+            <FolderUp size={15} />
+            <span>Import Workbook</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsManualModalOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '7px 14px',
+              borderRadius: '6px',
+              fontSize: '12px',
+              fontWeight: 700,
+              background: '#2563EB',
+              color: '#FFFFFF',
+              border: 'none',
+              cursor: 'pointer'
+            }}
+            title="New manual job & trims entry"
+          >
+            <Plus size={15} />
+            <span>New Trims Entry</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleClearAllTrimsData}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '7px 12px',
+              borderRadius: '6px',
+              fontSize: '12px',
+              fontWeight: 700,
+              background: '#FFF1F2',
+              color: '#E11D48',
+              border: '1px solid #FECDD3',
+              cursor: 'pointer'
+            }}
+            title="Clear all stored trims data"
+          >
+            <Trash2 size={15} />
+            <span>Clear Data</span>
+          </button>
+        </div>
       </div>
 
       {/* ==================================================================== */}
@@ -1452,7 +1816,28 @@ export default function TrimsStorePage() {
               </p>
             </div>
 
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <select
+                value={selectedMonth}
+                onChange={e => setSelectedMonth(e.target.value)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: 650,
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  background: 'rgba(255,255,255,0.15)',
+                  color: '#FFFFFF',
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="ALL" style={{ color: '#0F274E' }}>All Months</option>
+                {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map(m => (
+                  <option key={m} value={m} style={{ color: '#0F274E' }}>{m}</option>
+                ))}
+              </select>
+
               {(['ALL', 'PENDING', 'ACCEPTED', 'REVIEW_REQUESTED'] as const).map(tabKey => (
                 <button
                   key={tabKey}
@@ -1504,7 +1889,46 @@ export default function TrimsStorePage() {
                 </tr>
               </thead>
               <tbody>
-                {pagedChecklistRequests.map((job: TrimsChecklistRecord) => {
+                {checklists.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} style={{ padding: '60px 20px', textAlign: 'center' }}>
+                      <div style={{ maxWidth: '440px', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <Package size={44} color="#94A3B8" style={{ marginBottom: '12px' }} />
+                        <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', marginBottom: '4px' }}>
+                          No Trims & Accessories Records in Store
+                        </h3>
+                        <p style={{ fontSize: '12px', color: '#64748B', marginBottom: '16px', textAlign: 'center' }}>
+                          All previous data has been cleared. You can now import your multi-month Excel workbook or create new manual entries directly.
+                        </p>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                          <button
+                            type="button"
+                            onClick={() => setIsImportModalOpen(true)}
+                            style={{ padding: '8px 16px', background: '#059669', color: '#FFFFFF', borderRadius: '6px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', border: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}
+                          >
+                            <FolderUp size={16} />
+                            <span>Import Excel Workbook (.xlsx)</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsManualModalOpen(true)}
+                            style={{ padding: '8px 16px', background: '#0F274E', color: '#FFFFFF', borderRadius: '6px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', border: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}
+                          >
+                            <Plus size={16} />
+                            <span>New Trims Entry</span>
+                          </button>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ) : pagedChecklistRequests.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} style={{ padding: '30px', textAlign: 'center', color: '#64748B', fontSize: '13px' }}>
+                      No checklists match the filter criteria.
+                    </td>
+                  </tr>
+                ) : (
+                  pagedChecklistRequests.map((job: TrimsChecklistRecord) => {
                   const isUnfolded = !!unfoldedJobIds[job.id];
 
                   return (
@@ -1762,7 +2186,8 @@ export default function TrimsStorePage() {
                       )}
                     </React.Fragment>
                   );
-                })}
+                })
+              )}
               </tbody>
             </table>
           </div>
@@ -4159,6 +4584,194 @@ export default function TrimsStorePage() {
           />
         );
       })()}
+      {/* ===================================================================== */}
+      {/* EXCEL MULTI-MONTH WORKBOOK IMPORT MODAL FOR TRIMS */}
+      {/* ===================================================================== */}
+      {isImportModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ background: '#FFFFFF', borderRadius: '12px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', maxWidth: '520px', width: '100%', overflow: 'hidden', border: '1px solid #E2E8F0' }}>
+            <div style={{ padding: '16px 20px', background: '#065F46', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <FolderUp size={20} color="#A7F3D0" />
+                <div>
+                  <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0 }}>Import Trims Excel Workbook</h3>
+                  <p style={{ fontSize: '11px', color: '#D1FAE5', margin: 0 }}>Consolidate multi-month workbook sheets into trims store</p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setIsImportModalOpen(false)} style={{ background: 'none', border: 'none', color: '#FFFFFF', cursor: 'pointer', padding: '4px' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ padding: '24px' }}>
+              <div style={{ border: '2px dashed #6EE7B7', borderRadius: '12px', padding: '32px 20px', textAlign: 'center', background: '#ECFDF5', marginBottom: '16px' }}>
+                <FolderUp size={44} color="#059669" style={{ margin: '0 auto 12px auto' }} />
+                <p style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A', marginBottom: '4px' }}>
+                  Select or drop Excel Workbook (.xlsx / .xls)
+                </p>
+                <p style={{ fontSize: '11px', color: '#64748B', maxWidth: '320px', margin: '0 auto 16px auto' }}>
+                  All monthly tabs (e.g. September, October, November) will be parsed and aggregated in one unified view.
+                </p>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 18px', background: '#059669', color: '#FFFFFF', borderRadius: '8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                  <Upload size={16} />
+                  <span>Choose Excel File</span>
+                  <input type="file" accept=".xlsx, .xls, .csv" onChange={handleTrimsWorkbookUpload} disabled={isImporting} style={{ display: 'none' }} />
+                </label>
+              </div>
+
+              {isImporting && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '12px', fontWeight: 650, color: '#059669', padding: '8px 0' }}>
+                  <RefreshCw size={16} className="animate-spin" />
+                  <span>Parsing workbook sheets, please wait...</span>
+                </div>
+              )}
+
+              <div style={{ background: '#F8FAFC', borderRadius: '8px', padding: '12px', border: '1px solid #E2E8F0', fontSize: '11px', color: '#475569' }}>
+                <div style={{ fontWeight: 700, color: '#1E293B', marginBottom: '4px' }}>Automatic Column Mapping:</div>
+                <div>• Job / Order No, Buyer, Style No, Month</div>
+                <div>• Item Description, Category (Thread, Zipper, Button, Label, Polybag, Carton)</div>
+                <div>• Required Qty, Received Qty, UOM, Rack & Shelf Location</div>
+              </div>
+            </div>
+
+            <div style={{ padding: '12px 20px', background: '#F8FAFC', borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => setIsImportModalOpen(false)} style={{ padding: '6px 14px', fontSize: '12px', fontWeight: 650, color: '#475569', background: 'none', border: 'none', cursor: 'pointer' }}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* MANUAL ENTRY MODAL FOR TRIMS */}
+      {/* ===================================================================== */}
+      {isManualModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', overflowY: 'auto' }}>
+          <div style={{ background: '#FFFFFF', borderRadius: '12px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', maxWidth: '780px', width: '100%', overflow: 'hidden', border: '1px solid #E2E8F0', margin: '32px 0' }}>
+            <div style={{ padding: '16px 20px', background: '#0F274E', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <h3 style={{ fontSize: '16px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Plus size={18} color="#38BDF8" />
+                  Manual Trims Entry (New Job & Items)
+                </h3>
+                <p style={{ fontSize: '12px', color: '#94A3B8', margin: '2px 0 0 0' }}>Enter trims checklist and items directly into store inventory</p>
+              </div>
+              <button type="button" onClick={() => setIsManualModalOpen(false)} style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: '4px' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleManualTrimsSubmit} style={{ padding: '20px', maxHeight: '78vh', overflowY: 'auto' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>Job No *</label>
+                  <input required type="text" value={manualTrimsForm.jobNo} onChange={e => setManualTrimsForm(p => ({ ...p, jobNo: e.target.value }))} placeholder="e.g. 48095" style={{ width: '100%', padding: '6px 10px', fontSize: '12px', border: '1px solid #CBD5E1', borderRadius: '6px' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>Buyer *</label>
+                  <input required type="text" value={manualTrimsForm.buyer} onChange={e => setManualTrimsForm(p => ({ ...p, buyer: e.target.value }))} placeholder="e.g. ONLY" style={{ width: '100%', padding: '6px 10px', fontSize: '12px', border: '1px solid #CBD5E1', borderRadius: '6px' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>Style No</label>
+                  <input type="text" value={manualTrimsForm.styleNo} onChange={e => setManualTrimsForm(p => ({ ...p, styleNo: e.target.value }))} placeholder="e.g. 22040024" style={{ width: '100%', padding: '6px 10px', fontSize: '12px', border: '1px solid #CBD5E1', borderRadius: '6px' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>Month *</label>
+                  <select value={manualTrimsForm.month} onChange={e => setManualTrimsForm(p => ({ ...p, month: e.target.value }))} style={{ width: '100%', padding: '6px 10px', fontSize: '12px', border: '1px solid #CBD5E1', borderRadius: '6px' }}>
+                    <option value="November 2026">November 2026</option>
+                    <option value="October 2026">October 2026</option>
+                    <option value="September 2026">September 2026</option>
+                    <option value="December 2026">December 2026</option>
+                    <option value="January 2027">January 2027</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Items Breakdown */}
+              <div style={{ border: '1px solid #E2E8F0', borderRadius: '8px', padding: '14px', background: '#F8FAFC', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                  <h4 style={{ fontSize: '12px', fontWeight: 700, color: '#1E293B', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Package size={16} color="#059669" />
+                    Trims Items Breakdown ({manualTrimsItems.length} Items)
+                  </h4>
+                  <button type="button" onClick={addManualTrimsItemRow} style={{ padding: '4px 10px', background: '#ECFDF5', color: '#065F46', border: '1px solid #A7F3D0', borderRadius: '4px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Plus size={13} />
+                    <span>+ Add Item</span>
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {manualTrimsItems.map((it, idx) => (
+                    <div key={it.id} style={{ display: 'grid', gridTemplateColumns: '3fr 2fr 1fr 1.5fr 1.5fr 1fr 30px', gap: '8px', alignItems: 'center', background: '#FFFFFF', padding: '8px 10px', borderRadius: '6px', border: '1px solid #E2E8F0', fontSize: '12px' }}>
+                      <div>
+                        <span style={{ fontSize: '10px', color: '#94A3B8', display: 'block', marginBottom: '2px' }}>Item Name *</span>
+                        <input required type="text" value={it.itemName} onChange={e => updateManualTrimsItemRow(it.id, 'itemName', e.target.value)} placeholder="e.g. Sewing Thread" style={{ width: '100%', padding: '4px 6px', fontSize: '11px', border: '1px solid #E2E8F0', borderRadius: '4px' }} />
+                      </div>
+                      <div>
+                        <span style={{ fontSize: '10px', color: '#94A3B8', display: 'block', marginBottom: '2px' }}>Category</span>
+                        <select value={it.category} onChange={e => updateManualTrimsItemRow(it.id, 'category', e.target.value as any)} style={{ width: '100%', padding: '4px 6px', fontSize: '11px', border: '1px solid #E2E8F0', borderRadius: '4px' }}>
+                          <option value="THREAD">Thread</option>
+                          <option value="ZIPPER">Zipper</option>
+                          <option value="BUTTON">Button</option>
+                          <option value="LABEL">Label</option>
+                          <option value="ELASTIC">Elastic</option>
+                          <option value="PACKAGING">Polybag</option>
+                          <option value="CARTON">Carton</option>
+                          <option value="TAPE">Tape</option>
+                          <option value="HANGTAG">Hangtag</option>
+                          <option value="OTHER">Other</option>
+                        </select>
+                      </div>
+                      <div>
+                        <span style={{ fontSize: '10px', color: '#94A3B8', display: 'block', marginBottom: '2px' }}>Unit</span>
+                        <select value={it.unit} onChange={e => updateManualTrimsItemRow(it.id, 'unit', e.target.value as any)} style={{ width: '100%', padding: '4px 4px', fontSize: '11px', border: '1px solid #E2E8F0', borderRadius: '4px' }}>
+                          <option value="PCS">PCS</option>
+                          <option value="YARDS">YDS</option>
+                          <option value="METER">MTR</option>
+                          <option value="CONES">CONES</option>
+                          <option value="GROSS">GROSS</option>
+                          <option value="ROLL">ROLL</option>
+                          <option value="CM">CM</option>
+                        </select>
+                      </div>
+                      <div>
+                        <span style={{ fontSize: '10px', color: '#94A3B8', display: 'block', marginBottom: '2px' }}>Req Qty *</span>
+                        <input required type="number" min="0" value={it.requiredQty || ''} onChange={e => updateManualTrimsItemRow(it.id, 'requiredQty', Number(e.target.value))} placeholder="0" style={{ width: '100%', padding: '4px 6px', fontSize: '11px', border: '1px solid #E2E8F0', borderRadius: '4px' }} />
+                      </div>
+                      <div>
+                        <span style={{ fontSize: '10px', color: '#94A3B8', display: 'block', marginBottom: '2px' }}>Recv Qty *</span>
+                        <input required type="number" min="0" value={it.receivedQty || ''} onChange={e => updateManualTrimsItemRow(it.id, 'receivedQty', Number(e.target.value))} placeholder="0" style={{ width: '100%', padding: '4px 6px', fontSize: '11px', border: '1px solid #E2E8F0', borderRadius: '4px' }} />
+                      </div>
+                      <div>
+                        <span style={{ fontSize: '10px', color: '#94A3B8', display: 'block', marginBottom: '2px' }}>Rack</span>
+                        <input type="text" value={it.rackNo} onChange={e => updateManualTrimsItemRow(it.id, 'rackNo', e.target.value)} placeholder="R-01" style={{ width: '100%', padding: '4px 6px', fontSize: '11px', border: '1px solid #E2E8F0', borderRadius: '4px' }} />
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '14px' }}>
+                        {manualTrimsItems.length > 1 && (
+                          <button type="button" onClick={() => removeManualTrimsItemRow(it.id)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: '2px' }}>
+                            <Trash2 size={15} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', paddingTop: '12px', borderTop: '1px solid #E2E8F0' }}>
+                <button type="button" onClick={() => setIsManualModalOpen(false)} style={{ padding: '8px 16px', fontSize: '12px', fontWeight: 650, color: '#64748B', background: 'none', border: 'none', cursor: 'pointer' }}>
+                  Cancel
+                </button>
+                <button type="submit" style={{ padding: '8px 20px', fontSize: '12px', fontWeight: 700, color: '#FFFFFF', background: '#059669', border: 'none', borderRadius: '6px', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                  Save Job & Trims
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </Shell>
   );
 }

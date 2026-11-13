@@ -404,52 +404,70 @@ export default function FabricRackLocation({
       {/* =================================================================== */}
       {/* SUB-TABS: 1. Present Store Layout | 2. Job-wise Location Search */}
       {/* =================================================================== */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
-        <div className="flex items-center gap-2">
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '12px', borderBottom: '1px solid #E2E8F0', paddingBottom: '12px' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button
             type="button"
             onClick={() => setSubTab('LAYOUT')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all border ${
-              subTab === 'LAYOUT'
-                ? 'bg-blue-50 text-blue-900 border-blue-600 shadow-xs'
-                : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-            }`}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 16px',
+              borderRadius: '6px',
+              fontSize: '13px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              border: subTab === 'LAYOUT' ? '1px solid #0F274E' : '1px solid #CBD5E1',
+              background: subTab === 'LAYOUT' ? '#0F274E' : '#FFFFFF',
+              color: subTab === 'LAYOUT' ? '#FFFFFF' : '#334155',
+              transition: 'all 0.15s ease'
+            }}
           >
-            <Warehouse size={15} color={subTab === 'LAYOUT' ? '#1D4ED8' : '#64748B'} />
+            <Warehouse size={16} color={subTab === 'LAYOUT' ? '#FFFFFF' : '#64748B'} />
             <span>1. Present Store Layout (20 Master Racks × 20 Shelves)</span>
           </button>
 
           <button
             type="button"
             onClick={() => setSubTab('JOB_SEARCH')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all border ${
-              subTab === 'JOB_SEARCH'
-                ? 'bg-blue-50 text-blue-900 border-blue-600 shadow-xs'
-                : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-            }`}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 16px',
+              borderRadius: '6px',
+              fontSize: '13px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              border: subTab === 'JOB_SEARCH' ? '1px solid #0F274E' : '1px solid #CBD5E1',
+              background: subTab === 'JOB_SEARCH' ? '#0F274E' : '#FFFFFF',
+              color: subTab === 'JOB_SEARCH' ? '#FFFFFF' : '#334155',
+              transition: 'all 0.15s ease'
+            }}
           >
-            <Search size={15} color={subTab === 'JOB_SEARCH' ? '#1D4ED8' : '#64748B'} />
+            <Search size={16} color={subTab === 'JOB_SEARCH' ? '#FFFFFF' : '#64748B'} />
             <span>2. Job-wise Location Search</span>
           </button>
         </div>
 
-        {/* Global Summary Badge Counters */}
-        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
-          <span className="px-2.5 py-1 rounded-md bg-white border border-slate-200 text-slate-700">
-            Total Shelves: <strong className="text-slate-900">{shelfStats.totalShelves}</strong>
+        {/* Global Summary Badge Counters - Light Backgrounds, Dark Text */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: 600 }}>
+          <span style={{ padding: '6px 12px', borderRadius: '6px', background: '#FFFFFF', border: '1px solid #CBD5E1', color: '#334155' }}>
+            Total Shelves: <strong style={{ color: '#0F172A', fontWeight: 800 }}>{shelfStats.totalShelves}</strong>
           </span>
-          <span className="px-2.5 py-1 rounded-md bg-sky-50 border border-sky-200 text-sky-800">
-            Occupied: <strong className="text-sky-900">{shelfStats.occupiedCount}</strong>
+          <span style={{ padding: '6px 12px', borderRadius: '6px', background: '#F0F9FF', border: '1px solid #BAE6FD', color: '#0369A1' }}>
+            Occupied: <strong style={{ color: '#0C4A6E', fontWeight: 800 }}>{shelfStats.occupiedCount}</strong>
           </span>
-          <span className="px-2.5 py-1 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800">
-            Free: <strong className="text-emerald-900">{shelfStats.freeCount}</strong>
+          <span style={{ padding: '6px 12px', borderRadius: '6px', background: '#ECFDF5', border: '1px solid #A7F3D0', color: '#047857' }}>
+            Free: <strong style={{ color: '#064E3B', fontWeight: 800 }}>{shelfStats.freeCount}</strong>
           </span>
-          <span className="px-2.5 py-1 rounded-md bg-purple-50 border border-purple-200 text-purple-800">
-            In Store Total: <strong className="text-purple-900">{Math.round(shelfStats.totalKg).toLocaleString()} kg</strong>
+          <span style={{ padding: '6px 12px', borderRadius: '6px', background: '#FAF5FF', border: '1px solid #E9D5FF', color: '#6B21A8' }}>
+            In Store Total: <strong style={{ color: '#581C87', fontWeight: 800 }}>{Math.round(shelfStats.totalKg).toLocaleString()} kg</strong>
           </span>
           {unplacedLines.length > 0 && (
-            <span className="px-2.5 py-1 rounded-md bg-amber-50 border border-amber-200 text-amber-800">
-              Unplaced Fabrics: <strong className="text-amber-900">{unplacedLines.length}</strong>
+            <span style={{ padding: '6px 12px', borderRadius: '6px', background: '#FFFBEB', border: '1px solid #FDE68A', color: '#B45309' }}>
+              Unplaced Fabrics: <strong style={{ color: '#78350F', fontWeight: 800 }}>{unplacedLines.length}</strong>
             </span>
           )}
         </div>
@@ -703,88 +721,136 @@ export default function FabricRackLocation({
       )}
 
       {/* =================================================================== */}
-      {/* SUB-TAB 2: JOB-WISE LOCATION SEARCH (MATCHING SCREENSHOT 1) */}
+      {/* SUB-TAB 2: JOB-WISE LOCATION SEARCH (MATCHING TRIMS STORE DESIGN) */}
       {/* =================================================================== */}
       {subTab === 'JOB_SEARCH' && (
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
+        <div style={{ background: '#FFFFFF', borderRadius: '8px', border: '1px solid #E2E8F0', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
           {/* Job Search Input Bar */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+          <div style={{ maxWidth: '480px', marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px', color: '#1E293B' }}>
               Search Job No to Locate Finished Fabric:
             </label>
-            <div className="flex items-center gap-2 max-w-xl">
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <Search size={16} style={{ position: 'absolute', left: '12px', top: '10px', color: '#94A3B8' }} />
                 <input
                   type="text"
                   value={jobSearchQuery}
                   onChange={e => setJobSearchQuery(e.target.value)}
-                  placeholder="e.g. 48002, 48283, 48845..."
-                  className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900"
+                  placeholder="e.g. 44001, 48002, 48283, 48845..."
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px 8px 36px',
+                    borderRadius: '6px',
+                    border: '1.5px solid #0284C7',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: '#0F172A',
+                    background: '#FFFFFF',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
                 />
               </div>
               <button
                 type="button"
                 onClick={() => {}}
-                className="px-4 py-2 bg-[#0F274E] text-white text-xs font-bold rounded-lg hover:bg-slate-800 transition-colors"
+                style={{
+                  padding: '8px 20px',
+                  background: '#0F274E',
+                  color: '#FFFFFF',
+                  fontSize: '13px',
+                  fontWeight: 750,
+                  borderRadius: '6px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'background 0.15s ease'
+                }}
               >
                 GO
               </button>
             </div>
           </div>
 
-          {/* Job Details Banner (Matching Screenshot 1) */}
+          {/* Job Details Banner (Matching Trims Store) */}
           {searchedJob ? (
-            <div className="space-y-4">
-              <div className="p-3 bg-sky-50 border border-sky-200 rounded-lg text-xs font-bold text-[#0F274E] flex items-center justify-between">
-                <span>
-                  Job {searchedJob.jobNo} ({searchedJob.buyer} - {searchedJob.style}) — {searchedJob.fabric} · {searchedJob.gsm} GSM · Dia {searchedJob.dia}
-                </span>
-                <span className="text-[11px] font-semibold text-slate-600 bg-white px-2 py-0.5 rounded border border-sky-100">
+            <div>
+              <div
+                style={{
+                  background: '#F0F9FF',
+                  border: '1px solid #BAE6FD',
+                  borderRadius: '6px',
+                  padding: '10px 14px',
+                  marginBottom: '14px',
+                  fontSize: '13px',
+                  color: '#0F274E',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '8px'
+                }}
+              >
+                <div>
+                  <strong style={{ color: '#0284C7' }}>{searchedJob.buyer}</strong> • <strong>Job #{searchedJob.jobNo}</strong> ({searchedJob.style}) — {searchedJob.fabric} · {searchedJob.gsm} GSM · Dia {searchedJob.dia}
+                </div>
+                <span
+                  style={{
+                    fontSize: '11.5px',
+                    fontWeight: 700,
+                    color: '#0369A1',
+                    background: '#FFFFFF',
+                    padding: '3px 9px',
+                    borderRadius: '4px',
+                    border: '1px solid #BAE6FD'
+                  }}
+                >
                   {searchedJob.colors.length} Color{searchedJob.colors.length > 1 ? 's' : ''}
                 </span>
               </div>
 
               {/* Exact Location & Stock Summary Table */}
-              <div className="overflow-x-auto rounded-lg border border-slate-200">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-[#0F274E] text-white text-[11px]">
-                    <tr>
-                      <th className="px-3 py-2.5 font-bold">Color / Item</th>
-                      <th className="px-3 py-2.5 font-semibold">Fabric Type & Process</th>
-                      <th className="px-3 py-2.5 text-right font-semibold">Order Qty (Kg)</th>
-                      <th className="px-3 py-2.5 text-right font-semibold">Received (Kg)</th>
-                      <th className="px-3 py-2.5 text-right font-semibold">Delivery / Issue</th>
-                      <th className="px-3 py-2.5 text-right font-bold bg-sky-950 text-sky-200">In-Stock Qty</th>
-                      <th className="px-3 py-2.5 font-bold text-center bg-[#0d2244]">Exact Shelf Location</th>
+              <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFFFFF' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ background: '#0F274E', color: '#FFFFFF', fontSize: '11.5px', textTransform: 'uppercase' }}>
+                      <th style={{ padding: '10px 14px', color: '#FFFFFF', fontWeight: 700 }}>Color / Item</th>
+                      <th style={{ padding: '10px 12px', color: '#FFFFFF', fontWeight: 650 }}>Fabric Type & Process</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'right', color: '#FFFFFF', fontWeight: 650 }}>Order Qty (Kg)</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'right', color: '#FFFFFF', fontWeight: 650 }}>Received (Kg)</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'right', color: '#FFFFFF', fontWeight: 650 }}>Delivery / Issue</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'right', color: '#FFFFFF', fontWeight: 700 }}>In-Stock Qty</th>
+                      <th style={{ padding: '10px 14px', textAlign: 'center', background: '#0284C7', color: '#FFFFFF', fontWeight: 700 }}>Exact Shelf Location</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 text-xs">
+                  <tbody>
                     {searchedJob.colors.map(c => {
                       const shelfKeys = lineShelfMap[c.id] || [];
                       return (
-                        <tr key={c.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-3 py-2.5 font-bold text-slate-900">
+                        <tr key={c.id} style={{ borderBottom: '1px solid #E2E8F0', background: '#FFFFFF' }}>
+                          <td style={{ padding: '10px 14px', fontWeight: 700, color: '#1E293B' }}>
                             {c.color}
                           </td>
-                          <td className="px-3 py-2.5 text-slate-600">
-                            {c.fabric} ({c.gsm} GSM)
+                          <td style={{ padding: '10px 12px' }}>
+                            <span style={{ fontSize: '11.5px', background: '#F1F5F9', color: '#334155', padding: '3px 8px', borderRadius: '4px', fontWeight: 600, border: '1px solid #E2E8F0' }}>
+                              {c.fabric} ({c.gsm} GSM)
+                            </span>
                           </td>
-                          <td className="px-3 py-2.5 text-right font-medium text-slate-700">
+                          <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600, color: '#334155' }}>
                             {Math.round(c.totalReq || 0).toLocaleString()} kg
                           </td>
-                          <td className="px-3 py-2.5 text-right font-semibold text-emerald-700">
+                          <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 650, color: '#047857' }}>
                             {Math.round(c.totalRecv || 0).toLocaleString()} kg
                           </td>
-                          <td className="px-3 py-2.5 text-right font-medium text-purple-700">
+                          <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600, color: '#7E22CE' }}>
                             {Math.round(c.totalIssued || 0).toLocaleString()} kg
                           </td>
-                          <td className="px-3 py-2.5 text-right font-black text-sky-800 bg-sky-50/50">
+                          <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 750, color: '#0284C7' }}>
                             {Math.round(c.stockBalance || 0).toLocaleString()} kg
                           </td>
-                          <td className="px-3 py-2.5 text-center">
+                          <td style={{ padding: '10px 14px', textAlign: 'center' }}>
                             {shelfKeys.length > 0 ? (
-                              <div className="flex flex-wrap justify-center gap-1">
+                              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '6px' }}>
                                 {shelfKeys.map(sid => (
                                   <button
                                     key={sid}
@@ -797,14 +863,37 @@ export default function FabricRackLocation({
                                         setSubTab('LAYOUT');
                                       }
                                     }}
-                                    className="px-2 py-0.5 rounded text-[11px] font-bold bg-sky-100 hover:bg-sky-200 text-sky-900 border border-sky-300 transition-colors"
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px',
+                                      padding: '4px 10px',
+                                      borderRadius: '6px',
+                                      fontSize: '12px',
+                                      fontWeight: 800,
+                                      background: '#EFF6FF',
+                                      color: '#1D4ED8',
+                                      border: '1px solid #BFDBFE',
+                                      cursor: 'pointer'
+                                    }}
                                   >
-                                    {shelfLabel(sid)}
+                                    📍 {shelfLabel(sid)}
                                   </button>
                                 ))}
                               </div>
                             ) : (
-                              <span className="text-[11px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 font-semibold">
+                              <span
+                                style={{
+                                  display: 'inline-block',
+                                  fontSize: '11.5px',
+                                  fontWeight: 700,
+                                  background: '#FEF3C7',
+                                  color: '#B45309',
+                                  padding: '4px 10px',
+                                  borderRadius: '6px',
+                                  border: '1px solid #FDE68A'
+                                }}
+                              >
                                 Not assigned yet
                               </span>
                             )}
@@ -817,10 +906,10 @@ export default function FabricRackLocation({
               </div>
             </div>
           ) : (
-            <div className="py-12 text-center text-slate-400">
-              <Search className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-              <p className="text-xs font-semibold text-slate-600">No matching job found for “{jobSearchQuery}”</p>
-              <p className="text-[11px] text-slate-400 mt-1">Try searching for job numbers like 48002, 48283, 48845, 48858, 48153</p>
+            <div style={{ padding: '36px', textAlign: 'center', color: '#64748B' }}>
+              <Search size={32} style={{ margin: '0 auto 8px', color: '#CBD5E1' }} />
+              <p style={{ fontSize: '13px', fontWeight: 650, color: '#334155' }}>No matching job found for “{jobSearchQuery}”</p>
+              <p style={{ fontSize: '11.5px', color: '#64748B', marginTop: '4px' }}>Try searching for job numbers like 44001, 48002, 48283, 48845, 48858</p>
             </div>
           )}
         </div>

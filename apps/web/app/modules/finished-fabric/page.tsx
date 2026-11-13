@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import Shell from '../../../components/Shell';
+import * as XLSX from 'xlsx';
 import {
   Package,
   Layers,
@@ -41,6 +42,10 @@ import {
   Building2,
   Globe,
   FileSpreadsheet,
+  ArrowUpDown,
+  Upload,
+  Trash2,
+  FolderUp,
 } from 'lucide-react';
 import {
   BarChart,
@@ -70,7 +75,56 @@ import FabricRackLocation, {
   getShelfItems,
 } from '../../../components/fabric/FabricRackLocation';
 
-const RACK_STORE_KEY = 'nos-finished-fabric-rack-locations-v3';
+const RACK_STORE_KEY = 'nos-finished-fabric-rack-locations-v9';
+
+/**
+ * Strips buyer prefixes (e.g. ONLY-, OS-, OVS-, NI-, UTG-, UT-, BS-, BSONS-) from style number
+ * so only the clean style number is displayed.
+ */
+export function cleanStyleNo(st: string): string {
+  if (!st) return '—';
+  return st.replace(/^(OS|ONLY|OVS|NI|UTG|UT|BS|BSONS|NL|TML|NAME\s*IT|NEW\s*LOOK|TOM\s*TAILOR|JACK\s*&\s*JONES|VERO\s*MODA)[-_ ]+/i, '').trim() || st;
+}
+
+/**
+ * Pre-populates realistic demo placements across 20 Racks x 20 Shelves
+ * so that Location Tracking shows full warehouse occupancy.
+ */
+function generateInitialRackLocations(lines: FabricColorLine[]): RackLocations {
+  const result: RackLocations = {};
+  if (!lines || lines.length === 0) return result;
+
+  const candidates = lines.filter(l => l.stockBalance > 0 || l.totalRecv > 0);
+  const pool = candidates.length > 0 ? candidates : lines;
+
+  let poolIdx = 0;
+  for (let rack = 1; rack <= FABRIC_RACKS; rack++) {
+    // Occupy 8 to 14 shelves per rack
+    const occupiedCount = 8 + (rack % 7);
+    for (let shelf = 1; shelf <= occupiedCount && shelf <= FABRIC_SHELVES; shelf++) {
+      const line = pool[poolIdx % pool.length];
+      poolIdx++;
+      const sid = shelfId(rack, shelf);
+      const kgVal = Math.round(line.stockBalance > 0 ? line.stockBalance : (180 + (poolIdx % 250)));
+      const rollVal = Math.max(2, Math.round(kgVal / 24));
+
+      result[sid] = [
+        {
+          lineId: line.id,
+          jobNo: line.jobNo,
+          buyer: line.buyer,
+          style: cleanStyleNo(line.style),
+          color: line.color,
+          fabric: `${line.fabricType} ${line.composition} ${line.gsm}gsm`,
+          kg: kgVal,
+          rolls: rollVal,
+          placedOn: '10.11.2026',
+        }
+      ];
+    }
+  }
+  return result;
+}
 
 // ============================================================================
 // DATA TYPES & INTERFACES (100% PURE ENGLISH)
@@ -268,6 +322,334 @@ function FinishedFabricPageInner() {
   const [isLoading, setIsLoading] = useState(true);
   const [expandedJobs, setExpandedJobs] = useState<Record<string, boolean>>({});
   const [showAllColors, setShowAllColors] = useState(false);
+
+  // Import & Manual Entry state
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+
+  // Manual Job Form State
+  const [manualJobForm, setManualJobForm] = useState({
+    jobNo: '',
+    buyer: 'Bestseller (ONLY)',
+    style: '',
+    month: 'November 2026',
+    fabricType: 'Single Jersey',
+    composition: '100% Combed Cotton',
+    gsm: '180',
+    dia: '68\" Open',
+    process: 'Reactive Dyeing',
+    supplier: 'Northern Dyeing Unit-1',
+  });
+
+  interface ManualColorRow {
+    id: string;
+    color: string;
+    reqBody: number;
+    recvBody: number;
+    rollCount: number;
+    location: string;
+  }
+
+  const [manualColors, setManualColors] = useState<ManualColorRow[]>([
+    { id: '1', color: 'Jet Black', reqBody: 500, recvBody: 500, rollCount: 15, location: 'R-01 · Shelf 02' },
+    { id: '2', color: 'Navy Blazer', reqBody: 450, recvBody: 450, rollCount: 14, location: 'R-01 · Shelf 03' },
+    { id: '3', color: 'Anthracite Melange', reqBody: 380, recvBody: 380, rollCount: 12, location: 'R-01 · Shelf 04' },
+  ]);
+
+  const addManualColorRow = () => {
+    const nextNum = manualColors.length + 1;
+    setManualColors(prev => [
+      ...prev,
+      {
+        id: String(Date.now() + Math.random()),
+        color: '',
+        reqBody: 200,
+        recvBody: 200,
+        rollCount: 6,
+        location: `R-${String((nextNum % 20) + 1).padStart(2, '0')} · Shelf 01`
+      }
+    ]);
+  };
+
+  const removeManualColorRow = (id: string) => {
+    if (manualColors.length <= 1) return;
+    setManualColors(prev => prev.filter(c => c.id !== id));
+  };
+
+  const updateManualColorRow = (id: string, field: keyof ManualColorRow, value: any) => {
+    setManualColors(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c));
+  };
+
+  // Clear all fabric data
+  const handleClearAllFabricData = () => {
+    if (typeof window !== 'undefined' && window.confirm('Are you sure you want to delete all Fabric Store data? This will clear all records and rack locations.')) {
+      setRawLines([]);
+      setRackLoc({});
+      try {
+        localStorage.removeItem('nfl_finished_fabric_lines_v3');
+        localStorage.removeItem(RACK_STORE_KEY);
+      } catch {}
+      showToast('All finished fabric data removed. Store is clean.');
+    }
+  };
+
+  // Submit Manual Fabric Job with multiple colors
+  const handleManualFabricSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualJobForm.jobNo.trim()) {
+      alert('Job No is required!');
+      return;
+    }
+    const newLines: FabricColorLine[] = manualColors.map((col, idx) => {
+      const reqBody = Number(col.reqBody) || 0;
+      const recvBody = Number(col.recvBody) || 0;
+      const totalReq = reqBody;
+      const totalRecv = recvBody;
+      const stockBalance = recvBody;
+      const lineId = `f-man-${Date.now()}-${idx}`;
+
+      return {
+        id: lineId,
+        idx: rawLines.length + idx + 1,
+        month: manualJobForm.month,
+        buyer: manualJobForm.buyer,
+        jobNo: manualJobForm.jobNo.trim(),
+        style: manualJobForm.style.trim() || 'STD-STYLE',
+        color: col.color.trim() || `Color #${idx + 1}`,
+        fabric: manualJobForm.fabricType,
+        fabricType: parseFabricType(manualJobForm.fabricType),
+        construction: parseConstruction(manualJobForm.fabricType),
+        composition: manualJobForm.composition,
+        gsm: manualJobForm.gsm,
+        dia: manualJobForm.dia,
+        process: manualJobForm.process,
+        isImported: false,
+        reqBody,
+        reqRib: 0,
+        reqSJ: 0,
+        totalReq,
+        recvBody,
+        recvRib: 0,
+        recvSJ: 0,
+        totalRecv,
+        dyeingBalance: Math.max(0, totalReq - totalRecv),
+        issuedBody: 0,
+        issuedRib: 0,
+        issuedSJ: 0,
+        totalIssued: 0,
+        stockBody: recvBody,
+        stockRib: 0,
+        stockSJ: 0,
+        stockBalance,
+        location: col.location || 'R-01 · Shelf 01',
+        cuttingLeftover: 0,
+        excessQty: Math.max(0, totalReq - totalRecv > 0 ? 0 : totalRecv - totalReq),
+        date: new Date().toLocaleDateString('en-GB'),
+        challans: `CH-MAN-${Math.floor(1000 + Math.random() * 9000)}`,
+        deliveryDate: new Date().toISOString().slice(0, 10),
+        supplier: manualJobForm.supplier,
+        dyeingFactory: manualJobForm.supplier,
+        exFactoryDate: new Date().toISOString().slice(0, 10),
+        slot: '1',
+        merchandiser: 'Store Manager',
+        qualityStatus: 'PASS',
+        stockState: totalRecv > 0 ? 'In Stock' : 'Waiting Dyeing',
+        isCuttingOk: false,
+      };
+    });
+
+    const nextLines = [...newLines, ...rawLines];
+    setRawLines(nextLines);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('nfl_finished_fabric_lines_v3', JSON.stringify(nextLines));
+      } catch {}
+    }
+
+    // Update racks
+    const updatedRacks = generateInitialRackLocations(nextLines);
+    setRackLoc(updatedRacks);
+    try {
+      localStorage.setItem(RACK_STORE_KEY, JSON.stringify(updatedRacks));
+    } catch {}
+
+    setIsManualModalOpen(false);
+    showToast(`Job #${manualJobForm.jobNo} with ${manualColors.length} colors saved successfully!`);
+    setManualJobForm({
+      jobNo: '',
+      buyer: 'Bestseller (ONLY)',
+      style: '',
+      month: 'November 2026',
+      fabricType: 'Single Jersey',
+      composition: '100% Combed Cotton',
+      gsm: '180',
+      dia: '68\" Open',
+      process: 'Reactive Dyeing',
+      supplier: 'Northern Dyeing Unit-1',
+    });
+  };
+
+  // Multi-Month Excel Workbook Importer
+  const handleFabricWorkbookUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsImporting(true);
+      const data = await file.arrayBuffer();
+      const wb = XLSX.read(data, { type: 'array' });
+
+      const parsedLines: FabricColorLine[] = [];
+      let importedIdx = rawLines.length;
+      const sheetSummaries: { name: string; count: number }[] = [];
+
+      wb.SheetNames.forEach((sheetName) => {
+        const ws = wb.Sheets[sheetName];
+        const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: '' });
+        if (!rows || rows.length === 0) return;
+
+        let sheetRowsCount = 0;
+        const sheetMonth = sheetName.trim();
+
+        rows.forEach((row) => {
+          const findVal = (regex: RegExp) => {
+            const key = Object.keys(row).find(k => regex.test(k.trim()));
+            return key ? row[key] : '';
+          };
+
+          const jobVal = String(findVal(/^(job|job\s*no|job#|order|order\s*no|po)/i) || '').trim();
+          const colorVal = String(findVal(/^(color|shade|fabric\s*color)/i) || '').trim();
+          if (!jobVal && !colorVal) return;
+
+          const buyerVal = String(findVal(/^(buyer|customer|brand)/i) || 'Bestseller').trim();
+          const styleVal = String(findVal(/^(style|style\s*no|style#)/i) || '').trim();
+          const fabricVal = String(findVal(/^(fabric|fabric\s*type|construction|description|item)/i) || 'Single Jersey').trim();
+          const compVal = String(findVal(/^(comp|composition)/i) || '100% Organic Cotton').trim();
+          const gsmVal = String(findVal(/^(gsm|weight)/i) || '180').trim();
+          const diaVal = String(findVal(/^(dia|width)/i) || '68\" Open').trim();
+          const processVal = String(findVal(/^(process|finishing|finish)/i) || 'Reactive Dyeing').trim();
+
+          const reqBody = Number(findVal(/^(req\s*body|order\s*body|booking\s*body|req\s*kg|order\s*kg|required)/i)) || 0;
+          const reqRib = Number(findVal(/^(req\s*rib|order\s*rib)/i)) || 0;
+          const reqSJ = Number(findVal(/^(req\s*sj|order\s*sj)/i)) || 0;
+          const totalReq = (reqBody + reqRib + reqSJ) || Number(findVal(/^(total\s*req|total\s*order|total\s*booking)/i)) || 0;
+
+          const recvBody = Number(findVal(/^(recv\s*body|rec\s*body|received\s*body|delivery\s*body|weighed\s*body|recv\s*kg|received\s*kg|received|recv)/i)) || 0;
+          const recvRib = Number(findVal(/^(recv\s*rib|rec\s*rib|received\s*rib|delivery\s*rib)/i)) || 0;
+          const recvSJ = Number(findVal(/^(recv\s*sj|rec\s*sj|received\s*sj|delivery\s*sj)/i)) || 0;
+          const totalRecv = (recvBody + recvRib + recvSJ) || Number(findVal(/^(total\s*recv|total\s*received)/i)) || recvBody;
+
+          const issuedBody = Number(findVal(/^(issue\s*body|issued\s*body|delivery\s*cutting|issue\s*kg|issued\s*kg|issued|issue)/i)) || 0;
+          const issuedRib = Number(findVal(/^(issue\s*rib|issued\s*rib)/i)) || 0;
+          const issuedSJ = Number(findVal(/^(issue\s*sj|issued\s*sj)/i)) || 0;
+          const totalIssued = (issuedBody + issuedRib + issuedSJ) || issuedBody;
+
+          const dyeingBalance = Math.max(0, totalReq - totalRecv);
+          const stockBody = Math.max(0, recvBody - issuedBody);
+          const stockRib = Math.max(0, recvRib - issuedRib);
+          const stockSJ = Math.max(0, recvSJ - issuedSJ);
+          const stockBalance = Math.max(0, totalRecv - totalIssued);
+
+          const locationVal = String(findVal(/^(location|rack|bin|shelf|store\s*loc|store\s*location)/i) || '').trim() ||
+            (stockBalance > 0 ? `R-${String((importedIdx % 20) + 1).padStart(2, '0')} · Shelf ${String((Math.floor(importedIdx / 20) % 20) + 1).padStart(2, '0')}` : 'F.ST');
+
+          const challanVal = String(findVal(/^(challan|challan\s*no|gate\s*pass)/i) || `CH-IMP-${1000 + importedIdx}`).trim();
+          const dateVal = String(findVal(/^(date|recv\s*date|delivery\s*date|inward\s*date)/i) || new Date().toISOString().slice(0, 10)).trim();
+          const rowMonth = String(findVal(/^(month|mon)/i) || sheetMonth || 'November').trim();
+
+          let stockState: FabricColorLine['stockState'] = 'In Stock';
+          if (totalRecv <= 0) stockState = 'Waiting Dyeing';
+          else if (dyeingBalance > totalReq * 0.05 && stockBalance > 0.5) stockState = 'Partly Received';
+          else if (stockBalance <= 0) stockState = 'Fully Issued';
+
+          importedIdx++;
+          sheetRowsCount++;
+
+          parsedLines.push({
+            id: `f-imp-${importedIdx}-${Date.now()}`,
+            idx: importedIdx,
+            month: rowMonth,
+            buyer: buyerVal,
+            jobNo: jobVal || `JOB-${importedIdx}`,
+            style: styleVal || `STY-${importedIdx}`,
+            color: colorVal || 'Solid Color',
+            fabric: fabricVal,
+            fabricType: parseFabricType(fabricVal),
+            construction: parseConstruction(fabricVal),
+            composition: compVal,
+            gsm: gsmVal,
+            dia: diaVal,
+            process: processVal,
+            isImported: /imported|woven|chiffon/i.test(fabricVal),
+            reqBody,
+            reqRib,
+            reqSJ,
+            totalReq: totalReq || totalRecv,
+            recvBody,
+            recvRib,
+            recvSJ,
+            totalRecv,
+            dyeingBalance,
+            issuedBody,
+            issuedRib,
+            issuedSJ,
+            totalIssued,
+            stockBody,
+            stockRib,
+            stockSJ,
+            stockBalance,
+            location: locationVal,
+            cuttingLeftover: 0,
+            excessQty: Math.max(0, totalRecv - totalReq),
+            date: dateVal,
+            challans: challanVal,
+            deliveryDate: dateVal,
+            supplier: String(findVal(/^(supplier|factory|mill|source)/i) || 'Northern Dyeing').trim(),
+            dyeingFactory: String(findVal(/^(supplier|factory|mill|source)/i) || 'Northern Dyeing').trim(),
+            exFactoryDate: dateVal,
+            slot: '1',
+            merchandiser: 'Store In-charge',
+            qualityStatus: 'PASS',
+            stockState,
+            isCuttingOk: stockBalance <= 5 && totalIssued > 0,
+          });
+        });
+
+        sheetSummaries.push({ name: sheetName, count: sheetRowsCount });
+      });
+
+      if (parsedLines.length === 0) {
+        alert("No valid data found in workbook. Please verify columns.");
+        setIsImporting(false);
+        return;
+      }
+
+      const nextLines = [...parsedLines, ...rawLines];
+      setRawLines(nextLines);
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('nfl_finished_fabric_lines_v3', JSON.stringify(nextLines));
+        } catch {}
+      }
+
+      const newRacks = generateInitialRackLocations(nextLines);
+      setRackLoc(newRacks);
+      try {
+        localStorage.setItem(RACK_STORE_KEY, JSON.stringify(newRacks));
+      } catch {}
+
+      setIsImportModalOpen(false);
+      setIsImporting(false);
+      const summaryText = sheetSummaries.map(s => `${s.name}: ${s.count} rows`).join(', ');
+      showToast(`Successfully imported ${parsedLines.length} records (${summaryText})!`);
+    } catch (err: any) {
+      console.error('Import error:', err);
+      alert("Import error: " + (err.message || "Unknown error"));
+      setIsImporting(false);
+    }
+  };
+
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -540,7 +922,9 @@ function FinishedFabricPageInner() {
     } catch {
       stored = null;
     }
-    if (stored && typeof stored === 'object') setRackLoc(stored);
+    if (stored && typeof stored === 'object' && Object.keys(stored).length > 20) {
+      setRackLoc(stored);
+    }
   }, []);
 
   const saveRackLoc = (next: RackLocations, message: string) => {
@@ -560,10 +944,26 @@ function FinishedFabricPageInner() {
     let isMounted = true;
     async function loadData() {
       try {
+        let storedLines: FabricColorLine[] | null = null;
+        try {
+          const raw = localStorage.getItem('nfl_finished_fabric_lines_v3');
+          if (raw) storedLines = JSON.parse(raw);
+        } catch {
+          storedLines = null;
+        }
+
+        if (storedLines && Array.isArray(storedLines) && storedLines.length > 0) {
+          if (isMounted) {
+            setRawLines(storedLines);
+            setIsLoading(false);
+          }
+          return;
+        }
+
         const res = await fetch('/data/finished-bootstrap.json');
         if (!res.ok) throw new Error('Failed to load finished fabric dataset');
         const json = await res.json();
-        if (json?.lines?.F && isMounted) {
+        if (json?.lines?.F && json.lines.F.length > 0 && isMounted) {
           const parsed: FabricColorLine[] = json.lines.F.map((item: any, idx: number) => {
             const reqBody = Number(item.rb) || 0;
             const reqRib = Number(item.rl) || 0;
@@ -604,7 +1004,7 @@ function FinishedFabricPageInner() {
               month: item.m || '2026-11',
               buyer: item.b || 'Bestseller (Only & Sons)',
               jobNo: String(item.j || ''),
-              style: String(item.st || ''),
+              style: cleanStyleNo(String(item.st || '')),
               color: String(item.c || 'Solid Color'),
               fabric: String(item.f || 'Single Jersey'),
               fabricType: parseFabricType(item.f),
@@ -647,6 +1047,25 @@ function FinishedFabricPageInner() {
               isCuttingOk: stockBalance <= 5 && totalIssued > 0,
             };
           });
+
+          // Seed demo locations across 20 Racks x 20 Shelves if empty
+          const initialRacks = generateInitialRackLocations(parsed);
+          let storedRacks: RackLocations | null = null;
+          try {
+            storedRacks = JSON.parse(localStorage.getItem(RACK_STORE_KEY) || 'null');
+          } catch {
+            storedRacks = null;
+          }
+          if (storedRacks && typeof storedRacks === 'object' && Object.keys(storedRacks).length > 20) {
+            setRackLoc(storedRacks);
+          } else {
+            setRackLoc(initialRacks);
+            try {
+              localStorage.setItem(RACK_STORE_KEY, JSON.stringify(initialRacks));
+            } catch {
+              /* ignore */
+            }
+          }
 
           setRawLines(parsed);
           setIsLoading(false);
@@ -786,7 +1205,15 @@ function FinishedFabricPageInner() {
     return jobGroups.filter((job) => {
       if (filterImportedOnly && !job.isImported) return false;
       if (selectedBuyer !== 'ALL' && job.buyer !== selectedBuyer) return false;
-      if (selectedMonth !== 'ALL' && job.month !== selectedMonth) return false;
+      if (selectedMonth !== 'ALL') {
+        const sm = selectedMonth.toLowerCase();
+        const jm = (job.month || '').toLowerCase();
+        const monthNames = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+        const smIdx = monthNames.indexOf(sm);
+        const matches = jm.includes(sm) || 
+          (smIdx !== -1 && (jm.includes(String(smIdx + 1).padStart(2, '0')) || jm.includes(monthNames[smIdx].slice(0, 3))));
+        if (!matches) return false;
+      }
       if (selectedStatus !== 'ALL' && job.primaryStatus !== selectedStatus) return false;
       if (selectedFabricType !== 'ALL' && job.fabricType !== selectedFabricType) return false;
 
@@ -799,10 +1226,75 @@ function FinishedFabricPageInner() {
   const buyerOptions = useMemo(() => Array.from(new Set(rawLines.map(l => l.buyer))).sort(), [rawLines]);
   const fabricTypeOptions = useMemo(() => Array.from(new Set(rawLines.map(l => l.fabricType))).sort(), [rawLines]);
 
+  const monthOptions = useMemo(() => {
+    const rawMonths = Array.from(new Set(rawLines.map(l => l.month).filter(Boolean)));
+    const stdMonths = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    const combined = Array.from(new Set([...rawMonths, ...stdMonths]));
+    return combined.map(m => ({ value: m, label: m }));
+  }, [rawLines]);
+
+  // Table Sorting state
+  const [sortField, setSortField] = useState<string>('jobNo');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const sortedJobGroups = useMemo(() => {
+    const list = [...filteredJobGroups];
+    list.sort((a, b) => {
+      let valA: any = a[sortField as keyof JobFabricGroup];
+      let valB: any = b[sortField as keyof JobFabricGroup];
+
+      if (sortField === 'jobNo') {
+        valA = a.jobNo;
+        valB = b.jobNo;
+      } else if (sortField === 'buyer') {
+        valA = a.buyer;
+        valB = b.buyer;
+      } else if (sortField === 'style') {
+        valA = a.style;
+        valB = b.style;
+      } else if (sortField === 'totalReq') {
+        valA = a.totalReq;
+        valB = b.totalReq;
+      } else if (sortField === 'totalRecv') {
+        valA = a.totalRecv;
+        valB = b.totalRecv;
+      } else if (sortField === 'totalIssued') {
+        valA = a.totalIssued;
+        valB = b.totalIssued;
+      } else if (sortField === 'totalStock') {
+        valA = a.totalStock;
+        valB = b.totalStock;
+      } else if (sortField === 'status') {
+        valA = a.primaryStatus;
+        valB = b.primaryStatus;
+      }
+
+      if (typeof valA === 'number' && typeof valB === 'number') {
+        return sortDirection === 'asc' ? valA - valB : valB - valA;
+      }
+      return sortDirection === 'asc'
+        ? String(valA || '').localeCompare(String(valB || ''))
+        : String(valB || '').localeCompare(String(valA || ''));
+    });
+    return list;
+  }, [filteredJobGroups, sortField, sortDirection]);
+
   const paginatedGroups = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
-    return filteredJobGroups.slice(start, start + itemsPerPage);
-  }, [filteredJobGroups, currentPage]);
+    return sortedJobGroups.slice(start, start + itemsPerPage);
+  }, [sortedJobGroups, currentPage]);
 
   const totalPages = Math.ceil(filteredJobGroups.length / itemsPerPage) || 1;
 
@@ -1111,11 +1603,32 @@ function FinishedFabricPageInner() {
 
           <button
             type="button"
-            onClick={() => setIsReceiveModalOpen(true)}
-            className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-md flex items-center gap-1.5 shadow-xs transition-colors"
+            onClick={() => setIsImportModalOpen(true)}
+            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-md flex items-center gap-1.5 shadow-xs transition-colors"
+            title="Import Excel Workbook with multi-month sheets"
+          >
+            <FolderUp className="w-3.5 h-3.5 text-white" />
+            <span>Import Workbook</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsManualModalOpen(true)}
+            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-md flex items-center gap-1.5 shadow-xs transition-colors"
+            title="Manual multi-color job entry"
           >
             <Plus className="w-3.5 h-3.5 text-white" />
-            <span>Imported / New Receive</span>
+            <span>New Manual Entry</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleClearAllFabricData}
+            className="px-2.5 py-1.5 bg-white hover:bg-rose-50 text-rose-600 hover:text-rose-700 border border-rose-300 rounded-md text-xs font-semibold flex items-center gap-1 transition-colors"
+            title="Clear all stored fabric data"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Clear Data</span>
           </button>
         </div>
       </div>
@@ -1272,21 +1785,50 @@ function FinishedFabricPageInner() {
       {/* ===================================================================== */}
       {/* ODOO-STYLE CLEAN TAB BAR (MATCHING TRIMS STORE NAVIGATION) */}
       {/* ===================================================================== */}
-      <div className="bg-white border border-slate-200 rounded-lg p-1.5 mb-4 flex flex-wrap items-center gap-2 shadow-2xs">
+      {/* MAIN NAVIGATION TABS (MATCHING TRIMS & ACCESSORIES STORE STANDARD) */}
+      {/* ===================================================================== */}
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '6px',
+          padding: '8px 12px',
+          background: 'var(--card-bg, #ffffff)',
+          borderBottom: '1px solid var(--border, #e2e8f0)',
+          marginBottom: '16px',
+          borderRadius: '8px'
+        }}
+      >
         <button
           type="button"
           onClick={() => setActiveTab('STOCK')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-md text-xs font-semibold transition-all border ${
-            activeTab === 'STOCK'
-              ? 'bg-blue-50 text-blue-900 border-blue-500 shadow-xs font-bold'
-              : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-          }`}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '7px',
+            padding: '7px 14px',
+            borderRadius: '6px',
+            fontSize: '13px',
+            fontWeight: 650,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+            border: activeTab === 'STOCK' ? '1px solid #0F274E' : '1px solid #E2E8F0',
+            background: activeTab === 'STOCK' ? '#0F274E' : '#F8FAFC',
+            color: activeTab === 'STOCK' ? '#FFFFFF' : '#475569'
+          }}
         >
-          <Boxes size={15} color={activeTab === 'STOCK' ? '#1D4ED8' : '#64748B'} />
+          <Boxes size={16} color={activeTab === 'STOCK' ? '#38BDF8' : '#64748B'} />
           <span>1. Finished Fabric Stock Statement</span>
-          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-            activeTab === 'STOCK' ? 'bg-blue-200 text-blue-900' : 'bg-slate-100 text-slate-700 border border-slate-200'
-          }`}>
+          <span
+            style={{
+              fontSize: '11px',
+              background: activeTab === 'STOCK' ? '#38BDF8' : '#E2E8F0',
+              color: activeTab === 'STOCK' ? '#0F274E' : '#475569',
+              padding: '1px 7px',
+              borderRadius: '10px',
+              fontWeight: 700
+            }}
+          >
             {jobGroups.length} Jobs
           </span>
         </button>
@@ -1294,17 +1836,33 @@ function FinishedFabricPageInner() {
         <button
           type="button"
           onClick={() => setActiveTab('RECEIVE')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-md text-xs font-semibold transition-all border ${
-            activeTab === 'RECEIVE'
-              ? 'bg-emerald-50 text-emerald-900 border-emerald-500 shadow-xs font-bold'
-              : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-          }`}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '7px',
+            padding: '7px 14px',
+            borderRadius: '6px',
+            fontSize: '13px',
+            fontWeight: 650,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+            border: activeTab === 'RECEIVE' ? '1px solid #0F274E' : '1px solid #E2E8F0',
+            background: activeTab === 'RECEIVE' ? '#0F274E' : '#F8FAFC',
+            color: activeTab === 'RECEIVE' ? '#FFFFFF' : '#475569'
+          }}
         >
-          <Truck size={15} color={activeTab === 'RECEIVE' ? '#047857' : '#64748B'} />
+          <Truck size={16} color={activeTab === 'RECEIVE' ? '#38BDF8' : '#64748B'} />
           <span>2. Imported & New Receive</span>
-          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-            activeTab === 'RECEIVE' ? 'bg-emerald-200 text-emerald-900' : 'bg-slate-100 text-slate-700 border border-slate-200'
-          }`}>
+          <span
+            style={{
+              fontSize: '11px',
+              background: activeTab === 'RECEIVE' ? '#38BDF8' : '#E2E8F0',
+              color: activeTab === 'RECEIVE' ? '#0F274E' : '#475569',
+              padding: '1px 7px',
+              borderRadius: '10px',
+              fontWeight: 700
+            }}
+          >
             {challans.length} Challans
           </span>
         </button>
@@ -1312,43 +1870,77 @@ function FinishedFabricPageInner() {
         <button
           type="button"
           onClick={() => setActiveTab('ISSUE')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-md text-xs font-semibold transition-all border ${
-            activeTab === 'ISSUE'
-              ? 'bg-purple-50 text-purple-900 border-purple-500 shadow-xs font-bold'
-              : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-          }`}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '7px',
+            padding: '7px 14px',
+            borderRadius: '6px',
+            fontSize: '13px',
+            fontWeight: 650,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+            border: activeTab === 'ISSUE' ? '1px solid #0F274E' : '1px solid #E2E8F0',
+            background: activeTab === 'ISSUE' ? '#0F274E' : '#F8FAFC',
+            color: activeTab === 'ISSUE' ? '#FFFFFF' : '#475569'
+          }}
         >
-          <Scissors size={15} color={activeTab === 'ISSUE' ? '#7E22CE' : '#64748B'} />
+          <Scissors size={16} color={activeTab === 'ISSUE' ? '#38BDF8' : '#64748B'} />
           <span>3. Issue to Cutting Floor</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('LOCATION')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-md text-xs font-semibold transition-all border ${
-            activeTab === 'LOCATION'
-              ? 'bg-amber-50 text-amber-900 border-amber-500 shadow-xs font-bold'
-              : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-          }`}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '7px',
+            padding: '7px 14px',
+            borderRadius: '6px',
+            fontSize: '13px',
+            fontWeight: 650,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+            border: activeTab === 'LOCATION' ? '1px solid #0F274E' : '1px solid #E2E8F0',
+            background: activeTab === 'LOCATION' ? '#0F274E' : '#F8FAFC',
+            color: activeTab === 'LOCATION' ? '#FFFFFF' : '#475569'
+          }}
         >
-          <MapPin size={15} color={activeTab === 'LOCATION' ? '#B45309' : '#64748B'} />
+          <MapPin size={16} color={activeTab === 'LOCATION' ? '#38BDF8' : '#64748B'} />
           <span>4. Location Tracking (20 Racks × 20 Shelves)</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('REUSE')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-md text-xs font-semibold transition-all border ${
-            activeTab === 'REUSE'
-              ? 'bg-sky-50 text-sky-900 border-sky-500 shadow-xs font-bold'
-              : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-          }`}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '7px',
+            padding: '7px 14px',
+            borderRadius: '6px',
+            fontSize: '13px',
+            fontWeight: 650,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+            border: activeTab === 'REUSE' ? '1px solid #0F274E' : '1px solid #E2E8F0',
+            background: activeTab === 'REUSE' ? '#0F274E' : '#F8FAFC',
+            color: activeTab === 'REUSE' ? '#FFFFFF' : '#475569'
+          }}
         >
-          <RotateCcw size={15} color={activeTab === 'REUSE' ? '#0369A1' : '#64748B'} />
+          <RotateCcw size={16} color={activeTab === 'REUSE' ? '#38BDF8' : '#64748B'} />
           <span>5. Stock for Leftover & Reuse</span>
-          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-            activeTab === 'REUSE' ? 'bg-sky-200 text-sky-900' : 'bg-slate-100 text-slate-700 border border-slate-200'
-          }`}>
+          <span
+            style={{
+              fontSize: '11px',
+              background: activeTab === 'REUSE' ? '#38BDF8' : '#E2E8F0',
+              color: activeTab === 'REUSE' ? '#0F274E' : '#475569',
+              padding: '1px 7px',
+              borderRadius: '10px',
+              fontWeight: 700
+            }}
+          >
             {leftoverLedger.length}
           </span>
         </button>
@@ -1375,6 +1967,21 @@ function FinishedFabricPageInner() {
                   className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-md text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900"
                 />
               </div>
+
+              {/* Month Filter */}
+              <select
+                value={selectedMonth}
+                onChange={(e) => {
+                  setSelectedMonth(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="bg-slate-50 border border-slate-300 text-slate-700 text-xs rounded-md px-2.5 py-1.5 focus:outline-none font-medium"
+              >
+                <option value="ALL">All Months ({monthOptions.length})</option>
+                {monthOptions.map((m) => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
 
               {/* Buyer Filter */}
               <select
@@ -1640,76 +2247,137 @@ function FinishedFabricPageInner() {
                 </tr>
 
                 {/* TIER 2 HEADER COLUMNS */}
-                <tr className="bg-slate-50 text-slate-700 text-[11px] border-b border-slate-300 font-semibold">
+                <tr className="bg-slate-50 text-slate-900 text-[11px] border-b border-slate-300 font-bold">
                   {/* Sticky frozen columns */}
-                  <th className="sticky left-0 z-40 bg-slate-50 px-3 py-2 text-slate-800 font-bold border-r border-slate-300 min-w-[150px]">
-                    Buyer - Job No
+                  <th className="sticky left-0 z-40 bg-slate-100 px-3 py-2 text-slate-900 font-bold border-r border-slate-300 min-w-[150px]">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('jobNo')}
+                      className="flex items-center gap-1.5 text-left text-slate-900 font-bold hover:text-blue-700 cursor-pointer"
+                    >
+                      <span>Buyer - Job No</span>
+                      <ArrowUpDown className={`w-3 h-3 ${sortField === 'jobNo' ? 'text-blue-700 font-bold' : 'text-slate-400'}`} />
+                    </button>
                   </th>
-                  <th className="px-3 py-2 text-slate-700 font-semibold min-w-[100px] border-r border-slate-300">Style No</th>
+                  <th className="px-3 py-2 text-slate-900 font-bold min-w-[100px] border-r border-slate-300">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('style')}
+                      className="flex items-center gap-1 text-slate-900 font-bold hover:text-blue-700 cursor-pointer"
+                    >
+                      <span>Style No</span>
+                      <ArrowUpDown className={`w-3 h-3 ${sortField === 'style' ? 'text-blue-700' : 'text-slate-400'}`} />
+                    </button>
+                  </th>
 
                   {visibleSections.jobSpecs && (
                     <>
-                      <th className="px-2.5 py-2 text-slate-700 font-semibold min-w-[120px] border-r border-slate-200">Color</th>
-                      <th className="px-2.5 py-2 text-slate-700 font-semibold min-w-[110px] border-r border-slate-200">Fabric Type</th>
-                      <th className="px-2.5 py-2 text-slate-700 font-semibold min-w-[140px] border-r border-slate-200">Composition</th>
-                      <th className="px-2.5 py-2 text-slate-700 font-semibold min-w-[70px] border-r border-slate-200">Process</th>
-                      <th className="px-2.5 py-2 text-slate-700 font-semibold min-w-[50px] border-r border-slate-200">GSM</th>
-                      <th className="px-2.5 py-2 text-slate-700 font-semibold min-w-[50px] border-r border-slate-200">Dia</th>
-                      <th className="px-2.5 py-2 text-slate-700 font-semibold min-w-[80px] border-r border-slate-300">Status</th>
+                      <th className="px-2.5 py-2 text-slate-900 font-bold min-w-[120px] border-r border-slate-200">Color</th>
+                      <th className="px-2.5 py-2 text-slate-900 font-bold min-w-[110px] border-r border-slate-200">Fabric Type</th>
+                      <th className="px-2.5 py-2 text-slate-900 font-bold min-w-[140px] border-r border-slate-200">Composition</th>
+                      <th className="px-2.5 py-2 text-slate-900 font-bold min-w-[70px] border-r border-slate-200">Process</th>
+                      <th className="px-2.5 py-2 text-slate-900 font-bold min-w-[50px] border-r border-slate-200">GSM</th>
+                      <th className="px-2.5 py-2 text-slate-900 font-bold min-w-[50px] border-r border-slate-200">Dia</th>
+                      <th className="px-2.5 py-2 text-slate-900 font-bold min-w-[80px] border-r border-slate-300">
+                        <button
+                          type="button"
+                          onClick={() => handleSort('status')}
+                          className="flex items-center gap-1 text-slate-900 font-bold hover:text-blue-700 cursor-pointer"
+                        >
+                          <span>Status</span>
+                          <ArrowUpDown className={`w-3 h-3 ${sortField === 'status' ? 'text-blue-700' : 'text-slate-400'}`} />
+                        </button>
+                      </th>
                     </>
                   )}
 
                   {/* Order Qty (Body, Rib, SJ, Total) */}
                   {visibleSections.orderQty && (
                     <>
-                      <th className="px-2 py-2 text-right font-medium min-w-[65px] text-blue-900 bg-blue-50/80 border-r border-blue-100">Body</th>
-                      <th className="px-2 py-2 text-right font-medium min-w-[60px] text-blue-900 bg-blue-50/80 border-r border-blue-100">Rib</th>
-                      <th className="px-2 py-2 text-right font-medium min-w-[60px] text-blue-900 bg-blue-50/80 border-r border-blue-100">S.Jersey</th>
-                      <th className="px-2.5 py-2 text-right font-bold min-w-[75px] text-blue-950 bg-blue-100/90 border-r border-slate-300">Total Req</th>
+                      <th className="px-2 py-2 text-right font-semibold min-w-[65px] text-blue-950 bg-blue-50/80 border-r border-blue-100">Body</th>
+                      <th className="px-2 py-2 text-right font-semibold min-w-[60px] text-blue-950 bg-blue-50/80 border-r border-blue-100">Rib</th>
+                      <th className="px-2 py-2 text-right font-semibold min-w-[60px] text-blue-950 bg-blue-50/80 border-r border-blue-100">S.Jersey</th>
+                      <th className="px-2.5 py-2 text-right font-bold min-w-[75px] text-blue-950 bg-blue-100/90 border-r border-slate-300">
+                        <button
+                          type="button"
+                          onClick={() => handleSort('totalReq')}
+                          className="inline-flex items-center gap-1 font-bold text-blue-950 hover:text-blue-700 cursor-pointer"
+                        >
+                          <span>Total Req</span>
+                          <ArrowUpDown className={`w-3 h-3 ${sortField === 'totalReq' ? 'text-blue-700' : 'text-blue-400'}`} />
+                        </button>
+                      </th>
                     </>
                   )}
 
                   {/* Received Qty (Body, Rib, SJ, Total) */}
                   {visibleSections.receivedQty && (
                     <>
-                      <th className="px-2 py-2 text-right font-medium min-w-[65px] text-emerald-900 bg-emerald-50/80 border-r border-emerald-100">Body</th>
-                      <th className="px-2 py-2 text-right font-medium min-w-[60px] text-emerald-900 bg-emerald-50/80 border-r border-emerald-100">Rib</th>
-                      <th className="px-2 py-2 text-right font-medium min-w-[60px] text-emerald-900 bg-emerald-50/80 border-r border-emerald-100">S.Jersey</th>
-                      <th className="px-2.5 py-2 text-right font-bold min-w-[75px] text-emerald-950 bg-emerald-100/90 border-r border-slate-300">Total Recv</th>
+                      <th className="px-2 py-2 text-right font-semibold min-w-[65px] text-emerald-950 bg-emerald-50/80 border-r border-emerald-100">Body</th>
+                      <th className="px-2 py-2 text-right font-semibold min-w-[60px] text-emerald-950 bg-emerald-50/80 border-r border-emerald-100">Rib</th>
+                      <th className="px-2 py-2 text-right font-semibold min-w-[60px] text-emerald-950 bg-emerald-50/80 border-r border-emerald-100">S.Jersey</th>
+                      <th className="px-2.5 py-2 text-right font-bold min-w-[75px] text-emerald-950 bg-emerald-100/90 border-r border-slate-300">
+                        <button
+                          type="button"
+                          onClick={() => handleSort('totalRecv')}
+                          className="inline-flex items-center gap-1 font-bold text-emerald-950 hover:text-emerald-700 cursor-pointer"
+                        >
+                          <span>Total Recv</span>
+                          <ArrowUpDown className={`w-3 h-3 ${sortField === 'totalRecv' ? 'text-emerald-700' : 'text-emerald-400'}`} />
+                        </button>
+                      </th>
                     </>
                   )}
 
                   {/* Issue / Delivery Qty (Body, Rib, SJ, Total) */}
                   {visibleSections.deliveryQty && (
                     <>
-                      <th className="px-2 py-2 text-right font-medium min-w-[65px] text-purple-900 bg-purple-50/80 border-r border-purple-100">Body</th>
-                      <th className="px-2 py-2 text-right font-medium min-w-[60px] text-purple-900 bg-purple-50/80 border-r border-purple-100">Rib</th>
-                      <th className="px-2 py-2 text-right font-medium min-w-[60px] text-purple-900 bg-purple-50/80 border-r border-purple-100">S.Jersey</th>
-                      <th className="px-2.5 py-2 text-right font-bold min-w-[75px] text-purple-950 bg-purple-100/90 border-r border-slate-300">Total Issued</th>
+                      <th className="px-2 py-2 text-right font-semibold min-w-[65px] text-purple-950 bg-purple-50/80 border-r border-purple-100">Body</th>
+                      <th className="px-2 py-2 text-right font-semibold min-w-[60px] text-purple-950 bg-purple-50/80 border-r border-purple-100">Rib</th>
+                      <th className="px-2 py-2 text-right font-semibold min-w-[60px] text-purple-950 bg-purple-50/80 border-r border-purple-100">S.Jersey</th>
+                      <th className="px-2.5 py-2 text-right font-bold min-w-[75px] text-purple-950 bg-purple-100/90 border-r border-slate-300">
+                        <button
+                          type="button"
+                          onClick={() => handleSort('totalIssued')}
+                          className="inline-flex items-center gap-1 font-bold text-purple-950 hover:text-purple-700 cursor-pointer"
+                        >
+                          <span>Total Issued</span>
+                          <ArrowUpDown className={`w-3 h-3 ${sortField === 'totalIssued' ? 'text-purple-700' : 'text-purple-400'}`} />
+                        </button>
+                      </th>
                     </>
                   )}
 
                   {/* Closing Stock (Body, Rib, SJ, Total) */}
                   {visibleSections.closingStock && (
                     <>
-                      <th className="px-2 py-2 text-right font-medium min-w-[65px] text-sky-900 bg-sky-50/80 border-r border-sky-100">Body</th>
-                      <th className="px-2 py-2 text-right font-medium min-w-[60px] text-sky-900 bg-sky-50/80 border-r border-sky-100">Rib</th>
-                      <th className="px-2 py-2 text-right font-medium min-w-[60px] text-sky-900 bg-sky-50/80 border-r border-sky-100">S.Jersey</th>
-                      <th className="px-2.5 py-2 text-right font-bold min-w-[75px] text-sky-950 bg-sky-100/90 border-r border-slate-300">Stock Bal</th>
+                      <th className="px-2 py-2 text-right font-semibold min-w-[65px] text-sky-950 bg-sky-50/80 border-r border-sky-100">Body</th>
+                      <th className="px-2 py-2 text-right font-semibold min-w-[60px] text-sky-950 bg-sky-50/80 border-r border-sky-100">Rib</th>
+                      <th className="px-2 py-2 text-right font-semibold min-w-[60px] text-sky-950 bg-sky-50/80 border-r border-sky-100">S.Jersey</th>
+                      <th className="px-2.5 py-2 text-right font-bold min-w-[75px] text-sky-950 bg-sky-100/90 border-r border-slate-300">
+                        <button
+                          type="button"
+                          onClick={() => handleSort('totalStock')}
+                          className="inline-flex items-center gap-1 font-bold text-sky-950 hover:text-sky-700 cursor-pointer"
+                        >
+                          <span>Stock Bal</span>
+                          <ArrowUpDown className={`w-3 h-3 ${sortField === 'totalStock' ? 'text-sky-700' : 'text-sky-400'}`} />
+                        </button>
+                      </th>
                     </>
                   )}
 
                   {/* Location & Leftover */}
                   {visibleSections.locationInfo && (
                     <>
-                      <th className="px-2.5 py-2 font-medium min-w-[95px] text-amber-900 bg-amber-50/80 border-r border-amber-100">Location</th>
-                      <th className="px-2 py-2 text-right font-medium min-w-[70px] text-amber-900 bg-amber-50/80 border-r border-amber-100">Leftover</th>
-                      <th className="px-2 py-2 text-right font-medium min-w-[65px] text-amber-900 bg-amber-50/80 border-r border-amber-100">Excess Qty</th>
-                      <th className="px-2 py-2 text-center font-medium min-w-[65px] text-amber-900 bg-amber-50/80 border-r border-slate-300">Date</th>
+                      <th className="px-2.5 py-2 font-bold min-w-[95px] text-amber-950 bg-amber-50/80 border-r border-amber-100">Location</th>
+                      <th className="px-2 py-2 text-right font-bold min-w-[70px] text-amber-950 bg-amber-50/80 border-r border-amber-100">Leftover</th>
+                      <th className="px-2 py-2 text-right font-bold min-w-[65px] text-amber-950 bg-amber-50/80 border-r border-amber-100">Excess Qty</th>
+                      <th className="px-2 py-2 text-center font-bold min-w-[65px] text-amber-950 bg-amber-50/80 border-r border-slate-300">Date</th>
                     </>
                   )}
 
-                  <th className="px-2.5 py-2 text-center font-semibold min-w-[60px] text-slate-700">Action</th>
+                  <th className="px-2.5 py-2 text-center font-bold min-w-[60px] text-slate-800">Action</th>
                 </tr>
               </thead>
 
@@ -1720,6 +2388,36 @@ function FinishedFabricPageInner() {
                     <td colSpan={25} className="py-20 text-center text-slate-500">
                       <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-slate-400" />
                       Loading master finished fabric statement...
+                    </td>
+                  </tr>
+                ) : rawLines.length === 0 ? (
+                  <tr>
+                    <td colSpan={25} className="py-20 text-center">
+                      <div className="max-w-md mx-auto flex flex-col items-center justify-center p-6 bg-slate-50 border border-dashed border-slate-300 rounded-xl">
+                        <Boxes className="w-12 h-12 text-slate-400 mb-3" />
+                        <h3 className="text-base font-bold text-slate-900 mb-1">No Finished Fabric Records in Store</h3>
+                        <p className="text-xs text-slate-500 mb-4 text-center">
+                          All previous data has been cleared. You can now import your Excel workbook or create new manual entries.
+                        </p>
+                        <div className="flex flex-wrap items-center justify-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setIsImportModalOpen(true)}
+                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg flex items-center gap-2 shadow-xs transition-colors"
+                          >
+                            <FolderUp className="w-4 h-4" />
+                            <span>Import Excel Workbook (.xlsx)</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsManualModalOpen(true)}
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg flex items-center gap-2 shadow-xs transition-colors"
+                          >
+                            <Plus className="w-4 h-4" />
+                            <span>New Manual Entry (Multi-Color)</span>
+                          </button>
+                        </div>
+                      </div>
                     </td>
                   </tr>
                 ) : paginatedGroups.length === 0 ? (
@@ -1737,55 +2435,61 @@ function FinishedFabricPageInner() {
                         {/* MASTER JOB SUMMARY ROW */}
                         <tr
                           onClick={() => setSelectedJobDetail(job)}
-                          className={`hover:bg-slate-100/70 cursor-pointer transition-colors ${
-                            isExpanded ? 'bg-slate-100 font-medium' : 'bg-white'
+                          className={`hover:bg-slate-50 cursor-pointer transition-colors ${
+                            isExpanded ? 'bg-blue-50/40 font-semibold' : 'bg-white'
                           }`}
                         >
-                          {/* Sticky left column */}
-                          <td className="sticky left-0 z-20 bg-white group-hover:bg-slate-100 px-3 py-2 font-bold text-slate-900 border-r border-slate-200 shadow-2xs">
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleJobExpanded(job.key);
-                                }}
-                                className="w-5 h-5 flex items-center justify-center rounded border border-slate-300 bg-slate-50 hover:bg-slate-200 text-slate-700 transition-colors shrink-0"
-                              >
-                                {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                              </button>
-                              <div className="leading-tight">
-                                <span className="text-[10px] text-slate-500 block font-normal">{job.buyer}</span>
-                                <span className="font-bold text-slate-900 flex items-center gap-1">
-                                  {job.jobNo}
-                                  {job.isImported && (
-                                    <span className="text-[9px] px-1 bg-teal-100 text-teal-800 rounded font-semibold">IMP</span>
-                                  )}
-                                </span>
-                              </div>
+                          {/* Sticky left column (No redundant square expand box, clean Buyer & Job No) */}
+                          <td className="sticky left-0 z-20 bg-white group-hover:bg-slate-50 px-3 py-2 border-r border-slate-200 shadow-2xs">
+                            <div className="leading-tight">
+                              <span className="text-[11px] text-slate-800 block font-semibold">{job.buyer}</span>
+                              <span className="font-extrabold text-[#0F274E] text-[13px] flex items-center gap-1">
+                                #{job.jobNo}
+                                {job.isImported && (
+                                  <span className="text-[9px] px-1 bg-teal-100 text-teal-800 rounded font-bold">IMP</span>
+                                )}
+                              </span>
                             </div>
                           </td>
 
-                          {/* Style */}
-                          <td className="px-3 py-2 font-semibold text-slate-800 border-r border-slate-200">{job.style || '—'}</td>
+                          {/* Style No (Pure style number, bold dark black) */}
+                          <td className="px-3 py-2 font-bold text-slate-950 text-[12.5px] border-r border-slate-200">
+                            {job.style || '—'}
+                          </td>
 
                           {/* Specs Columns */}
                           {visibleSections.jobSpecs && (
                             <>
+                              {/* Color Badge (Clickable button to expand/collapse colors) */}
                               <td className="px-2.5 py-2">
-                                <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-                                  {job.colorCount} {job.colorCount === 1 ? 'Color' : 'Colors'}
-                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleJobExpanded(job.key);
+                                  }}
+                                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-bold bg-blue-50 hover:bg-blue-100 text-blue-950 border border-blue-200 transition-colors cursor-pointer"
+                                  title="Click to expand/collapse colors"
+                                >
+                                  <span>{job.colorCount} {job.colorCount === 1 ? 'Color' : 'Colors'}</span>
+                                  {isExpanded ? (
+                                    <ChevronDown className="w-3.5 h-3.5 text-blue-700" />
+                                  ) : (
+                                    <ChevronRight className="w-3.5 h-3.5 text-blue-700" />
+                                  )}
+                                </button>
                               </td>
-                              <td className="px-2.5 py-2 text-slate-700">{job.fabricType}</td>
-                              <td className="px-2.5 py-2 text-slate-600 truncate max-w-[130px]" title={job.composition}>{job.composition}</td>
-                              <td className="px-2.5 py-2 text-slate-600">{job.process}</td>
-                              <td className="px-2.5 py-2 text-slate-600">{job.gsm}</td>
-                              <td className="px-2.5 py-2 text-slate-600">{job.dia}</td>
+                              <td className="px-2.5 py-2 font-semibold text-slate-900">{job.fabricType}</td>
+                              <td className="px-2.5 py-2 text-slate-800 font-medium truncate max-w-[130px]" title={job.composition}>
+                                {job.composition}
+                              </td>
+                              <td className="px-2.5 py-2 text-slate-800 font-semibold">{job.process}</td>
+                              <td className="px-2.5 py-2 text-slate-900 font-bold">{job.gsm}</td>
+                              <td className="px-2.5 py-2 text-slate-900 font-bold">{job.dia}</td>
                               <td className="px-2.5 py-2 border-r border-slate-200">
-                                <span className={`px-1.5 py-0.5 rounded text-[9.5px] font-semibold ${
-                                  job.primaryStatus === 'In Stock' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' :
-                                  job.primaryStatus === 'Partly Received' ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-slate-100 text-slate-700 border border-slate-200'
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                  job.primaryStatus === 'In Stock' ? 'bg-emerald-100 text-emerald-950 border border-emerald-300' :
+                                  job.primaryStatus === 'Partly Received' ? 'bg-amber-100 text-amber-950 border border-amber-300' : 'bg-slate-100 text-slate-900 border border-slate-300'
                                 }`}>
                                   {job.primaryStatus}
                                 </span>
@@ -1796,50 +2500,50 @@ function FinishedFabricPageInner() {
                           {/* Order Qty Section */}
                           {visibleSections.orderQty && (
                             <>
-                              <td className="px-2 py-2 text-right text-slate-700 font-medium">{Math.round(job.reqBody).toLocaleString()}</td>
-                              <td className="px-2 py-2 text-right text-slate-700 font-medium">{Math.round(job.reqRib).toLocaleString()}</td>
-                              <td className="px-2 py-2 text-right text-slate-700 font-medium">{Math.round(job.reqSJ).toLocaleString()}</td>
-                              <td className="px-2.5 py-2 text-right font-bold text-slate-900 bg-slate-50 border-r border-slate-200">{Math.round(job.totalReq).toLocaleString()}</td>
+                              <td className="px-2 py-2 text-right text-slate-900 font-bold tabular-nums">{Math.round(job.reqBody).toLocaleString()}</td>
+                              <td className="px-2 py-2 text-right text-slate-900 font-bold tabular-nums">{Math.round(job.reqRib).toLocaleString()}</td>
+                              <td className="px-2 py-2 text-right text-slate-900 font-bold tabular-nums">{Math.round(job.reqSJ).toLocaleString()}</td>
+                              <td className="px-2.5 py-2 text-right font-extrabold text-blue-950 bg-blue-50/70 border-r border-slate-300 tabular-nums">{Math.round(job.totalReq).toLocaleString()}</td>
                             </>
                           )}
 
                           {/* Received Qty Section */}
                           {visibleSections.receivedQty && (
                             <>
-                              <td className="px-2 py-2 text-right text-emerald-800 font-medium">{Math.round(job.recvBody).toLocaleString()}</td>
-                              <td className="px-2 py-2 text-right text-emerald-800 font-medium">{Math.round(job.recvRib).toLocaleString()}</td>
-                              <td className="px-2 py-2 text-right text-emerald-800 font-medium">{Math.round(job.recvSJ).toLocaleString()}</td>
-                              <td className="px-2.5 py-2 text-right font-bold text-emerald-900 bg-emerald-50/60 border-r border-slate-200">{Math.round(job.totalRecv).toLocaleString()}</td>
+                              <td className="px-2 py-2 text-right text-emerald-950 font-bold tabular-nums">{Math.round(job.recvBody).toLocaleString()}</td>
+                              <td className="px-2 py-2 text-right text-emerald-950 font-bold tabular-nums">{Math.round(job.recvRib).toLocaleString()}</td>
+                              <td className="px-2 py-2 text-right text-emerald-950 font-bold tabular-nums">{Math.round(job.recvSJ).toLocaleString()}</td>
+                              <td className="px-2.5 py-2 text-right font-extrabold text-emerald-950 bg-emerald-50/80 border-r border-slate-300 tabular-nums">{Math.round(job.totalRecv).toLocaleString()}</td>
                             </>
                           )}
 
                           {/* Issue / Delivery Section */}
                           {visibleSections.deliveryQty && (
                             <>
-                              <td className="px-2 py-2 text-right text-purple-800 font-medium">{Math.round(job.issuedBody).toLocaleString()}</td>
-                              <td className="px-2 py-2 text-right text-purple-800 font-medium">{Math.round(job.issuedRib).toLocaleString()}</td>
-                              <td className="px-2 py-2 text-right text-purple-800 font-medium">{Math.round(job.issuedSJ).toLocaleString()}</td>
-                              <td className="px-2.5 py-2 text-right font-bold text-purple-900 bg-purple-50/60 border-r border-slate-200">{Math.round(job.totalIssued).toLocaleString()}</td>
+                              <td className="px-2 py-2 text-right text-purple-950 font-bold tabular-nums">{Math.round(job.issuedBody).toLocaleString()}</td>
+                              <td className="px-2 py-2 text-right text-purple-950 font-bold tabular-nums">{Math.round(job.issuedRib).toLocaleString()}</td>
+                              <td className="px-2 py-2 text-right text-purple-950 font-bold tabular-nums">{Math.round(job.issuedSJ).toLocaleString()}</td>
+                              <td className="px-2.5 py-2 text-right font-extrabold text-purple-950 bg-purple-50/80 border-r border-slate-300 tabular-nums">{Math.round(job.totalIssued).toLocaleString()}</td>
                             </>
                           )}
 
                           {/* Closing Stock Section */}
                           {visibleSections.closingStock && (
                             <>
-                              <td className="px-2 py-2 text-right font-semibold text-sky-800">{Math.round(job.stockBody).toLocaleString()}</td>
-                              <td className="px-2 py-2 text-right font-semibold text-sky-800">{Math.round(job.stockRib).toLocaleString()}</td>
-                              <td className="px-2 py-2 text-right font-semibold text-sky-800">{Math.round(job.stockSJ).toLocaleString()}</td>
-                              <td className="px-2.5 py-2 text-right font-bold text-sky-950 bg-sky-50 border-r border-slate-200">{Math.round(job.totalStock).toLocaleString()}</td>
+                              <td className="px-2 py-2 text-right font-bold text-sky-950 tabular-nums">{Math.round(job.stockBody).toLocaleString()}</td>
+                              <td className="px-2 py-2 text-right font-bold text-sky-950 tabular-nums">{Math.round(job.stockRib).toLocaleString()}</td>
+                              <td className="px-2 py-2 text-right font-bold text-sky-950 tabular-nums">{Math.round(job.stockSJ).toLocaleString()}</td>
+                              <td className="px-2.5 py-2 text-right font-extrabold text-sky-950 bg-sky-50 border-r border-slate-300 tabular-nums">{Math.round(job.totalStock).toLocaleString()}</td>
                             </>
                           )}
 
                           {/* Location & Leftover */}
                           {visibleSections.locationInfo && (
                             <>
-                              <td className="px-2.5 py-2 font-medium text-slate-800 text-[11px]">{job.location}</td>
-                              <td className="px-2 py-2 text-right font-semibold text-amber-800">{Math.round(job.cuttingLeftover)} kg</td>
-                              <td className="px-2 py-2 text-right text-slate-500">{job.colors[0]?.excessQty || 0}</td>
-                              <td className="px-2 py-2 text-center text-slate-500 text-[10.5px] border-r border-slate-200">{job.colors[0]?.date || '—'}</td>
+                              <td className="px-2.5 py-2 font-bold text-slate-900 text-[11.5px]">{job.location}</td>
+                              <td className="px-2 py-2 text-right font-bold text-amber-950 tabular-nums">{Math.round(job.cuttingLeftover)} kg</td>
+                              <td className="px-2 py-2 text-right text-slate-800 font-bold tabular-nums">{job.colors[0]?.excessQty || 0}</td>
+                              <td className="px-2 py-2 text-center text-slate-700 font-medium text-[11px] border-r border-slate-200">{job.colors[0]?.date || '—'}</td>
                             </>
                           )}
 
@@ -1850,7 +2554,7 @@ function FinishedFabricPageInner() {
                                 e.stopPropagation();
                                 setSelectedJobDetail(job);
                               }}
-                              className="p-1 rounded hover:bg-slate-200 text-slate-600 transition-colors"
+                              className="p-1 rounded hover:bg-slate-200 text-slate-700 transition-colors"
                               title="View Details"
                             >
                               <Eye className="w-3.5 h-3.5" />
@@ -1864,27 +2568,27 @@ function FinishedFabricPageInner() {
                             <tr
                               key={c.id}
                               onClick={() => setSelectedJobDetail(job)}
-                              className="bg-slate-50/70 hover:bg-slate-100 cursor-pointer text-[11px] transition-colors border-l-2 border-slate-400"
+                              className="bg-slate-50/90 hover:bg-slate-100 cursor-pointer text-[11.5px] transition-colors border-l-2 border-blue-500"
                             >
-                              <td className="sticky left-0 z-20 bg-slate-50/90 px-3 py-1.5 border-r border-slate-200 pl-6 text-slate-600 font-medium">
+                              <td className="sticky left-0 z-20 bg-slate-50/95 px-3 py-1.5 border-r border-slate-200 pl-6 text-slate-800 font-bold">
                                 └ Color #{cIdx + 1}
                               </td>
 
-                              <td className="px-3 py-1.5 text-slate-500 border-r border-slate-200">{job.style}</td>
+                              <td className="px-3 py-1.5 text-slate-900 font-bold border-r border-slate-200">{job.style}</td>
 
                               {visibleSections.jobSpecs && (
                                 <>
-                                  <td className="px-2.5 py-1.5 font-semibold text-slate-900 flex items-center gap-1.5">
-                                    <span className="w-2 h-2 rounded-full bg-slate-600 shrink-0" />
+                                  <td className="px-2.5 py-1.5 font-bold text-slate-950 flex items-center gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-blue-700 shrink-0" />
                                     <span>{c.color}</span>
                                   </td>
-                                  <td className="px-2.5 py-1.5 text-slate-600">{c.fabric}</td>
-                                  <td className="px-2.5 py-1.5 text-slate-500 truncate max-w-[130px]">{c.composition}</td>
-                                  <td className="px-2.5 py-1.5 text-slate-500">{c.process}</td>
-                                  <td className="px-2.5 py-1.5 text-slate-500">{c.gsm}</td>
-                                  <td className="px-2.5 py-1.5 text-slate-500">{c.dia}</td>
+                                  <td className="px-2.5 py-1.5 text-slate-800 font-semibold">{c.fabric}</td>
+                                  <td className="px-2.5 py-1.5 text-slate-700 font-medium truncate max-w-[130px]">{c.composition}</td>
+                                  <td className="px-2.5 py-1.5 text-slate-800 font-semibold">{c.process}</td>
+                                  <td className="px-2.5 py-1.5 text-slate-900 font-bold">{c.gsm}</td>
+                                  <td className="px-2.5 py-1.5 text-slate-900 font-bold">{c.dia}</td>
                                   <td className="px-2.5 py-1.5 border-r border-slate-200">
-                                    <span className="text-[9px] px-1 py-0.5 rounded bg-white border border-slate-200 text-slate-600">
+                                    <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-white border border-slate-300 font-bold text-slate-800">
                                       {c.stockState}
                                     </span>
                                   </td>
@@ -1894,50 +2598,50 @@ function FinishedFabricPageInner() {
                               {/* Order Qty Section */}
                               {visibleSections.orderQty && (
                                 <>
-                                  <td className="px-2 py-1.5 text-right text-slate-600">{Math.round(c.reqBody)}</td>
-                                  <td className="px-2 py-1.5 text-right text-slate-600">{Math.round(c.reqRib)}</td>
-                                  <td className="px-2 py-1.5 text-right text-slate-600">{Math.round(c.reqSJ)}</td>
-                                  <td className="px-2.5 py-1.5 text-right font-semibold text-slate-800 bg-slate-50/70 border-r border-slate-200">{Math.round(c.totalReq)}</td>
+                                  <td className="px-2 py-1.5 text-right text-slate-800 font-bold tabular-nums">{Math.round(c.reqBody)}</td>
+                                  <td className="px-2 py-1.5 text-right text-slate-800 font-bold tabular-nums">{Math.round(c.reqRib)}</td>
+                                  <td className="px-2 py-1.5 text-right text-slate-800 font-bold tabular-nums">{Math.round(c.reqSJ)}</td>
+                                  <td className="px-2.5 py-1.5 text-right font-bold text-blue-950 bg-blue-50/70 border-r border-slate-200 tabular-nums">{Math.round(c.totalReq)}</td>
                                 </>
                               )}
 
                               {/* Received Qty Section */}
                               {visibleSections.receivedQty && (
                                 <>
-                                  <td className="px-2 py-1.5 text-right text-emerald-800">{Math.round(c.recvBody)}</td>
-                                  <td className="px-2 py-1.5 text-right text-emerald-800">{Math.round(c.recvRib)}</td>
-                                  <td className="px-2 py-1.5 text-right text-emerald-800">{Math.round(c.recvSJ)}</td>
-                                  <td className="px-2.5 py-1.5 text-right font-semibold text-emerald-900 bg-emerald-50/50 border-r border-slate-200">{Math.round(c.totalRecv)}</td>
+                                  <td className="px-2 py-1.5 text-right text-emerald-950 font-bold tabular-nums">{Math.round(c.recvBody)}</td>
+                                  <td className="px-2 py-1.5 text-right text-emerald-950 font-bold tabular-nums">{Math.round(c.recvRib)}</td>
+                                  <td className="px-2 py-1.5 text-right text-emerald-950 font-bold tabular-nums">{Math.round(c.recvSJ)}</td>
+                                  <td className="px-2.5 py-1.5 text-right font-bold text-emerald-950 bg-emerald-50/70 border-r border-slate-200 tabular-nums">{Math.round(c.totalRecv)}</td>
                                 </>
                               )}
 
                               {/* Issue / Delivery Section */}
                               {visibleSections.deliveryQty && (
                                 <>
-                                  <td className="px-2 py-1.5 text-right text-purple-800">{Math.round(c.issuedBody)}</td>
-                                  <td className="px-2 py-1.5 text-right text-purple-800">{Math.round(c.issuedRib)}</td>
-                                  <td className="px-2 py-1.5 text-right text-purple-800">{Math.round(c.issuedSJ)}</td>
-                                  <td className="px-2.5 py-1.5 text-right font-semibold text-purple-900 bg-purple-50/50 border-r border-slate-200">{Math.round(c.totalIssued)}</td>
+                                  <td className="px-2 py-1.5 text-right text-purple-950 font-bold tabular-nums">{Math.round(c.issuedBody)}</td>
+                                  <td className="px-2 py-1.5 text-right text-purple-950 font-bold tabular-nums">{Math.round(c.issuedRib)}</td>
+                                  <td className="px-2 py-1.5 text-right text-purple-950 font-bold tabular-nums">{Math.round(c.issuedSJ)}</td>
+                                  <td className="px-2.5 py-1.5 text-right font-bold text-purple-950 bg-purple-50/70 border-r border-slate-200 tabular-nums">{Math.round(c.totalIssued)}</td>
                                 </>
                               )}
 
                               {/* Closing Stock Section */}
                               {visibleSections.closingStock && (
                                 <>
-                                  <td className="px-2 py-1.5 text-right font-medium text-sky-800">{Math.round(c.stockBody)}</td>
-                                  <td className="px-2 py-1.5 text-right font-medium text-sky-800">{Math.round(c.stockRib)}</td>
-                                  <td className="px-2 py-1.5 text-right font-medium text-sky-800">{Math.round(c.stockSJ)}</td>
-                                  <td className="px-2.5 py-1.5 text-right font-bold text-sky-950 bg-sky-50/80 border-r border-slate-200">{Math.round(c.stockBalance)}</td>
+                                  <td className="px-2 py-1.5 text-right font-bold text-sky-950 tabular-nums">{Math.round(c.stockBody)}</td>
+                                  <td className="px-2 py-1.5 text-right font-bold text-sky-950 tabular-nums">{Math.round(c.stockRib)}</td>
+                                  <td className="px-2 py-1.5 text-right font-bold text-sky-950 tabular-nums">{Math.round(c.stockSJ)}</td>
+                                  <td className="px-2.5 py-1.5 text-right font-extrabold text-sky-950 bg-sky-50 border-r border-slate-200 tabular-nums">{Math.round(c.stockBalance)}</td>
                                 </>
                               )}
 
                               {/* Location & Leftover */}
                               {visibleSections.locationInfo && (
                                 <>
-                                  <td className="px-2.5 py-1.5 text-slate-800 font-medium">{c.location}</td>
-                                  <td className="px-2 py-1.5 text-right text-amber-800 font-medium">{Math.round(c.cuttingLeftover)} kg</td>
-                                  <td className="px-2 py-1.5 text-right text-slate-400">{c.excessQty}</td>
-                                  <td className="px-2 py-1.5 text-center text-slate-400 text-[10px] border-r border-slate-200">{c.date}</td>
+                                  <td className="px-2.5 py-1.5 text-slate-900 font-bold">{c.location}</td>
+                                  <td className="px-2.5 py-1.5 text-right text-amber-950 font-bold tabular-nums">{Math.round(c.cuttingLeftover)} kg</td>
+                                  <td className="px-2.5 py-1.5 text-right text-slate-800 font-bold tabular-nums">{c.excessQty}</td>
+                                  <td className="px-2.5 py-1.5 text-center text-slate-700 text-[10.5px] border-r border-slate-200">{c.date}</td>
                                 </>
                               )}
 
@@ -2256,11 +2960,17 @@ function FinishedFabricPageInner() {
                 <button
                   type="button"
                   onClick={() => setReceiveSourceFilter('ALL')}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${
-                    receiveSourceFilter === 'ALL'
-                      ? 'bg-blue-600 text-white border-blue-600 font-semibold shadow-xs'
-                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-                  }`}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: '6px',
+                    fontSize: '12.5px',
+                    fontWeight: 650,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    border: receiveSourceFilter === 'ALL' ? '1px solid #0F274E' : '1px solid #CBD5E1',
+                    background: receiveSourceFilter === 'ALL' ? '#0F274E' : '#FFFFFF',
+                    color: receiveSourceFilter === 'ALL' ? '#FFFFFF' : '#334155'
+                  }}
                 >
                   All Inward Sources ({challans.length})
                 </button>
@@ -2268,11 +2978,17 @@ function FinishedFabricPageInner() {
                 <button
                   type="button"
                   onClick={() => setReceiveSourceFilter('SUPPLIER')}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${
-                    receiveSourceFilter === 'SUPPLIER'
-                      ? 'bg-blue-600 text-white border-blue-600 font-semibold shadow-xs'
-                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-                  }`}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: '6px',
+                    fontSize: '12.5px',
+                    fontWeight: 650,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    border: receiveSourceFilter === 'SUPPLIER' ? '1px solid #0F274E' : '1px solid #CBD5E1',
+                    background: receiveSourceFilter === 'SUPPLIER' ? '#0F274E' : '#FFFFFF',
+                    color: receiveSourceFilter === 'SUPPLIER' ? '#FFFFFF' : '#334155'
+                  }}
                 >
                   Supplier Delivery
                 </button>
@@ -2280,11 +2996,17 @@ function FinishedFabricPageInner() {
                 <button
                   type="button"
                   onClick={() => setReceiveSourceFilter('IMPORT')}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${
-                    receiveSourceFilter === 'IMPORT'
-                      ? 'bg-blue-600 text-white border-blue-600 font-semibold shadow-xs'
-                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-                  }`}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: '6px',
+                    fontSize: '12.5px',
+                    fontWeight: 650,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    border: receiveSourceFilter === 'IMPORT' ? '1px solid #0F274E' : '1px solid #CBD5E1',
+                    background: receiveSourceFilter === 'IMPORT' ? '#0F274E' : '#FFFFFF',
+                    color: receiveSourceFilter === 'IMPORT' ? '#FFFFFF' : '#334155'
+                  }}
                 >
                   Imported Fabric
                 </button>
@@ -2292,11 +3014,17 @@ function FinishedFabricPageInner() {
                 <button
                   type="button"
                   onClick={() => setReceiveSourceFilter('CUTTING_LEFTOVER')}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${
-                    receiveSourceFilter === 'CUTTING_LEFTOVER'
-                      ? 'bg-blue-600 text-white border-blue-600 font-semibold shadow-xs'
-                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-                  }`}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: '6px',
+                    fontSize: '12.5px',
+                    fontWeight: 650,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    border: receiveSourceFilter === 'CUTTING_LEFTOVER' ? '1px solid #0F274E' : '1px solid #CBD5E1',
+                    background: receiveSourceFilter === 'CUTTING_LEFTOVER' ? '#0F274E' : '#FFFFFF',
+                    color: receiveSourceFilter === 'CUTTING_LEFTOVER' ? '#FFFFFF' : '#334155'
+                  }}
                 >
                   Cutting Floor Return
                 </button>
@@ -2815,26 +3543,35 @@ function FinishedFabricPageInner() {
             <div className="lg:col-span-8 bg-white rounded-lg border border-slate-200 p-4 shadow-2xs">
               {selectedIssueJob ? (
                 <div className="space-y-3.5">
-                  <div className="bg-slate-900 text-white p-3.5 rounded-lg shadow-2xs">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] uppercase font-bold tracking-wider text-sky-300">
+                  <div
+                    style={{
+                      background: '#F0F9FF',
+                      border: '1px solid #BAE6FD',
+                      borderRadius: '8px',
+                      padding: '14px 16px',
+                      color: '#0F274E',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.05em', color: '#0284C7' }}>
                         {selectedIssueJob.buyer} · Cutting Gate Delivery Desk
                       </span>
-                      <span className="text-xs font-semibold bg-emerald-500 text-slate-950 px-2 py-0.5 rounded">
+                      <span style={{ fontSize: '12px', fontWeight: 750, background: '#DCFCE7', color: '#166534', padding: '3px 8px', borderRadius: '4px', border: '1px solid #86EFAC' }}>
                         Available Stock: {Math.round(selectedIssueJob.totalStock).toLocaleString()} kg
                       </span>
                     </div>
 
-                    <div className="text-base font-bold text-white">
-                      Job #{selectedIssueJob.jobNo} — Style: {selectedIssueJob.style}
+                    <div style={{ fontSize: '16px', fontWeight: 800, color: '#0F274E' }}>
+                      Job #{selectedIssueJob.jobNo} — Style: {cleanStyleNo(selectedIssueJob.style)}
                     </div>
 
-                    <div className="text-xs text-slate-300 mt-1 flex flex-wrap gap-x-4">
-                      <span><strong>Composition:</strong> {selectedIssueJob.composition}</span>
-                      <span><strong>GSM:</strong> {selectedIssueJob.gsm}</span>
-                      <span><strong>Dia:</strong> {selectedIssueJob.dia}</span>
-                      <span><strong>Process:</strong> {selectedIssueJob.process}</span>
-                      <span><strong>Supplier:</strong> {selectedIssueJob.supplier}</span>
+                    <div style={{ fontSize: '12px', color: '#475569', marginTop: '6px', display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+                      <span><strong style={{ color: '#1E293B' }}>Composition:</strong> {selectedIssueJob.composition}</span>
+                      <span><strong style={{ color: '#1E293B' }}>GSM:</strong> {selectedIssueJob.gsm}</span>
+                      <span><strong style={{ color: '#1E293B' }}>Dia:</strong> {selectedIssueJob.dia}</span>
+                      <span><strong style={{ color: '#1E293B' }}>Process:</strong> {selectedIssueJob.process}</span>
+                      <span><strong style={{ color: '#1E293B' }}>Supplier:</strong> {selectedIssueJob.supplier}</span>
                     </div>
                   </div>
 
@@ -3158,6 +3895,317 @@ function FinishedFabricPageInner() {
           </div>
         </div>
       )}
+      {/* ===================================================================== */}
+      {/* EXCEL MULTI-MONTH WORKBOOK IMPORT MODAL */}
+      {/* ===================================================================== */}
+      {isImportModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full border border-slate-200 overflow-hidden">
+            <div className="px-5 py-4 bg-emerald-700 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <FolderUp className="w-5 h-5 text-emerald-200" />
+                <div>
+                  <h3 className="text-sm font-bold tracking-tight">Import Finished Fabric Excel Workbook</h3>
+                  <p className="text-[11px] text-emerald-100">Consolidate multi-month workbook sheets into live store inventory</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsImportModalOpen(false)}
+                className="text-emerald-100 hover:text-white p-1 rounded-md"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="border-2 border-dashed border-emerald-300 hover:border-emerald-500 bg-emerald-50/40 rounded-xl p-8 text-center transition-colors">
+                <FileSpreadsheet className="w-12 h-12 text-emerald-600 mx-auto mb-3" />
+                <p className="text-xs font-bold text-slate-800 mb-1">
+                  Select or drop Excel Workbook (.xlsx / .xls)
+                </p>
+                <p className="text-[11px] text-slate-500 mb-4 max-w-xs mx-auto">
+                  All month tabs (September, October, November, etc.) will be automatically consolidated into one view.
+                </p>
+
+                <label className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg cursor-pointer shadow-sm transition-colors">
+                  <Upload className="w-4 h-4" />
+                  <span>Choose Excel File</span>
+                  <input
+                    type="file"
+                    accept=".xlsx, .xls, .csv"
+                    onChange={handleFabricWorkbookUpload}
+                    disabled={isImporting}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              {isImporting && (
+                <div className="flex items-center justify-center gap-2 text-xs font-semibold text-emerald-700 py-2">
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Parsing workbook sheets, please wait...</span>
+                </div>
+              )}
+
+              <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 text-[11px] text-slate-600 space-y-1">
+                <div className="font-bold text-slate-700 mb-0.5">Automatic Column Mapping:</div>
+                <div>• Job / Order No, Buyer, Style, Fabric Type, Color, GSM, Dia</div>
+                <div>• Required Qty, Received Qty, Issued Qty, Closing Stock</div>
+                <div>• Store Rack / Bin Location, Delivery Date, Challan No</div>
+              </div>
+            </div>
+
+            <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsImportModalOpen(false)}
+                className="px-4 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-md transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* MANUAL DATA ENTRY MODAL (JOB + MULTIPLE COLORS) */}
+      {/* ===================================================================== */}
+      {isManualModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full border border-slate-200 overflow-hidden my-8">
+            <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold flex items-center gap-2">
+                  <Plus className="w-4 h-4 text-sky-400" />
+                  Manual Fabric Entry (New Job & Multi-Color)
+                </h3>
+                <p className="text-xs text-slate-400">Enter single job with multiple colors (3, 4, 5+ colors), roll counts, weights (Kg) and rack locations</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsManualModalOpen(false)}
+                className="text-slate-400 hover:text-white p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleManualFabricSubmit} className="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Job No *</label>
+                  <input
+                    required
+                    type="text"
+                    value={manualJobForm.jobNo}
+                    onChange={e => setManualJobForm(p => ({ ...p, jobNo: e.target.value }))}
+                    placeholder="e.g. 48095"
+                    className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Buyer *</label>
+                  <input
+                    required
+                    type="text"
+                    value={manualJobForm.buyer}
+                    onChange={e => setManualJobForm(p => ({ ...p, buyer: e.target.value }))}
+                    placeholder="e.g. Bestseller / ONLY"
+                    className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Style No</label>
+                  <input
+                    type="text"
+                    value={manualJobForm.style}
+                    onChange={e => setManualJobForm(p => ({ ...p, style: e.target.value }))}
+                    placeholder="e.g. 22040024"
+                    className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Month *</label>
+                  <select
+                    value={manualJobForm.month}
+                    onChange={e => setManualJobForm(p => ({ ...p, month: e.target.value }))}
+                    className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="November 2026">November 2026</option>
+                    <option value="October 2026">October 2026</option>
+                    <option value="September 2026">September 2026</option>
+                    <option value="August 2026">August 2026</option>
+                    <option value="December 2026">December 2026</option>
+                    <option value="January 2027">January 2027</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Fabric Type</label>
+                  <input
+                    type="text"
+                    value={manualJobForm.fabricType}
+                    onChange={e => setManualJobForm(p => ({ ...p, fabricType: e.target.value }))}
+                    placeholder="e.g. Single Jersey / 1x1 Rib"
+                    className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Composition</label>
+                  <input
+                    type="text"
+                    value={manualJobForm.composition}
+                    onChange={e => setManualJobForm(p => ({ ...p, composition: e.target.value }))}
+                    placeholder="e.g. 100% Combed Cotton"
+                    className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">GSM</label>
+                  <input
+                    type="text"
+                    value={manualJobForm.gsm}
+                    onChange={e => setManualJobForm(p => ({ ...p, gsm: e.target.value }))}
+                    placeholder="e.g. 180"
+                    className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Dia / Width</label>
+                  <input
+                    type="text"
+                    value={manualJobForm.dia}
+                    onChange={e => setManualJobForm(p => ({ ...p, dia: e.target.value }))}
+                    placeholder='e.g. 68" Open'
+                    className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Supplier / Dyeing Mill</label>
+                  <input
+                    type="text"
+                    value={manualJobForm.supplier}
+                    onChange={e => setManualJobForm(p => ({ ...p, supplier: e.target.value }))}
+                    placeholder="e.g. Northern Dyeing Unit-1"
+                    className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* Dynamic Multi-Color Section */}
+              <div className="border border-slate-200 rounded-lg p-3 bg-slate-50/50">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <Palette className="w-3.5 h-3.5 text-blue-600" />
+                    Color & Quantity Breakdown ({manualColors.length} Colors)
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={addManualColorRow}
+                    className="px-2.5 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded text-xs font-semibold flex items-center gap-1"
+                  >
+                    <Plus className="w-3 h-3" />
+                    + Add Color
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  {manualColors.map((col, idx) => (
+                    <div key={col.id} className="grid grid-cols-12 gap-2 items-center bg-white p-2 rounded border border-slate-200 text-xs">
+                      <div className="col-span-3">
+                        <span className="text-[10px] text-slate-400 block mb-0.5">Color #{idx + 1} *</span>
+                        <input
+                          required
+                          type="text"
+                          value={col.color}
+                          onChange={e => updateManualColorRow(col.id, 'color', e.target.value)}
+                          placeholder="e.g. Black / Navy"
+                          className="w-full px-2 py-1 text-xs border border-slate-200 rounded"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-[10px] text-slate-400 block mb-0.5">Req Qty (Kg) *</span>
+                        <input
+                          required
+                          type="number"
+                          min="0"
+                          value={col.reqBody || ''}
+                          onChange={e => updateManualColorRow(col.id, 'reqBody', Number(e.target.value))}
+                          placeholder="0"
+                          className="w-full px-2 py-1 text-xs border border-slate-200 rounded"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-[10px] text-slate-400 block mb-0.5">Recv Qty (Kg) *</span>
+                        <input
+                          required
+                          type="number"
+                          min="0"
+                          value={col.recvBody || ''}
+                          onChange={e => updateManualColorRow(col.id, 'recvBody', Number(e.target.value))}
+                          placeholder="0"
+                          className="w-full px-2 py-1 text-xs border border-slate-200 rounded"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-[10px] text-slate-400 block mb-0.5">Rolls</span>
+                        <input
+                          type="number"
+                          min="1"
+                          value={col.rollCount || ''}
+                          onChange={e => updateManualColorRow(col.id, 'rollCount', Number(e.target.value))}
+                          placeholder="1"
+                          className="w-full px-2 py-1 text-xs border border-slate-200 rounded"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-[10px] text-slate-400 block mb-0.5">Rack Location</span>
+                        <input
+                          type="text"
+                          value={col.location}
+                          onChange={e => updateManualColorRow(col.id, 'location', e.target.value)}
+                          placeholder="e.g. R-01 · Shelf 02"
+                          className="w-full px-2 py-1 text-xs border border-slate-200 rounded"
+                        />
+                      </div>
+                      <div className="col-span-1 flex justify-end">
+                        {manualColors.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeManualColorRow(col.id)}
+                            className="text-rose-500 hover:text-rose-700 p-1"
+                            title="Remove Color"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setIsManualModalOpen(false)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-md"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-md shadow-xs"
+                >
+                  Save Job & All Colors
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </Shell>
   );
 }
