@@ -76,6 +76,7 @@ import FabricRackLocation, {
 } from '../../../components/fabric/FabricRackLocation';
 
 const RACK_STORE_KEY = 'nos-finished-fabric-rack-locations-v9';
+const FINISHED_FABRIC_STORAGE_KEY = 'nfl_finished_fabric_lines_v5';
 
 /**
  * Strips buyer prefixes (e.g. ONLY-, OS-, OVS-, NI-, UTG-, UT-, BS-, BSONS-) from style number
@@ -388,7 +389,7 @@ function FinishedFabricPageInner() {
       setRawLines([]);
       setRackLoc({});
       try {
-        localStorage.removeItem('nfl_finished_fabric_lines_v4');
+        localStorage.removeItem(FINISHED_FABRIC_STORAGE_KEY);
         localStorage.removeItem(RACK_STORE_KEY);
       } catch {}
       showToast('All finished fabric data removed. Store is clean.');
@@ -464,7 +465,7 @@ function FinishedFabricPageInner() {
     setRawLines(nextLines);
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem('nfl_finished_fabric_lines_v4', JSON.stringify(nextLines));
+        localStorage.setItem(FINISHED_FABRIC_STORAGE_KEY, JSON.stringify(nextLines));
       } catch {}
     }
 
@@ -744,7 +745,7 @@ function FinishedFabricPageInner() {
       setRawLines(nextLines);
       if (typeof window !== 'undefined') {
         try {
-          localStorage.setItem('nfl_finished_fabric_lines_v4', JSON.stringify(nextLines));
+          localStorage.setItem(FINISHED_FABRIC_STORAGE_KEY, JSON.stringify(nextLines));
         } catch {}
       }
 
@@ -787,8 +788,260 @@ function FinishedFabricPageInner() {
     locationInfo: true,  // Location, Cutting Leftover, Excess Qty, Date
   });
 
-  // Drawer state (sliding from right to left)
+  // Selected Job & Action Modal state
   const [selectedJobDetail, setSelectedJobDetail] = useState<JobFabricGroup | null>(null);
+  const [actionModalMode, setActionModalMode] = useState<'VIEW' | 'ISSUE' | 'RECEIVE'>('VIEW');
+  const [actionForm, setActionForm] = useState({
+    selectedColorId: '',
+    colorName: '',
+    bodyKg: 0,
+    ribKg: 0,
+    sjKg: 0,
+    rollCount: 1,
+    challanNo: '',
+    supplier: 'Northern Dyeing Unit-1',
+    location: 'F.ST',
+    cuttingLine: 'Cutting Table-1',
+    issuedTo: 'Cutting Master',
+    remarks: '',
+  });
+
+  const openJobModal = (job: JobFabricGroup, mode: 'VIEW' | 'ISSUE' | 'RECEIVE' = 'VIEW') => {
+    setSelectedJobDetail(job);
+    setActionModalMode(mode);
+    const firstColor = job.colors[0];
+    setActionForm({
+      selectedColorId: firstColor ? firstColor.id : '',
+      colorName: firstColor ? firstColor.color : '',
+      bodyKg: 0,
+      ribKg: 0,
+      sjKg: 0,
+      rollCount: 1,
+      challanNo: `CH-NFL-${Math.floor(1000 + Math.random() * 9000)}`,
+      supplier: job.supplier || 'Northern Dyeing Unit-1',
+      location: (firstColor && firstColor.location) || 'F.ST',
+      cuttingLine: 'Cutting Table-1',
+      issuedTo: 'Cutting Master',
+      remarks: '',
+    });
+  };
+
+  const handleConfirmIssueFromModal = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedJobDetail) return;
+    const { selectedColorId, bodyKg, ribKg, sjKg, cuttingLine, issuedTo, remarks } = actionForm;
+    const bKg = Math.max(0, Number(bodyKg) || 0);
+    const rKg = Math.max(0, Number(ribKg) || 0);
+    const sKg = Math.max(0, Number(sjKg) || 0);
+    const totIssue = bKg + rKg + sKg;
+    if (totIssue <= 0) {
+      alert('Please enter at least one quantity (Body, Rib, or S.Jersey) to issue.');
+      return;
+    }
+
+    const targetColor = selectedJobDetail.colors.find(c => c.id === selectedColorId) || selectedJobDetail.colors[0];
+    if (!targetColor) return;
+
+    const nextLines = rawLines.map(l => {
+      if (l.id === targetColor.id) {
+        const issuedBody = l.issuedBody + bKg;
+        const issuedRib = l.issuedRib + rKg;
+        const issuedSJ = l.issuedSJ + sKg;
+        const totalIssued = issuedBody + issuedRib + issuedSJ;
+
+        const stockBody = Math.max(0, l.recvBody - issuedBody);
+        const stockRib = Math.max(0, l.recvRib - issuedRib);
+        const stockSJ = Math.max(0, l.recvSJ - issuedSJ);
+        const stockBalance = stockBody + stockRib + stockSJ;
+
+        let stockState: FabricColorLine['stockState'] = 'In Stock';
+        if (stockBalance <= 0) stockState = 'Fully Issued';
+        else if (l.dyeingBalance > l.totalReq * 0.05) stockState = 'Partly Received';
+
+        return {
+          ...l,
+          issuedBody,
+          issuedRib,
+          issuedSJ,
+          totalIssued,
+          stockBody,
+          stockRib,
+          stockSJ,
+          stockBalance,
+          stockState,
+        };
+      }
+      return l;
+    });
+
+    setRawLines(nextLines);
+    try {
+      localStorage.setItem(FINISHED_FABRIC_STORAGE_KEY, JSON.stringify(nextLines));
+    } catch {}
+
+    const newSlip: CuttingIssueSlip = {
+      id: `ci-${Date.now()}`,
+      issueNo: `FI-${Date.now().toString().slice(-6)}`,
+      date: new Date().toISOString().slice(0, 10),
+      buyer: selectedJobDetail.buyer,
+      jobNo: selectedJobDetail.jobNo,
+      style: selectedJobDetail.style,
+      color: targetColor.color || 'Solid',
+      fabricDescription: `${selectedJobDetail.fabric} ${selectedJobDetail.gsm} GSM`,
+      bodyKg: bKg,
+      ribKg: rKg,
+      sjKg: sKg,
+      totalKg: totIssue,
+      issuedBy: 'Store Officer',
+      receivedBy: issuedTo || 'Cutting Master',
+      remarks: remarks || `Issued to ${cuttingLine}`,
+      isCuttingOk: false,
+    };
+    setCuttingIssues(prev => [newSlip, ...prev]);
+
+    showToast(`Successfully issued ${totIssue} kg of ${selectedJobDetail.jobNo} (${targetColor.color || 'Color'}) to ${cuttingLine}!`);
+    setSelectedJobDetail(null);
+  };
+
+  const handleConfirmReceiveFromModal = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedJobDetail) return;
+    const { selectedColorId, colorName, bodyKg, ribKg, sjKg, rollCount, challanNo, supplier, location, remarks } = actionForm;
+    const bKg = Math.max(0, Number(bodyKg) || 0);
+    const rKg = Math.max(0, Number(ribKg) || 0);
+    const sKg = Math.max(0, Number(sjKg) || 0);
+    const totRecv = bKg + rKg + sKg;
+    if (totRecv <= 0) {
+      alert('Please enter at least one received quantity (Body, Rib, or S.Jersey).');
+      return;
+    }
+
+    const existingColor = selectedJobDetail.colors.find(c => c.id === selectedColorId);
+    const finalColorName = (colorName || (existingColor ? existingColor.color : '')).trim();
+
+    let nextLines: FabricColorLine[];
+    if (existingColor) {
+      nextLines = rawLines.map(l => {
+        if (l.id === existingColor.id) {
+          const recvBody = l.recvBody + bKg;
+          const recvRib = l.recvRib + rKg;
+          const recvSJ = l.recvSJ + sKg;
+          const totalRecv = recvBody + recvRib + recvSJ;
+
+          const stockBody = Math.max(0, recvBody - l.issuedBody);
+          const stockRib = Math.max(0, recvRib - l.issuedRib);
+          const stockSJ = Math.max(0, recvSJ - l.issuedSJ);
+          const stockBalance = stockBody + stockRib + stockSJ;
+
+          const dyeingBalance = Math.max(0, l.totalReq - totalRecv);
+
+          let stockState: FabricColorLine['stockState'] = 'In Stock';
+          if (stockBalance <= 0) stockState = 'Fully Issued';
+          else if (dyeingBalance > l.totalReq * 0.05) stockState = 'Partly Received';
+
+          return {
+            ...l,
+            color: finalColorName || l.color,
+            recvBody,
+            recvRib,
+            recvSJ,
+            totalRecv,
+            dyeingBalance,
+            stockBody,
+            stockRib,
+            stockSJ,
+            stockBalance,
+            stockState,
+            location: location || l.location,
+          };
+        }
+        return l;
+      });
+    } else {
+      const newLine: FabricColorLine = {
+        id: `f-${Date.now()}`,
+        idx: rawLines.length + 1,
+        month: selectedJobDetail.month || 'December-26',
+        buyer: selectedJobDetail.buyer,
+        jobNo: selectedJobDetail.jobNo,
+        style: selectedJobDetail.style,
+        color: finalColorName || 'New Color',
+        fabric: selectedJobDetail.fabric,
+        fabricType: selectedJobDetail.fabricType,
+        construction: 'Plain Single',
+        composition: selectedJobDetail.composition,
+        gsm: selectedJobDetail.gsm,
+        dia: selectedJobDetail.dia,
+        process: selectedJobDetail.process,
+        isImported: selectedJobDetail.isImported,
+        reqBody: bKg,
+        reqRib: rKg,
+        reqSJ: sKg,
+        totalReq: totRecv,
+        recvBody: bKg,
+        recvRib: rKg,
+        recvSJ: sKg,
+        totalRecv: totRecv,
+        dyeingBalance: 0,
+        issuedBody: 0,
+        issuedRib: 0,
+        issuedSJ: 0,
+        totalIssued: 0,
+        stockBody: bKg,
+        stockRib: rKg,
+        stockSJ: sKg,
+        stockBalance: totRecv,
+        location: location || 'F.ST',
+        cuttingLeftover: 0,
+        excessQty: 0,
+        date: new Date().toLocaleDateString('en-GB'),
+        challans: challanNo || `CH-NFL-${Date.now().toString().slice(-4)}`,
+        deliveryDate: new Date().toISOString().slice(0, 10),
+        exFactoryDate: new Date().toISOString().slice(0, 10),
+        supplier: supplier || 'Northern Dyeing Unit-1',
+        slot: '1',
+        merchandiser: 'Store Manager',
+        qualityStatus: 'PASS',
+        stockState: 'In Stock',
+        isCuttingOk: false,
+      };
+      nextLines = [newLine, ...rawLines];
+    }
+
+    setRawLines(nextLines);
+    try {
+      localStorage.setItem(FINISHED_FABRIC_STORAGE_KEY, JSON.stringify(nextLines));
+    } catch {}
+
+    const newChallan: SupplierChallanItem = {
+      id: `ch-${Date.now()}`,
+      challanNo: challanNo || `CH-NFL-${Date.now().toString().slice(-4)}`,
+      date: new Date().toISOString().slice(0, 10),
+      supplier: supplier || 'Northern Dyeing Unit-1',
+      sourceType: 'SUPPLIER',
+      buyer: selectedJobDetail.buyer,
+      jobNo: selectedJobDetail.jobNo,
+      style: selectedJobDetail.style,
+      color: finalColorName || 'New Color',
+      fabric: `${selectedJobDetail.fabric} ${selectedJobDetail.gsm} GSM`,
+      challanBodyKg: bKg,
+      challanRibKg: rKg,
+      challanSJKg: sKg,
+      weighedBodyKg: bKg,
+      weighedRibKg: rKg,
+      weighedSJKg: sKg,
+      totalKg: totRecv,
+      rollCount: Number(rollCount) || 1,
+      weightDiffKg: 0,
+      rackLocation: location || 'F.ST',
+      remarks: remarks || 'Received into store',
+      status: 'Accepted',
+    };
+    setChallans(prev => [newChallan, ...prev]);
+
+    showToast(`Successfully received ${totRecv} kg for ${selectedJobDetail.jobNo} (${finalColorName}) into store!`);
+    setSelectedJobDetail(null);
+  };
   const [drawerVisibleSections, setDrawerVisibleSections] = useState({
     orderQty: true,
     receivedQty: true,
@@ -827,7 +1080,7 @@ function FinishedFabricPageInner() {
     setRawLines(updated);
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem('nfl_finished_fabric_lines_v4', JSON.stringify(updated));
+        localStorage.setItem(FINISHED_FABRIC_STORAGE_KEY, JSON.stringify(updated));
       } catch {}
     }
     showToast('Fabric lot verified and accepted into stock successfully!');
@@ -1081,7 +1334,7 @@ function FinishedFabricPageInner() {
       try {
         let storedLines: FabricColorLine[] | null = null;
         try {
-          const raw = localStorage.getItem('nfl_finished_fabric_lines_v4');
+          const raw = localStorage.getItem(FINISHED_FABRIC_STORAGE_KEY);
           if (raw) storedLines = JSON.parse(raw);
         } catch {
           storedLines = null;
@@ -1131,23 +1384,23 @@ function FinishedFabricPageInner() {
 
             const rNum = (idx % FABRIC_RACKS) + 1;
             const sNum = (Math.floor(idx / FABRIC_RACKS) % FABRIC_SHELVES) + 1;
-            const defaultLocation = stockBalance > 0.5 ? `R-${String(rNum).padStart(2, '0')} · Shelf ${String(sNum).padStart(2, '0')}` : 'F.ST';
+            const defaultLocation = item.loc && item.loc !== '0' && item.loc !== 'undefined' ? String(item.loc).trim() : 'F.ST';
 
             return {
               id: `f-${idx}`,
               idx: idx + 1,
-              month: item.m || '2026-11',
-              buyer: item.b || 'Bestseller (Only & Sons)',
-              jobNo: String(item.j || ''),
+              month: item.m || 'December-26',
+              buyer: item.b || 'Only',
+              jobNo: String(item.j || '').replace(/#/g, ''),
               style: cleanStyleNo(String(item.st || '')),
-              color: String(item.c || 'Solid Color'),
-              fabric: String(item.f || 'Single Jersey'),
-              fabricType: parseFabricType(item.f),
-              construction: parseConstruction(item.f),
-              composition: item.comp || '100% Organic Cotton',
-              gsm: String(item.gsm || '160'),
-              dia: String(item.dia || '68"'),
-              process: String(item.ap || 'Y/D'),
+              color: item.c ? String(item.c).trim() : '',
+              fabric: item.f ? String(item.f).trim() : '',
+              fabricType: item.f ? parseFabricType(item.f) : '',
+              construction: item.f ? parseConstruction(item.f) : '',
+              composition: item.comp ? String(item.comp).trim() : '',
+              gsm: item.gsm ? String(item.gsm).trim() : '',
+              dia: item.dia ? String(item.dia).trim() : '',
+              process: item.ap ? String(item.ap).trim() : '',
               isImported,
               reqBody,
               reqRib,
@@ -1217,15 +1470,17 @@ function FinishedFabricPageInner() {
   }, []);
 
   function parseFabricType(s: string): string {
+    if (!s || !s.trim()) return '';
     const t = String(s || '').toLowerCase();
+    if (/mesh/.test(t)) return 'Mesh';
     if (/rib/.test(t)) return 'Rib';
     if (/interlock/.test(t)) return 'Interlock';
     if (/fleece/.test(t)) return 'Fleece';
     if (/terry/.test(t)) return 'Terry';
     if (/pique|lacoste/.test(t)) return 'Pique';
-    if (/s\s*\/\s*j|single\s*jersey|\bsj\b|jersey/.test(t)) return 'Single Jersey';
-    if (/woven|chiffon|poplin/.test(t)) return 'Imported Woven';
-    return 'Other Knit';
+    if (/s\s*\/\s*j|single\s*jersey|\bsj\b|jersey/.test(t)) return 'SJ';
+    if (/woven|chiffon|poplin/.test(t)) return 'Woven';
+    return s.trim();
   }
 
   function parseConstruction(s: string): string {
@@ -1359,7 +1614,11 @@ function FinishedFabricPageInner() {
   }, [jobGroups, searchQuery, selectedBuyer, selectedMonth, selectedStatus, selectedFabricType, filterImportedOnly]);
 
   const buyerOptions = useMemo(() => Array.from(new Set(rawLines.map(l => l.buyer))).sort(), [rawLines]);
-  const fabricTypeOptions = useMemo(() => Array.from(new Set(rawLines.map(l => l.fabricType))).sort(), [rawLines]);
+  const fabricTypeOptions = useMemo(() => {
+    const standard = ['SJ', 'Rib', 'Terry', 'Fleece', 'Interlock', 'Woven', 'Mesh'];
+    const fromData = Array.from(new Set(rawLines.map(l => l.fabricType).filter(Boolean)));
+    return Array.from(new Set([...standard, ...fromData])).sort();
+  }, [rawLines]);
 
   const monthOptions = useMemo(() => {
     const rawMonths = Array.from(new Set(rawLines.map(l => l.month).filter(Boolean)));
@@ -2093,7 +2352,7 @@ function FinishedFabricPageInner() {
                 <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search Job #, Style, Color..."
+                  placeholder="Search Job No, Style, Color..."
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
@@ -2340,7 +2599,7 @@ function FinishedFabricPageInner() {
                 <tr className="border-b border-slate-300 text-[10.5px] uppercase tracking-wider font-bold">
                   {/* Sticky left job/style header */}
                   <th colSpan={visibleSections.jobSpecs ? 9 : 2} className="sticky left-0 z-40 bg-slate-100 px-3 py-2 text-left border-r border-b border-slate-300 text-slate-800 font-bold">
-                    Order Identification & Style Specification
+                    Job Specifications
                   </th>
 
                   {/* Order Qty Section Header */}
@@ -2390,7 +2649,7 @@ function FinishedFabricPageInner() {
                       onClick={() => handleSort('jobNo')}
                       className="flex items-center gap-1.5 text-left text-slate-900 font-bold hover:text-blue-700 cursor-pointer"
                     >
-                      <span>Buyer - Job No</span>
+                      <span>Job No</span>
                       <ArrowUpDown className={`w-3 h-3 ${sortField === 'jobNo' ? 'text-blue-700 font-bold' : 'text-slate-400'}`} />
                     </button>
                   </th>
@@ -2410,7 +2669,7 @@ function FinishedFabricPageInner() {
                       <th className="px-2.5 py-2 text-slate-900 font-bold min-w-[120px] border-r border-slate-200">Color</th>
                       <th className="px-2.5 py-2 text-slate-900 font-bold min-w-[110px] border-r border-slate-200">Fabric Type</th>
                       <th className="px-2.5 py-2 text-slate-900 font-bold min-w-[140px] border-r border-slate-200">Composition</th>
-                      <th className="px-2.5 py-2 text-slate-900 font-bold min-w-[70px] border-r border-slate-200">Process</th>
+                      <th className="px-2.5 py-2 text-slate-900 font-bold min-w-[110px] border-r border-slate-200">Additional Process</th>
                       <th className="px-2.5 py-2 text-slate-900 font-bold min-w-[50px] border-r border-slate-200">GSM</th>
                       <th className="px-2.5 py-2 text-slate-900 font-bold min-w-[50px] border-r border-slate-200">Dia</th>
                       <th className="px-2.5 py-2 text-slate-900 font-bold min-w-[80px] border-r border-slate-300">
@@ -2569,21 +2828,18 @@ function FinishedFabricPageInner() {
                       <React.Fragment key={job.key}>
                         {/* MASTER JOB SUMMARY ROW */}
                         <tr
-                          onClick={() => setSelectedJobDetail(job)}
+                          onClick={() => openJobModal(job, 'VIEW')}
                           className={`hover:bg-slate-50 cursor-pointer transition-colors ${
-                            isExpanded ? 'bg-blue-50/40 font-semibold' : 'bg-white'
+                            isExpanded ? 'bg-blue-50/30 font-medium' : 'bg-white'
                           }`}
                         >
-                          {/* Sticky left column (No redundant square expand box, clean Buyer & Job No) */}
-                          <td className="sticky left-0 z-20 bg-white group-hover:bg-slate-50 px-3 py-2 border-r border-slate-200 shadow-2xs">
-                            <div className="leading-tight">
-                              <span className="text-[11px] text-slate-800 block font-semibold">{job.buyer}</span>
-                              <span className="font-extrabold text-[#0F274E] text-[13px] flex items-center gap-1">
-                                #{job.jobNo}
-                                {job.isImported && (
-                                  <span className="text-[9px] px-1 bg-teal-100 text-teal-800 rounded font-bold">IMP</span>
-                                )}
-                              </span>
+                          {/* Sticky left column: Clean Job No, NO hashtag, NO buyer text */}
+                          <td className="sticky left-0 z-20 bg-white group-hover:bg-slate-50 px-3 py-2 border-r border-slate-200">
+                            <div className="font-bold text-[#0F274E] text-[12.5px] tracking-tight flex items-center gap-1.5">
+                              <span>{job.jobNo}</span>
+                              {job.isImported && (
+                                <span className="text-[9px] px-1 py-0.2 bg-teal-100 text-teal-800 rounded font-bold">IMP</span>
+                              )}
                             </div>
                           </td>
 
@@ -2682,18 +2938,42 @@ function FinishedFabricPageInner() {
                             </>
                           )}
 
-                          <td className="px-2.5 py-2 text-center">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedJobDetail(job);
-                              }}
-                              className="p-1 rounded hover:bg-slate-200 text-slate-700 transition-colors"
-                              title="View Details"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                            </button>
+                          <td className="px-2 py-1.5 text-center whitespace-nowrap">
+                            <div className="inline-flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openJobModal(job, 'ISSUE');
+                                }}
+                                className="px-2 py-0.5 rounded text-[10.5px] font-semibold bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 transition-colors cursor-pointer"
+                                title="Issue fabric to cutting"
+                              >
+                                Issue
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openJobModal(job, 'RECEIVE');
+                                }}
+                                className="px-2 py-0.5 rounded text-[10.5px] font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors cursor-pointer"
+                                title="Receive fabric from dyeing/supplier"
+                              >
+                                Receive
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openJobModal(job, 'VIEW');
+                                }}
+                                className="p-1 rounded hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer"
+                                title="View Details"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
 
@@ -2702,20 +2982,21 @@ function FinishedFabricPageInner() {
                           job.colors.map((c, cIdx) => (
                             <tr
                               key={c.id}
-                              onClick={() => setSelectedJobDetail(job)}
+                              onClick={() => openJobModal(job, 'VIEW')}
                               className="bg-slate-50/90 hover:bg-slate-100 cursor-pointer text-[11.5px] transition-colors border-l-2 border-blue-500"
                             >
-                              <td className="sticky left-0 z-20 bg-slate-50/95 px-3 py-1.5 border-r border-slate-200 pl-6 text-slate-800 font-bold">
-                                └ Color #{cIdx + 1}
+                              <td className="sticky left-0 z-20 bg-slate-50/95 px-3 py-1.5 border-r border-slate-200 pl-6 text-slate-500 font-medium flex items-center gap-1.5">
+                                <span className="text-slate-400">└</span>
+                                <span className="text-[11px] text-slate-600 font-medium">{job.jobNo}</span>
                               </td>
 
-                              <td className="px-3 py-1.5 text-slate-900 font-bold border-r border-slate-200">{job.style}</td>
+                              <td className="px-3 py-1.5 text-slate-800 font-medium border-r border-slate-200">{job.style || '—'}</td>
 
                               {visibleSections.jobSpecs && (
                                 <>
                                   <td className="px-2.5 py-1.5 font-bold text-slate-950 flex items-center gap-1.5">
-                                    <span className="w-2.5 h-2.5 rounded-full bg-blue-700 shrink-0" />
-                                    <span>{c.color}</span>
+                                    <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0" />
+                                    <span>{c.color || '—'}</span>
                                   </td>
                                   <td className="px-2.5 py-1.5 text-slate-800 font-semibold">{c.fabric}</td>
                                   <td className="px-2.5 py-1.5 text-slate-700 font-medium truncate max-w-[130px]">{c.composition}</td>
@@ -2819,243 +3100,571 @@ function FinishedFabricPageInner() {
       )}
 
       {/* ===================================================================== */}
-      {/* SIDE DRAWER: COLOR-WISE DETAIL (RIGHT TO LEFT SLIDE-IN POPUP) */}
+      {/* ENTERPRISE MODAL: COLOR-WISE DETAIL & ACTIVE ISSUE / RECEIVE DESK */}
       {/* ===================================================================== */}
       {selectedJobDetail && (
-        <div className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-2xs flex justify-end">
-          <div className="bg-white w-full max-w-2xl lg:max-w-3xl h-full shadow-2xl flex flex-col border-l border-slate-200 animate-in slide-in-from-right duration-150">
-            {/* Drawer Header */}
-            <div className="bg-slate-900 text-white p-4 flex items-center justify-between border-b border-slate-800">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-2xs flex items-center justify-center p-3 md:p-6 overflow-y-auto">
+          <div className="bg-white w-full max-w-4xl lg:max-w-5xl rounded-xl shadow-2xl border border-slate-200 flex flex-col max-h-[92vh] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="bg-[#0F274E] text-white px-5 py-3.5 flex items-center justify-between border-b border-slate-800 shrink-0">
               <div>
-                <span className="text-[10px] uppercase font-bold tracking-wider text-sky-300 block">
-                  {selectedJobDetail.buyer} · Job #{selectedJobDetail.jobNo}
-                </span>
-                <h3 className="text-base font-bold text-white mt-0.5">
-                  Style: {selectedJobDetail.style || '—'}
-                </h3>
-                <div className="text-xs text-slate-300 mt-0.5">
-                  Fabric: {selectedJobDetail.fabric} · {selectedJobDetail.composition} · {selectedJobDetail.gsm} GSM · Dia {selectedJobDetail.dia}
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase bg-sky-500/20 text-sky-300 border border-sky-400/30">
+                    {selectedJobDetail.buyer}
+                  </span>
+                  <span className="text-sm font-extrabold text-white tracking-tight">
+                    Job: {selectedJobDetail.jobNo}
+                  </span>
+                  {selectedJobDetail.isImported && (
+                    <span className="text-[9px] px-1.5 py-0.2 bg-teal-500/20 text-teal-200 rounded font-bold border border-teal-400/30">
+                      IMPORTED
+                    </span>
+                  )}
+                </div>
+                <div className="text-xs text-slate-300 mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                  <span>Style: <strong className="text-white">{selectedJobDetail.style || '—'}</strong></span>
+                  <span>Fabric: <strong className="text-white">{selectedJobDetail.fabric || '—'}</strong></span>
+                  <span>Comp: <strong className="text-white">{selectedJobDetail.composition || '—'}</strong></span>
+                  <span>GSM: <strong className="text-white">{selectedJobDetail.gsm || '—'}</strong></span>
+                  <span>Dia: <strong className="text-white">{selectedJobDetail.dia || '—'}</strong></span>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedJobDetail(null)}
-                className="w-7 h-7 rounded-md hover:bg-slate-800 flex items-center justify-center text-slate-300 hover:text-white"
+                className="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-slate-300 hover:text-white transition-colors"
+                title="Close dialog"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Drawer Summary Chips */}
-            <div className="bg-slate-50 border-b border-slate-200 p-3 grid grid-cols-4 gap-2 text-center text-xs">
-              <div className="bg-white p-2 rounded-md border border-slate-200 shadow-2xs">
-                <span className="text-[10px] text-slate-500 font-medium block">Total Required</span>
-                <strong className="text-slate-900 text-sm">{Math.round(selectedJobDetail.totalReq).toLocaleString()} kg</strong>
+            {/* Mode Navigation Tabs */}
+            <div className="bg-slate-100 border-b border-slate-200 px-5 py-2 flex items-center justify-between gap-2 shrink-0">
+              <div className="flex items-center gap-1.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setActionModalMode('VIEW')}
+                  className={`px-3 py-1.5 rounded-md font-bold transition-all ${
+                    actionModalMode === 'VIEW'
+                      ? 'bg-white text-slate-900 shadow-2xs border border-slate-300'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                  }`}
+                >
+                  Statement & Colors ({selectedJobDetail.colorCount})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActionModalMode('ISSUE')}
+                  className={`px-3 py-1.5 rounded-md font-bold flex items-center gap-1.5 transition-all ${
+                    actionModalMode === 'ISSUE'
+                      ? 'bg-purple-700 text-white shadow-2xs'
+                      : 'text-purple-800 bg-purple-50 hover:bg-purple-100 border border-purple-200'
+                  }`}
+                >
+                  <Scissors className="w-3.5 h-3.5" />
+                  <span>Issue to Cutting</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActionModalMode('RECEIVE')}
+                  className={`px-3 py-1.5 rounded-md font-bold flex items-center gap-1.5 transition-all ${
+                    actionModalMode === 'RECEIVE'
+                      ? 'bg-emerald-700 text-white shadow-2xs'
+                      : 'text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200'
+                  }`}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Receive Fabric Inward</span>
+                </button>
               </div>
-              <div className="bg-white p-2 rounded-md border border-slate-200 shadow-2xs">
-                <span className="text-[10px] text-slate-500 font-medium block">Total Received</span>
-                <strong className="text-emerald-800 text-sm">{Math.round(selectedJobDetail.totalRecv).toLocaleString()} kg</strong>
-              </div>
-              <div className="bg-white p-2 rounded-md border border-slate-200 shadow-2xs">
-                <span className="text-[10px] text-slate-500 font-medium block">Issued to Cutting</span>
-                <strong className="text-purple-800 text-sm">{Math.round(selectedJobDetail.totalIssued).toLocaleString()} kg</strong>
-              </div>
-              <div className="bg-white p-2 rounded-md border border-slate-200 shadow-2xs">
-                <span className="text-[10px] text-slate-500 font-medium block">In-Stock Balance</span>
-                <strong className="text-sky-900 text-sm">{Math.round(selectedJobDetail.totalStock).toLocaleString()} kg</strong>
+
+              {/* Column toggle mini pills */}
+              <div className="hidden sm:flex items-center gap-1 text-[11px]">
+                <span className="text-slate-500 font-semibold mr-1">Columns:</span>
+                <button
+                  type="button"
+                  onClick={() => setDrawerVisibleSections(v => ({ ...v, orderQty: !v.orderQty }))}
+                  className={`px-2 py-0.5 rounded border text-[10.5px] ${drawerVisibleSections.orderQty ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-700 border-slate-300'}`}
+                >
+                  Order
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDrawerVisibleSections(v => ({ ...v, receivedQty: !v.receivedQty }))}
+                  className={`px-2 py-0.5 rounded border text-[10.5px] ${drawerVisibleSections.receivedQty ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-300'}`}
+                >
+                  Recv
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDrawerVisibleSections(v => ({ ...v, deliveryQty: !v.deliveryQty }))}
+                  className={`px-2 py-0.5 rounded border text-[10.5px] ${drawerVisibleSections.deliveryQty ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-slate-700 border-slate-300'}`}
+                >
+                  Issue
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDrawerVisibleSections(v => ({ ...v, closingStock: !v.closingStock }))}
+                  className={`px-2 py-0.5 rounded border text-[10.5px] ${drawerVisibleSections.closingStock ? 'bg-sky-600 text-white border-sky-600' : 'bg-white text-slate-700 border-slate-300'}`}
+                >
+                  Stock
+                </button>
               </div>
             </div>
 
-            {/* Drawer Column Toggle Buttons */}
-            <div className="px-3.5 py-2 bg-slate-100 border-b border-slate-200 flex flex-wrap items-center gap-1.5 text-xs">
-              <span className="font-semibold text-slate-600 mr-1 text-[11px]">Columns:</span>
-              <button
-                type="button"
-                onClick={() => setDrawerVisibleSections(v => ({ ...v, orderQty: !v.orderQty }))}
-                className={`px-2 py-0.5 rounded text-[11px] font-medium border ${drawerVisibleSections.orderQty ? 'bg-blue-600 text-white border-blue-600 shadow-2xs' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'}`}
-              >
-                Order Qty
-              </button>
-              <button
-                type="button"
-                onClick={() => setDrawerVisibleSections(v => ({ ...v, receivedQty: !v.receivedQty }))}
-                className={`px-2 py-0.5 rounded text-[11px] font-medium border ${drawerVisibleSections.receivedQty ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'}`}
-              >
-                Received
-              </button>
-              <button
-                type="button"
-                onClick={() => setDrawerVisibleSections(v => ({ ...v, deliveryQty: !v.deliveryQty }))}
-                className={`px-2 py-0.5 rounded text-[11px] font-medium border ${drawerVisibleSections.deliveryQty ? 'bg-purple-600 text-white border-purple-600 shadow-2xs' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'}`}
-              >
-                Delivery
-              </button>
-              <button
-                type="button"
-                onClick={() => setDrawerVisibleSections(v => ({ ...v, closingStock: !v.closingStock }))}
-                className={`px-2 py-0.5 rounded text-[11px] font-medium border ${drawerVisibleSections.closingStock ? 'bg-sky-600 text-white border-sky-600 shadow-2xs' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'}`}
-              >
-                Stock
-              </button>
-              <button
-                type="button"
-                onClick={() => setDrawerVisibleSections(v => ({ ...v, location: !v.location }))}
-                className={`px-2 py-0.5 rounded text-[11px] font-medium border ${drawerVisibleSections.location ? 'bg-amber-700 text-white border-amber-700 shadow-2xs' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'}`}
-              >
-                Location
-              </button>
-            </div>
+            {/* Modal Body: Scrollable area */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              {/* Summary Stats Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center text-xs">
+                <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                  <span className="text-[10px] uppercase tracking-wide text-slate-500 font-bold block">Total Required</span>
+                  <strong className="text-slate-900 text-base">{Math.round(selectedJobDetail.totalReq).toLocaleString()} kg</strong>
+                </div>
+                <div className="bg-emerald-50/70 p-2.5 rounded-lg border border-emerald-200">
+                  <span className="text-[10px] uppercase tracking-wide text-emerald-800 font-bold block">Total Received</span>
+                  <strong className="text-emerald-950 text-base">{Math.round(selectedJobDetail.totalRecv).toLocaleString()} kg</strong>
+                </div>
+                <div className="bg-purple-50/70 p-2.5 rounded-lg border border-purple-200">
+                  <span className="text-[10px] uppercase tracking-wide text-purple-800 font-bold block">Issued to Cutting</span>
+                  <strong className="text-purple-950 text-base">{Math.round(selectedJobDetail.totalIssued).toLocaleString()} kg</strong>
+                </div>
+                <div className="bg-sky-50/70 p-2.5 rounded-lg border border-sky-200">
+                  <span className="text-[10px] uppercase tracking-wide text-sky-800 font-bold block">In-Stock Balance</span>
+                  <strong className="text-sky-950 text-base">{Math.round(selectedJobDetail.totalStock).toLocaleString()} kg</strong>
+                </div>
+              </div>
 
-            {/* Drawer Table */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                <Palette className="w-4 h-4 text-slate-600" />
-                Color Details ({selectedJobDetail.colorCount} Colors)
-              </h4>
+              {/* Color Details Table */}
+              <div className="rounded-lg border border-slate-200 overflow-hidden shadow-2xs">
+                <div className="bg-slate-100 px-3.5 py-2 border-b border-slate-200 flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <Palette className="w-3.5 h-3.5 text-slate-600" />
+                    Color-Wise Fabric Breakdown ({selectedJobDetail.colorCount} Colors)
+                  </h4>
+                  <span className="text-[11px] text-slate-500 font-medium">Click row to select for issue/receive</span>
+                </div>
 
-              <div className="overflow-x-auto rounded-md border border-slate-200">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-slate-100 text-slate-800 border-b border-slate-300 text-[11px]">
-                    <tr>
-                      <th className="px-3 py-2 font-bold">Color</th>
-                      {drawerVisibleSections.orderQty && (
-                        <th className="px-2.5 py-2 text-right bg-blue-100 text-blue-900 font-semibold border-l border-blue-200">Order (B/R/SJ)</th>
-                      )}
-                      {drawerVisibleSections.receivedQty && (
-                        <th className="px-2.5 py-2 text-right bg-emerald-100 text-emerald-900 font-semibold border-l border-emerald-200">Recv (B/R/SJ)</th>
-                      )}
-                      {drawerVisibleSections.deliveryQty && (
-                        <th className="px-2.5 py-2 text-right bg-purple-100 text-purple-900 font-semibold border-l border-purple-200">Delivery</th>
-                      )}
-                      {drawerVisibleSections.closingStock && (
-                        <th className="px-2.5 py-2 text-right bg-sky-100 text-sky-900 font-semibold border-l border-sky-200">Stock</th>
-                      )}
-                      {drawerVisibleSections.location && (
-                        <th className="px-2.5 py-2 text-center bg-amber-100 text-amber-900 font-semibold border-l border-amber-200">Location</th>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 text-xs text-slate-800">
-                    {selectedJobDetail.colors.map((c, i) => (
-                      <tr key={c.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-3 py-2 font-semibold text-slate-900">
-                          <div className="flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-slate-600" />
-                            <span>{i + 1}. {c.color}</span>
-                          </div>
-                          <div className="text-[10px] text-slate-500 font-normal pl-3.5">
-                            Receive Balance: {Math.round(c.dyeingBalance)} kg
-                          </div>
-                        </td>
-
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="bg-[#F1F5F9] text-slate-800 border-b border-slate-300 text-[11px]">
+                      <tr>
+                        <th className="px-3 py-2 font-bold min-w-[130px]">Color Name</th>
                         {drawerVisibleSections.orderQty && (
-                          <td className="px-2.5 py-2 text-right text-slate-700 font-medium">
-                            <div>{Math.round(c.totalReq)} kg</div>
-                            <div className="text-[10px] text-slate-400">
-                              B:{Math.round(c.reqBody)} R:{Math.round(c.reqRib)} SJ:{Math.round(c.reqSJ)}
-                            </div>
-                          </td>
+                          <th className="px-2.5 py-2 text-right bg-blue-50 text-blue-950 font-bold border-l border-blue-100">Order (B/R/SJ)</th>
                         )}
-
                         {drawerVisibleSections.receivedQty && (
-                          <td className="px-2.5 py-2 text-right text-emerald-800 font-semibold">
-                            <div>{Math.round(c.totalRecv)} kg</div>
-                            <div className="text-[10px] text-emerald-600">
-                              B:{Math.round(c.recvBody)} R:{Math.round(c.recvRib)} SJ:{Math.round(c.recvSJ)}
-                            </div>
-                          </td>
+                          <th className="px-2.5 py-2 text-right bg-emerald-50 text-emerald-950 font-bold border-l border-emerald-100">Recv (B/R/SJ)</th>
                         )}
-
                         {drawerVisibleSections.deliveryQty && (
-                          <td className="px-2.5 py-2 text-right text-purple-800 font-semibold">
-                            <div>{Math.round(c.totalIssued)} kg</div>
-                            <div className="text-[10px] text-purple-600">
-                              B:{Math.round(c.issuedBody)} R:{Math.round(c.issuedRib)}
-                            </div>
-                          </td>
+                          <th className="px-2.5 py-2 text-right bg-purple-50 text-purple-950 font-bold border-l border-purple-100">Issue (B/R/SJ)</th>
                         )}
-
                         {drawerVisibleSections.closingStock && (
-                          <td className="px-2.5 py-2 text-right font-bold text-sky-900">
-                            <div>{Math.round(c.stockBalance)} kg</div>
-                            <div className="text-[10px] text-sky-700">
-                              B:{Math.round(c.stockBody)} R:{Math.round(c.stockRib)} SJ:{Math.round(c.stockSJ)}
-                            </div>
-                          </td>
+                          <th className="px-2.5 py-2 text-right bg-sky-50 text-sky-950 font-bold border-l border-sky-100">Stock Bal</th>
                         )}
-
                         {drawerVisibleSections.location && (
-                          <td className="px-2.5 py-2 text-center">
-                            <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-800 border border-slate-200">
-                              {c.location}
-                            </span>
-                          </td>
+                          <th className="px-2.5 py-2 text-center bg-amber-50 text-amber-950 font-bold border-l border-amber-100">Location</th>
                         )}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 text-xs text-slate-800">
+                      {selectedJobDetail.colors.map((c, i) => {
+                        const isSelected = actionForm.selectedColorId === c.id;
+                        return (
+                          <tr
+                            key={c.id}
+                            onClick={() => {
+                              setActionForm(prev => ({
+                                ...prev,
+                                selectedColorId: c.id,
+                                colorName: c.color,
+                                location: c.location || prev.location,
+                              }));
+                            }}
+                            className={`cursor-pointer transition-colors ${
+                              isSelected ? 'bg-blue-50/80 font-semibold' : 'hover:bg-slate-50'
+                            }`}
+                          >
+                            <td className="px-3 py-2 font-bold text-slate-900">
+                              <div className="flex items-center gap-1.5">
+                                <span className={`w-2 h-2 rounded-full shrink-0 ${isSelected ? 'bg-blue-600 ring-2 ring-blue-300' : 'bg-slate-500'}`} />
+                                <span>{c.color || '—'}</span>
+                              </div>
+                              <div className="text-[10px] text-slate-500 font-normal pl-3.5">
+                                Dyeing Balance: {Math.round(c.dyeingBalance)} kg
+                              </div>
+                            </td>
+
+                            {drawerVisibleSections.orderQty && (
+                              <td className="px-2.5 py-2 text-right text-slate-800 font-medium border-l border-slate-200">
+                                <div>{Math.round(c.totalReq)} kg</div>
+                                <div className="text-[10px] text-slate-500">
+                                  B:{Math.round(c.reqBody)} R:{Math.round(c.reqRib)} SJ:{Math.round(c.reqSJ)}
+                                </div>
+                              </td>
+                            )}
+
+                            {drawerVisibleSections.receivedQty && (
+                              <td className="px-2.5 py-2 text-right text-emerald-950 font-bold border-l border-slate-200">
+                                <div>{Math.round(c.totalRecv)} kg</div>
+                                <div className="text-[10px] text-emerald-700">
+                                  B:{Math.round(c.recvBody)} R:{Math.round(c.recvRib)} SJ:{Math.round(c.recvSJ)}
+                                </div>
+                              </td>
+                            )}
+
+                            {drawerVisibleSections.deliveryQty && (
+                              <td className="px-2.5 py-2 text-right text-purple-950 font-bold border-l border-slate-200">
+                                <div>{Math.round(c.totalIssued)} kg</div>
+                                <div className="text-[10px] text-purple-700">
+                                  B:{Math.round(c.issuedBody)} R:{Math.round(c.issuedRib)} SJ:{Math.round(c.issuedSJ)}
+                                </div>
+                              </td>
+                            )}
+
+                            {drawerVisibleSections.closingStock && (
+                              <td className="px-2.5 py-2 text-right font-extrabold text-sky-950 border-l border-slate-200">
+                                <div>{Math.round(c.stockBalance)} kg</div>
+                                <div className="text-[10px] text-sky-700">
+                                  B:{Math.round(c.stockBody)} R:{Math.round(c.stockRib)} SJ:{Math.round(c.stockSJ)}
+                                </div>
+                              </td>
+                            )}
+
+                            {drawerVisibleSections.location && (
+                              <td className="px-2.5 py-2 text-center border-l border-slate-200">
+                                <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-800 border border-slate-300">
+                                  {c.location || 'F.ST'}
+                                </span>
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
-              {/* Direct Shortcuts */}
-              <div className="pt-2 flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedIssueJob(selectedJobDetail);
-                    setSelectedJobDetail(null);
-                    setActiveTab('ISSUE');
-                  }}
-                  className="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-md text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-xs"
-                >
-                  <Scissors className="w-3.5 h-3.5 text-white" />
-                  <span>Issue this Job to Cutting</span>
-                </button>
+              {/* =============================================================== */}
+              {/* ADDITIONAL PART: ACTIVE ISSUE / RECEIVE FORM AT BOTTOM */}
+              {/* =============================================================== */}
+              {actionModalMode === 'ISSUE' && (
+                <div className="bg-purple-50/70 border-2 border-purple-300 rounded-xl p-4.5 shadow-sm animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-purple-200">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-md bg-purple-600 text-white flex items-center justify-center">
+                        <Scissors className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-extrabold text-purple-950 uppercase tracking-wide">
+                          Issue Fabric to Cutting Floor
+                        </h4>
+                        <p className="text-[11px] text-purple-800">
+                          Dispatch Body, Rib, or S.Jersey fabric from store to cutting marker line.
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-purple-900">Job: {selectedJobDetail.jobNo}</span>
+                  </div>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setReceiveForm(prev => ({
-                      ...prev,
-                      buyer: selectedJobDetail.buyer,
-                      jobNo: selectedJobDetail.jobNo,
-                      style: selectedJobDetail.style,
-                      fabricType: selectedJobDetail.fabricType,
-                      composition: selectedJobDetail.composition,
-                      gsm: selectedJobDetail.gsm,
-                      dia: selectedJobDetail.dia,
-                      colors: selectedJobDetail.colors.map(c => ({
-                        color: c.color,
-                        reqBody: c.reqBody,
-                        reqSJ: c.reqSJ,
-                        reqRib: c.reqRib,
-                        recvBody: Math.max(0, c.reqBody - c.recvBody),
-                        recvSJ: Math.max(0, c.reqSJ - c.recvSJ),
-                        recvRib: Math.max(0, c.reqRib - c.recvRib),
-                        location: c.location,
-                        rollCount: 1,
-                        remarks: '',
-                      })),
-                    }));
-                    setSelectedJobDetail(null);
-                    setIsReceiveModalOpen(true);
-                  }}
-                  className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-xs"
-                >
-                  <Plus className="w-3.5 h-3.5 text-white" />
-                  <span>Receive Challan for this Job</span>
-                </button>
-              </div>
+                  <form onSubmit={handleConfirmIssueFromModal} className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Select Color *</label>
+                        <select
+                          value={actionForm.selectedColorId}
+                          onChange={(e) => {
+                            const found = selectedJobDetail.colors.find(c => c.id === e.target.value);
+                            setActionForm(prev => ({
+                              ...prev,
+                              selectedColorId: e.target.value,
+                              colorName: found ? found.color : '',
+                              location: (found && found.location) || prev.location,
+                            }));
+                          }}
+                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                        >
+                          {selectedJobDetail.colors.map(c => (
+                            <option key={c.id} value={c.id}>
+                              {c.color || 'Color'} (Stock: {Math.round(c.stockBalance)} kg · Loc: {c.location})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Cutting Table / Line</label>
+                        <input
+                          type="text"
+                          value={actionForm.cuttingLine}
+                          onChange={(e) => setActionForm(prev => ({ ...prev, cuttingLine: e.target.value }))}
+                          placeholder="e.g. Table-1, Line-A"
+                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Received By (Cutting Supervisor)</label>
+                        <input
+                          type="text"
+                          value={actionForm.issuedTo}
+                          onChange={(e) => setActionForm(prev => ({ ...prev, issuedTo: e.target.value }))}
+                          placeholder="e.g. Cutting Master Kabir"
+                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Breakdown Quantities to Issue */}
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 bg-white p-3 rounded-lg border border-purple-200">
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Body Fabric (kg)</label>
+                        <input
+                          type="number"
+                          step="any"
+                          min="0"
+                          value={actionForm.bodyKg || ''}
+                          onChange={(e) => setActionForm(prev => ({ ...prev, bodyKg: parseFloat(e.target.value) || 0 }))}
+                          placeholder="0"
+                          className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-md text-xs font-bold text-slate-900"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Rib Fabric (kg)</label>
+                        <input
+                          type="number"
+                          step="any"
+                          min="0"
+                          value={actionForm.ribKg || ''}
+                          onChange={(e) => setActionForm(prev => ({ ...prev, ribKg: parseFloat(e.target.value) || 0 }))}
+                          placeholder="0"
+                          className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-md text-xs font-bold text-slate-900"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 block mb-1">S.Jersey (kg)</label>
+                        <input
+                          type="number"
+                          step="any"
+                          min="0"
+                          value={actionForm.sjKg || ''}
+                          onChange={(e) => setActionForm(prev => ({ ...prev, sjKg: parseFloat(e.target.value) || 0 }))}
+                          placeholder="0"
+                          className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-md text-xs font-bold text-slate-900"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Total Issue Qty</label>
+                        <div className="w-full px-2.5 py-1.5 bg-purple-100 border border-purple-300 rounded-md text-xs font-extrabold text-purple-950 flex items-center justify-between">
+                          <span>Total:</span>
+                          <span>{((actionForm.bodyKg || 0) + (actionForm.ribKg || 0) + (actionForm.sjKg || 0)).toFixed(1)} kg</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setActionModalMode('VIEW')}
+                        className="px-3.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 rounded-md text-xs font-semibold border border-slate-300"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-4 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-md text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors"
+                      >
+                        <Scissors className="w-3.5 h-3.5" />
+                        <span>Confirm & Send to Cutting</span>
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {actionModalMode === 'RECEIVE' && (
+                <div className="bg-emerald-50/70 border-2 border-emerald-300 rounded-xl p-4.5 shadow-sm animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-emerald-200">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-md bg-emerald-600 text-white flex items-center justify-center">
+                        <Plus className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-extrabold text-emerald-950 uppercase tracking-wide">
+                          Receive Fabric Inward into Store
+                        </h4>
+                        <p className="text-[11px] text-emerald-800">
+                          Receive inward fabric from dyeing or supplier and add to stock.
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-emerald-900">Job: {selectedJobDetail.jobNo}</span>
+                  </div>
+
+                  <form onSubmit={handleConfirmReceiveFromModal} className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Color Name *</label>
+                        <input
+                          type="text"
+                          value={actionForm.colorName}
+                          onChange={(e) => setActionForm(prev => ({ ...prev, colorName: e.target.value }))}
+                          placeholder="e.g. Black C-N10, White"
+                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Challan No</label>
+                        <input
+                          type="text"
+                          value={actionForm.challanNo}
+                          onChange={(e) => setActionForm(prev => ({ ...prev, challanNo: e.target.value }))}
+                          placeholder="e.g. CH-NFL-4828"
+                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Supplier / Factory</label>
+                        <input
+                          type="text"
+                          value={actionForm.supplier}
+                          onChange={(e) => setActionForm(prev => ({ ...prev, supplier: e.target.value }))}
+                          placeholder="e.g. Northern Dyeing Unit-1"
+                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Store Location</label>
+                        <select
+                          value={actionForm.location}
+                          onChange={(e) => setActionForm(prev => ({ ...prev, location: e.target.value }))}
+                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        >
+                          <option value="F.ST">F.ST</option>
+                          <option value="N.ST">N.ST</option>
+                          <option value=".CB/F.ST">.CB/F.ST</option>
+                          <option value="CB">CB</option>
+                          <option value=".CB/N.ST">.CB/N.ST</option>
+                          <option value=".F.ST/N.ST">.F.ST/N.ST</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Breakdown Quantities to Receive */}
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 bg-white p-3 rounded-lg border border-emerald-200">
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Body Fabric (kg)</label>
+                        <input
+                          type="number"
+                          step="any"
+                          min="0"
+                          value={actionForm.bodyKg || ''}
+                          onChange={(e) => setActionForm(prev => ({ ...prev, bodyKg: parseFloat(e.target.value) || 0 }))}
+                          placeholder="0"
+                          className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-md text-xs font-bold text-slate-900"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Rib Fabric (kg)</label>
+                        <input
+                          type="number"
+                          step="any"
+                          min="0"
+                          value={actionForm.ribKg || ''}
+                          onChange={(e) => setActionForm(prev => ({ ...prev, ribKg: parseFloat(e.target.value) || 0 }))}
+                          placeholder="0"
+                          className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-md text-xs font-bold text-slate-900"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 block mb-1">S.Jersey (kg)</label>
+                        <input
+                          type="number"
+                          step="any"
+                          min="0"
+                          value={actionForm.sjKg || ''}
+                          onChange={(e) => setActionForm(prev => ({ ...prev, sjKg: parseFloat(e.target.value) || 0 }))}
+                          placeholder="0"
+                          className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-md text-xs font-bold text-slate-900"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Total Received</label>
+                        <div className="w-full px-2.5 py-1.5 bg-emerald-100 border border-emerald-300 rounded-md text-xs font-extrabold text-emerald-950 flex items-center justify-between">
+                          <span>Total:</span>
+                          <span>{((actionForm.bodyKg || 0) + (actionForm.ribKg || 0) + (actionForm.sjKg || 0)).toFixed(1)} kg</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setActionModalMode('VIEW')}
+                        className="px-3.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 rounded-md text-xs font-semibold border border-slate-300"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-4 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-md text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Confirm & Receive Fabric</span>
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {actionModalMode === 'VIEW' && (
+                <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setActionModalMode('ISSUE')}
+                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-2 shadow-xs"
+                    >
+                      <Scissors className="w-3.5 h-3.5 text-white" />
+                      <span>Issue this Job to Cutting</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActionModalMode('RECEIVE')}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-2 shadow-xs"
+                    >
+                      <Plus className="w-3.5 h-3.5 text-white" />
+                      <span>Receive More for this Job</span>
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedJobDetail(null)}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-semibold transition-colors"
+                  >
+                    Close Dialog
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* Drawer Footer */}
-            <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-end">
+            {/* Modal Bottom Sticky Bar */}
+            <div className="px-5 py-2.5 bg-slate-100 border-t border-slate-200 flex items-center justify-between text-xs text-slate-600 shrink-0">
+              <span className="font-medium">
+                Store Department · Northern Fashions Limited ERP
+              </span>
               <button
                 type="button"
                 onClick={() => setSelectedJobDetail(null)}
-                className="px-4 py-1.5 bg-slate-800 text-white rounded-md text-xs font-semibold hover:bg-slate-900 transition-colors"
+                className="px-3 py-1 bg-white hover:bg-slate-200 text-slate-800 rounded border border-slate-300 font-semibold text-xs"
               >
-                Close Drawer
+                Close
               </button>
             </div>
           </div>
