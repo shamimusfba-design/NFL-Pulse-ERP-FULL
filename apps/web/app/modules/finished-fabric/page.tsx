@@ -339,7 +339,7 @@ function FinishedFabricPageInner() {
     fabricType: 'Single Jersey',
     composition: '100% Combed Cotton',
     gsm: '180',
-    dia: '68\" Open',
+    dia: '68" Open',
     process: 'Reactive Dyeing',
     supplier: 'Northern Dyeing Unit-1',
   });
@@ -354,22 +354,19 @@ function FinishedFabricPageInner() {
   }
 
   const [manualColors, setManualColors] = useState<ManualColorRow[]>([
-    { id: '1', color: 'Jet Black', reqBody: 500, recvBody: 500, rollCount: 15, location: 'R-01 · Shelf 02' },
-    { id: '2', color: 'Navy Blazer', reqBody: 450, recvBody: 450, rollCount: 14, location: 'R-01 · Shelf 03' },
-    { id: '3', color: 'Anthracite Melange', reqBody: 380, recvBody: 380, rollCount: 12, location: 'R-01 · Shelf 04' },
+    { id: '1', color: '', reqBody: 0, recvBody: 0, rollCount: 0, location: 'F.ST' },
   ]);
 
   const addManualColorRow = () => {
-    const nextNum = manualColors.length + 1;
     setManualColors(prev => [
       ...prev,
       {
         id: String(Date.now() + Math.random()),
         color: '',
-        reqBody: 200,
-        recvBody: 200,
-        rollCount: 6,
-        location: `R-${String((nextNum % 20) + 1).padStart(2, '0')} · Shelf 01`
+        reqBody: 0,
+        recvBody: 0,
+        rollCount: 0,
+        location: 'F.ST'
       }
     ]);
   };
@@ -444,7 +441,7 @@ function FinishedFabricPageInner() {
         stockRib: 0,
         stockSJ: 0,
         stockBalance,
-        location: col.location || 'R-01 · Shelf 01',
+        location: col.location || 'F.ST',
         cuttingLeftover: 0,
         excessQty: Math.max(0, totalReq - totalRecv > 0 ? 0 : totalRecv - totalReq),
         date: new Date().toLocaleDateString('en-GB'),
@@ -478,6 +475,7 @@ function FinishedFabricPageInner() {
 
     setIsManualModalOpen(false);
     showToast(`Job #${manualJobForm.jobNo} with ${manualColors.length} colors saved successfully!`);
+    setManualColors([{ id: '1', color: '', reqBody: 0, recvBody: 0, rollCount: 0, location: 'F.ST' }]);
     setManualJobForm({
       jobNo: '',
       buyer: 'Bestseller (ONLY)',
@@ -486,7 +484,7 @@ function FinishedFabricPageInner() {
       fabricType: 'Single Jersey',
       composition: '100% Combed Cotton',
       gsm: '180',
-      dia: '68\" Open',
+      dia: '68" Open',
       process: 'Reactive Dyeing',
       supplier: 'Northern Dyeing Unit-1',
     });
@@ -775,8 +773,55 @@ function FinishedFabricPageInner() {
   const [selectedFabricType, setSelectedFabricType] = useState('ALL');
   const [filterImportedOnly, setFilterImportedOnly] = useState(false);
 
+  // Main Table Column-Level Header Filters (Excel AutoFilter / Odoo filter row)
+  const [colFilterJob, setColFilterJob] = useState('');
+  const [colFilterStyle, setColFilterStyle] = useState('');
+  const [colFilterColor, setColFilterColor] = useState('');
+  const [colFilterFabric, setColFilterFabric] = useState('ALL');
+  const [colFilterComp, setColFilterComp] = useState('');
+  const [colFilterProcess, setColFilterProcess] = useState('');
+  const [colFilterGsm, setColFilterGsm] = useState('');
+  const [colFilterDia, setColFilterDia] = useState('');
+  const [colFilterStatus, setColFilterStatus] = useState('ALL');
+  const [colFilterLocation, setColFilterLocation] = useState('ALL');
+
+  const hasColFilters = Boolean(
+    colFilterJob || colFilterStyle || colFilterColor || (colFilterFabric !== 'ALL') ||
+    colFilterComp || colFilterProcess || colFilterGsm || colFilterDia ||
+    (colFilterStatus !== 'ALL') || (colFilterLocation !== 'ALL')
+  );
+
+  const clearColFilters = () => {
+    setColFilterJob('');
+    setColFilterStyle('');
+    setColFilterColor('');
+    setColFilterFabric('ALL');
+    setColFilterComp('');
+    setColFilterProcess('');
+    setColFilterGsm('');
+    setColFilterDia('');
+    setColFilterStatus('ALL');
+    setColFilterLocation('ALL');
+  };
+
   // Dashboard visibility collapse toggle
   const [showDashboard, setShowDashboard] = useState(true);
+
+  // Tab 4 Store Zone Tracking State
+  const [selectedZoneFilter, setSelectedZoneFilter] = useState<'ALL' | 'F.ST' | 'N.ST' | 'CB' | 'TRANSIT'>('ALL');
+  const [zoneSearchQuery, setZoneSearchQuery] = useState('');
+  const [zonePage, setZonePage] = useState(1);
+
+  const handleRelocateLine = (lineId: string, newLocation: string) => {
+    const updated = rawLines.map(l => (l.id === lineId ? { ...l, location: newLocation } : l));
+    setRawLines(updated);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(FINISHED_FABRIC_STORAGE_KEY, JSON.stringify(updated));
+      } catch {}
+    }
+    showToast(`Location updated to ${newLocation}`);
+  };
 
   // Column Section Toggle Buttons (Professional Odoo filter pills)
   const [visibleSections, setVisibleSections] = useState({
@@ -1607,11 +1652,32 @@ function FinishedFabricPageInner() {
       if (selectedStatus !== 'ALL' && job.primaryStatus !== selectedStatus) return false;
       if (selectedFabricType !== 'ALL' && job.fabricType !== selectedFabricType) return false;
 
+      // In-Table Column Header AutoFilters
+      if (colFilterJob && !job.jobNo.toLowerCase().includes(colFilterJob.toLowerCase())) return false;
+      if (colFilterStyle && !job.style.toLowerCase().includes(colFilterStyle.toLowerCase())) return false;
+      if (colFilterColor) {
+        const cMatch = job.colors.some(c => (c.color || '').toLowerCase().includes(colFilterColor.toLowerCase()));
+        if (!cMatch) return false;
+      }
+      if (colFilterFabric !== 'ALL' && job.fabricType !== colFilterFabric) return false;
+      if (colFilterComp && !(job.composition || '').toLowerCase().includes(colFilterComp.toLowerCase())) return false;
+      if (colFilterProcess && !(job.process || '').toLowerCase().includes(colFilterProcess.toLowerCase())) return false;
+      if (colFilterGsm && !String(job.gsm || '').includes(colFilterGsm)) return false;
+      if (colFilterDia && !String(job.dia || '').toLowerCase().includes(colFilterDia.toLowerCase())) return false;
+      if (colFilterStatus !== 'ALL' && job.primaryStatus !== colFilterStatus) return false;
+      if (colFilterLocation !== 'ALL') {
+        const lMatch = job.colors.some(c => (c.location || '').toUpperCase().includes(colFilterLocation.toUpperCase()));
+        if (!lMatch) return false;
+      }
+
       if (!q) return true;
       const haystack = `${job.jobNo} ${job.style} ${job.buyer} ${job.fabric} ${job.composition} ${job.colors.map(c => c.color).join(' ')}`.toLowerCase();
       return haystack.includes(q);
     });
-  }, [jobGroups, searchQuery, selectedBuyer, selectedMonth, selectedStatus, selectedFabricType, filterImportedOnly]);
+  }, [
+    jobGroups, searchQuery, selectedBuyer, selectedMonth, selectedStatus, selectedFabricType, filterImportedOnly,
+    colFilterJob, colFilterStyle, colFilterColor, colFilterFabric, colFilterComp, colFilterProcess, colFilterGsm, colFilterDia, colFilterStatus, colFilterLocation
+  ]);
 
   const buyerOptions = useMemo(() => Array.from(new Set(rawLines.map(l => l.buyer))).sort(), [rawLines]);
   const fabricTypeOptions = useMemo(() => {
@@ -2301,8 +2367,8 @@ function FinishedFabricPageInner() {
             color: activeTab === 'LOCATION' ? '#FFFFFF' : '#475569'
           }}
         >
-          <MapPin size={16} color={activeTab === 'LOCATION' ? '#38BDF8' : '#64748B'} />
-          <span>4. Location Tracking (20 Racks × 20 Shelves)</span>
+          <Warehouse size={16} color={activeTab === 'LOCATION' ? '#38BDF8' : '#64748B'} />
+          <span>4. Store Location Tracking (F.ST · N.ST · CB)</span>
         </button>
 
         <button
@@ -2773,6 +2839,191 @@ function FinishedFabricPageInner() {
 
                   <th className="px-2.5 py-2 text-center font-bold min-w-[60px] text-slate-800">Action</th>
                 </tr>
+
+                {/* Odoo / Excel In-Table Column Filter Row */}
+                <tr className="bg-slate-100 border-b border-slate-300 text-[11px]">
+                  {/* Job No Filter */}
+                  <th className="sticky left-0 z-20 bg-slate-100 p-1 border-r border-slate-300">
+                    <input
+                      type="text"
+                      value={colFilterJob}
+                      onChange={e => { setColFilterJob(e.target.value); setCurrentPage(1); }}
+                      placeholder="Filter Job..."
+                      className="w-full px-1.5 py-0.5 text-[11px] font-normal border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500"
+                    />
+                  </th>
+                  {/* Style No Filter */}
+                  <th className="p-1 border-r border-slate-300">
+                    <input
+                      type="text"
+                      value={colFilterStyle}
+                      onChange={e => { setColFilterStyle(e.target.value); setCurrentPage(1); }}
+                      placeholder="Filter Style..."
+                      className="w-full px-1.5 py-0.5 text-[11px] font-normal border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500"
+                    />
+                  </th>
+                  {visibleSections.jobSpecs && (
+                    <>
+                      {/* Color Filter */}
+                      <th className="p-1 border-r border-slate-200">
+                        <input
+                          type="text"
+                          value={colFilterColor}
+                          onChange={e => { setColFilterColor(e.target.value); setCurrentPage(1); }}
+                          placeholder="Color..."
+                          className="w-full px-1.5 py-0.5 text-[11px] font-normal border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500"
+                        />
+                      </th>
+                      {/* Fabric Type Filter */}
+                      <th className="p-1 border-r border-slate-200">
+                        <select
+                          value={colFilterFabric}
+                          onChange={e => { setColFilterFabric(e.target.value); setCurrentPage(1); }}
+                          className="w-full px-1 py-0.5 text-[10.5px] font-medium border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500"
+                        >
+                          <option value="ALL">All Types</option>
+                          <option value="SJ">SJ</option>
+                          <option value="Rib">Rib</option>
+                          <option value="Terry">Terry</option>
+                          <option value="Fleece">Fleece</option>
+                          <option value="Interlock">Interlock</option>
+                          <option value="Woven">Woven</option>
+                          <option value="Mesh">Mesh</option>
+                        </select>
+                      </th>
+                      {/* Composition Filter */}
+                      <th className="p-1 border-r border-slate-200">
+                        <input
+                          type="text"
+                          value={colFilterComp}
+                          onChange={e => { setColFilterComp(e.target.value); setCurrentPage(1); }}
+                          placeholder="Comp..."
+                          className="w-full px-1.5 py-0.5 text-[11px] font-normal border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500"
+                        />
+                      </th>
+                      {/* Additional Process Filter */}
+                      <th className="p-1 border-r border-slate-200">
+                        <input
+                          type="text"
+                          value={colFilterProcess}
+                          onChange={e => { setColFilterProcess(e.target.value); setCurrentPage(1); }}
+                          placeholder="Process..."
+                          className="w-full px-1.5 py-0.5 text-[11px] font-normal border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500"
+                        />
+                      </th>
+                      {/* GSM Filter */}
+                      <th className="p-1 border-r border-slate-200">
+                        <input
+                          type="text"
+                          value={colFilterGsm}
+                          onChange={e => { setColFilterGsm(e.target.value); setCurrentPage(1); }}
+                          placeholder="GSM"
+                          className="w-full px-1 py-0.5 text-[10.5px] font-normal border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500 text-center"
+                        />
+                      </th>
+                      {/* Dia Filter */}
+                      <th className="p-1 border-r border-slate-200">
+                        <input
+                          type="text"
+                          value={colFilterDia}
+                          onChange={e => { setColFilterDia(e.target.value); setCurrentPage(1); }}
+                          placeholder="Dia"
+                          className="w-full px-1 py-0.5 text-[10.5px] font-normal border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500 text-center"
+                        />
+                      </th>
+                      {/* Status Filter */}
+                      <th className="p-1 border-r border-slate-300">
+                        <select
+                          value={colFilterStatus}
+                          onChange={e => { setColFilterStatus(e.target.value); setCurrentPage(1); }}
+                          className="w-full px-1 py-0.5 text-[10.5px] font-medium border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500"
+                        >
+                          <option value="ALL">All Status</option>
+                          <option value="In Stock">In Stock</option>
+                          <option value="Partly Received">Partly Recv</option>
+                          <option value="Waiting Dyeing">Waiting Dye</option>
+                        </select>
+                      </th>
+                    </>
+                  )}
+
+                  {/* Order Qty Section spacer */}
+                  {visibleSections.orderQty && (
+                    <>
+                      <th className="bg-blue-50/50 border-r border-blue-100"></th>
+                      <th className="bg-blue-50/50 border-r border-blue-100"></th>
+                      <th className="bg-blue-50/50 border-r border-blue-100"></th>
+                      <th className="bg-blue-100/50 border-r border-slate-300"></th>
+                    </>
+                  )}
+
+                  {/* Received Qty Section spacer */}
+                  {visibleSections.receivedQty && (
+                    <>
+                      <th className="bg-emerald-50/50 border-r border-emerald-100"></th>
+                      <th className="bg-emerald-50/50 border-r border-emerald-100"></th>
+                      <th className="bg-emerald-50/50 border-r border-emerald-100"></th>
+                      <th className="bg-emerald-100/50 border-r border-slate-300"></th>
+                    </>
+                  )}
+
+                  {/* Issue Section spacer */}
+                  {visibleSections.deliveryQty && (
+                    <>
+                      <th className="bg-purple-50/50 border-r border-purple-100"></th>
+                      <th className="bg-purple-50/50 border-r border-purple-100"></th>
+                      <th className="bg-purple-50/50 border-r border-purple-100"></th>
+                      <th className="bg-purple-100/50 border-r border-slate-300"></th>
+                    </>
+                  )}
+
+                  {/* Closing Stock Section spacer */}
+                  {visibleSections.closingStock && (
+                    <>
+                      <th className="bg-sky-50/50 border-r border-sky-100"></th>
+                      <th className="bg-sky-50/50 border-r border-sky-100"></th>
+                      <th className="bg-sky-50/50 border-r border-sky-100"></th>
+                      <th className="bg-sky-100/50 border-r border-slate-300"></th>
+                    </>
+                  )}
+
+                  {/* Location & Leftover */}
+                  {visibleSections.locationInfo && (
+                    <>
+                      <th className="p-1 bg-amber-50/60 border-r border-amber-100">
+                        <select
+                          value={colFilterLocation}
+                          onChange={e => { setColFilterLocation(e.target.value); setCurrentPage(1); }}
+                          className="w-full px-1 py-0.5 text-[10px] font-medium border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden"
+                        >
+                          <option value="ALL">All Loc</option>
+                          <option value="F.ST">F.ST</option>
+                          <option value="N.ST">N.ST</option>
+                          <option value="CB">CB</option>
+                          <option value=".CB/F.ST">.CB/F.ST</option>
+                          <option value=".CB/N.ST">.CB/N.ST</option>
+                          <option value=".F.ST/N.ST">.F.ST/N.ST</option>
+                        </select>
+                      </th>
+                      <th className="bg-amber-50/60 border-r border-amber-100"></th>
+                      <th className="bg-amber-50/60 border-r border-amber-100"></th>
+                      <th className="bg-amber-50/60 border-r border-slate-300"></th>
+                    </>
+                  )}
+
+                  <th className="p-1 text-center">
+                    {hasColFilters && (
+                      <button
+                        type="button"
+                        onClick={clearColFilters}
+                        className="px-1.5 py-0.5 text-[10px] font-bold text-rose-600 hover:text-white hover:bg-rose-600 border border-rose-300 rounded transition-colors"
+                        title="Clear all column filters"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </th>
+                </tr>
               </thead>
 
               {/* TABLE BODY */}
@@ -3108,25 +3359,25 @@ function FinishedFabricPageInner() {
             {/* Modal Header */}
             <div className="bg-[#0F274E] text-white px-5 py-3.5 flex items-center justify-between border-b border-slate-800 shrink-0">
               <div>
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase bg-sky-500/20 text-sky-300 border border-sky-400/30">
+                <div className="flex items-center gap-2.5">
+                  <span className="px-2.5 py-1 rounded text-xs font-black tracking-wider uppercase bg-sky-400 text-slate-950 shadow-xs">
                     {selectedJobDetail.buyer}
                   </span>
-                  <span className="text-sm font-extrabold text-white tracking-tight">
+                  <span className="text-base font-black text-white tracking-tight">
                     Job: {selectedJobDetail.jobNo}
                   </span>
                   {selectedJobDetail.isImported && (
-                    <span className="text-[9px] px-1.5 py-0.2 bg-teal-500/20 text-teal-200 rounded font-bold border border-teal-400/30">
+                    <span className="text-[10px] px-2 py-0.5 bg-teal-400 text-slate-950 rounded font-black tracking-wide uppercase shadow-xs">
                       IMPORTED
                     </span>
                   )}
                 </div>
-                <div className="text-xs text-slate-300 mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5">
-                  <span>Style: <strong className="text-white">{selectedJobDetail.style || '—'}</strong></span>
-                  <span>Fabric: <strong className="text-white">{selectedJobDetail.fabric || '—'}</strong></span>
-                  <span>Comp: <strong className="text-white">{selectedJobDetail.composition || '—'}</strong></span>
-                  <span>GSM: <strong className="text-white">{selectedJobDetail.gsm || '—'}</strong></span>
-                  <span>Dia: <strong className="text-white">{selectedJobDetail.dia || '—'}</strong></span>
+                <div className="text-xs text-slate-200 mt-2 flex flex-wrap items-center gap-2">
+                  <span className="bg-slate-800/90 px-2.5 py-0.5 rounded border border-slate-700">Style: <strong className="text-white font-bold">{selectedJobDetail.style || '—'}</strong></span>
+                  <span className="bg-slate-800/90 px-2.5 py-0.5 rounded border border-slate-700">Fabric: <strong className="text-white font-bold">{selectedJobDetail.fabric || '—'}</strong></span>
+                  <span className="bg-slate-800/90 px-2.5 py-0.5 rounded border border-slate-700">Comp: <strong className="text-white font-bold">{selectedJobDetail.composition || '—'}</strong></span>
+                  <span className="bg-slate-800/90 px-2.5 py-0.5 rounded border border-slate-700">GSM: <strong className="text-white font-bold">{selectedJobDetail.gsm || '—'}</strong></span>
+                  <span className="bg-slate-800/90 px-2.5 py-0.5 rounded border border-slate-700">Dia: <strong className="text-white font-bold">{selectedJobDetail.dia || '—'}</strong></span>
                 </div>
               </div>
               <button
@@ -3215,23 +3466,23 @@ function FinishedFabricPageInner() {
 
             {/* Modal Body: Scrollable area */}
             <div className="flex-1 overflow-y-auto p-5 space-y-4">
-              {/* Summary Stats Cards */}
+              {/* Summary Stats Cards with high-contrast borders & text */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center text-xs">
-                <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-                  <span className="text-[10px] uppercase tracking-wide text-slate-500 font-bold block">Total Required</span>
-                  <strong className="text-slate-900 text-base">{Math.round(selectedJobDetail.totalReq).toLocaleString()} kg</strong>
+                <div className="bg-slate-100 p-3 rounded-lg border-2 border-slate-300 shadow-2xs">
+                  <span className="text-[11px] uppercase tracking-wider text-slate-700 font-extrabold block">Total Required</span>
+                  <strong className="text-slate-950 font-black text-lg block">{Math.round(selectedJobDetail.totalReq).toLocaleString()} kg</strong>
                 </div>
-                <div className="bg-emerald-50/70 p-2.5 rounded-lg border border-emerald-200">
-                  <span className="text-[10px] uppercase tracking-wide text-emerald-800 font-bold block">Total Received</span>
-                  <strong className="text-emerald-950 text-base">{Math.round(selectedJobDetail.totalRecv).toLocaleString()} kg</strong>
+                <div className="bg-emerald-100 p-3 rounded-lg border-2 border-emerald-500 shadow-2xs">
+                  <span className="text-[11px] uppercase tracking-wider text-emerald-950 font-extrabold block">Total Received</span>
+                  <strong className="text-emerald-950 font-black text-lg block">{Math.round(selectedJobDetail.totalRecv).toLocaleString()} kg</strong>
                 </div>
-                <div className="bg-purple-50/70 p-2.5 rounded-lg border border-purple-200">
-                  <span className="text-[10px] uppercase tracking-wide text-purple-800 font-bold block">Issued to Cutting</span>
-                  <strong className="text-purple-950 text-base">{Math.round(selectedJobDetail.totalIssued).toLocaleString()} kg</strong>
+                <div className="bg-purple-100 p-3 rounded-lg border-2 border-purple-500 shadow-2xs">
+                  <span className="text-[11px] uppercase tracking-wider text-purple-950 font-extrabold block">Issued to Cutting</span>
+                  <strong className="text-purple-950 font-black text-lg block">{Math.round(selectedJobDetail.totalIssued).toLocaleString()} kg</strong>
                 </div>
-                <div className="bg-sky-50/70 p-2.5 rounded-lg border border-sky-200">
-                  <span className="text-[10px] uppercase tracking-wide text-sky-800 font-bold block">In-Stock Balance</span>
-                  <strong className="text-sky-950 text-base">{Math.round(selectedJobDetail.totalStock).toLocaleString()} kg</strong>
+                <div className="bg-sky-100 p-3 rounded-lg border-2 border-sky-500 shadow-2xs">
+                  <span className="text-[11px] uppercase tracking-wider text-sky-950 font-extrabold block">In-Stock Balance</span>
+                  <strong className="text-sky-950 font-black text-lg block">{Math.round(selectedJobDetail.totalStock).toLocaleString()} kg</strong>
                 </div>
               </div>
 
@@ -4556,18 +4807,392 @@ function FinishedFabricPageInner() {
       )}
 
       {/* ===================================================================== */}
-      {/* TAB 4: LOCATION TRACKING (20 MASTER RACKS × 20 SHELVES) */}
+      {/* TAB 4: STORE LOCATION & BUILDING ZONE TRACKING (F.ST, N.ST, CB) */}
       {/* ===================================================================== */}
-      {activeTab === 'LOCATION' && (
-        <div className="mb-8">
-          <FabricRackLocation
-            lines={rawLines}
-            locations={rackLoc}
-            onChange={(next, msg) => saveRackLoc(next, msg)}
-            initialSub="racks"
-          />
-        </div>
-      )}
+      {activeTab === 'LOCATION' && (() => {
+        // Compute real store zone metrics
+        const fstLines = rawLines.filter(l => (l.location || '').toUpperCase().startsWith('F.ST') || l.location === 'F.st');
+        const nstLines = rawLines.filter(l => (l.location || '').toUpperCase().startsWith('N.ST'));
+        const cbLines = rawLines.filter(l => (l.location || '').toUpperCase() === 'CB');
+        const transitLines = rawLines.filter(l => (l.location || '').includes('/') || (l.location || '').startsWith('.'));
+
+        const fstKg = fstLines.reduce((acc, l) => acc + (l.stockBalance || 0), 0);
+        const nstKg = nstLines.reduce((acc, l) => acc + (l.stockBalance || 0), 0);
+        const cbKg = cbLines.reduce((acc, l) => acc + (l.stockBalance || 0), 0);
+        const transitKg = transitLines.reduce((acc, l) => acc + (l.stockBalance || 0), 0);
+
+        const fstJobs = new Set(fstLines.map(l => l.jobNo)).size;
+        const nstJobs = new Set(nstLines.map(l => l.jobNo)).size;
+        const cbJobs = new Set(cbLines.map(l => l.jobNo)).size;
+        const transitJobs = new Set(transitLines.map(l => l.jobNo)).size;
+
+        const totalKg = fstKg + nstKg + cbKg + transitKg || 1;
+
+        // Filtered lines for ledger
+        const zoneItems = rawLines.filter(l => {
+          const loc = (l.location || '').toUpperCase();
+          if (selectedZoneFilter === 'F.ST' && !loc.startsWith('F.ST') && loc !== 'F.ST') return false;
+          if (selectedZoneFilter === 'N.ST' && !loc.startsWith('N.ST')) return false;
+          if (selectedZoneFilter === 'CB' && loc !== 'CB') return false;
+          if (selectedZoneFilter === 'TRANSIT' && !loc.includes('/') && !loc.startsWith('.')) return false;
+
+          if (!zoneSearchQuery.trim()) return true;
+          const needle = zoneSearchQuery.toLowerCase();
+          return (
+            l.jobNo.toLowerCase().includes(needle) ||
+            l.style.toLowerCase().includes(needle) ||
+            (l.buyer || '').toLowerCase().includes(needle) ||
+            (l.color || '').toLowerCase().includes(needle) ||
+            (l.fabric || '').toLowerCase().includes(needle) ||
+            (l.location || '').toLowerCase().includes(needle)
+          );
+        });
+
+        const perPage = 25;
+        const totalZonePages = Math.ceil(zoneItems.length / perPage) || 1;
+        const pagedItems = zoneItems.slice((zonePage - 1) * perPage, zonePage * perPage);
+
+        return (
+          <div className="space-y-4 mb-8">
+            {/* Header info */}
+            <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-2xs">
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-sky-50 rounded-lg border border-sky-200 text-sky-700">
+                    <Warehouse className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900">
+                      Finished Fabric Store Location & Building Zone Tracker
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Real-time inventory ledger by store zone: Finish Fabric Store (F.ST), New Store (N.ST), Cutting Building (CB) and Transit.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="px-2.5 py-1 bg-slate-100 text-slate-700 rounded-md font-bold border border-slate-200">
+                    Total In Store: {Math.round(totalKg).toLocaleString()} kg
+                  </span>
+                  <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-md font-bold border border-blue-200">
+                    {rawLines.length} Fabric Lots
+                  </span>
+                </div>
+              </div>
+
+              {/* 4 Interactive Zone KPI Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-4">
+                {/* Zone 1: F.ST */}
+                <div
+                  onClick={() => { setSelectedZoneFilter('F.ST'); setZonePage(1); }}
+                  className={`p-3.5 rounded-lg border cursor-pointer transition-all ${
+                    selectedZoneFilter === 'F.ST'
+                      ? 'bg-blue-50/80 border-blue-500 ring-2 ring-blue-500/20 shadow-xs'
+                      : 'bg-white border-slate-200 hover:border-blue-300 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-blue-600 text-white tracking-wider">
+                      F.ST · Main Store
+                    </span>
+                    <span className="text-xs font-bold text-blue-900">
+                      {Math.round((fstKg / totalKg) * 100)}%
+                    </span>
+                  </div>
+                  <div className="text-lg font-black text-slate-900">
+                    {Math.round(fstKg).toLocaleString()} <span className="text-xs font-normal text-slate-500">kg</span>
+                  </div>
+                  <div className="text-[11px] text-slate-600 mt-1 flex items-center justify-between">
+                    <span>{fstJobs} Active Jobs</span>
+                    <span className="font-semibold text-blue-700">{fstLines.length} Lots</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-1.5 border-t border-slate-100 pt-1">
+                    Ground floor primary warehouse
+                  </p>
+                </div>
+
+                {/* Zone 2: N.ST */}
+                <div
+                  onClick={() => { setSelectedZoneFilter('N.ST'); setZonePage(1); }}
+                  className={`p-3.5 rounded-lg border cursor-pointer transition-all ${
+                    selectedZoneFilter === 'N.ST'
+                      ? 'bg-indigo-50/80 border-indigo-500 ring-2 ring-indigo-500/20 shadow-xs'
+                      : 'bg-white border-slate-200 hover:border-indigo-300 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-indigo-600 text-white tracking-wider">
+                      N.ST · New Store
+                    </span>
+                    <span className="text-xs font-bold text-indigo-900">
+                      {Math.round((nstKg / totalKg) * 100)}%
+                    </span>
+                  </div>
+                  <div className="text-lg font-black text-slate-900">
+                    {Math.round(nstKg).toLocaleString()} <span className="text-xs font-normal text-slate-500">kg</span>
+                  </div>
+                  <div className="text-[11px] text-slate-600 mt-1 flex items-center justify-between">
+                    <span>{nstJobs} Active Jobs</span>
+                    <span className="font-semibold text-indigo-700">{nstLines.length} Lots</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-1.5 border-t border-slate-100 pt-1">
+                    Auxiliary fabric store building
+                  </p>
+                </div>
+
+                {/* Zone 3: CB */}
+                <div
+                  onClick={() => { setSelectedZoneFilter('CB'); setZonePage(1); }}
+                  className={`p-3.5 rounded-lg border cursor-pointer transition-all ${
+                    selectedZoneFilter === 'CB'
+                      ? 'bg-amber-50/80 border-amber-500 ring-2 ring-amber-500/20 shadow-xs'
+                      : 'bg-white border-slate-200 hover:border-amber-300 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-amber-600 text-white tracking-wider">
+                      CB · Cutting Bldg
+                    </span>
+                    <span className="text-xs font-bold text-amber-900">
+                      {Math.round((cbKg / totalKg) * 100)}%
+                    </span>
+                  </div>
+                  <div className="text-lg font-black text-slate-900">
+                    {Math.round(cbKg).toLocaleString()} <span className="text-xs font-normal text-slate-500">kg</span>
+                  </div>
+                  <div className="text-[11px] text-slate-600 mt-1 flex items-center justify-between">
+                    <span>{cbJobs} Active Jobs</span>
+                    <span className="font-semibold text-amber-700">{cbLines.length} Lots</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-1.5 border-t border-slate-100 pt-1">
+                    Cutting floor staging buffer
+                  </p>
+                </div>
+
+                {/* Zone 4: Transit */}
+                <div
+                  onClick={() => { setSelectedZoneFilter('TRANSIT'); setZonePage(1); }}
+                  className={`p-3.5 rounded-lg border cursor-pointer transition-all ${
+                    selectedZoneFilter === 'TRANSIT'
+                      ? 'bg-teal-50/80 border-teal-500 ring-2 ring-teal-500/20 shadow-xs'
+                      : 'bg-white border-slate-200 hover:border-teal-300 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-teal-600 text-white tracking-wider">
+                      Transit / Split Batches
+                    </span>
+                    <span className="text-xs font-bold text-teal-900">
+                      {Math.round((transitKg / totalKg) * 100)}%
+                    </span>
+                  </div>
+                  <div className="text-lg font-black text-slate-900">
+                    {Math.round(transitKg).toLocaleString()} <span className="text-xs font-normal text-slate-500">kg</span>
+                  </div>
+                  <div className="text-[11px] text-slate-600 mt-1 flex items-center justify-between">
+                    <span>{transitJobs} Active Jobs</span>
+                    <span className="font-semibold text-teal-700">{transitLines.length} Lots</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-1.5 border-t border-slate-100 pt-1">
+                    .CB/F.ST · .CB/N.ST · .F.ST/N.ST
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Filter Pills & Search */}
+            <div className="bg-white rounded-lg border border-slate-200 p-3 shadow-2xs">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                  <span className="font-bold text-slate-700 mr-1 text-[11px] uppercase tracking-wider">Zone Filter:</span>
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedZoneFilter('ALL'); setZonePage(1); }}
+                    className={`px-3 py-1 rounded-md font-bold transition-all border ${
+                      selectedZoneFilter === 'ALL'
+                        ? 'bg-[#0F274E] text-white border-[#0F274E]'
+                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    All Zones ({rawLines.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedZoneFilter('F.ST'); setZonePage(1); }}
+                    className={`px-3 py-1 rounded-md font-bold transition-all border ${
+                      selectedZoneFilter === 'F.ST'
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    F.ST Main ({fstLines.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedZoneFilter('N.ST'); setZonePage(1); }}
+                    className={`px-3 py-1 rounded-md font-bold transition-all border ${
+                      selectedZoneFilter === 'N.ST'
+                        ? 'bg-indigo-600 text-white border-indigo-600'
+                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    N.ST New ({nstLines.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedZoneFilter('CB'); setZonePage(1); }}
+                    className={`px-3 py-1 rounded-md font-bold transition-all border ${
+                      selectedZoneFilter === 'CB'
+                        ? 'bg-amber-600 text-white border-amber-600'
+                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    CB Cutting ({cbLines.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedZoneFilter('TRANSIT'); setZonePage(1); }}
+                    className={`px-3 py-1 rounded-md font-bold transition-all border ${
+                      selectedZoneFilter === 'TRANSIT'
+                        ? 'bg-teal-600 text-white border-teal-600'
+                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    Transit / Multi ({transitLines.length})
+                  </button>
+                </div>
+
+                <div className="relative w-full sm:w-64">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={zoneSearchQuery}
+                    onChange={e => { setZoneSearchQuery(e.target.value); setZonePage(1); }}
+                    placeholder="Search Job, Style, Color..."
+                    className="w-full pl-8 pr-3 py-1 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500"
+                  />
+                  {zoneSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setZoneSearchQuery('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Table of Zone Inventory */}
+              <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-[#F1F5F9] text-slate-900 border-b border-slate-300 text-[11px] font-bold">
+                    <tr>
+                      <th className="px-3 py-2">Job No</th>
+                      <th className="px-3 py-2">Style No</th>
+                      <th className="px-3 py-2">Buyer</th>
+                      <th className="px-3 py-2">Color</th>
+                      <th className="px-3 py-2">Fabric / Comp</th>
+                      <th className="px-3 py-2 text-right">In-Stock (Kg)</th>
+                      <th className="px-3 py-2 text-center">Store Location</th>
+                      <th className="px-3 py-2 text-center">Move Location</th>
+                      <th className="px-3 py-2 text-center">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 bg-white">
+                    {pagedItems.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="py-12 text-center text-slate-500 font-medium">
+                          No fabric batches found matching this location filter.
+                        </td>
+                      </tr>
+                    ) : (
+                      pagedItems.map((item) => (
+                        <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-3 py-2 font-black text-[#0F274E] text-[12.5px]">
+                            {item.jobNo}
+                          </td>
+                          <td className="px-3 py-2 font-bold text-slate-900">
+                            {cleanStyleNo(item.style)}
+                          </td>
+                          <td className="px-3 py-2 text-slate-600 font-medium">
+                            {item.buyer}
+                          </td>
+                          <td className="px-3 py-2 font-semibold text-slate-800">
+                            {item.color}
+                          </td>
+                          <td className="px-3 py-2 text-slate-600 truncate max-w-[150px]" title={`${item.fabric} - ${item.composition}`}>
+                            {item.fabric || item.fabricType || 'SJ'} · {item.composition || 'Cotton'}
+                          </td>
+                          <td className="px-3 py-2 text-right font-black text-emerald-900 text-[12.5px] tabular-nums">
+                            {Math.round(item.stockBalance).toLocaleString()} kg
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
+                              (item.location || '').toUpperCase().startsWith('F.ST') ? 'bg-blue-100 text-blue-900 border border-blue-300' :
+                              (item.location || '').toUpperCase().startsWith('N.ST') ? 'bg-indigo-100 text-indigo-900 border border-indigo-300' :
+                              (item.location || '').toUpperCase() === 'CB' ? 'bg-amber-100 text-amber-900 border border-amber-300' :
+                              'bg-teal-100 text-teal-900 border border-teal-300'
+                            }`}>
+                              {item.location || 'F.ST'}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <select
+                              value={item.location || 'F.ST'}
+                              onChange={e => handleRelocateLine(item.id, e.target.value)}
+                              className="px-2 py-1 text-[11px] font-semibold border border-slate-300 rounded bg-white text-slate-800 focus:ring-1 focus:ring-blue-500"
+                            >
+                              <option value="F.ST">F.ST (Main)</option>
+                              <option value="N.ST">N.ST (New)</option>
+                              <option value="CB">CB (Cutting)</option>
+                              <option value=".CB/F.ST">.CB/F.ST</option>
+                              <option value=".CB/N.ST">.CB/N.ST</option>
+                              <option value=".F.ST/N.ST">.F.ST/N.ST</option>
+                            </select>
+                          </td>
+                          <td className="px-3 py-2 text-center text-slate-500 text-[11px]">
+                            {item.date || '—'}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              {totalZonePages > 1 && (
+                <div className="flex items-center justify-between pt-3 mt-2 border-t border-slate-200 text-xs text-slate-500">
+                  <span>
+                    Showing <strong className="text-slate-900">{((zonePage - 1) * perPage) + 1}</strong> to <strong className="text-slate-900">{Math.min(zonePage * perPage, zoneItems.length)}</strong> of <strong className="text-slate-900">{zoneItems.length}</strong> batches
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      disabled={zonePage === 1}
+                      onClick={() => setZonePage(p => Math.max(1, p - 1))}
+                      className="px-2.5 py-1 border border-slate-300 rounded-md font-semibold disabled:opacity-40 hover:bg-slate-50"
+                    >
+                      Prev
+                    </button>
+                    <span className="font-bold text-slate-800 px-2">Page {zonePage} of {totalZonePages}</span>
+                    <button
+                      type="button"
+                      disabled={zonePage === totalZonePages}
+                      onClick={() => setZonePage(p => Math.min(totalZonePages, p + 1))}
+                      className="px-2.5 py-1 border border-slate-300 rounded-md font-semibold disabled:opacity-40 hover:bg-slate-50"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ===================================================================== */}
       {/* TAB 5: LEFTOVER & REUSE FABRIC */}
@@ -4745,20 +5370,31 @@ function FinishedFabricPageInner() {
                     type="text"
                     value={manualJobForm.jobNo}
                     onChange={e => setManualJobForm(p => ({ ...p, jobNo: e.target.value }))}
-                    placeholder="e.g. 48095"
+                    placeholder="e.g. BSONL 48843"
                     className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Buyer *</label>
-                  <input
+                  <select
                     required
-                    type="text"
                     value={manualJobForm.buyer}
                     onChange={e => setManualJobForm(p => ({ ...p, buyer: e.target.value }))}
-                    placeholder="e.g. Bestseller / ONLY"
-                    className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500"
-                  />
+                    className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 bg-white"
+                  >
+                    <option value="Bestseller (ONLY)">Bestseller (ONLY)</option>
+                    <option value="Bestseller (Name It)">Bestseller (Name It)</option>
+                    <option value="Bestseller (Only & Sons)">Bestseller (Only & Sons)</option>
+                    <option value="United Textile (UTG)">United Textile (UTG)</option>
+                    <option value="New Look">New Look</option>
+                    <option value="OVS">OVS</option>
+                    <option value="GBX- Maurices">GBX- Maurices</option>
+                    <option value="GBX- T-M Lewin">GBX- T-M Lewin</option>
+                    <option value="GBX- Sainsburry's">GBX- Sainsburry's</option>
+                    <option value="GBX- Miss Selfridge">GBX- Miss Selfridge</option>
+                    <option value="GBX- GUESS">GBX- GUESS</option>
+                    <option value="Styllent Global">Styllent Global</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Style No</label>
@@ -4775,7 +5411,7 @@ function FinishedFabricPageInner() {
                   <select
                     value={manualJobForm.month}
                     onChange={e => setManualJobForm(p => ({ ...p, month: e.target.value }))}
-                    className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500"
+                    className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 bg-white"
                   >
                     <option value="November 2026">November 2026</option>
                     <option value="October 2026">October 2026</option>
@@ -4787,53 +5423,86 @@ function FinishedFabricPageInner() {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Fabric Type</label>
-                  <input
-                    type="text"
+                  <select
                     value={manualJobForm.fabricType}
                     onChange={e => setManualJobForm(p => ({ ...p, fabricType: e.target.value }))}
-                    placeholder="e.g. Single Jersey / 1x1 Rib"
-                    className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500"
-                  />
+                    className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 bg-white"
+                  >
+                    <option value="Single Jersey">Single Jersey (SJ)</option>
+                    <option value="1x1 Rib">1x1 Rib</option>
+                    <option value="2x2 Rib">2x2 Rib</option>
+                    <option value="French Terry">French Terry</option>
+                    <option value="Fleece">Fleece</option>
+                    <option value="Interlock">Interlock</option>
+                    <option value="Woven">Woven</option>
+                    <option value="Pique / Mesh">Pique / Mesh</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Composition</label>
-                  <input
-                    type="text"
+                  <select
                     value={manualJobForm.composition}
                     onChange={e => setManualJobForm(p => ({ ...p, composition: e.target.value }))}
-                    placeholder="e.g. 100% Combed Cotton"
-                    className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500"
-                  />
+                    className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 bg-white"
+                  >
+                    <option value="100% Combed Cotton">100% Combed Cotton</option>
+                    <option value="95% Cotton 5% Elastane">95% Cotton 5% Elastane</option>
+                    <option value="60% Cotton 40% Polyester">60% Cotton 40% Polyester (CVC)</option>
+                    <option value="80% Cotton 20% Polyester">80% Cotton 20% Polyester</option>
+                    <option value="100% Polyester">100% Polyester</option>
+                    <option value="95% Lenzing Viscose 5% Elastane">95% Lenzing Viscose 5% Elastane</option>
+                    <option value="100% Regeagri Cotton">100% Regeagri Cotton</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">GSM</label>
-                  <input
-                    type="text"
+                  <select
                     value={manualJobForm.gsm}
                     onChange={e => setManualJobForm(p => ({ ...p, gsm: e.target.value }))}
-                    placeholder="e.g. 180"
-                    className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500"
-                  />
+                    className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 bg-white"
+                  >
+                    <option value="140">140 GSM</option>
+                    <option value="160">160 GSM</option>
+                    <option value="180">180 GSM</option>
+                    <option value="200">200 GSM</option>
+                    <option value="220">220 GSM</option>
+                    <option value="240">240 GSM</option>
+                    <option value="280">280 GSM</option>
+                    <option value="300">300 GSM</option>
+                    <option value="340">340 GSM</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Dia / Width</label>
-                  <input
-                    type="text"
+                  <select
                     value={manualJobForm.dia}
                     onChange={e => setManualJobForm(p => ({ ...p, dia: e.target.value }))}
-                    placeholder='e.g. 68" Open'
-                    className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500"
-                  />
+                    className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 bg-white"
+                  >
+                    <option value='60" Open'>60" Open</option>
+                    <option value='64" Open'>64" Open</option>
+                    <option value='68" Open'>68" Open</option>
+                    <option value='70" Open'>70" Open</option>
+                    <option value='72" Open'>72" Open</option>
+                    <option value='74" Open'>74" Open</option>
+                    <option value='30" Tubular'>30" Tubular</option>
+                    <option value='32" Tubular'>32" Tubular</option>
+                    <option value='34" Tubular'>34" Tubular</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Supplier / Dyeing Mill</label>
-                  <input
-                    type="text"
+                  <select
                     value={manualJobForm.supplier}
                     onChange={e => setManualJobForm(p => ({ ...p, supplier: e.target.value }))}
-                    placeholder="e.g. Northern Dyeing Unit-1"
-                    className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500"
-                  />
+                    className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500 bg-white"
+                  >
+                    <option value="Northern Dyeing Unit-1">Northern Dyeing Unit-1</option>
+                    <option value="Northern Dyeing Unit-2">Northern Dyeing Unit-2</option>
+                    <option value="Northern Composite Ltd">Northern Composite Ltd</option>
+                    <option value="Pakiza Dyeing & Printing">Pakiza Dyeing & Printing</option>
+                    <option value="Texella Sourcing Overseas">Texella Sourcing Overseas</option>
+                  </select>
                 </div>
               </div>
 
@@ -4864,7 +5533,7 @@ function FinishedFabricPageInner() {
                           type="text"
                           value={col.color}
                           onChange={e => updateManualColorRow(col.id, 'color', e.target.value)}
-                          placeholder="e.g. Black / Navy"
+                          placeholder="e.g. Jet Black / Navy"
                           className="w-full px-2 py-1 text-xs border border-slate-200 rounded"
                         />
                       </div>
@@ -4896,22 +5565,27 @@ function FinishedFabricPageInner() {
                         <span className="text-[10px] text-slate-400 block mb-0.5">Rolls</span>
                         <input
                           type="number"
-                          min="1"
+                          min="0"
                           value={col.rollCount || ''}
                           onChange={e => updateManualColorRow(col.id, 'rollCount', Number(e.target.value))}
-                          placeholder="1"
+                          placeholder="0"
                           className="w-full px-2 py-1 text-xs border border-slate-200 rounded"
                         />
                       </div>
                       <div className="col-span-2">
-                        <span className="text-[10px] text-slate-400 block mb-0.5">Rack Location</span>
-                        <input
-                          type="text"
+                        <span className="text-[10px] text-slate-400 block mb-0.5">Store Location</span>
+                        <select
                           value={col.location}
                           onChange={e => updateManualColorRow(col.id, 'location', e.target.value)}
-                          placeholder="e.g. R-01 · Shelf 02"
-                          className="w-full px-2 py-1 text-xs border border-slate-200 rounded"
-                        />
+                          className="w-full px-2 py-1 text-xs border border-slate-200 rounded bg-white font-medium"
+                        >
+                          <option value="F.ST">F.ST (Finish Store)</option>
+                          <option value="N.ST">N.ST (New Store)</option>
+                          <option value="CB">CB (Cutting Bldg)</option>
+                          <option value=".CB/F.ST">.CB/F.ST (Transit)</option>
+                          <option value=".CB/N.ST">.CB/N.ST (Transit)</option>
+                          <option value=".F.ST/N.ST">.F.ST/N.ST (Split)</option>
+                        </select>
                       </div>
                       <div className="col-span-1 flex justify-end">
                         {manualColors.length > 1 && (
