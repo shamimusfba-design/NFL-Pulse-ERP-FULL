@@ -3,6 +3,12 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Shell from '../../../components/Shell';
+import {
+  WORKING_STOCK_STATEMENT,
+  WORKING_STOCK_GRAND_TOTAL,
+  WorkingStockMonthGroup,
+  WorkingStockBuyerRow,
+} from './working-stock-data';
 import * as XLSX from 'xlsx';
 import {
   Package,
@@ -132,7 +138,25 @@ function generateInitialRackLocations(lines: FabricColorLine[]): RackLocations {
 // DATA TYPES & INTERFACES (100% PURE ENGLISH)
 // ============================================================================
 
+export interface ColorTransactionRecord {
+  id: string;
+  jobNo: string;
+  colorId: string;
+  colorName: string;
+  date: string;
+  type: 'RECEIVE' | 'ISSUE';
+  batchNo: string;
+  bodyKg: number;
+  ribKg: number;
+  sjKg: number;
+  totalKg: number;
+  rolls: number;
+  refNo: string;
+  handledBy: string;
+}
+
 export interface FabricColorLine {
+  batches?: string[];
   id: string;
   idx: number;
   sl?: string;
@@ -306,6 +330,148 @@ export interface LeftoverReturnRecord {
 // MAIN COMPONENT
 // ============================================================================
 
+function getColorHex(name: string): string {
+  const n = (name || '').toLowerCase();
+  if (n.includes('black')) return '#18181b';
+  if (n.includes('white') || n.includes('cloud')) return '#e4e4e7';
+  if (n.includes('blue') || n.includes('navy')) return '#2563eb';
+  if (n.includes('pink')) return '#ec4899';
+  if (n.includes('red') || n.includes('maroon')) return '#dc2626';
+  if (n.includes('green') || n.includes('olive')) return '#16a34a';
+  if (n.includes('yellow')) return '#ca8a04';
+  if (n.includes('grey') || n.includes('gray') || n.includes('melange')) return '#71717a';
+  if (n.includes('brown') || n.includes('coffee')) return '#78350f';
+  if (n.includes('purple')) return '#9333ea';
+  return '#3b82f6';
+}
+
+function ExcelColumnFilterPopover({
+  title,
+  currentValue,
+  onApply,
+  distinctList,
+  onClose,
+}: {
+  title: string;
+  currentValue: string;
+  onApply: (val: string) => void;
+  distinctList: { label: string; count: number }[];
+  onClose: () => void;
+}) {
+  const [search, setSearch] = useState('');
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [onClose]);
+
+  const filteredItems = useMemo(() => {
+    if (!search.trim()) return distinctList || [];
+    const q = search.toLowerCase();
+    return (distinctList || []).filter(item => item.label.toLowerCase().includes(q));
+  }, [distinctList, search]);
+
+  return (
+    <div
+      ref={popoverRef}
+      className="absolute top-full left-0 mt-1 w-64 bg-white rounded-lg shadow-2xl border-2 border-slate-300 p-2.5 z-50 text-left font-normal normal-case text-slate-800 animate-in fade-in zoom-in-95 duration-100"
+      onClick={e => e.stopPropagation()}
+    >
+      <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-slate-200">
+        <span className="font-extrabold text-xs text-slate-900 flex items-center gap-1.5">
+          <Filter className="w-3.5 h-3.5 text-blue-600" />
+          Filter: {title}
+        </span>
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-slate-400 hover:text-slate-800 text-xs p-1"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div className="relative mb-2">
+        <Search className="w-3.5 h-3.5 absolute left-2 top-2 text-slate-400" />
+        <input
+          type="text"
+          autoFocus
+          placeholder={`Search ${title}...`}
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="w-full pl-7 pr-2 py-1 text-xs border border-slate-300 rounded bg-slate-50 focus:bg-white focus:outline-hidden focus:border-blue-500 text-slate-900"
+        />
+      </div>
+
+      <div className="flex items-center justify-between text-[11px] px-1 py-1 mb-1.5 bg-slate-100 rounded">
+        <button
+          type="button"
+          onClick={() => {
+            onApply('');
+            onClose();
+          }}
+          className="text-blue-700 font-bold hover:underline"
+        >
+          (Show All / Clear)
+        </button>
+        {search.trim() && (
+          <button
+            type="button"
+            onClick={() => {
+              onApply(search.trim());
+              onClose();
+            }}
+            className="text-emerald-700 font-bold hover:underline"
+          >
+            Apply &quot;{search.trim().slice(0, 10)}&quot;
+          </button>
+        )}
+      </div>
+
+      <div className="max-h-44 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded">
+        {filteredItems.length === 0 ? (
+          <div className="p-3 text-center text-xs text-slate-400">No matching values</div>
+        ) : (
+          filteredItems.map(item => {
+            const isSelected = currentValue === item.label;
+            return (
+              <button
+                key={item.label}
+                type="button"
+                onClick={() => {
+                  onApply(isSelected ? '' : item.label);
+                  onClose();
+                }}
+                className={`w-full flex items-center justify-between px-2.5 py-1.5 text-xs text-left transition-colors ${
+                  isSelected ? 'bg-blue-50 font-bold text-blue-900' : 'hover:bg-slate-50 text-slate-700'
+                }`}
+              >
+                <div className="flex items-center gap-2 truncate">
+                  <span className={`w-3.5 h-3.5 rounded-xs border flex items-center justify-center shrink-0 ${
+                    isSelected ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-300 bg-white'
+                  }`}>
+                    {isSelected && <Check className="w-2.5 h-2.5" />}
+                  </span>
+                  <span className="truncate">{item.label}</span>
+                </div>
+                <span className="text-[10px] text-slate-500 font-semibold bg-slate-100 px-1.5 py-0.5 rounded shrink-0 ml-1">
+                  {item.count}
+                </span>
+              </button>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function FinishedFabricPage() {
   return (
     <CrossFilterProvider>
@@ -318,7 +484,13 @@ function FinishedFabricPageInner() {
   const { filters: cfFilters, toggle: cfToggle } = useCrossFilter();
 
   // Navigation tabs (1 to 5, matching Odoo & Trims standard)
-  const [activeTab, setActiveTab] = useState<'STOCK' | 'RECEIVE' | 'ISSUE' | 'LOCATION' | 'REUSE'>('STOCK');
+  const [activeTab, setActiveTab] = useState<'STOCK' | 'SUMMARY_STATEMENT' | 'RECEIVE' | 'ISSUE' | 'LOCATION' | 'REUSE'>('STOCK');
+  const [openExcelFilterCol, setOpenExcelFilterCol] = useState<string | null>(null);
+  const [excelFilterSearch, setExcelFilterSearch] = useState('');
+  const [summaryMonthFilter, setSummaryMonthFilter] = useState<'ALL' | 'September' | 'October' | 'November' | 'December'>('ALL');
+  const [summaryBuyerSearch, setSummaryBuyerSearch] = useState('');
+  const [colorTransactions, setColorTransactions] = useState<ColorTransactionRecord[]>([]);
+  const [historyColorModal, setHistoryColorModal] = useState<{ jobNo: string; color: FabricColorLine } | null>(null);
 
   // Master Data state
   const [rawLines, setRawLines] = useState<FabricColorLine[]>([]);
@@ -862,6 +1034,8 @@ function FinishedFabricPageInner() {
   const [actionForm, setActionForm] = useState({
     selectedColorId: '',
     colorName: '',
+    batchNo: 'B-101',
+    date: new Date().toISOString().slice(0, 10),
     bodyKg: 0,
     ribKg: 0,
     sjKg: 0,
@@ -881,6 +1055,8 @@ function FinishedFabricPageInner() {
     setActionForm({
       selectedColorId: firstColor ? firstColor.id : '',
       colorName: firstColor ? firstColor.color : '',
+      batchNo: `B-${Math.floor(100 + Math.random() * 900)}`,
+      date: new Date().toISOString().slice(0, 10),
       bodyKg: 0,
       ribKg: 0,
       sjKg: 0,
@@ -947,6 +1123,24 @@ function FinishedFabricPageInner() {
       localStorage.setItem(FINISHED_FABRIC_STORAGE_KEY, JSON.stringify(nextLines));
     } catch {}
 
+    const newTx: ColorTransactionRecord = {
+      id: `tx-${Date.now()}`,
+      jobNo: selectedJobDetail.jobNo,
+      colorId: targetColor.id,
+      colorName: targetColor.color || 'Solid',
+      date: actionForm.date || new Date().toISOString().slice(0, 10),
+      type: 'ISSUE',
+      batchNo: actionForm.batchNo || 'B-ISSUE',
+      bodyKg: bKg,
+      ribKg: rKg,
+      sjKg: sKg,
+      totalKg: totIssue,
+      rolls: actionForm.rollCount || 1,
+      refNo: cuttingLine || 'Cutting Table-1',
+      handledBy: issuedTo || 'Cutting Master',
+    };
+    setColorTransactions(prev => [newTx, ...prev]);
+
     const newSlip: CuttingIssueSlip = {
       id: `ci-${Date.now()}`,
       issueNo: `FI-${Date.now().toString().slice(-6)}`,
@@ -986,6 +1180,25 @@ function FinishedFabricPageInner() {
 
     const existingColor = selectedJobDetail.colors.find(c => c.id === selectedColorId);
     const finalColorName = (colorName || (existingColor ? existingColor.color : '')).trim();
+    const batchToAdd = actionForm.batchNo.trim() || `B-${Math.floor(100 + Math.random() * 900)}`;
+
+    const newTx: ColorTransactionRecord = {
+      id: `tx-${Date.now()}`,
+      jobNo: selectedJobDetail.jobNo,
+      colorId: existingColor ? existingColor.id : `f-${Date.now()}`,
+      colorName: finalColorName || 'Solid',
+      date: actionForm.date || new Date().toISOString().slice(0, 10),
+      type: 'RECEIVE',
+      batchNo: batchToAdd,
+      bodyKg: bKg,
+      ribKg: rKg,
+      sjKg: sKg,
+      totalKg: totRecv,
+      rolls: rollCount || 1,
+      refNo: challanNo || `CH-NFL-${Date.now().toString().slice(-4)}`,
+      handledBy: supplier || 'Northern Dyeing',
+    };
+    setColorTransactions(prev => [newTx, ...prev]);
 
     let nextLines: FabricColorLine[];
     if (existingColor) {
@@ -1021,6 +1234,7 @@ function FinishedFabricPageInner() {
             stockBalance,
             stockState,
             location: location || l.location,
+            batches: Array.from(new Set([...(l.batches || []), batchToAdd])),
           };
         }
         return l;
@@ -1499,6 +1713,7 @@ function FinishedFabricPageInner() {
               slot: String(item.sl || '1'),
               merchandiser: item.mr || 'Store Merchandiser',
               qualityStatus: 'PASS',
+              batches: [`B-${101 + (idx % 80)}`],
               stockState,
               isCuttingOk: stockBalance <= 5 && totalIssued > 0,
             };
@@ -1701,6 +1916,42 @@ function FinishedFabricPageInner() {
     jobGroups, searchQuery, selectedBuyer, selectedMonth, selectedStatus, selectedFabricType, filterImportedOnly,
     colFilterJob, colFilterStyle, colFilterColor, colFilterFabric, colFilterComp, colFilterProcess, colFilterGsm, colFilterDia, colFilterStatus, colFilterLocation
   ]);
+
+  const distinctFilterValues = useMemo(() => {
+    const getCounts = (getter: (j: JobFabricGroup) => string) => {
+      const map = new Map<string, number>();
+      jobGroups.forEach(j => {
+        const val = getter(j);
+        if (val) map.set(val, (map.get(val) || 0) + 1);
+      });
+      return Array.from(map.entries())
+        .map(([label, count]) => ({ label, count }))
+        .sort((a, b) => b.count - a.count);
+    };
+
+    const colorMap = new Map<string, number>();
+    jobGroups.forEach(j => {
+      j.colors.forEach(c => {
+        if (c.color) colorMap.set(c.color, (colorMap.get(c.color) || 0) + 1);
+      });
+    });
+    const colorList = Array.from(colorMap.entries())
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => b.count - a.count);
+
+    return {
+      jobNo: getCounts(j => j.jobNo),
+      style: getCounts(j => j.style),
+      color: colorList,
+      fabricType: getCounts(j => j.fabricType),
+      composition: getCounts(j => j.composition),
+      process: getCounts(j => j.process),
+      gsm: getCounts(j => j.gsm),
+      dia: getCounts(j => j.dia),
+      status: getCounts(j => j.primaryStatus),
+      location: getCounts(j => j.location),
+    };
+  }, [jobGroups]);
 
   const buyerOptions = useMemo(() => Array.from(new Set(rawLines.map(l => l.buyer))).sort(), [rawLines]);
   const fabricTypeOptions = useMemo(() => {
@@ -2152,10 +2403,10 @@ function FinishedFabricPageInner() {
                 Received vs Balance
               </span>
               <div className="text-base font-bold text-emerald-800 mt-0.5">
-                {dashboardKpis.totalRecvTons} <span className="text-xs font-normal text-slate-500">Tons Recv</span>
+                3,168.3 <span className="text-xs font-normal text-slate-500">Tons Recv</span>
               </div>
-              <div className="text-xs font-semibold text-rose-700 mt-1">
-                Bal: {dashboardKpis.totalBalanceTons} Tons
+              <div className="text-xs font-semibold text-emerald-700 mt-1">
+                Body: 2,941.2T · Rib: 227.1T
               </div>
             </div>
 
@@ -2164,10 +2415,10 @@ function FinishedFabricPageInner() {
                 Cutting Issue & Pending
               </span>
               <div className="text-base font-bold text-purple-800 mt-0.5">
-                {dashboardKpis.totalIssuedTons} <span className="text-xs font-normal text-slate-500">Tons Issued</span>
+                2,832.3 <span className="text-xs font-normal text-slate-500">Tons Issued</span>
               </div>
-              <div className="text-xs font-semibold text-slate-600 mt-1">
-                Pending: {dashboardKpis.pendingCuttingIssueTons} Tons
+              <div className="text-xs font-semibold text-purple-700 mt-1">
+                Body: 2,622.8T · Rib: 209.5T
               </div>
             </div>
 
@@ -2318,6 +2569,40 @@ function FinishedFabricPageInner() {
 
         <button
           type="button"
+          onClick={() => setActiveTab('SUMMARY_STATEMENT')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '7px',
+            padding: '7px 14px',
+            borderRadius: '6px',
+            fontSize: '13px',
+            fontWeight: 650,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+            border: activeTab === 'SUMMARY_STATEMENT' ? '1px solid #009E49' : '1px solid #E2E8F0',
+            background: activeTab === 'SUMMARY_STATEMENT' ? '#009E49' : '#F8FAFC',
+            color: activeTab === 'SUMMARY_STATEMENT' ? '#FFFFFF' : '#475569'
+          }}
+        >
+          <FileSpreadsheet size={16} color={activeTab === 'SUMMARY_STATEMENT' ? '#FFFFFF' : '#009E49'} />
+          <span>2. Working Stock Summary (Excel Report 14.11.26)</span>
+          <span
+            style={{
+              fontSize: '11px',
+              background: activeTab === 'SUMMARY_STATEMENT' ? '#FFFFFF' : '#E2E8F0',
+              color: activeTab === 'SUMMARY_STATEMENT' ? '#009E49' : '#475569',
+              padding: '1px 7px',
+              borderRadius: '10px',
+              fontWeight: 800
+            }}
+          >
+            3,168 Tons
+          </span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveTab('RECEIVE')}
           style={{
             display: 'flex',
@@ -2335,7 +2620,7 @@ function FinishedFabricPageInner() {
           }}
         >
           <Truck size={16} color={activeTab === 'RECEIVE' ? '#38BDF8' : '#64748B'} />
-          <span>2. Imported & New Receive</span>
+          <span>3. Imported & New Receive</span>
           <span
             style={{
               fontSize: '11px',
@@ -2369,7 +2654,7 @@ function FinishedFabricPageInner() {
           }}
         >
           <Scissors size={16} color={activeTab === 'ISSUE' ? '#38BDF8' : '#64748B'} />
-          <span>3. Issue to Cutting Floor</span>
+          <span>4. Issue to Cutting Floor</span>
         </button>
 
         <button
@@ -2391,7 +2676,7 @@ function FinishedFabricPageInner() {
           }}
         >
           <Warehouse size={16} color={activeTab === 'LOCATION' ? '#38BDF8' : '#64748B'} />
-          <span>4. Store Location Tracking (F.ST · N.ST · CB)</span>
+          <span>5. Store Location Tracking (F.ST · N.ST · CB)</span>
         </button>
 
         <button
@@ -2413,7 +2698,7 @@ function FinishedFabricPageInner() {
           }}
         >
           <RotateCcw size={16} color={activeTab === 'REUSE' ? '#38BDF8' : '#64748B'} />
-          <span>5. Stock for Leftover & Reuse</span>
+          <span>6. Stock for Leftover & Reuse</span>
           <span
             style={{
               fontSize: '11px',
@@ -2804,175 +3089,299 @@ function FinishedFabricPageInner() {
                   <th className="px-3 py-2 text-center bg-slate-100 text-slate-800 border-b border-slate-300 font-bold">Action</th>
                 </tr>
 
-                {/* TIER 2 HEADER COLUMNS WITH INTEGRATED IN-CELL FILTERS */}
-                <tr className="bg-slate-50 text-slate-900 text-[11px] border-b border-slate-300 font-bold">
+                {/* TIER 2 HEADER COLUMNS: SLEEK EXCEL AUTOFILTER (SINGLE-ROW CLEAN HEADER) */}
+                <tr className="bg-slate-100 text-slate-900 text-xs border-b border-slate-300 font-bold select-none">
                   {/* Sticky frozen Job No */}
-                  <th className="sticky left-0 z-40 bg-slate-100 p-1.5 text-slate-900 font-bold border-r border-slate-300 min-w-[155px]">
-                    <div className="flex items-center justify-between mb-1">
+                  <th className="sticky left-0 z-40 bg-slate-100 p-2 text-slate-900 font-bold border-r border-slate-300 min-w-[140px] relative">
+                    <div className="flex items-center justify-between gap-1">
                       <button
                         type="button"
                         onClick={() => handleSort('jobNo')}
-                        className="flex items-center gap-1 text-left text-slate-900 font-bold hover:text-blue-700 cursor-pointer text-[11px]"
+                        className="flex items-center gap-1 text-slate-900 font-bold hover:text-blue-700 cursor-pointer"
                       >
                         <span>Job No</span>
-                        <ArrowUpDown className={`w-3 h-3 ${sortField === 'jobNo' ? 'text-blue-700 font-bold' : 'text-slate-400'}`} />
+                        <ArrowUpDown className={`w-3 h-3 ${sortField === 'jobNo' ? 'text-blue-700 font-black' : 'text-slate-400'}`} />
                       </button>
-                      {colFilterJob && (
-                        <button onClick={() => setColFilterJob('')} className="text-rose-500 hover:text-rose-700 text-[10px] font-bold">✕</button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenExcelFilterCol(openExcelFilterCol === 'jobNo' ? null : 'jobNo');
+                          setExcelFilterSearch('');
+                        }}
+                        className={`p-1 rounded transition-colors ${
+                          colFilterJob ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200'
+                        }`}
+                        title="Filter Job No (Excel AutoFilter)"
+                      >
+                        <Filter className="w-3 h-3" />
+                      </button>
                     </div>
-                    <input
-                      type="text"
-                      value={colFilterJob}
-                      onChange={e => { setColFilterJob(e.target.value); setCurrentPage(1); }}
-                      placeholder="Filter Job..."
-                      className="w-full px-1.5 py-0.5 text-[10.5px] font-normal border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500"
-                    />
+                    {openExcelFilterCol === 'jobNo' && (
+                      <ExcelColumnFilterPopover
+                        title="Job No"
+                        currentValue={colFilterJob}
+                        onApply={(val: string) => { setColFilterJob(val); setCurrentPage(1); }}
+                        distinctList={distinctFilterValues.jobNo}
+                        onClose={() => setOpenExcelFilterCol(null)}
+                      />
+                    )}
                   </th>
 
                   {/* Style No */}
-                  <th className="p-1.5 text-slate-900 font-bold min-w-[110px] border-r border-slate-300">
-                    <div className="flex items-center justify-between mb-1">
+                  <th className="p-2 text-slate-900 font-bold min-w-[120px] border-r border-slate-300 relative">
+                    <div className="flex items-center justify-between gap-1">
                       <button
                         type="button"
                         onClick={() => handleSort('style')}
-                        className="flex items-center gap-1 text-slate-900 font-bold hover:text-blue-700 cursor-pointer text-[11px]"
+                        className="flex items-center gap-1 text-slate-900 font-bold hover:text-blue-700 cursor-pointer"
                       >
                         <span>Style No</span>
-                        <ArrowUpDown className={`w-3 h-3 ${sortField === 'style' ? 'text-blue-700' : 'text-slate-400'}`} />
+                        <ArrowUpDown className={`w-3 h-3 ${sortField === 'style' ? 'text-blue-700 font-black' : 'text-slate-400'}`} />
                       </button>
-                      {colFilterStyle && (
-                        <button onClick={() => setColFilterStyle('')} className="text-rose-500 hover:text-rose-700 text-[10px] font-bold">✕</button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenExcelFilterCol(openExcelFilterCol === 'style' ? null : 'style');
+                          setExcelFilterSearch('');
+                        }}
+                        className={`p-1 rounded transition-colors ${
+                          colFilterStyle ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200'
+                        }`}
+                        title="Filter Style (Excel AutoFilter)"
+                      >
+                        <Filter className="w-3 h-3" />
+                      </button>
                     </div>
-                    <input
-                      type="text"
-                      value={colFilterStyle}
-                      onChange={e => { setColFilterStyle(e.target.value); setCurrentPage(1); }}
-                      placeholder="Filter Style..."
-                      className="w-full px-1.5 py-0.5 text-[10.5px] font-normal border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500"
-                    />
+                    {openExcelFilterCol === 'style' && (
+                      <ExcelColumnFilterPopover
+                        title="Style No"
+                        currentValue={colFilterStyle}
+                        onApply={(val: string) => { setColFilterStyle(val); setCurrentPage(1); }}
+                        distinctList={distinctFilterValues.style}
+                        onClose={() => setOpenExcelFilterCol(null)}
+                      />
+                    )}
                   </th>
 
                   {visibleSections.jobSpecs && (
                     <>
                       {/* Color */}
-                      <th className="p-1.5 text-slate-900 font-bold min-w-[110px] border-r border-slate-200">
-                        <div className="flex items-center justify-between mb-1 text-[11px]">
+                      <th className="p-2 text-slate-900 font-bold min-w-[120px] border-r border-slate-300 relative">
+                        <div className="flex items-center justify-between gap-1">
                           <span>Color</span>
-                          {colFilterColor && (
-                            <button onClick={() => setColFilterColor('')} className="text-rose-500 hover:text-rose-700 text-[10px] font-bold">✕</button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenExcelFilterCol(openExcelFilterCol === 'color' ? null : 'color');
+                              setExcelFilterSearch('');
+                            }}
+                            className={`p-1 rounded transition-colors ${
+                              colFilterColor ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200'
+                            }`}
+                            title="Filter Color (Excel AutoFilter)"
+                          >
+                            <Filter className="w-3 h-3" />
+                          </button>
                         </div>
-                        <input
-                          type="text"
-                          value={colFilterColor}
-                          onChange={e => { setColFilterColor(e.target.value); setCurrentPage(1); }}
-                          placeholder="Filter Color..."
-                          className="w-full px-1.5 py-0.5 text-[10.5px] font-normal border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500"
-                        />
+                        {openExcelFilterCol === 'color' && (
+                          <ExcelColumnFilterPopover
+                            title="Color"
+                            currentValue={colFilterColor}
+                            onApply={(val: string) => { setColFilterColor(val); setCurrentPage(1); }}
+                            distinctList={distinctFilterValues.color}
+                            onClose={() => setOpenExcelFilterCol(null)}
+                          />
+                        )}
                       </th>
 
                       {/* Fabric Type */}
-                      <th className="p-1.5 text-slate-900 font-bold min-w-[115px] border-r border-slate-200">
-                        <div className="text-[11px] font-bold mb-1">Fabric Type</div>
-                        <select
-                          value={colFilterFabric}
-                          onChange={e => { setColFilterFabric(e.target.value); setCurrentPage(1); }}
-                          className="w-full px-1 py-0.5 text-[10px] font-medium border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500"
-                        >
-                          <option value="ALL">All Types</option>
-                          <option value="SJ">SJ</option>
-                          <option value="Rib">Rib</option>
-                          <option value="Terry">Terry</option>
-                          <option value="Fleece">Fleece</option>
-                          <option value="Interlock">Interlock</option>
-                          <option value="Woven">Woven</option>
-                          <option value="Mesh">Mesh</option>
-                        </select>
+                      <th className="p-2 text-slate-900 font-bold min-w-[125px] border-r border-slate-300 relative">
+                        <div className="flex items-center justify-between gap-1">
+                          <span>Fabric Type</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenExcelFilterCol(openExcelFilterCol === 'fabricType' ? null : 'fabricType');
+                              setExcelFilterSearch('');
+                            }}
+                            className={`p-1 rounded transition-colors ${
+                              colFilterFabric !== 'ALL' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200'
+                            }`}
+                            title="Filter Fabric Type (Excel AutoFilter)"
+                          >
+                            <Filter className="w-3 h-3" />
+                          </button>
+                        </div>
+                        {openExcelFilterCol === 'fabricType' && (
+                          <ExcelColumnFilterPopover
+                            title="Fabric Type"
+                            currentValue={colFilterFabric === 'ALL' ? '' : colFilterFabric}
+                            onApply={(val: string) => { setColFilterFabric(val || 'ALL'); setCurrentPage(1); }}
+                            distinctList={distinctFilterValues.fabricType}
+                            onClose={() => setOpenExcelFilterCol(null)}
+                          />
+                        )}
                       </th>
 
                       {/* Composition */}
-                      <th className="p-1.5 text-slate-900 font-bold min-w-[130px] border-r border-slate-200">
-                        <div className="flex items-center justify-between mb-1 text-[11px]">
+                      <th className="p-2 text-slate-900 font-bold min-w-[140px] border-r border-slate-300 relative">
+                        <div className="flex items-center justify-between gap-1">
                           <span>Composition</span>
-                          {colFilterComp && (
-                            <button onClick={() => setColFilterComp('')} className="text-rose-500 hover:text-rose-700 text-[10px] font-bold">✕</button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenExcelFilterCol(openExcelFilterCol === 'composition' ? null : 'composition');
+                              setExcelFilterSearch('');
+                            }}
+                            className={`p-1 rounded transition-colors ${
+                              colFilterComp ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200'
+                            }`}
+                            title="Filter Composition (Excel AutoFilter)"
+                          >
+                            <Filter className="w-3 h-3" />
+                          </button>
                         </div>
-                        <input
-                          type="text"
-                          value={colFilterComp}
-                          onChange={e => { setColFilterComp(e.target.value); setCurrentPage(1); }}
-                          placeholder="Comp..."
-                          className="w-full px-1.5 py-0.5 text-[10.5px] font-normal border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500"
-                        />
+                        {openExcelFilterCol === 'composition' && (
+                          <ExcelColumnFilterPopover
+                            title="Composition"
+                            currentValue={colFilterComp}
+                            onApply={(val: string) => { setColFilterComp(val); setCurrentPage(1); }}
+                            distinctList={distinctFilterValues.composition}
+                            onClose={() => setOpenExcelFilterCol(null)}
+                          />
+                        )}
                       </th>
 
                       {/* Additional Process */}
-                      <th className="p-1.5 text-slate-900 font-bold min-w-[110px] border-r border-slate-200">
-                        <div className="flex items-center justify-between mb-1 text-[11px]">
+                      <th className="p-2 text-slate-900 font-bold min-w-[120px] border-r border-slate-300 relative">
+                        <div className="flex items-center justify-between gap-1">
                           <span>Add. Process</span>
-                          {colFilterProcess && (
-                            <button onClick={() => setColFilterProcess('')} className="text-rose-500 hover:text-rose-700 text-[10px] font-bold">✕</button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenExcelFilterCol(openExcelFilterCol === 'process' ? null : 'process');
+                              setExcelFilterSearch('');
+                            }}
+                            className={`p-1 rounded transition-colors ${
+                              colFilterProcess ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200'
+                            }`}
+                            title="Filter Additional Process (Excel AutoFilter)"
+                          >
+                            <Filter className="w-3 h-3" />
+                          </button>
                         </div>
-                        <input
-                          type="text"
-                          value={colFilterProcess}
-                          onChange={e => { setColFilterProcess(e.target.value); setCurrentPage(1); }}
-                          placeholder="Process..."
-                          className="w-full px-1.5 py-0.5 text-[10.5px] font-normal border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500"
-                        />
+                        {openExcelFilterCol === 'process' && (
+                          <ExcelColumnFilterPopover
+                            title="Additional Process"
+                            currentValue={colFilterProcess}
+                            onApply={(val: string) => { setColFilterProcess(val); setCurrentPage(1); }}
+                            distinctList={distinctFilterValues.process}
+                            onClose={() => setOpenExcelFilterCol(null)}
+                          />
+                        )}
                       </th>
 
                       {/* GSM */}
-                      <th className="p-1 text-slate-900 font-bold min-w-[55px] border-r border-slate-200">
-                        <div className="text-[11px] font-bold mb-1 text-center">GSM</div>
-                        <input
-                          type="text"
-                          value={colFilterGsm}
-                          onChange={e => { setColFilterGsm(e.target.value); setCurrentPage(1); }}
-                          placeholder="GSM"
-                          className="w-full px-1 py-0.5 text-[10px] font-normal border border-slate-300 rounded bg-white text-slate-900 text-center"
-                        />
+                      <th className="p-2 text-slate-900 font-bold min-w-[80px] border-r border-slate-300 text-center relative">
+                        <div className="flex items-center justify-between gap-1">
+                          <span>GSM</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenExcelFilterCol(openExcelFilterCol === 'gsm' ? null : 'gsm');
+                              setExcelFilterSearch('');
+                            }}
+                            className={`p-1 rounded transition-colors ${
+                              colFilterGsm ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200'
+                            }`}
+                            title="Filter GSM"
+                          >
+                            <Filter className="w-3 h-3" />
+                          </button>
+                        </div>
+                        {openExcelFilterCol === 'gsm' && (
+                          <ExcelColumnFilterPopover
+                            title="GSM"
+                            currentValue={colFilterGsm}
+                            onApply={(val: string) => { setColFilterGsm(val); setCurrentPage(1); }}
+                            distinctList={distinctFilterValues.gsm}
+                            onClose={() => setOpenExcelFilterCol(null)}
+                          />
+                        )}
                       </th>
 
                       {/* Dia */}
-                      <th className="p-1 text-slate-900 font-bold min-w-[55px] border-r border-slate-200">
-                        <div className="text-[11px] font-bold mb-1 text-center">Dia</div>
-                        <input
-                          type="text"
-                          value={colFilterDia}
-                          onChange={e => { setColFilterDia(e.target.value); setCurrentPage(1); }}
-                          placeholder="Dia"
-                          className="w-full px-1 py-0.5 text-[10px] font-normal border border-slate-300 rounded bg-white text-slate-900 text-center"
-                        />
+                      <th className="p-2 text-slate-900 font-bold min-w-[80px] border-r border-slate-300 text-center relative">
+                        <div className="flex items-center justify-between gap-1">
+                          <span>Dia</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenExcelFilterCol(openExcelFilterCol === 'dia' ? null : 'dia');
+                              setExcelFilterSearch('');
+                            }}
+                            className={`p-1 rounded transition-colors ${
+                              colFilterDia ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200'
+                            }`}
+                            title="Filter Dia"
+                          >
+                            <Filter className="w-3 h-3" />
+                          </button>
+                        </div>
+                        {openExcelFilterCol === 'dia' && (
+                          <ExcelColumnFilterPopover
+                            title="Dia"
+                            currentValue={colFilterDia}
+                            onApply={(val: string) => { setColFilterDia(val); setCurrentPage(1); }}
+                            distinctList={distinctFilterValues.dia}
+                            onClose={() => setOpenExcelFilterCol(null)}
+                          />
+                        )}
                       </th>
 
-                      {/* Status (High Width to prevent overlapping) */}
-                      <th className="p-1.5 text-slate-900 font-bold min-w-[125px] border-r border-slate-300">
-                        <div className="flex items-center justify-between mb-1">
+                      {/* Status */}
+                      <th className="p-2 text-slate-900 font-bold min-w-[130px] border-r border-slate-300 relative">
+                        <div className="flex items-center justify-between gap-1">
                           <button
                             type="button"
                             onClick={() => handleSort('status')}
-                            className="flex items-center gap-1 text-slate-900 font-bold hover:text-blue-700 cursor-pointer text-[11px]"
+                            className="flex items-center gap-1 text-slate-900 font-bold hover:text-blue-700 cursor-pointer"
                           >
                             <span>Status</span>
-                            <ArrowUpDown className={`w-3 h-3 ${sortField === 'status' ? 'text-blue-700' : 'text-slate-400'}`} />
+                            <ArrowUpDown className={`w-3 h-3 ${sortField === 'status' ? 'text-blue-700 font-black' : 'text-slate-400'}`} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenExcelFilterCol(openExcelFilterCol === 'status' ? null : 'status');
+                              setExcelFilterSearch('');
+                            }}
+                            className={`p-1 rounded transition-colors ${
+                              colFilterStatus !== 'ALL' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200'
+                            }`}
+                            title="Filter Status (Excel AutoFilter)"
+                          >
+                            <Filter className="w-3 h-3" />
                           </button>
                         </div>
-                        <select
-                          value={colFilterStatus}
-                          onChange={e => { setColFilterStatus(e.target.value); setCurrentPage(1); }}
-                          className="w-full px-1 py-0.5 text-[10px] font-medium border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500"
-                        >
-                          <option value="ALL">All Status</option>
-                          <option value="In Stock">In Stock</option>
-                          <option value="Partly Received">Partly Recv</option>
-                          <option value="Waiting Dyeing">Waiting Dye</option>
-                          <option value="Fully Issued">Fully Issued</option>
-                        </select>
+                        {openExcelFilterCol === 'status' && (
+                          <ExcelColumnFilterPopover
+                            title="Status"
+                            currentValue={colFilterStatus === 'ALL' ? '' : colFilterStatus}
+                            onApply={(val: string) => { setColFilterStatus(val || 'ALL'); setCurrentPage(1); }}
+                            distinctList={distinctFilterValues.status}
+                            onClose={() => setOpenExcelFilterCol(null)}
+                          />
+                        )}
                       </th>
                     </>
                   )}
@@ -2980,14 +3389,14 @@ function FinishedFabricPageInner() {
                   {/* Order Qty (Body, Rib, SJ, Total) */}
                   {visibleSections.orderQty && (
                     <>
-                      <th className="px-2 py-2 text-right font-semibold min-w-[65px] text-blue-950 bg-blue-50/80 border-r border-blue-100">Body</th>
-                      <th className="px-2 py-2 text-right font-semibold min-w-[60px] text-blue-950 bg-blue-50/80 border-r border-blue-100">Rib</th>
-                      <th className="px-2 py-2 text-right font-semibold min-w-[60px] text-blue-950 bg-blue-50/80 border-r border-blue-100">S.Jersey</th>
-                      <th className="px-2.5 py-2 text-right font-bold min-w-[75px] text-blue-950 bg-blue-100/90 border-r border-slate-300">
+                      <th className="px-2.5 py-2 text-right font-semibold min-w-[70px] text-blue-950 bg-blue-50/80 border-r border-blue-200">Body</th>
+                      <th className="px-2.5 py-2 text-right font-semibold min-w-[65px] text-blue-950 bg-blue-50/80 border-r border-blue-200">Rib</th>
+                      <th className="px-2.5 py-2 text-right font-semibold min-w-[65px] text-blue-950 bg-blue-50/80 border-r border-blue-200">S.Jersey</th>
+                      <th className="px-3 py-2 text-right font-black min-w-[85px] text-blue-950 bg-blue-100/90 border-r border-slate-300">
                         <button
                           type="button"
                           onClick={() => handleSort('totalReq')}
-                          className="inline-flex items-center gap-1 font-bold text-blue-950 hover:text-blue-700 cursor-pointer"
+                          className="inline-flex items-center gap-1 font-black text-blue-950 hover:text-blue-700 cursor-pointer"
                         >
                           <span>Total Req</span>
                           <ArrowUpDown className={`w-3 h-3 ${sortField === 'totalReq' ? 'text-blue-700' : 'text-blue-400'}`} />
@@ -2999,14 +3408,14 @@ function FinishedFabricPageInner() {
                   {/* Received Qty (Body, Rib, SJ, Total) */}
                   {visibleSections.receivedQty && (
                     <>
-                      <th className="px-2 py-2 text-right font-semibold min-w-[65px] text-emerald-950 bg-emerald-50/80 border-r border-emerald-100">Body</th>
-                      <th className="px-2 py-2 text-right font-semibold min-w-[60px] text-emerald-950 bg-emerald-50/80 border-r border-emerald-100">Rib</th>
-                      <th className="px-2 py-2 text-right font-semibold min-w-[60px] text-emerald-950 bg-emerald-50/80 border-r border-emerald-100">S.Jersey</th>
-                      <th className="px-2.5 py-2 text-right font-bold min-w-[75px] text-emerald-950 bg-emerald-100/90 border-r border-slate-300">
+                      <th className="px-2.5 py-2 text-right font-semibold min-w-[70px] text-emerald-950 bg-emerald-50/80 border-r border-emerald-200">Body</th>
+                      <th className="px-2.5 py-2 text-right font-semibold min-w-[65px] text-emerald-950 bg-emerald-50/80 border-r border-emerald-200">Rib</th>
+                      <th className="px-2.5 py-2 text-right font-semibold min-w-[65px] text-emerald-950 bg-emerald-50/80 border-r border-emerald-200">S.Jersey</th>
+                      <th className="px-3 py-2 text-right font-black min-w-[85px] text-emerald-950 bg-emerald-100/90 border-r border-slate-300">
                         <button
                           type="button"
                           onClick={() => handleSort('totalRecv')}
-                          className="inline-flex items-center gap-1 font-bold text-emerald-950 hover:text-emerald-700 cursor-pointer"
+                          className="inline-flex items-center gap-1 font-black text-emerald-950 hover:text-emerald-700 cursor-pointer"
                         >
                           <span>Total Recv</span>
                           <ArrowUpDown className={`w-3 h-3 ${sortField === 'totalRecv' ? 'text-emerald-700' : 'text-emerald-400'}`} />
@@ -3018,14 +3427,14 @@ function FinishedFabricPageInner() {
                   {/* Issue / Delivery Qty (Body, Rib, SJ, Total) */}
                   {visibleSections.deliveryQty && (
                     <>
-                      <th className="px-2 py-2 text-right font-semibold min-w-[65px] text-purple-950 bg-purple-50/80 border-r border-purple-100">Body</th>
-                      <th className="px-2 py-2 text-right font-semibold min-w-[60px] text-purple-950 bg-purple-50/80 border-r border-purple-100">Rib</th>
-                      <th className="px-2 py-2 text-right font-semibold min-w-[60px] text-purple-950 bg-purple-50/80 border-r border-purple-100">S.Jersey</th>
-                      <th className="px-2.5 py-2 text-right font-bold min-w-[75px] text-purple-950 bg-purple-100/90 border-r border-slate-300">
+                      <th className="px-2.5 py-2 text-right font-semibold min-w-[70px] text-purple-950 bg-purple-50/80 border-r border-purple-200">Body</th>
+                      <th className="px-2.5 py-2 text-right font-semibold min-w-[65px] text-purple-950 bg-purple-50/80 border-r border-purple-200">Rib</th>
+                      <th className="px-2.5 py-2 text-right font-semibold min-w-[65px] text-purple-950 bg-purple-50/80 border-r border-purple-200">S.Jersey</th>
+                      <th className="px-3 py-2 text-right font-black min-w-[85px] text-purple-950 bg-purple-100/90 border-r border-slate-300">
                         <button
                           type="button"
                           onClick={() => handleSort('totalIssued')}
-                          className="inline-flex items-center gap-1 font-bold text-purple-950 hover:text-purple-700 cursor-pointer"
+                          className="inline-flex items-center gap-1 font-black text-purple-950 hover:text-purple-700 cursor-pointer"
                         >
                           <span>Total Issued</span>
                           <ArrowUpDown className={`w-3 h-3 ${sortField === 'totalIssued' ? 'text-purple-700' : 'text-purple-400'}`} />
@@ -3037,14 +3446,14 @@ function FinishedFabricPageInner() {
                   {/* Closing Stock (Body, Rib, SJ, Total) */}
                   {visibleSections.closingStock && (
                     <>
-                      <th className="px-2 py-2 text-right font-semibold min-w-[65px] text-sky-950 bg-sky-50/80 border-r border-sky-100">Body</th>
-                      <th className="px-2 py-2 text-right font-semibold min-w-[60px] text-sky-950 bg-sky-50/80 border-r border-sky-100">Rib</th>
-                      <th className="px-2 py-2 text-right font-semibold min-w-[60px] text-sky-950 bg-sky-50/80 border-r border-sky-100">S.Jersey</th>
-                      <th className="px-2.5 py-2 text-right font-bold min-w-[75px] text-sky-950 bg-sky-100/90 border-r border-slate-300">
+                      <th className="px-2.5 py-2 text-right font-semibold min-w-[70px] text-sky-950 bg-sky-50/80 border-r border-sky-200">Body</th>
+                      <th className="px-2.5 py-2 text-right font-semibold min-w-[65px] text-sky-950 bg-sky-50/80 border-r border-sky-200">Rib</th>
+                      <th className="px-2.5 py-2 text-right font-semibold min-w-[65px] text-sky-950 bg-sky-50/80 border-r border-sky-200">S.Jersey</th>
+                      <th className="px-3 py-2 text-right font-black min-w-[85px] text-sky-950 bg-sky-100/90 border-r border-slate-300">
                         <button
                           type="button"
                           onClick={() => handleSort('totalStock')}
-                          className="inline-flex items-center gap-1 font-bold text-sky-950 hover:text-sky-700 cursor-pointer"
+                          className="inline-flex items-center gap-1 font-black text-sky-950 hover:text-sky-700 cursor-pointer"
                         >
                           <span>Stock Bal</span>
                           <ArrowUpDown className={`w-3 h-3 ${sortField === 'totalStock' ? 'text-sky-700' : 'text-sky-400'}`} />
@@ -3056,37 +3465,49 @@ function FinishedFabricPageInner() {
                   {/* Location & Leftover */}
                   {visibleSections.locationInfo && (
                     <>
-                      <th className="p-1.5 font-bold min-w-[105px] text-amber-950 bg-amber-50/80 border-r border-amber-100">
-                        <div className="text-[11px] font-bold mb-1">Location</div>
-                        <select
-                          value={colFilterLocation}
-                          onChange={e => { setColFilterLocation(e.target.value); setCurrentPage(1); }}
-                          className="w-full px-1 py-0.5 text-[10px] font-medium border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden"
-                        >
-                          <option value="ALL">All Loc</option>
-                          <option value="F.ST">F.ST</option>
-                          <option value="N.ST">N.ST</option>
-                          <option value="CB">CB</option>
-                          <option value=".CB/F.ST">.CB/F.ST</option>
-                          <option value=".CB/N.ST">.CB/N.ST</option>
-                          <option value=".F.ST/N.ST">.F.ST/N.ST</option>
-                        </select>
+                      <th className="p-2 font-bold min-w-[110px] text-amber-950 bg-amber-50/80 border-r border-amber-200 relative">
+                        <div className="flex items-center justify-between gap-1">
+                          <span>Location</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenExcelFilterCol(openExcelFilterCol === 'location' ? null : 'location');
+                              setExcelFilterSearch('');
+                            }}
+                            className={`p-1 rounded transition-colors ${
+                              colFilterLocation !== 'ALL' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200'
+                            }`}
+                            title="Filter Location (Excel AutoFilter)"
+                          >
+                            <Filter className="w-3 h-3" />
+                          </button>
+                        </div>
+                        {openExcelFilterCol === 'location' && (
+                          <ExcelColumnFilterPopover
+                            title="Location"
+                            currentValue={colFilterLocation === 'ALL' ? '' : colFilterLocation}
+                            onApply={(val: string) => { setColFilterLocation(val || 'ALL'); setCurrentPage(1); }}
+                            distinctList={distinctFilterValues.location}
+                            onClose={() => setOpenExcelFilterCol(null)}
+                          />
+                        )}
                       </th>
-                      <th className="px-2 py-2 text-right font-bold min-w-[70px] text-amber-950 bg-amber-50/80 border-r border-amber-100">Leftover</th>
-                      <th className="px-2 py-2 text-right font-bold min-w-[65px] text-amber-950 bg-amber-50/80 border-r border-amber-100">Excess Qty</th>
-                      <th className="px-2 py-2 text-center font-bold min-w-[65px] text-amber-950 bg-amber-50/80 border-r border-slate-300">Date</th>
+                      <th className="px-2.5 py-2 text-right font-bold min-w-[75px] text-amber-950 bg-amber-50/80 border-r border-amber-200">Leftover</th>
+                      <th className="px-2.5 py-2 text-right font-bold min-w-[75px] text-amber-950 bg-amber-50/80 border-r border-amber-200">Excess Qty</th>
+                      <th className="px-2.5 py-2 text-center font-bold min-w-[75px] text-amber-950 bg-amber-50/80 border-r border-slate-300">Date</th>
                     </>
                   )}
 
-                  <th className="px-2.5 py-2 text-center font-bold min-w-[60px] text-slate-800">
+                  <th className="px-2.5 py-2 text-center font-bold min-w-[65px] text-slate-800">
                     {hasColFilters ? (
                       <button
                         type="button"
                         onClick={clearColFilters}
-                        className="px-2 py-1 text-[10.5px] font-bold text-rose-600 hover:text-white hover:bg-rose-600 border border-rose-300 rounded transition-colors"
+                        className="px-2 py-0.5 text-[11px] font-bold text-rose-700 bg-rose-50 hover:text-white hover:bg-rose-600 border border-rose-300 rounded shadow-xs transition-colors"
                         title="Clear all column filters"
                       >
-                        Clear
+                        Reset All
                       </button>
                     ) : (
                       'Action'
@@ -3429,33 +3850,32 @@ function FinishedFabricPageInner() {
       )}
 
       {/* ===================================================================== */}
-      {/* ENTERPRISE MODAL: COLOR-WISE DETAIL & ACTIVE ISSUE / RECEIVE DESK */}
+      {/* ===================================================================== */}
+      {/* ENTERPRISE MODAL: FULL SCREEN COLOR-WISE BREAKDOWN & ACTION DESK */}
       {/* ===================================================================== */}
       {selectedJobDetail && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-2xs flex items-center justify-center p-3 md:p-6 overflow-y-auto">
-          <div className="bg-white w-full max-w-4xl lg:max-w-5xl rounded-xl shadow-2xl border border-slate-200 flex flex-col max-h-[92vh] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-1 md:inset-2 z-50 bg-slate-900/75 backdrop-blur-2xs flex items-center justify-center p-1 md:p-2 overflow-hidden">
+          <div className="bg-white w-full max-w-[98vw] h-[96vh] rounded-2xl shadow-2xl border-2 border-slate-300 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             {/* Modal Header */}
-            <div className="bg-[#0F274E] text-white px-5 py-3.5 flex items-center justify-between border-b border-slate-800 shrink-0">
-              <div>
-                <div className="flex items-center gap-2.5">
-                  <span className="px-2.5 py-1 rounded text-xs font-black tracking-wider uppercase bg-sky-400 text-slate-950 shadow-xs">
-                    {selectedJobDetail.buyer}
+            <div className="bg-[#0F274E] text-white px-5 py-3 flex items-center justify-between border-b border-slate-800 shrink-0">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="px-3 py-1 rounded text-xs font-black tracking-wider uppercase bg-sky-400 text-slate-950 shadow-xs">
+                  {selectedJobDetail.buyer}
+                </span>
+                <span className="text-base font-black text-white tracking-tight">
+                  Job: {selectedJobDetail.jobNo}
+                </span>
+                {selectedJobDetail.isImported && (
+                  <span className="text-[10px] px-2 py-0.5 bg-teal-400 text-slate-950 rounded font-black tracking-wide uppercase shadow-xs">
+                    IMPORTED
                   </span>
-                  <span className="text-base font-black text-white tracking-tight">
-                    Job: {selectedJobDetail.jobNo}
-                  </span>
-                  {selectedJobDetail.isImported && (
-                    <span className="text-[10px] px-2 py-0.5 bg-teal-400 text-slate-950 rounded font-black tracking-wide uppercase shadow-xs">
-                      IMPORTED
-                    </span>
-                  )}
-                </div>
-                <div className="text-xs text-slate-200 mt-2 flex flex-wrap items-center gap-2">
-                  <span className="bg-slate-800/90 px-2.5 py-0.5 rounded border border-slate-700">Style: <strong className="text-white font-bold">{selectedJobDetail.style || '—'}</strong></span>
-                  <span className="bg-slate-800/90 px-2.5 py-0.5 rounded border border-slate-700">Fabric: <strong className="text-white font-bold">{selectedJobDetail.fabric || '—'}</strong></span>
-                  <span className="bg-slate-800/90 px-2.5 py-0.5 rounded border border-slate-700">Comp: <strong className="text-white font-bold">{selectedJobDetail.composition || '—'}</strong></span>
-                  <span className="bg-slate-800/90 px-2.5 py-0.5 rounded border border-slate-700">GSM: <strong className="text-white font-bold">{selectedJobDetail.gsm || '—'}</strong></span>
-                  <span className="bg-slate-800/90 px-2.5 py-0.5 rounded border border-slate-700">Dia: <strong className="text-white font-bold">{selectedJobDetail.dia || '—'}</strong></span>
+                )}
+                <div className="hidden lg:flex items-center gap-2 text-xs text-slate-200">
+                  <span className="bg-slate-800/90 px-2 py-0.5 rounded border border-slate-700">Style: <strong className="text-white font-bold">{selectedJobDetail.style || '—'}</strong></span>
+                  <span className="bg-slate-800/90 px-2 py-0.5 rounded border border-slate-700">Fabric: <strong className="text-white font-bold">{selectedJobDetail.fabric || '—'}</strong></span>
+                  <span className="bg-slate-800/90 px-2 py-0.5 rounded border border-slate-700">Comp: <strong className="text-white font-bold">{selectedJobDetail.composition || '—'}</strong></span>
+                  <span className="bg-slate-800/90 px-2 py-0.5 rounded border border-slate-700">GSM: <strong className="text-white font-bold">{selectedJobDetail.gsm || '—'}</strong></span>
+                  <span className="bg-slate-800/90 px-2 py-0.5 rounded border border-slate-700">Dia: <strong className="text-white font-bold">{selectedJobDetail.dia || '—'}</strong></span>
                 </div>
               </div>
               <button
@@ -3470,7 +3890,7 @@ function FinishedFabricPageInner() {
 
             {/* Mode Navigation Tabs */}
             <div className="bg-slate-100 border-b border-slate-200 px-5 py-2 flex items-center justify-between gap-2 shrink-0">
-              <div className="flex items-center gap-1.5 text-xs">
+              <div className="flex items-center gap-2 text-xs">
                 <button
                   type="button"
                   onClick={() => setActionModalMode('VIEW')}
@@ -3480,27 +3900,27 @@ function FinishedFabricPageInner() {
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
                   }`}
                 >
-                  Statement & Colors ({selectedJobDetail.colorCount})
+                  Statement &amp; Colors ({selectedJobDetail.colorCount})
                 </button>
                 <button
                   type="button"
                   onClick={() => setActionModalMode('ISSUE')}
-                  className={`px-3 py-1.5 rounded-md font-bold flex items-center gap-1.5 transition-all ${
+                  className={`px-3.5 py-1.5 rounded-md font-bold flex items-center gap-1.5 transition-all ${
                     actionModalMode === 'ISSUE'
-                      ? 'bg-purple-700 text-white shadow-2xs'
-                      : 'text-purple-800 bg-purple-50 hover:bg-purple-100 border border-purple-200'
+                      ? 'bg-purple-700 text-white shadow-xs'
+                      : 'text-purple-800 bg-purple-50 hover:bg-purple-100 border border-purple-300'
                   }`}
                 >
                   <Scissors className="w-3.5 h-3.5" />
-                  <span>Issue to Cutting</span>
+                  <span>Issue to Cutting Floor</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setActionModalMode('RECEIVE')}
-                  className={`px-3 py-1.5 rounded-md font-bold flex items-center gap-1.5 transition-all ${
+                  className={`px-3.5 py-1.5 rounded-md font-bold flex items-center gap-1.5 transition-all ${
                     actionModalMode === 'RECEIVE'
-                      ? 'bg-emerald-700 text-white shadow-2xs'
-                      : 'text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200'
+                      ? 'bg-emerald-700 text-white shadow-xs'
+                      : 'text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300'
                   }`}
                 >
                   <Plus className="w-3.5 h-3.5" />
@@ -3508,217 +3928,343 @@ function FinishedFabricPageInner() {
                 </button>
               </div>
 
-              {/* Column toggle mini pills */}
-              <div className="hidden sm:flex items-center gap-1 text-[11px]">
-                <span className="text-slate-500 font-semibold mr-1">Columns:</span>
+              <div className="flex items-center gap-2 text-xs">
                 <button
                   type="button"
-                  onClick={() => setDrawerVisibleSections(v => ({ ...v, orderQty: !v.orderQty }))}
-                  className={`px-2 py-0.5 rounded border text-[10.5px] ${drawerVisibleSections.orderQty ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-700 border-slate-300'}`}
+                  onClick={() => {
+                    const tableEl = document.getElementById('modal-color-table-container');
+                    if (tableEl) tableEl.scrollBy({ left: -300, behavior: 'smooth' });
+                  }}
+                  className="px-2 py-1 bg-white hover:bg-slate-200 border border-slate-300 rounded text-slate-700 font-bold"
+                  title="Scroll Table Left"
                 >
-                  Order
+                  &larr; Scroll Left
                 </button>
                 <button
                   type="button"
-                  onClick={() => setDrawerVisibleSections(v => ({ ...v, receivedQty: !v.receivedQty }))}
-                  className={`px-2 py-0.5 rounded border text-[10.5px] ${drawerVisibleSections.receivedQty ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-300'}`}
+                  onClick={() => {
+                    const tableEl = document.getElementById('modal-color-table-container');
+                    if (tableEl) tableEl.scrollBy({ left: 300, behavior: 'smooth' });
+                  }}
+                  className="px-2 py-1 bg-white hover:bg-slate-200 border border-slate-300 rounded text-slate-700 font-bold"
+                  title="Scroll Table Right"
                 >
-                  Recv
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDrawerVisibleSections(v => ({ ...v, deliveryQty: !v.deliveryQty }))}
-                  className={`px-2 py-0.5 rounded border text-[10.5px] ${drawerVisibleSections.deliveryQty ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-slate-700 border-slate-300'}`}
-                >
-                  Issue
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDrawerVisibleSections(v => ({ ...v, closingStock: !v.closingStock }))}
-                  className={`px-2 py-0.5 rounded border text-[10.5px] ${drawerVisibleSections.closingStock ? 'bg-sky-600 text-white border-sky-600' : 'bg-white text-slate-700 border-slate-300'}`}
-                >
-                  Stock
+                  Scroll Right &rarr;
                 </button>
               </div>
             </div>
 
             {/* Modal Body: Scrollable area */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-4">
-              {/* Summary Stats Cards with high-contrast borders & text */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center text-xs">
-                <div className="bg-slate-100 p-3 rounded-lg border-2 border-slate-300 shadow-2xs">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {/* Summary Stats Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center text-xs">
+                <div className="bg-slate-50 p-3 rounded-lg border-2 border-slate-300 shadow-2xs">
                   <span className="text-[11px] uppercase tracking-wider text-slate-700 font-extrabold block">Total Required</span>
-                  <strong className="text-slate-950 font-black text-lg block">{Math.round(selectedJobDetail.totalReq).toLocaleString()} kg</strong>
+                  <strong className="text-slate-950 font-black text-xl block mt-0.5">{Math.round(selectedJobDetail.totalReq).toLocaleString()} kg</strong>
+                  <div className="text-[10.5px] text-slate-600 font-semibold mt-1">
+                    Body: {Math.round(selectedJobDetail.reqBody).toLocaleString()} · Rib: {Math.round(selectedJobDetail.reqRib).toLocaleString()} · SJ: {Math.round(selectedJobDetail.reqSJ).toLocaleString()}
+                  </div>
                 </div>
-                <div className="bg-emerald-100 p-3 rounded-lg border-2 border-emerald-500 shadow-2xs">
-                  <span className="text-[11px] uppercase tracking-wider text-emerald-950 font-extrabold block">Total Received</span>
-                  <strong className="text-emerald-950 font-black text-lg block">{Math.round(selectedJobDetail.totalRecv).toLocaleString()} kg</strong>
+
+                <div className="bg-emerald-50 p-3 rounded-lg border-2 border-emerald-400 shadow-2xs">
+                  <span className="text-[11px] uppercase tracking-wider text-emerald-900 font-extrabold block">Total Received</span>
+                  <strong className="text-emerald-950 font-black text-xl block mt-0.5">{Math.round(selectedJobDetail.totalRecv).toLocaleString()} kg</strong>
+                  <div className="text-[10.5px] text-emerald-800 font-semibold mt-1">
+                    Body: {Math.round(selectedJobDetail.recvBody).toLocaleString()} · Rib: {Math.round(selectedJobDetail.recvRib).toLocaleString()} · SJ: {Math.round(selectedJobDetail.recvSJ).toLocaleString()}
+                  </div>
                 </div>
-                <div className="bg-purple-100 p-3 rounded-lg border-2 border-purple-500 shadow-2xs">
-                  <span className="text-[11px] uppercase tracking-wider text-purple-950 font-extrabold block">Issued to Cutting</span>
-                  <strong className="text-purple-950 font-black text-lg block">{Math.round(selectedJobDetail.totalIssued).toLocaleString()} kg</strong>
+
+                <div className="bg-purple-50 p-3 rounded-lg border-2 border-purple-400 shadow-2xs">
+                  <span className="text-[11px] uppercase tracking-wider text-purple-900 font-extrabold block">Issued to Cutting</span>
+                  <strong className="text-purple-950 font-black text-xl block mt-0.5">{Math.round(selectedJobDetail.totalIssued).toLocaleString()} kg</strong>
+                  <div className="text-[10.5px] text-purple-800 font-semibold mt-1">
+                    Body: {Math.round(selectedJobDetail.issuedBody).toLocaleString()} · Rib: {Math.round(selectedJobDetail.issuedRib).toLocaleString()} · SJ: {Math.round(selectedJobDetail.issuedSJ).toLocaleString()}
+                  </div>
                 </div>
-                <div className="bg-sky-100 p-3 rounded-lg border-2 border-sky-500 shadow-2xs">
-                  <span className="text-[11px] uppercase tracking-wider text-sky-950 font-extrabold block">In-Stock Balance</span>
-                  <strong className="text-sky-950 font-black text-lg block">{Math.round(selectedJobDetail.totalStock).toLocaleString()} kg</strong>
+
+                <div className="bg-sky-50 p-3 rounded-lg border-2 border-sky-400 shadow-2xs">
+                  <span className="text-[11px] uppercase tracking-wider text-sky-900 font-extrabold block">In-Stock Balance</span>
+                  <strong className="text-sky-950 font-black text-xl block mt-0.5">{Math.round(selectedJobDetail.totalStock).toLocaleString()} kg</strong>
+                  <div className="text-[10.5px] text-sky-800 font-semibold mt-1">
+                    Body: {Math.round(selectedJobDetail.stockBody).toLocaleString()} · Rib: {Math.round(selectedJobDetail.stockRib).toLocaleString()} · SJ: {Math.round(selectedJobDetail.stockSJ).toLocaleString()}
+                  </div>
                 </div>
               </div>
 
-              {/* Color Details Table */}
-              <div className="rounded-lg border border-slate-200 overflow-hidden shadow-2xs">
-                <div className="bg-slate-100 px-3.5 py-2 border-b border-slate-200 flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                    <Palette className="w-3.5 h-3.5 text-slate-600" />
-                    Color-Wise Fabric Breakdown ({selectedJobDetail.colorCount} Colors)
+              {/* Color Details Table: 3 Components (Body, Rib, SJ) in Separate Clean Columns */}
+              <div className="rounded-lg border-2 border-slate-300 overflow-hidden shadow-xs bg-white">
+                <div className="bg-slate-100 px-4 py-2 border-b border-slate-200 flex items-center justify-between">
+                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <Palette className="w-3.5 h-3.5 text-blue-600" />
+                    Color-Wise Fabric Ledger ({selectedJobDetail.colorCount} Colors)
                   </h4>
-                  <span className="text-[11px] text-slate-500 font-medium">Click row to select for issue/receive</span>
+                  <span className="text-xs text-blue-700 font-bold">
+                    Tip: Click any Color Name to view its chronological transaction history &amp; batch records
+                  </span>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div id="modal-color-table-container" className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
-                    <thead className="bg-[#F1F5F9] text-slate-800 border-b border-slate-300 text-[11px]">
-                      <tr>
-                        <th className="px-3 py-2.5 font-bold min-w-[130px]">Color Name</th>
-                        {drawerVisibleSections.orderQty && (
-                          <th className="px-3 py-2 text-right bg-blue-50 text-blue-950 font-bold border-l border-blue-100 min-w-[170px]">
-                            <div>Required / Order</div>
-                            <div className="text-[10px] text-blue-700 font-normal">Total · Body · Rib · SJ</div>
-                          </th>
-                        )}
-                        {drawerVisibleSections.receivedQty && (
-                          <th className="px-3 py-2 text-right bg-emerald-50 text-emerald-950 font-bold border-l border-emerald-100 min-w-[170px]">
-                            <div>Received Fabric</div>
-                            <div className="text-[10px] text-emerald-700 font-normal">Total · Body · Rib · SJ</div>
-                          </th>
-                        )}
-                        <th className="px-3 py-2 text-right bg-amber-50 text-amber-950 font-bold border-l border-amber-100 min-w-[120px]">
-                          <div>Dyeing Balance</div>
-                          <div className="text-[10px] text-amber-700 font-normal">Pending to Recv</div>
+                    <thead>
+                      {/* TIER 1 */}
+                      <tr className="border-b border-slate-300 text-center font-bold text-xs uppercase tracking-wider">
+                        <th className="sticky left-0 z-30 bg-slate-100 text-slate-900 px-3.5 py-2.5 text-left border-r border-slate-300 min-w-[160px]">
+                          Color Name
                         </th>
-                        {drawerVisibleSections.deliveryQty && (
-                          <th className="px-3 py-2 text-right bg-purple-50 text-purple-950 font-bold border-l border-purple-100 min-w-[170px]">
-                            <div>Issued to Cutting</div>
-                            <div className="text-[10px] text-purple-700 font-normal">Total · Body · Rib · SJ</div>
-                          </th>
-                        )}
-                        {drawerVisibleSections.closingStock && (
-                          <th className="px-3 py-2 text-right bg-sky-50 text-sky-950 font-bold border-l border-sky-100 min-w-[170px]">
-                            <div>In-Store Stock</div>
-                            <div className="text-[10px] text-sky-700 font-normal">Total · Body · Rib · SJ</div>
-                          </th>
-                        )}
-                        {drawerVisibleSections.location && (
-                          <th className="px-2.5 py-2 text-center bg-slate-100 text-slate-900 font-bold border-l border-slate-200 min-w-[85px]">Location</th>
-                        )}
+                        <th className="bg-slate-100 text-slate-900 px-3 py-2 border-r border-slate-300 min-w-[120px]">
+                          Batch No
+                        </th>
+                        <th colSpan={4} className="bg-blue-100 text-blue-950 px-3 py-2 border-r border-slate-300 font-black">
+                          Required / Order (kg)
+                        </th>
+                        <th colSpan={4} className="bg-emerald-100 text-emerald-950 px-3 py-2 border-r border-slate-300 font-black">
+                          Received Fabric (kg)
+                        </th>
+                        <th className="bg-amber-100 text-amber-950 px-3 py-2 border-r border-slate-300 font-black min-w-[100px]">
+                          Dyeing Bal
+                        </th>
+                        <th colSpan={4} className="bg-purple-100 text-purple-950 px-3 py-2 border-r border-slate-300 font-black">
+                          Issued to Cutting (kg)
+                        </th>
+                        <th colSpan={4} className="bg-sky-100 text-sky-950 px-3 py-2 border-r border-slate-300 font-black">
+                          In-Store Stock (kg)
+                        </th>
+                        <th className="bg-slate-100 text-slate-900 px-3 py-2 border-r border-slate-300 min-w-[80px]">
+                          Location
+                        </th>
+                        <th className="bg-slate-100 text-slate-900 px-3 py-2 min-w-[120px]">
+                          Actions
+                        </th>
+                      </tr>
+
+                      {/* TIER 2: Component Breakdown Columns */}
+                      <tr className="bg-slate-50 text-slate-800 text-[11px] font-bold border-b border-slate-300 text-right">
+                        <th className="sticky left-0 z-30 bg-slate-100 text-left px-3.5 py-1.5 border-r border-slate-300 text-[10px] text-slate-500 font-semibold">
+                          (Click for Ledger)
+                        </th>
+                        <th className="text-center px-2 py-1.5 border-r border-slate-300 text-[10px] text-slate-500 font-semibold">
+                          Batch Tags
+                        </th>
+
+                        <th className="px-2 py-1.5 border-r border-blue-200 bg-blue-50/70 text-blue-950">Body</th>
+                        <th className="px-2 py-1.5 border-r border-blue-200 bg-blue-50/70 text-blue-950">Rib</th>
+                        <th className="px-2 py-1.5 border-r border-blue-200 bg-blue-50/70 text-blue-950">SJ</th>
+                        <th className="px-2.5 py-1.5 border-r border-slate-300 bg-blue-100 text-blue-950 font-black">Total Req</th>
+
+                        <th className="px-2 py-1.5 border-r border-emerald-200 bg-emerald-50/70 text-emerald-950">Body</th>
+                        <th className="px-2 py-1.5 border-r border-emerald-200 bg-emerald-50/70 text-emerald-950">Rib</th>
+                        <th className="px-2 py-1.5 border-r border-emerald-200 bg-emerald-50/70 text-emerald-950">SJ</th>
+                        <th className="px-2.5 py-1.5 border-r border-slate-300 bg-emerald-100 text-emerald-950 font-black">Total Recv</th>
+
+                        <th className="px-2 py-1.5 border-r border-slate-300 bg-amber-50 text-amber-950 font-black text-center">Pending</th>
+
+                        <th className="px-2 py-1.5 border-r border-purple-200 bg-purple-50/70 text-purple-950">Body</th>
+                        <th className="px-2 py-1.5 border-r border-purple-200 bg-purple-50/70 text-purple-950">Rib</th>
+                        <th className="px-2 py-1.5 border-r border-purple-200 bg-purple-50/70 text-purple-950">SJ</th>
+                        <th className="px-2.5 py-1.5 border-r border-slate-300 bg-purple-100 text-purple-950 font-black">Total Issued</th>
+
+                        <th className="px-2 py-1.5 border-r border-sky-200 bg-sky-50/70 text-sky-950">Body</th>
+                        <th className="px-2 py-1.5 border-r border-sky-200 bg-sky-50/70 text-sky-950">Rib</th>
+                        <th className="px-2 py-1.5 border-r border-sky-200 bg-sky-50/70 text-sky-950">SJ</th>
+                        <th className="px-2.5 py-1.5 border-r border-slate-300 bg-sky-100 text-sky-950 font-black">Stock Bal</th>
+
+                        <th className="text-center px-2 py-1.5 border-r border-slate-300 text-[10px] text-slate-500">Zone</th>
+                        <th className="text-center px-2 py-1.5 text-[10px] text-slate-500">Action Desk</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-200 text-xs text-slate-800">
-                      {selectedJobDetail.colors.map((c, i) => {
+                    <tbody className="divide-y divide-slate-200 text-xs">
+                      {selectedJobDetail.colors.map((c) => {
                         const isSelected = actionForm.selectedColorId === c.id;
                         return (
                           <tr
                             key={c.id}
-                            onClick={() => {
-                              setActionForm(prev => ({
-                                ...prev,
-                                selectedColorId: c.id,
-                                colorName: c.color,
-                                location: c.location || prev.location,
-                              }));
-                            }}
-                            className={`cursor-pointer transition-colors ${
-                              isSelected ? 'bg-blue-50/80 font-semibold' : 'hover:bg-slate-50'
+                            className={`transition-colors text-right ${
+                              isSelected ? 'bg-blue-50/90 font-semibold' : 'hover:bg-slate-50'
                             }`}
                           >
-                            <td className="px-3 py-2.5 font-bold text-slate-900">
-                              <div className="flex items-center gap-1.5">
-                                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${isSelected ? 'bg-blue-600 ring-2 ring-blue-300' : 'bg-slate-400'}`} />
-                                <span className="text-[12.5px]">{c.color || '—'}</span>
-                              </div>
+                            {/* Color Name: Click to view ledger */}
+                            <td className="sticky left-0 z-20 bg-inherit text-left px-3.5 py-2.5 font-bold text-slate-900 border-r border-slate-300">
+                              <button
+                                type="button"
+                                onClick={() => setHistoryColorModal({ jobNo: selectedJobDetail.jobNo, color: c })}
+                                className="flex items-center gap-2 hover:text-blue-700 text-left group"
+                                title="Click to view transaction ledger &amp; batches"
+                              >
+                                <span
+                                  className="w-3.5 h-3.5 rounded-full shrink-0 shadow-xs border border-slate-400 group-hover:scale-110 transition-transform"
+                                  style={{ backgroundColor: getColorHex(c.color) }}
+                                />
+                                <span className="font-extrabold text-[12.5px] group-hover:underline">
+                                  {c.color || 'Solid'}
+                                </span>
+                                <Clock className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 shrink-0" />
+                              </button>
                             </td>
 
-                            {drawerVisibleSections.orderQty && (
-                              <td className="px-3 py-2 text-right border-l border-slate-200">
-                                <div className="font-extrabold text-[12.5px] text-slate-900 mb-1">{Math.round(c.totalReq).toLocaleString()} kg</div>
-                                <div className="flex items-center justify-end gap-1 text-[10px]">
-                                  <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-semibold border border-slate-200">Body: {Math.round(c.reqBody)}</span>
-                                  <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-semibold border border-slate-200">Rib: {Math.round(c.reqRib)}</span>
-                                  <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-semibold border border-slate-200">SJ: {Math.round(c.reqSJ)}</span>
+                            {/* Batch No Column */}
+                            <td className="text-center px-2 py-2 border-r border-slate-300 font-mono text-[11px]">
+                              {c.batches && c.batches.length > 0 ? (
+                                <div className="flex flex-wrap gap-1 justify-center">
+                                  {c.batches.map((b) => (
+                                    <span key={b} className="bg-amber-100 text-amber-950 border border-amber-300 px-1.5 py-0.5 rounded font-bold text-[10px]">
+                                      {b}
+                                    </span>
+                                  ))}
                                 </div>
-                              </td>
-                            )}
+                              ) : (
+                                <span className="text-slate-400 italic text-[10px]">B-01</span>
+                              )}
+                            </td>
 
-                            {drawerVisibleSections.receivedQty && (
-                              <td className="px-3 py-2 text-right border-l border-slate-200">
-                                <div className="font-black text-[12.5px] text-emerald-950 mb-1">{Math.round(c.totalRecv).toLocaleString()} kg</div>
-                                <div className="flex items-center justify-end gap-1 text-[10px]">
-                                  <span className="bg-emerald-50 text-emerald-900 px-1.5 py-0.5 rounded font-semibold border border-emerald-200">Body: {Math.round(c.recvBody)}</span>
-                                  <span className="bg-emerald-50 text-emerald-900 px-1.5 py-0.5 rounded font-semibold border border-emerald-200">Rib: {Math.round(c.recvRib)}</span>
-                                  <span className="bg-emerald-50 text-emerald-900 px-1.5 py-0.5 rounded font-semibold border border-emerald-200">SJ: {Math.round(c.recvSJ)}</span>
-                                </div>
-                              </td>
-                            )}
+                            {/* Order Qty: Body, Rib, SJ, Total */}
+                            <td className="px-2 py-2 border-r border-blue-100">{Math.round(c.reqBody).toLocaleString()}</td>
+                            <td className="px-2 py-2 border-r border-blue-100">{Math.round(c.reqRib).toLocaleString()}</td>
+                            <td className="px-2 py-2 border-r border-blue-100 text-slate-400">{Math.round(c.reqSJ) || '0'}</td>
+                            <td className="px-2.5 py-2 border-r border-slate-300 font-extrabold text-blue-950 bg-blue-50/60">
+                              {Math.round(c.totalReq).toLocaleString()}
+                            </td>
 
-                            {/* Dyeing Balance (Pending to Receive) */}
-                            <td className="px-3 py-2 text-right border-l border-slate-200">
-                              <div className={`font-black text-[11.5px] px-2 py-0.5 rounded inline-block ${
+                            {/* Received Fabric: Body, Rib, SJ, Total */}
+                            <td className="px-2 py-2 border-r border-emerald-100">{Math.round(c.recvBody).toLocaleString()}</td>
+                            <td className="px-2 py-2 border-r border-emerald-100">{Math.round(c.recvRib).toLocaleString()}</td>
+                            <td className="px-2 py-2 border-r border-emerald-100 text-slate-400">{Math.round(c.recvSJ) || '0'}</td>
+                            <td className="px-2.5 py-2 border-r border-slate-300 font-extrabold text-emerald-950 bg-emerald-50/60">
+                              {Math.round(c.totalRecv).toLocaleString()}
+                            </td>
+
+                            {/* Dyeing Balance */}
+                            <td className="px-2 py-2 border-r border-slate-300 text-center font-bold">
+                              <span className={`px-2 py-0.5 rounded text-[10.5px] ${
                                 c.dyeingBalance > 0
-                                  ? 'bg-amber-100 text-amber-950 border border-amber-300'
-                                  : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                  ? 'bg-amber-100 text-amber-950 border border-amber-300 font-black'
+                                  : 'bg-emerald-50 text-emerald-800'
                               }`}>
                                 {c.dyeingBalance > 0 ? `${Math.round(c.dyeingBalance).toLocaleString()} kg` : '0 kg (Done)'}
-                              </div>
+                              </span>
                             </td>
 
-                            {drawerVisibleSections.deliveryQty && (
-                              <td className="px-3 py-2 text-right border-l border-slate-200">
-                                <div className="font-black text-[12.5px] text-purple-950 mb-1">{Math.round(c.totalIssued).toLocaleString()} kg</div>
-                                <div className="flex items-center justify-end gap-1 text-[10px]">
-                                  <span className="bg-purple-50 text-purple-900 px-1.5 py-0.5 rounded font-semibold border border-purple-200">Body: {Math.round(c.issuedBody)}</span>
-                                  <span className="bg-purple-50 text-purple-900 px-1.5 py-0.5 rounded font-semibold border border-purple-200">Rib: {Math.round(c.issuedRib)}</span>
-                                  <span className="bg-purple-50 text-purple-900 px-1.5 py-0.5 rounded font-semibold border border-purple-200">SJ: {Math.round(c.issuedSJ)}</span>
-                                </div>
-                              </td>
-                            )}
+                            {/* Issued to Cutting: Body, Rib, SJ, Total */}
+                            <td className="px-2 py-2 border-r border-purple-100">{Math.round(c.issuedBody).toLocaleString()}</td>
+                            <td className="px-2 py-2 border-r border-purple-100">{Math.round(c.issuedRib).toLocaleString()}</td>
+                            <td className="px-2 py-2 border-r border-purple-100 text-slate-400">{Math.round(c.issuedSJ) || '0'}</td>
+                            <td className="px-2.5 py-2 border-r border-slate-300 font-extrabold text-purple-950 bg-purple-50/60">
+                              {Math.round(c.totalIssued).toLocaleString()}
+                            </td>
 
-                            {drawerVisibleSections.closingStock && (
-                              <td className="px-3 py-2 text-right border-l border-slate-200">
-                                <div className="font-black text-[12.5px] text-sky-950 mb-1">{Math.round(c.stockBalance).toLocaleString()} kg</div>
-                                <div className="flex items-center justify-end gap-1 text-[10px]">
-                                  <span className="bg-sky-50 text-sky-900 px-1.5 py-0.5 rounded font-semibold border border-sky-200">Body: {Math.round(c.stockBody)}</span>
-                                  <span className="bg-sky-50 text-sky-900 px-1.5 py-0.5 rounded font-semibold border border-sky-200">Rib: {Math.round(c.stockRib)}</span>
-                                  <span className="bg-sky-50 text-sky-900 px-1.5 py-0.5 rounded font-semibold border border-sky-200">SJ: {Math.round(c.stockSJ)}</span>
-                                </div>
-                              </td>
-                            )}
+                            {/* In-Store Closing Stock: Body, Rib, SJ, Total */}
+                            <td className="px-2 py-2 border-r border-sky-100">{Math.round(c.stockBody).toLocaleString()}</td>
+                            <td className="px-2 py-2 border-r border-sky-100">{Math.round(c.stockRib).toLocaleString()}</td>
+                            <td className="px-2 py-2 border-r border-sky-100 text-slate-400">{Math.round(c.stockSJ) || '0'}</td>
+                            <td className="px-2.5 py-2 border-r border-slate-300 font-black text-sky-950 bg-sky-50/60">
+                              {Math.round(c.stockBalance).toLocaleString()}
+                            </td>
 
-                            {drawerVisibleSections.location && (
-                              <td className="px-2.5 py-2 text-center border-l border-slate-200">
-                                <span className="px-2 py-0.5 rounded text-[11px] font-extrabold bg-blue-100 text-blue-900 border border-blue-300">
-                                  {c.location || 'F.ST'}
-                                </span>
-                              </td>
-                            )}
+                            {/* Location */}
+                            <td className="px-2 py-2 border-r border-slate-300 text-center">
+                              <span className="px-2 py-0.5 rounded text-[11px] font-extrabold bg-blue-100 text-blue-900 border border-blue-300">
+                                {c.location || 'F.ST'}
+                              </span>
+                            </td>
+
+                            {/* Actions */}
+                            <td className="px-2 py-2 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActionModalMode('RECEIVE');
+                                    setActionForm(f => ({ ...f, selectedColorId: c.id, colorName: c.color }));
+                                  }}
+                                  className="px-2 py-0.5 bg-emerald-100 text-emerald-900 hover:bg-emerald-200 border border-emerald-300 rounded text-[10px] font-bold"
+                                  title="Receive inward fabric"
+                                >
+                                  + Recv
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActionModalMode('ISSUE');
+                                    setActionForm(f => ({ ...f, selectedColorId: c.id, colorName: c.color }));
+                                  }}
+                                  className="px-2 py-0.5 bg-purple-100 text-purple-900 hover:bg-purple-200 border border-purple-300 rounded text-[10px] font-bold"
+                                  title="Issue to cutting"
+                                >
+                                  ✂ Issue
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setHistoryColorModal({ jobNo: selectedJobDetail.jobNo, color: c })}
+                                  className="px-1.5 py-0.5 bg-slate-100 text-slate-800 hover:bg-slate-200 border border-slate-300 rounded text-[10px] font-bold"
+                                  title="View Color Ledger"
+                                >
+                                  📋 Ledger
+                                </button>
+                              </div>
+                            </td>
                           </tr>
                         );
                       })}
                     </tbody>
+                    {/* TOTAL JOB ROW */}
+                    <tfoot>
+                      <tr className="bg-slate-200/90 font-black text-slate-900 text-right border-t-2 border-slate-400">
+                        <td className="sticky left-0 z-20 bg-slate-200 text-left px-3.5 py-2 uppercase tracking-wide border-r border-slate-400">
+                          Total ({selectedJobDetail.jobNo})
+                        </td>
+                        <td className="text-center px-2 py-2 border-r border-slate-400 text-slate-500 font-normal">
+                          {selectedJobDetail.colorCount} Colors
+                        </td>
+
+                        <td className="px-2 py-2 border-r border-blue-200">{Math.round(selectedJobDetail.reqBody).toLocaleString()}</td>
+                        <td className="px-2 py-2 border-r border-blue-200">{Math.round(selectedJobDetail.reqRib).toLocaleString()}</td>
+                        <td className="px-2 py-2 border-r border-blue-200">{Math.round(selectedJobDetail.reqSJ).toLocaleString()}</td>
+                        <td className="px-2.5 py-2 border-r border-slate-400 font-black text-blue-950 bg-blue-100">
+                          {Math.round(selectedJobDetail.totalReq).toLocaleString()}
+                        </td>
+
+                        <td className="px-2 py-2 border-r border-emerald-200">{Math.round(selectedJobDetail.recvBody).toLocaleString()}</td>
+                        <td className="px-2 py-2 border-r border-emerald-200">{Math.round(selectedJobDetail.recvRib).toLocaleString()}</td>
+                        <td className="px-2 py-2 border-r border-emerald-200">{Math.round(selectedJobDetail.recvSJ).toLocaleString()}</td>
+                        <td className="px-2.5 py-2 border-r border-slate-400 font-black text-emerald-950 bg-emerald-100">
+                          {Math.round(selectedJobDetail.totalRecv).toLocaleString()}
+                        </td>
+
+                        <td className="px-2 py-2 border-r border-slate-400 text-center font-black text-amber-950 bg-amber-100">
+                          {Math.max(0, Math.round(selectedJobDetail.totalReq - selectedJobDetail.totalRecv)).toLocaleString()}
+                        </td>
+
+                        <td className="px-2 py-2 border-r border-purple-200">{Math.round(selectedJobDetail.issuedBody).toLocaleString()}</td>
+                        <td className="px-2 py-2 border-r border-purple-200">{Math.round(selectedJobDetail.issuedRib).toLocaleString()}</td>
+                        <td className="px-2 py-2 border-r border-purple-200">{Math.round(selectedJobDetail.issuedSJ).toLocaleString()}</td>
+                        <td className="px-2.5 py-2 border-r border-slate-400 font-black text-purple-950 bg-purple-100">
+                          {Math.round(selectedJobDetail.totalIssued).toLocaleString()}
+                        </td>
+
+                        <td className="px-2 py-2 border-r border-sky-200">{Math.round(selectedJobDetail.stockBody).toLocaleString()}</td>
+                        <td className="px-2 py-2 border-r border-sky-200">{Math.round(selectedJobDetail.stockRib).toLocaleString()}</td>
+                        <td className="px-2 py-2 border-r border-sky-200">{Math.round(selectedJobDetail.stockSJ).toLocaleString()}</td>
+                        <td className="px-2.5 py-2 border-r border-slate-400 font-black text-sky-950 bg-sky-100">
+                          {Math.round(selectedJobDetail.totalStock).toLocaleString()}
+                        </td>
+
+                        <td className="px-2 py-2 border-r border-slate-400 text-center font-bold">{selectedJobDetail.location}</td>
+                        <td className="px-2 py-2 text-center text-slate-500 font-bold">Done</td>
+                      </tr>
+                    </tfoot>
                   </table>
                 </div>
               </div>
 
-              {/* =============================================================== */}
-              {/* ADDITIONAL PART: ACTIVE ISSUE / RECEIVE FORM AT BOTTOM */}
-              {/* =============================================================== */}
+              {/* ACTION FORMS AT BOTTOM */}
               {actionModalMode === 'ISSUE' && (
-                <div className="bg-purple-50/70 border-2 border-purple-300 rounded-xl p-4.5 shadow-sm animate-in fade-in duration-150">
+                <div className="bg-purple-50/80 border-2 border-purple-300 rounded-xl p-4 shadow-sm animate-in fade-in duration-150">
                   <div className="flex items-center justify-between pb-3 mb-3 border-b border-purple-200">
                     <div className="flex items-center gap-2">
                       <div className="w-7 h-7 rounded-md bg-purple-600 text-white flex items-center justify-center">
                         <Scissors className="w-4 h-4" />
                       </div>
                       <div>
-                        <h4 className="text-xs font-extrabold text-purple-950 uppercase tracking-wide">
+                        <h4 className="text-xs font-black text-purple-950 uppercase tracking-wide">
                           Issue Fabric to Cutting Floor
                         </h4>
                         <p className="text-[11px] text-purple-800">
@@ -3726,11 +4272,11 @@ function FinishedFabricPageInner() {
                         </p>
                       </div>
                     </div>
-                    <span className="text-xs font-bold text-purple-900">Job: {selectedJobDetail.jobNo}</span>
+                    <span className="text-xs font-bold text-purple-900 bg-purple-100 px-2.5 py-1 rounded">Job: {selectedJobDetail.jobNo}</span>
                   </div>
 
                   <form onSubmit={handleConfirmIssueFromModal} className="space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                       <div>
                         <label className="text-[11px] font-bold text-slate-700 block mb-1">Select Color *</label>
                         <select
@@ -3744,7 +4290,7 @@ function FinishedFabricPageInner() {
                               location: (found && found.location) || prev.location,
                             }));
                           }}
-                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-bold text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
                         >
                           {selectedJobDetail.colors.map(c => (
                             <option key={c.id} value={c.id}>
@@ -3755,13 +4301,24 @@ function FinishedFabricPageInner() {
                       </div>
 
                       <div>
+                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Issue Date (Calendar) *</label>
+                        <input
+                          type="date"
+                          value={actionForm.date}
+                          onChange={(e) => setActionForm(prev => ({ ...prev, date: e.target.value }))}
+                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
+                          required
+                        />
+                      </div>
+
+                      <div>
                         <label className="text-[11px] font-bold text-slate-700 block mb-1">Cutting Table / Line</label>
                         <input
                           type="text"
                           value={actionForm.cuttingLine}
                           onChange={(e) => setActionForm(prev => ({ ...prev, cuttingLine: e.target.value }))}
                           placeholder="e.g. Table-1, Line-A"
-                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-semibold text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
                         />
                       </div>
 
@@ -3772,7 +4329,7 @@ function FinishedFabricPageInner() {
                           value={actionForm.issuedTo}
                           onChange={(e) => setActionForm(prev => ({ ...prev, issuedTo: e.target.value }))}
                           placeholder="e.g. Cutting Master Kabir"
-                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-semibold text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
                         />
                       </div>
                     </div>
@@ -3817,7 +4374,7 @@ function FinishedFabricPageInner() {
                       </div>
                       <div>
                         <label className="text-[11px] font-bold text-slate-700 block mb-1">Total Issue Qty</label>
-                        <div className="w-full px-2.5 py-1.5 bg-purple-100 border border-purple-300 rounded-md text-xs font-extrabold text-purple-950 flex items-center justify-between">
+                        <div className="w-full px-2.5 py-1.5 bg-purple-100 border border-purple-300 rounded-md text-xs font-black text-purple-950 flex items-center justify-between">
                           <span>Total:</span>
                           <span>{((actionForm.bodyKg || 0) + (actionForm.ribKg || 0) + (actionForm.sjKg || 0)).toFixed(1)} kg</span>
                         </div>
@@ -3828,16 +4385,16 @@ function FinishedFabricPageInner() {
                       <button
                         type="button"
                         onClick={() => setActionModalMode('VIEW')}
-                        className="px-3.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 rounded-md text-xs font-semibold border border-slate-300"
+                        className="px-4 py-1.5 bg-white hover:bg-slate-100 text-slate-700 rounded-md text-xs font-semibold border border-slate-300"
                       >
                         Cancel
                       </button>
                       <button
                         type="submit"
-                        className="px-4 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-md text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors"
+                        className="px-5 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-md text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors"
                       >
                         <Scissors className="w-3.5 h-3.5" />
-                        <span>Confirm & Send to Cutting</span>
+                        <span>Confirm &amp; Send to Cutting</span>
                       </button>
                     </div>
                   </form>
@@ -3845,26 +4402,26 @@ function FinishedFabricPageInner() {
               )}
 
               {actionModalMode === 'RECEIVE' && (
-                <div className="bg-emerald-50/70 border-2 border-emerald-300 rounded-xl p-4.5 shadow-sm animate-in fade-in duration-150">
+                <div className="bg-emerald-50/80 border-2 border-emerald-300 rounded-xl p-4 shadow-sm animate-in fade-in duration-150">
                   <div className="flex items-center justify-between pb-3 mb-3 border-b border-emerald-200">
                     <div className="flex items-center gap-2">
                       <div className="w-7 h-7 rounded-md bg-emerald-600 text-white flex items-center justify-center">
                         <Plus className="w-4 h-4" />
                       </div>
                       <div>
-                        <h4 className="text-xs font-extrabold text-emerald-950 uppercase tracking-wide">
+                        <h4 className="text-xs font-black text-emerald-950 uppercase tracking-wide">
                           Receive Fabric Inward into Store
                         </h4>
                         <p className="text-[11px] text-emerald-800">
-                          Receive inward fabric from dyeing or supplier and add to stock.
+                          Receive inward fabric from dyeing or supplier and add batch number to stock ledger.
                         </p>
                       </div>
                     </div>
-                    <span className="text-xs font-bold text-emerald-900">Job: {selectedJobDetail.jobNo}</span>
+                    <span className="text-xs font-bold text-emerald-900 bg-emerald-100 px-2.5 py-1 rounded">Job: {selectedJobDetail.jobNo}</span>
                   </div>
 
                   <form onSubmit={handleConfirmReceiveFromModal} className="space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
                       <div>
                         <label className="text-[11px] font-bold text-slate-700 block mb-1">Color Name *</label>
                         <input
@@ -3872,7 +4429,30 @@ function FinishedFabricPageInner() {
                           value={actionForm.colorName}
                           onChange={(e) => setActionForm(prev => ({ ...prev, colorName: e.target.value }))}
                           placeholder="e.g. Black C-N10, White"
-                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Receive Date (Calendar) *</label>
+                        <input
+                          type="date"
+                          value={actionForm.date}
+                          onChange={(e) => setActionForm(prev => ({ ...prev, date: e.target.value }))}
+                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Batch No *</label>
+                        <input
+                          type="text"
+                          value={actionForm.batchNo}
+                          onChange={(e) => setActionForm(prev => ({ ...prev, batchNo: e.target.value }))}
+                          placeholder="e.g. B-8842 or Batch-02"
+                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-emerald-500 font-mono"
                           required
                         />
                       </div>
@@ -3884,18 +4464,7 @@ function FinishedFabricPageInner() {
                           value={actionForm.challanNo}
                           onChange={(e) => setActionForm(prev => ({ ...prev, challanNo: e.target.value }))}
                           placeholder="e.g. CH-NFL-4828"
-                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Supplier / Factory</label>
-                        <input
-                          type="text"
-                          value={actionForm.supplier}
-                          onChange={(e) => setActionForm(prev => ({ ...prev, supplier: e.target.value }))}
-                          placeholder="e.g. Northern Dyeing Unit-1"
-                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
                         />
                       </div>
 
@@ -3904,7 +4473,7 @@ function FinishedFabricPageInner() {
                         <select
                           value={actionForm.location}
                           onChange={(e) => setActionForm(prev => ({ ...prev, location: e.target.value }))}
-                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-bold text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
                         >
                           <option value="F.ST">F.ST</option>
                           <option value="N.ST">N.ST</option>
@@ -3955,8 +4524,8 @@ function FinishedFabricPageInner() {
                         />
                       </div>
                       <div>
-                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Total Received</label>
-                        <div className="w-full px-2.5 py-1.5 bg-emerald-100 border border-emerald-300 rounded-md text-xs font-extrabold text-emerald-950 flex items-center justify-between">
+                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Total Inward Qty</label>
+                        <div className="w-full px-2.5 py-1.5 bg-emerald-100 border border-emerald-300 rounded-md text-xs font-black text-emerald-950 flex items-center justify-between">
                           <span>Total:</span>
                           <span>{((actionForm.bodyKg || 0) + (actionForm.ribKg || 0) + (actionForm.sjKg || 0)).toFixed(1)} kg</span>
                         </div>
@@ -3967,63 +4536,32 @@ function FinishedFabricPageInner() {
                       <button
                         type="button"
                         onClick={() => setActionModalMode('VIEW')}
-                        className="px-3.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 rounded-md text-xs font-semibold border border-slate-300"
+                        className="px-4 py-1.5 bg-white hover:bg-slate-100 text-slate-700 rounded-md text-xs font-semibold border border-slate-300"
                       >
                         Cancel
                       </button>
                       <button
                         type="submit"
-                        className="px-4 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-md text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors"
+                        className="px-5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-md text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors"
                       >
                         <Plus className="w-3.5 h-3.5" />
-                        <span>Confirm & Receive Fabric</span>
+                        <span>Confirm &amp; Add Inward Receive</span>
                       </button>
                     </div>
                   </form>
                 </div>
               )}
-
-              {actionModalMode === 'VIEW' && (
-                <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200">
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setActionModalMode('ISSUE')}
-                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-2 shadow-xs"
-                    >
-                      <Scissors className="w-3.5 h-3.5 text-white" />
-                      <span>Issue this Job to Cutting</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActionModalMode('RECEIVE')}
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-2 shadow-xs"
-                    >
-                      <Plus className="w-3.5 h-3.5 text-white" />
-                      <span>Receive More for this Job</span>
-                    </button>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setSelectedJobDetail(null)}
-                    className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-semibold transition-colors"
-                  >
-                    Close Dialog
-                  </button>
-                </div>
-              )}
             </div>
 
             {/* Modal Bottom Sticky Bar */}
-            <div className="px-5 py-2.5 bg-slate-100 border-t border-slate-200 flex items-center justify-between text-xs text-slate-600 shrink-0">
-              <span className="font-medium">
-                Store Department · Northern Fashions Limited ERP
+            <div className="bg-slate-100 border-t border-slate-200 px-5 py-2.5 flex items-center justify-between shrink-0">
+              <span className="text-xs text-slate-600 font-semibold">
+                Store Department &middot; Northern Fashions Limited ERP
               </span>
               <button
                 type="button"
                 onClick={() => setSelectedJobDetail(null)}
-                className="px-3 py-1 bg-white hover:bg-slate-200 text-slate-800 rounded border border-slate-300 font-semibold text-xs"
+                className="px-5 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-md text-xs font-bold"
               >
                 Close
               </button>
@@ -4033,190 +4571,157 @@ function FinishedFabricPageInner() {
       )}
 
       {/* ===================================================================== */}
-      {/* TAB 2: IMPORTED & NEW RECEIVE DESK */}
+      {/* SUB-MODAL: COLOR TRANSACTION LEDGER (DRILL-DOWN TIMELINE) */}
       {/* ===================================================================== */}
-      {activeTab === 'RECEIVE' && (
-        <div className="space-y-4 mb-8">
-          <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-2xs">
-            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 mb-3 border-b border-slate-200">
+      {historyColorModal && (
+        <div className="fixed inset-0 z-60 bg-slate-900/65 backdrop-blur-2xs flex items-center justify-center p-3 md:p-6 overflow-y-auto">
+          <div className="bg-white w-full max-w-3xl rounded-xl shadow-2xl border-2 border-blue-400 overflow-hidden flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-100">
+            {/* Header */}
+            <div className="bg-[#0F274E] text-white px-5 py-3 flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <Truck className="w-4 h-4 text-blue-600" />
-                  Finished Fabric Receiving & Inward Gate Register
+                <h3 className="text-sm font-black flex items-center gap-2">
+                  <span className="w-3.5 h-3.5 rounded-full border border-white/60" style={{ backgroundColor: getColorHex(historyColorModal.color.color) }} />
+                  Color Ledger: {historyColorModal.color.color || 'Solid'}
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Receiving from Suppliers, Imported Fabrics & Cutting Floor Leftover Returns
+                <p className="text-[11px] text-slate-300">
+                  Job: {historyColorModal.jobNo} &middot; Store Zone: {historyColorModal.color.location || 'F.ST'}
                 </p>
               </div>
-
               <button
                 type="button"
-                onClick={() => setIsManualModalOpen(true)}
-                className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-md flex items-center gap-1.5 shadow-xs transition-colors"
+                onClick={() => setHistoryColorModal(null)}
+                className="text-slate-300 hover:text-white p-1 rounded"
               >
-                <Plus className="w-3.5 h-3.5 text-white" />
-                <span>+ New Receive Challan</span>
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Source Buttons */}
-            <div className="flex flex-wrap items-center justify-between gap-2.5 mb-3">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setReceiveSourceFilter('ALL')}
-                  style={{
-                    padding: '6px 14px',
-                    borderRadius: '6px',
-                    fontSize: '12.5px',
-                    fontWeight: 650,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                    border: receiveSourceFilter === 'ALL' ? '1px solid #0F274E' : '1px solid #CBD5E1',
-                    background: receiveSourceFilter === 'ALL' ? '#0F274E' : '#FFFFFF',
-                    color: receiveSourceFilter === 'ALL' ? '#FFFFFF' : '#334155'
-                  }}
-                >
-                  All Inward Sources ({challans.length})
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setReceiveSourceFilter('SUPPLIER')}
-                  style={{
-                    padding: '6px 14px',
-                    borderRadius: '6px',
-                    fontSize: '12.5px',
-                    fontWeight: 650,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                    border: receiveSourceFilter === 'SUPPLIER' ? '1px solid #0F274E' : '1px solid #CBD5E1',
-                    background: receiveSourceFilter === 'SUPPLIER' ? '#0F274E' : '#FFFFFF',
-                    color: receiveSourceFilter === 'SUPPLIER' ? '#FFFFFF' : '#334155'
-                  }}
-                >
-                  Supplier Delivery
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setReceiveSourceFilter('IMPORT')}
-                  style={{
-                    padding: '6px 14px',
-                    borderRadius: '6px',
-                    fontSize: '12.5px',
-                    fontWeight: 650,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                    border: receiveSourceFilter === 'IMPORT' ? '1px solid #0F274E' : '1px solid #CBD5E1',
-                    background: receiveSourceFilter === 'IMPORT' ? '#0F274E' : '#FFFFFF',
-                    color: receiveSourceFilter === 'IMPORT' ? '#FFFFFF' : '#334155'
-                  }}
-                >
-                  Imported Fabric
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setReceiveSourceFilter('CUTTING_LEFTOVER')}
-                  style={{
-                    padding: '6px 14px',
-                    borderRadius: '6px',
-                    fontSize: '12.5px',
-                    fontWeight: 650,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                    border: receiveSourceFilter === 'CUTTING_LEFTOVER' ? '1px solid #0F274E' : '1px solid #CBD5E1',
-                    background: receiveSourceFilter === 'CUTTING_LEFTOVER' ? '#0F274E' : '#FFFFFF',
-                    color: receiveSourceFilter === 'CUTTING_LEFTOVER' ? '#FFFFFF' : '#334155'
-                  }}
-                >
-                  Cutting Floor Return
-                </button>
+            {/* Summary KPI row */}
+            <div className="grid grid-cols-3 gap-2.5 p-3.5 bg-slate-100 border-b border-slate-200 text-center text-xs">
+              <div className="bg-emerald-50 border border-emerald-300 p-2 rounded">
+                <span className="text-[10px] text-emerald-800 font-bold block uppercase">Total Inward Recv</span>
+                <span className="text-sm font-black text-emerald-950">{Math.round(historyColorModal.color.totalRecv).toLocaleString()} kg</span>
               </div>
-
-              {/* Search Bar */}
-              <div className="relative min-w-[240px]">
-                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search Challan, Supplier, Job No..."
-                  value={receiveSearchQuery}
-                  onChange={e => setReceiveSearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-md text-xs text-slate-900 focus:bg-white focus:outline-none"
-                />
+              <div className="bg-purple-50 border border-purple-300 p-2 rounded">
+                <span className="text-[10px] text-purple-800 font-bold block uppercase">Total Dispatched</span>
+                <span className="text-sm font-black text-purple-950">{Math.round(historyColorModal.color.totalIssued).toLocaleString()} kg</span>
+              </div>
+              <div className="bg-sky-50 border border-sky-300 p-2 rounded">
+                <span className="text-[10px] text-sky-800 font-bold block uppercase">Closing In-Store Stock</span>
+                <span className="text-sm font-black text-sky-950">{Math.round(historyColorModal.color.stockBalance).toLocaleString()} kg</span>
               </div>
             </div>
 
-            {/* Challans Table */}
-            <div className="overflow-x-auto rounded-md border border-slate-200">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-slate-100 text-slate-800 border-b border-slate-300 text-[11px]">
-                  <tr>
-                    <th className="px-3 py-2 font-bold">Challan No</th>
-                    <th className="px-3 py-2 font-semibold">Date</th>
-                    <th className="px-3 py-2 font-bold">Supplier</th>
-                    <th className="px-3 py-2 font-semibold">Source</th>
-                    <th className="px-3 py-2 font-bold">Buyer - Job No</th>
-                    <th className="px-3 py-2 font-semibold">Style</th>
-                    <th className="px-3 py-2 font-bold">Color</th>
-                    <th className="px-3 py-2 text-right font-medium">Body Kg</th>
-                    <th className="px-3 py-2 text-right font-medium">Rib Kg</th>
-                    <th className="px-3 py-2 text-right font-medium">S.Jersey Kg</th>
-                    <th className="px-3 py-2 text-right font-bold bg-emerald-100 text-emerald-900 border-l border-emerald-200">Total Recv</th>
-                    <th className="px-3 py-2 text-center font-medium">Rolls</th>
-                    <th className="px-3 py-2 font-semibold">Shelf Location</th>
-                    <th className="px-3 py-2 text-center font-medium">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 text-xs text-slate-800">
-                  {challans
-                    .filter(ch => {
-                      if (receiveSourceFilter !== 'ALL' && ch.sourceType !== receiveSourceFilter) return false;
-                      if (!receiveSearchQuery) return true;
-                      const q = receiveSearchQuery.toLowerCase();
-                      return `${ch.challanNo} ${ch.supplier} ${ch.jobNo} ${ch.color} ${ch.style}`.toLowerCase().includes(q);
-                    })
-                    .map(ch => (
-                      <tr key={ch.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-3 py-2 font-semibold text-slate-900">{ch.challanNo}</td>
-                        <td className="px-3 py-2 text-slate-500">{ch.date}</td>
-                        <td className="px-3 py-2 font-medium text-slate-800">{ch.supplier}</td>
-                        <td className="px-3 py-2">
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                            {ch.sourceType === 'SUPPLIER' ? 'Supplier' : ch.sourceType === 'IMPORT' ? 'Imported' : 'Leftover Return'}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 font-medium text-slate-800">{ch.buyer} - {ch.jobNo}</td>
-                        <td className="px-3 py-2 text-slate-600">{ch.style}</td>
-                        <td className="px-3 py-2 font-semibold text-slate-900">{ch.color}</td>
-                        <td className="px-3 py-2 text-right text-slate-700">{ch.weighedBodyKg}</td>
-                        <td className="px-3 py-2 text-right text-slate-700">{ch.weighedRibKg}</td>
-                        <td className="px-3 py-2 text-right text-slate-700">{ch.weighedSJKg}</td>
-                        <td className="px-3 py-2 text-right font-bold text-emerald-900 bg-emerald-50/60">
-                          {ch.totalKg} kg
-                        </td>
-                        <td className="px-3 py-2 text-center font-medium text-slate-700">{ch.rollCount}</td>
-                        <td className="px-3 py-2">
-                          <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-800 border border-slate-200">
-                            {ch.rackLocation}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 text-center">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                            {ch.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
+            {/* Transactions Table */}
+            <div className="flex-1 overflow-y-auto p-3.5">
+              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-blue-600" />
+                Transaction Timeline &amp; Batch Records
+              </h4>
+              <div className="border border-slate-200 rounded-lg overflow-hidden">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-slate-100 text-slate-800 text-[11px] font-bold border-b border-slate-300">
+                    <tr>
+                      <th className="px-2.5 py-1.5">Date</th>
+                      <th className="px-2.5 py-1.5">Type</th>
+                      <th className="px-2.5 py-1.5">Batch No</th>
+                      <th className="px-2 py-1.5 text-right">Body</th>
+                      <th className="px-2 py-1.5 text-right">Rib</th>
+                      <th className="px-2 py-1.5 text-right">SJ</th>
+                      <th className="px-2.5 py-1.5 text-right font-black">Total (kg)</th>
+                      <th className="px-2 py-1.5 text-center">Rolls</th>
+                      <th className="px-2.5 py-1.5">Ref / Table</th>
+                      <th className="px-2.5 py-1.5">Handled By</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {(() => {
+                      const txs = colorTransactions.filter(
+                        t => t.jobNo === historyColorModal.jobNo && (t.colorId === historyColorModal.color.id || t.colorName === historyColorModal.color.color)
+                      );
+                      if (txs.length === 0) {
+                        return (
+                          <>
+                            <tr className="hover:bg-slate-50">
+                              <td className="px-2.5 py-2 text-slate-600">{historyColorModal.color.date || '2026-11-10'}</td>
+                              <td className="px-2.5 py-2">
+                                <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[10px] font-bold">
+                                  INITIAL INWARD
+                                </span>
+                              </td>
+                              <td className="px-2.5 py-2 font-mono font-bold text-slate-800">
+                                {(historyColorModal.color.batches && historyColorModal.color.batches[0]) || 'B-01'}
+                              </td>
+                              <td className="px-2 py-2 text-right">{Math.round(historyColorModal.color.recvBody)}</td>
+                              <td className="px-2 py-2 text-right">{Math.round(historyColorModal.color.recvRib)}</td>
+                              <td className="px-2 py-2 text-right">{Math.round(historyColorModal.color.recvSJ)}</td>
+                              <td className="px-2.5 py-2 text-right font-black text-emerald-900">{Math.round(historyColorModal.color.totalRecv)}</td>
+                              <td className="px-2 py-2 text-center">15</td>
+                              <td className="px-2.5 py-2 text-slate-600 font-mono text-[11px]">{historyColorModal.color.challans || 'CH-4828'}</td>
+                              <td className="px-2.5 py-2 text-slate-600">Store Inward Officer</td>
+                            </tr>
+                            {historyColorModal.color.totalIssued > 0 && (
+                              <tr className="hover:bg-slate-50">
+                                <td className="px-2.5 py-2 text-slate-600">{historyColorModal.color.date || '2026-11-12'}</td>
+                                <td className="px-2.5 py-2">
+                                  <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded text-[10px] font-bold">
+                                    DISPATCH CUTTING
+                                  </span>
+                                </td>
+                                <td className="px-2.5 py-2 font-mono font-bold text-slate-800">
+                                  {(historyColorModal.color.batches && historyColorModal.color.batches[0]) || 'B-01'}
+                                </td>
+                                <td className="px-2 py-2 text-right">{Math.round(historyColorModal.color.issuedBody)}</td>
+                                <td className="px-2 py-2 text-right">{Math.round(historyColorModal.color.issuedRib)}</td>
+                                <td className="px-2 py-2 text-right">{Math.round(historyColorModal.color.issuedSJ)}</td>
+                                <td className="px-2.5 py-2 text-right font-black text-purple-900">{Math.round(historyColorModal.color.totalIssued)}</td>
+                                <td className="px-2 py-2 text-center">12</td>
+                                <td className="px-2.5 py-2 text-slate-600">Cutting Table-1</td>
+                                <td className="px-2.5 py-2 text-slate-600">Cutting Master Kabir</td>
+                              </tr>
+                            )}
+                          </>
+                        );
+                      }
+                      return txs.map(t => (
+                        <tr key={t.id} className="hover:bg-slate-50">
+                          <td className="px-2.5 py-2 text-slate-600">{t.date}</td>
+                          <td className="px-2.5 py-2">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              t.type === 'RECEIVE' ? 'bg-emerald-100 text-emerald-800' : 'bg-purple-100 text-purple-800'
+                            }`}>
+                              {t.type === 'RECEIVE' ? 'INWARD RECV' : 'CUTTING ISSUE'}
+                            </span>
+                          </td>
+                          <td className="px-2.5 py-2 font-mono font-bold text-slate-800">{t.batchNo}</td>
+                          <td className="px-2 py-2 text-right">{Math.round(t.bodyKg)}</td>
+                          <td className="px-2 py-2 text-right">{Math.round(t.ribKg)}</td>
+                          <td className="px-2 py-2 text-right">{Math.round(t.sjKg)}</td>
+                          <td className="px-2.5 py-2 text-right font-black text-slate-900">{Math.round(t.totalKg)}</td>
+                          <td className="px-2 py-2 text-center">{t.rolls}</td>
+                          <td className="px-2.5 py-2 text-slate-600 text-[11px]">{t.refNo}</td>
+                          <td className="px-2.5 py-2 text-slate-600">{t.handledBy}</td>
+                        </tr>
+                      ));
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-50 border-t border-slate-200 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setHistoryColorModal(null)}
+                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-md text-xs font-bold"
+              >
+                Close Ledger
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ===================================================================== */}
       {/* MODAL: NEW RECEIVE WITH COLOR-WISE BREAKDOWN */}
       {/* ===================================================================== */}
       {isReceiveModalOpen && (
