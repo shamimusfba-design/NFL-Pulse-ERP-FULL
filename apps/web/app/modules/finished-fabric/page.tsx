@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Shell from '../../../components/Shell';
 import * as XLSX from 'xlsx';
@@ -25,6 +25,7 @@ import {
   FileCheck,
   RefreshCw,
   ChevronRight,
+  ChevronLeft,
   ChevronDown,
   ChevronUp,
   Eye,
@@ -821,6 +822,28 @@ function FinishedFabricPageInner() {
       } catch {}
     }
     showToast(`Location updated to ${newLocation}`);
+  };
+
+  // Table Horizontal Scroll Navigation Ref
+  const tableScrollRef = useRef<HTMLDivElement>(null);
+
+  const handleScrollTable = (direction: 'left' | 'right') => {
+    if (tableScrollRef.current) {
+      const amount = 420;
+      tableScrollRef.current.scrollBy({
+        left: direction === 'right' ? amount : -amount,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  const handleScrollToSection = (leftPos: number) => {
+    if (tableScrollRef.current) {
+      tableScrollRef.current.scrollTo({
+        left: leftPos,
+        behavior: 'smooth'
+      });
+    }
   };
 
   // Column Section Toggle Buttons (Professional Odoo filter pills)
@@ -2654,10 +2677,85 @@ function FinishedFabricPageInner() {
             </div>
           </div>
 
+          {/* Table Horizontal Scroll Navigation & Section Jump Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2 p-2 bg-gradient-to-r from-slate-100 to-blue-50/50 rounded-md border border-slate-300 shadow-2xs">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1 uppercase tracking-wider">
+                <ArrowRight className="w-3.5 h-3.5 text-blue-600" />
+                Table Navigation:
+              </span>
+              <button
+                type="button"
+                onClick={() => handleScrollTable('left')}
+                className="px-3 py-1 bg-white hover:bg-slate-100 text-slate-800 text-xs font-bold rounded-md flex items-center gap-1 border border-slate-300 shadow-2xs transition-colors cursor-pointer"
+                title="Scroll Table Left"
+              >
+                <ChevronLeft className="w-4 h-4 text-blue-600" />
+                <span>Scroll Left</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleScrollTable('right')}
+                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-md flex items-center gap-1 border border-blue-700 shadow-2xs transition-colors cursor-pointer"
+                title="Scroll Table Right to view Order, Recv, Issue, and Stock columns"
+              >
+                <span>Scroll Right</span>
+                <ChevronRight className="w-4 h-4 text-white" />
+              </button>
+            </div>
+
+            {/* Quick Jump Buttons */}
+            <div className="flex flex-wrap items-center gap-1 text-[11px]">
+              <span className="text-slate-500 font-medium mr-1 hidden sm:inline">Jump To:</span>
+              <button
+                type="button"
+                onClick={() => handleScrollToSection(0)}
+                className="px-2 py-0.5 bg-white hover:bg-slate-100 text-slate-700 rounded border border-slate-300 font-semibold transition-colors"
+              >
+                Job Specs
+              </button>
+              <button
+                type="button"
+                onClick={() => handleScrollToSection(480)}
+                className="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-900 rounded border border-blue-200 font-bold transition-colors"
+              >
+                Order Qty
+              </button>
+              <button
+                type="button"
+                onClick={() => handleScrollToSection(850)}
+                className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 rounded border border-emerald-200 font-bold transition-colors"
+              >
+                Received
+              </button>
+              <button
+                type="button"
+                onClick={() => handleScrollToSection(1220)}
+                className="px-2 py-0.5 bg-purple-50 hover:bg-purple-100 text-purple-900 rounded border border-purple-200 font-bold transition-colors"
+              >
+                Issue / Cutting
+              </button>
+              <button
+                type="button"
+                onClick={() => handleScrollToSection(1590)}
+                className="px-2 py-0.5 bg-sky-50 hover:bg-sky-100 text-sky-900 rounded border border-sky-200 font-bold transition-colors"
+              >
+                Closing Stock
+              </button>
+              <button
+                type="button"
+                onClick={() => handleScrollToSection(2100)}
+                className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded border border-amber-200 font-bold transition-colors"
+              >
+                Location & Leftover
+              </button>
+            </div>
+          </div>
+
           {/* =================================================================== */}
-          {/* HIGH CONTRAST MASTER TABLE (STICKY HEADER WITH CRISP READABLE TEXT) */}
+          {/* HIGH CONTRAST MASTER TABLE (STICKY HEADER WITH INTEGRATED FILTERS) */}
           {/* =================================================================== */}
-          <div className="overflow-x-auto rounded-md border border-slate-300 bg-white shadow-2xs relative max-h-[750px] overflow-y-auto">
+          <div ref={tableScrollRef} className="overflow-x-auto rounded-md border border-slate-300 bg-white shadow-2xs relative max-h-[750px] overflow-y-auto">
             <table className="w-full text-left text-xs border-collapse">
               {/* STICKY THEAD (FROZEN AT TOP WHILE SCROLLING) */}
               <thead className="sticky top-0 z-30 shadow-xs">
@@ -2706,47 +2804,175 @@ function FinishedFabricPageInner() {
                   <th className="px-3 py-2 text-center bg-slate-100 text-slate-800 border-b border-slate-300 font-bold">Action</th>
                 </tr>
 
-                {/* TIER 2 HEADER COLUMNS */}
+                {/* TIER 2 HEADER COLUMNS WITH INTEGRATED IN-CELL FILTERS */}
                 <tr className="bg-slate-50 text-slate-900 text-[11px] border-b border-slate-300 font-bold">
-                  {/* Sticky frozen columns */}
-                  <th className="sticky left-0 z-40 bg-slate-100 px-3 py-2 text-slate-900 font-bold border-r border-slate-300 min-w-[150px]">
-                    <button
-                      type="button"
-                      onClick={() => handleSort('jobNo')}
-                      className="flex items-center gap-1.5 text-left text-slate-900 font-bold hover:text-blue-700 cursor-pointer"
-                    >
-                      <span>Job No</span>
-                      <ArrowUpDown className={`w-3 h-3 ${sortField === 'jobNo' ? 'text-blue-700 font-bold' : 'text-slate-400'}`} />
-                    </button>
+                  {/* Sticky frozen Job No */}
+                  <th className="sticky left-0 z-40 bg-slate-100 p-1.5 text-slate-900 font-bold border-r border-slate-300 min-w-[155px]">
+                    <div className="flex items-center justify-between mb-1">
+                      <button
+                        type="button"
+                        onClick={() => handleSort('jobNo')}
+                        className="flex items-center gap-1 text-left text-slate-900 font-bold hover:text-blue-700 cursor-pointer text-[11px]"
+                      >
+                        <span>Job No</span>
+                        <ArrowUpDown className={`w-3 h-3 ${sortField === 'jobNo' ? 'text-blue-700 font-bold' : 'text-slate-400'}`} />
+                      </button>
+                      {colFilterJob && (
+                        <button onClick={() => setColFilterJob('')} className="text-rose-500 hover:text-rose-700 text-[10px] font-bold">✕</button>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      value={colFilterJob}
+                      onChange={e => { setColFilterJob(e.target.value); setCurrentPage(1); }}
+                      placeholder="Filter Job..."
+                      className="w-full px-1.5 py-0.5 text-[10.5px] font-normal border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500"
+                    />
                   </th>
-                  <th className="px-3 py-2 text-slate-900 font-bold min-w-[100px] border-r border-slate-300">
-                    <button
-                      type="button"
-                      onClick={() => handleSort('style')}
-                      className="flex items-center gap-1 text-slate-900 font-bold hover:text-blue-700 cursor-pointer"
-                    >
-                      <span>Style No</span>
-                      <ArrowUpDown className={`w-3 h-3 ${sortField === 'style' ? 'text-blue-700' : 'text-slate-400'}`} />
-                    </button>
+
+                  {/* Style No */}
+                  <th className="p-1.5 text-slate-900 font-bold min-w-[110px] border-r border-slate-300">
+                    <div className="flex items-center justify-between mb-1">
+                      <button
+                        type="button"
+                        onClick={() => handleSort('style')}
+                        className="flex items-center gap-1 text-slate-900 font-bold hover:text-blue-700 cursor-pointer text-[11px]"
+                      >
+                        <span>Style No</span>
+                        <ArrowUpDown className={`w-3 h-3 ${sortField === 'style' ? 'text-blue-700' : 'text-slate-400'}`} />
+                      </button>
+                      {colFilterStyle && (
+                        <button onClick={() => setColFilterStyle('')} className="text-rose-500 hover:text-rose-700 text-[10px] font-bold">✕</button>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      value={colFilterStyle}
+                      onChange={e => { setColFilterStyle(e.target.value); setCurrentPage(1); }}
+                      placeholder="Filter Style..."
+                      className="w-full px-1.5 py-0.5 text-[10.5px] font-normal border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500"
+                    />
                   </th>
 
                   {visibleSections.jobSpecs && (
                     <>
-                      <th className="px-2.5 py-2 text-slate-900 font-bold min-w-[120px] border-r border-slate-200">Color</th>
-                      <th className="px-2.5 py-2 text-slate-900 font-bold min-w-[110px] border-r border-slate-200">Fabric Type</th>
-                      <th className="px-2.5 py-2 text-slate-900 font-bold min-w-[140px] border-r border-slate-200">Composition</th>
-                      <th className="px-2.5 py-2 text-slate-900 font-bold min-w-[110px] border-r border-slate-200">Additional Process</th>
-                      <th className="px-2.5 py-2 text-slate-900 font-bold min-w-[50px] border-r border-slate-200">GSM</th>
-                      <th className="px-2.5 py-2 text-slate-900 font-bold min-w-[50px] border-r border-slate-200">Dia</th>
-                      <th className="px-2.5 py-2 text-slate-900 font-bold min-w-[80px] border-r border-slate-300">
-                        <button
-                          type="button"
-                          onClick={() => handleSort('status')}
-                          className="flex items-center gap-1 text-slate-900 font-bold hover:text-blue-700 cursor-pointer"
+                      {/* Color */}
+                      <th className="p-1.5 text-slate-900 font-bold min-w-[110px] border-r border-slate-200">
+                        <div className="flex items-center justify-between mb-1 text-[11px]">
+                          <span>Color</span>
+                          {colFilterColor && (
+                            <button onClick={() => setColFilterColor('')} className="text-rose-500 hover:text-rose-700 text-[10px] font-bold">✕</button>
+                          )}
+                        </div>
+                        <input
+                          type="text"
+                          value={colFilterColor}
+                          onChange={e => { setColFilterColor(e.target.value); setCurrentPage(1); }}
+                          placeholder="Filter Color..."
+                          className="w-full px-1.5 py-0.5 text-[10.5px] font-normal border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500"
+                        />
+                      </th>
+
+                      {/* Fabric Type */}
+                      <th className="p-1.5 text-slate-900 font-bold min-w-[115px] border-r border-slate-200">
+                        <div className="text-[11px] font-bold mb-1">Fabric Type</div>
+                        <select
+                          value={colFilterFabric}
+                          onChange={e => { setColFilterFabric(e.target.value); setCurrentPage(1); }}
+                          className="w-full px-1 py-0.5 text-[10px] font-medium border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500"
                         >
-                          <span>Status</span>
-                          <ArrowUpDown className={`w-3 h-3 ${sortField === 'status' ? 'text-blue-700' : 'text-slate-400'}`} />
-                        </button>
+                          <option value="ALL">All Types</option>
+                          <option value="SJ">SJ</option>
+                          <option value="Rib">Rib</option>
+                          <option value="Terry">Terry</option>
+                          <option value="Fleece">Fleece</option>
+                          <option value="Interlock">Interlock</option>
+                          <option value="Woven">Woven</option>
+                          <option value="Mesh">Mesh</option>
+                        </select>
+                      </th>
+
+                      {/* Composition */}
+                      <th className="p-1.5 text-slate-900 font-bold min-w-[130px] border-r border-slate-200">
+                        <div className="flex items-center justify-between mb-1 text-[11px]">
+                          <span>Composition</span>
+                          {colFilterComp && (
+                            <button onClick={() => setColFilterComp('')} className="text-rose-500 hover:text-rose-700 text-[10px] font-bold">✕</button>
+                          )}
+                        </div>
+                        <input
+                          type="text"
+                          value={colFilterComp}
+                          onChange={e => { setColFilterComp(e.target.value); setCurrentPage(1); }}
+                          placeholder="Comp..."
+                          className="w-full px-1.5 py-0.5 text-[10.5px] font-normal border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500"
+                        />
+                      </th>
+
+                      {/* Additional Process */}
+                      <th className="p-1.5 text-slate-900 font-bold min-w-[110px] border-r border-slate-200">
+                        <div className="flex items-center justify-between mb-1 text-[11px]">
+                          <span>Add. Process</span>
+                          {colFilterProcess && (
+                            <button onClick={() => setColFilterProcess('')} className="text-rose-500 hover:text-rose-700 text-[10px] font-bold">✕</button>
+                          )}
+                        </div>
+                        <input
+                          type="text"
+                          value={colFilterProcess}
+                          onChange={e => { setColFilterProcess(e.target.value); setCurrentPage(1); }}
+                          placeholder="Process..."
+                          className="w-full px-1.5 py-0.5 text-[10.5px] font-normal border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500"
+                        />
+                      </th>
+
+                      {/* GSM */}
+                      <th className="p-1 text-slate-900 font-bold min-w-[55px] border-r border-slate-200">
+                        <div className="text-[11px] font-bold mb-1 text-center">GSM</div>
+                        <input
+                          type="text"
+                          value={colFilterGsm}
+                          onChange={e => { setColFilterGsm(e.target.value); setCurrentPage(1); }}
+                          placeholder="GSM"
+                          className="w-full px-1 py-0.5 text-[10px] font-normal border border-slate-300 rounded bg-white text-slate-900 text-center"
+                        />
+                      </th>
+
+                      {/* Dia */}
+                      <th className="p-1 text-slate-900 font-bold min-w-[55px] border-r border-slate-200">
+                        <div className="text-[11px] font-bold mb-1 text-center">Dia</div>
+                        <input
+                          type="text"
+                          value={colFilterDia}
+                          onChange={e => { setColFilterDia(e.target.value); setCurrentPage(1); }}
+                          placeholder="Dia"
+                          className="w-full px-1 py-0.5 text-[10px] font-normal border border-slate-300 rounded bg-white text-slate-900 text-center"
+                        />
+                      </th>
+
+                      {/* Status (High Width to prevent overlapping) */}
+                      <th className="p-1.5 text-slate-900 font-bold min-w-[125px] border-r border-slate-300">
+                        <div className="flex items-center justify-between mb-1">
+                          <button
+                            type="button"
+                            onClick={() => handleSort('status')}
+                            className="flex items-center gap-1 text-slate-900 font-bold hover:text-blue-700 cursor-pointer text-[11px]"
+                          >
+                            <span>Status</span>
+                            <ArrowUpDown className={`w-3 h-3 ${sortField === 'status' ? 'text-blue-700' : 'text-slate-400'}`} />
+                          </button>
+                        </div>
+                        <select
+                          value={colFilterStatus}
+                          onChange={e => { setColFilterStatus(e.target.value); setCurrentPage(1); }}
+                          className="w-full px-1 py-0.5 text-[10px] font-medium border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500"
+                        >
+                          <option value="ALL">All Status</option>
+                          <option value="In Stock">In Stock</option>
+                          <option value="Partly Received">Partly Recv</option>
+                          <option value="Waiting Dyeing">Waiting Dye</option>
+                          <option value="Fully Issued">Fully Issued</option>
+                        </select>
                       </th>
                     </>
                   )}
@@ -2830,167 +3056,8 @@ function FinishedFabricPageInner() {
                   {/* Location & Leftover */}
                   {visibleSections.locationInfo && (
                     <>
-                      <th className="px-2.5 py-2 font-bold min-w-[95px] text-amber-950 bg-amber-50/80 border-r border-amber-100">Location</th>
-                      <th className="px-2 py-2 text-right font-bold min-w-[70px] text-amber-950 bg-amber-50/80 border-r border-amber-100">Leftover</th>
-                      <th className="px-2 py-2 text-right font-bold min-w-[65px] text-amber-950 bg-amber-50/80 border-r border-amber-100">Excess Qty</th>
-                      <th className="px-2 py-2 text-center font-bold min-w-[65px] text-amber-950 bg-amber-50/80 border-r border-slate-300">Date</th>
-                    </>
-                  )}
-
-                  <th className="px-2.5 py-2 text-center font-bold min-w-[60px] text-slate-800">Action</th>
-                </tr>
-
-                {/* Odoo / Excel In-Table Column Filter Row */}
-                <tr className="bg-slate-100 border-b border-slate-300 text-[11px]">
-                  {/* Job No Filter */}
-                  <th className="sticky left-0 z-20 bg-slate-100 p-1 border-r border-slate-300">
-                    <input
-                      type="text"
-                      value={colFilterJob}
-                      onChange={e => { setColFilterJob(e.target.value); setCurrentPage(1); }}
-                      placeholder="Filter Job..."
-                      className="w-full px-1.5 py-0.5 text-[11px] font-normal border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500"
-                    />
-                  </th>
-                  {/* Style No Filter */}
-                  <th className="p-1 border-r border-slate-300">
-                    <input
-                      type="text"
-                      value={colFilterStyle}
-                      onChange={e => { setColFilterStyle(e.target.value); setCurrentPage(1); }}
-                      placeholder="Filter Style..."
-                      className="w-full px-1.5 py-0.5 text-[11px] font-normal border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500"
-                    />
-                  </th>
-                  {visibleSections.jobSpecs && (
-                    <>
-                      {/* Color Filter */}
-                      <th className="p-1 border-r border-slate-200">
-                        <input
-                          type="text"
-                          value={colFilterColor}
-                          onChange={e => { setColFilterColor(e.target.value); setCurrentPage(1); }}
-                          placeholder="Color..."
-                          className="w-full px-1.5 py-0.5 text-[11px] font-normal border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500"
-                        />
-                      </th>
-                      {/* Fabric Type Filter */}
-                      <th className="p-1 border-r border-slate-200">
-                        <select
-                          value={colFilterFabric}
-                          onChange={e => { setColFilterFabric(e.target.value); setCurrentPage(1); }}
-                          className="w-full px-1 py-0.5 text-[10.5px] font-medium border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500"
-                        >
-                          <option value="ALL">All Types</option>
-                          <option value="SJ">SJ</option>
-                          <option value="Rib">Rib</option>
-                          <option value="Terry">Terry</option>
-                          <option value="Fleece">Fleece</option>
-                          <option value="Interlock">Interlock</option>
-                          <option value="Woven">Woven</option>
-                          <option value="Mesh">Mesh</option>
-                        </select>
-                      </th>
-                      {/* Composition Filter */}
-                      <th className="p-1 border-r border-slate-200">
-                        <input
-                          type="text"
-                          value={colFilterComp}
-                          onChange={e => { setColFilterComp(e.target.value); setCurrentPage(1); }}
-                          placeholder="Comp..."
-                          className="w-full px-1.5 py-0.5 text-[11px] font-normal border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500"
-                        />
-                      </th>
-                      {/* Additional Process Filter */}
-                      <th className="p-1 border-r border-slate-200">
-                        <input
-                          type="text"
-                          value={colFilterProcess}
-                          onChange={e => { setColFilterProcess(e.target.value); setCurrentPage(1); }}
-                          placeholder="Process..."
-                          className="w-full px-1.5 py-0.5 text-[11px] font-normal border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500"
-                        />
-                      </th>
-                      {/* GSM Filter */}
-                      <th className="p-1 border-r border-slate-200">
-                        <input
-                          type="text"
-                          value={colFilterGsm}
-                          onChange={e => { setColFilterGsm(e.target.value); setCurrentPage(1); }}
-                          placeholder="GSM"
-                          className="w-full px-1 py-0.5 text-[10.5px] font-normal border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500 text-center"
-                        />
-                      </th>
-                      {/* Dia Filter */}
-                      <th className="p-1 border-r border-slate-200">
-                        <input
-                          type="text"
-                          value={colFilterDia}
-                          onChange={e => { setColFilterDia(e.target.value); setCurrentPage(1); }}
-                          placeholder="Dia"
-                          className="w-full px-1 py-0.5 text-[10.5px] font-normal border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500 text-center"
-                        />
-                      </th>
-                      {/* Status Filter */}
-                      <th className="p-1 border-r border-slate-300">
-                        <select
-                          value={colFilterStatus}
-                          onChange={e => { setColFilterStatus(e.target.value); setCurrentPage(1); }}
-                          className="w-full px-1 py-0.5 text-[10.5px] font-medium border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:border-blue-500"
-                        >
-                          <option value="ALL">All Status</option>
-                          <option value="In Stock">In Stock</option>
-                          <option value="Partly Received">Partly Recv</option>
-                          <option value="Waiting Dyeing">Waiting Dye</option>
-                        </select>
-                      </th>
-                    </>
-                  )}
-
-                  {/* Order Qty Section spacer */}
-                  {visibleSections.orderQty && (
-                    <>
-                      <th className="bg-blue-50/50 border-r border-blue-100"></th>
-                      <th className="bg-blue-50/50 border-r border-blue-100"></th>
-                      <th className="bg-blue-50/50 border-r border-blue-100"></th>
-                      <th className="bg-blue-100/50 border-r border-slate-300"></th>
-                    </>
-                  )}
-
-                  {/* Received Qty Section spacer */}
-                  {visibleSections.receivedQty && (
-                    <>
-                      <th className="bg-emerald-50/50 border-r border-emerald-100"></th>
-                      <th className="bg-emerald-50/50 border-r border-emerald-100"></th>
-                      <th className="bg-emerald-50/50 border-r border-emerald-100"></th>
-                      <th className="bg-emerald-100/50 border-r border-slate-300"></th>
-                    </>
-                  )}
-
-                  {/* Issue Section spacer */}
-                  {visibleSections.deliveryQty && (
-                    <>
-                      <th className="bg-purple-50/50 border-r border-purple-100"></th>
-                      <th className="bg-purple-50/50 border-r border-purple-100"></th>
-                      <th className="bg-purple-50/50 border-r border-purple-100"></th>
-                      <th className="bg-purple-100/50 border-r border-slate-300"></th>
-                    </>
-                  )}
-
-                  {/* Closing Stock Section spacer */}
-                  {visibleSections.closingStock && (
-                    <>
-                      <th className="bg-sky-50/50 border-r border-sky-100"></th>
-                      <th className="bg-sky-50/50 border-r border-sky-100"></th>
-                      <th className="bg-sky-50/50 border-r border-sky-100"></th>
-                      <th className="bg-sky-100/50 border-r border-slate-300"></th>
-                    </>
-                  )}
-
-                  {/* Location & Leftover */}
-                  {visibleSections.locationInfo && (
-                    <>
-                      <th className="p-1 bg-amber-50/60 border-r border-amber-100">
+                      <th className="p-1.5 font-bold min-w-[105px] text-amber-950 bg-amber-50/80 border-r border-amber-100">
+                        <div className="text-[11px] font-bold mb-1">Location</div>
                         <select
                           value={colFilterLocation}
                           onChange={e => { setColFilterLocation(e.target.value); setCurrentPage(1); }}
@@ -3005,22 +3072,24 @@ function FinishedFabricPageInner() {
                           <option value=".F.ST/N.ST">.F.ST/N.ST</option>
                         </select>
                       </th>
-                      <th className="bg-amber-50/60 border-r border-amber-100"></th>
-                      <th className="bg-amber-50/60 border-r border-amber-100"></th>
-                      <th className="bg-amber-50/60 border-r border-slate-300"></th>
+                      <th className="px-2 py-2 text-right font-bold min-w-[70px] text-amber-950 bg-amber-50/80 border-r border-amber-100">Leftover</th>
+                      <th className="px-2 py-2 text-right font-bold min-w-[65px] text-amber-950 bg-amber-50/80 border-r border-amber-100">Excess Qty</th>
+                      <th className="px-2 py-2 text-center font-bold min-w-[65px] text-amber-950 bg-amber-50/80 border-r border-slate-300">Date</th>
                     </>
                   )}
 
-                  <th className="p-1 text-center">
-                    {hasColFilters && (
+                  <th className="px-2.5 py-2 text-center font-bold min-w-[60px] text-slate-800">
+                    {hasColFilters ? (
                       <button
                         type="button"
                         onClick={clearColFilters}
-                        className="px-1.5 py-0.5 text-[10px] font-bold text-rose-600 hover:text-white hover:bg-rose-600 border border-rose-300 rounded transition-colors"
+                        className="px-2 py-1 text-[10.5px] font-bold text-rose-600 hover:text-white hover:bg-rose-600 border border-rose-300 rounded transition-colors"
                         title="Clear all column filters"
                       >
                         Clear
                       </button>
+                    ) : (
+                      'Action'
                     )}
                   </th>
                 </tr>
@@ -3128,10 +3197,13 @@ function FinishedFabricPageInner() {
                               <td className="px-2.5 py-2 text-slate-800 font-semibold">{job.process}</td>
                               <td className="px-2.5 py-2 text-slate-900 font-bold">{job.gsm}</td>
                               <td className="px-2.5 py-2 text-slate-900 font-bold">{job.dia}</td>
-                              <td className="px-2.5 py-2 border-r border-slate-200">
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                  job.primaryStatus === 'In Stock' ? 'bg-emerald-100 text-emerald-950 border border-emerald-300' :
-                                  job.primaryStatus === 'Partly Received' ? 'bg-amber-100 text-amber-950 border border-amber-300' : 'bg-slate-100 text-slate-900 border border-slate-300'
+                              <td className="px-2.5 py-2 border-r border-slate-200 min-w-[125px]">
+                                <span className={`inline-block whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wide leading-tight ${
+                                  job.primaryStatus === 'In Stock' ? 'bg-emerald-100 text-emerald-950 border border-emerald-400' :
+                                  job.primaryStatus === 'Partly Received' ? 'bg-amber-100 text-amber-950 border border-amber-400' :
+                                  job.primaryStatus === 'Fully Issued' ? 'bg-purple-100 text-purple-950 border border-purple-400' :
+                                  job.primaryStatus === 'Waiting Dyeing' ? 'bg-blue-100 text-blue-950 border border-blue-400' :
+                                  'bg-slate-100 text-slate-900 border border-slate-300'
                                 }`}>
                                   {job.primaryStatus}
                                 </span>
@@ -3254,8 +3326,14 @@ function FinishedFabricPageInner() {
                                   <td className="px-2.5 py-1.5 text-slate-800 font-semibold">{c.process}</td>
                                   <td className="px-2.5 py-1.5 text-slate-900 font-bold">{c.gsm}</td>
                                   <td className="px-2.5 py-1.5 text-slate-900 font-bold">{c.dia}</td>
-                                  <td className="px-2.5 py-1.5 border-r border-slate-200">
-                                    <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-white border border-slate-300 font-bold text-slate-800">
+                                  <td className="px-2.5 py-1.5 border-r border-slate-200 min-w-[125px]">
+                                    <span className={`inline-block whitespace-nowrap text-[9.5px] px-1.5 py-0.5 rounded font-extrabold uppercase ${
+                                      c.stockState === 'In Stock' ? 'bg-emerald-100 text-emerald-950 border border-emerald-300' :
+                                      c.stockState === 'Partly Received' ? 'bg-amber-100 text-amber-950 border border-amber-300' :
+                                      c.stockState === 'Fully Issued' ? 'bg-purple-100 text-purple-950 border border-purple-300' :
+                                      c.stockState === 'Waiting Dyeing' ? 'bg-blue-100 text-blue-950 border border-blue-300' :
+                                      'bg-slate-100 text-slate-800 border border-slate-300'
+                                    }`}>
                                       {c.stockState}
                                     </span>
                                   </td>
@@ -3500,21 +3578,37 @@ function FinishedFabricPageInner() {
                   <table className="w-full text-left text-xs border-collapse">
                     <thead className="bg-[#F1F5F9] text-slate-800 border-b border-slate-300 text-[11px]">
                       <tr>
-                        <th className="px-3 py-2 font-bold min-w-[130px]">Color Name</th>
+                        <th className="px-3 py-2.5 font-bold min-w-[130px]">Color Name</th>
                         {drawerVisibleSections.orderQty && (
-                          <th className="px-2.5 py-2 text-right bg-blue-50 text-blue-950 font-bold border-l border-blue-100">Order (B/R/SJ)</th>
+                          <th className="px-3 py-2 text-right bg-blue-50 text-blue-950 font-bold border-l border-blue-100 min-w-[170px]">
+                            <div>Required / Order</div>
+                            <div className="text-[10px] text-blue-700 font-normal">Total · Body · Rib · SJ</div>
+                          </th>
                         )}
                         {drawerVisibleSections.receivedQty && (
-                          <th className="px-2.5 py-2 text-right bg-emerald-50 text-emerald-950 font-bold border-l border-emerald-100">Recv (B/R/SJ)</th>
+                          <th className="px-3 py-2 text-right bg-emerald-50 text-emerald-950 font-bold border-l border-emerald-100 min-w-[170px]">
+                            <div>Received Fabric</div>
+                            <div className="text-[10px] text-emerald-700 font-normal">Total · Body · Rib · SJ</div>
+                          </th>
                         )}
+                        <th className="px-3 py-2 text-right bg-amber-50 text-amber-950 font-bold border-l border-amber-100 min-w-[120px]">
+                          <div>Dyeing Balance</div>
+                          <div className="text-[10px] text-amber-700 font-normal">Pending to Recv</div>
+                        </th>
                         {drawerVisibleSections.deliveryQty && (
-                          <th className="px-2.5 py-2 text-right bg-purple-50 text-purple-950 font-bold border-l border-purple-100">Issue (B/R/SJ)</th>
+                          <th className="px-3 py-2 text-right bg-purple-50 text-purple-950 font-bold border-l border-purple-100 min-w-[170px]">
+                            <div>Issued to Cutting</div>
+                            <div className="text-[10px] text-purple-700 font-normal">Total · Body · Rib · SJ</div>
+                          </th>
                         )}
                         {drawerVisibleSections.closingStock && (
-                          <th className="px-2.5 py-2 text-right bg-sky-50 text-sky-950 font-bold border-l border-sky-100">Stock Bal</th>
+                          <th className="px-3 py-2 text-right bg-sky-50 text-sky-950 font-bold border-l border-sky-100 min-w-[170px]">
+                            <div>In-Store Stock</div>
+                            <div className="text-[10px] text-sky-700 font-normal">Total · Body · Rib · SJ</div>
+                          </th>
                         )}
                         {drawerVisibleSections.location && (
-                          <th className="px-2.5 py-2 text-center bg-amber-50 text-amber-950 font-bold border-l border-amber-100">Location</th>
+                          <th className="px-2.5 py-2 text-center bg-slate-100 text-slate-900 font-bold border-l border-slate-200 min-w-[85px]">Location</th>
                         )}
                       </tr>
                     </thead>
@@ -3536,55 +3630,71 @@ function FinishedFabricPageInner() {
                               isSelected ? 'bg-blue-50/80 font-semibold' : 'hover:bg-slate-50'
                             }`}
                           >
-                            <td className="px-3 py-2 font-bold text-slate-900">
+                            <td className="px-3 py-2.5 font-bold text-slate-900">
                               <div className="flex items-center gap-1.5">
-                                <span className={`w-2 h-2 rounded-full shrink-0 ${isSelected ? 'bg-blue-600 ring-2 ring-blue-300' : 'bg-slate-500'}`} />
-                                <span>{c.color || '—'}</span>
-                              </div>
-                              <div className="text-[10px] text-slate-500 font-normal pl-3.5">
-                                Dyeing Balance: {Math.round(c.dyeingBalance)} kg
+                                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${isSelected ? 'bg-blue-600 ring-2 ring-blue-300' : 'bg-slate-400'}`} />
+                                <span className="text-[12.5px]">{c.color || '—'}</span>
                               </div>
                             </td>
 
                             {drawerVisibleSections.orderQty && (
-                              <td className="px-2.5 py-2 text-right text-slate-800 font-medium border-l border-slate-200">
-                                <div>{Math.round(c.totalReq)} kg</div>
-                                <div className="text-[10px] text-slate-500">
-                                  B:{Math.round(c.reqBody)} R:{Math.round(c.reqRib)} SJ:{Math.round(c.reqSJ)}
+                              <td className="px-3 py-2 text-right border-l border-slate-200">
+                                <div className="font-extrabold text-[12.5px] text-slate-900 mb-1">{Math.round(c.totalReq).toLocaleString()} kg</div>
+                                <div className="flex items-center justify-end gap-1 text-[10px]">
+                                  <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-semibold border border-slate-200">Body: {Math.round(c.reqBody)}</span>
+                                  <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-semibold border border-slate-200">Rib: {Math.round(c.reqRib)}</span>
+                                  <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-semibold border border-slate-200">SJ: {Math.round(c.reqSJ)}</span>
                                 </div>
                               </td>
                             )}
 
                             {drawerVisibleSections.receivedQty && (
-                              <td className="px-2.5 py-2 text-right text-emerald-950 font-bold border-l border-slate-200">
-                                <div>{Math.round(c.totalRecv)} kg</div>
-                                <div className="text-[10px] text-emerald-700">
-                                  B:{Math.round(c.recvBody)} R:{Math.round(c.recvRib)} SJ:{Math.round(c.recvSJ)}
+                              <td className="px-3 py-2 text-right border-l border-slate-200">
+                                <div className="font-black text-[12.5px] text-emerald-950 mb-1">{Math.round(c.totalRecv).toLocaleString()} kg</div>
+                                <div className="flex items-center justify-end gap-1 text-[10px]">
+                                  <span className="bg-emerald-50 text-emerald-900 px-1.5 py-0.5 rounded font-semibold border border-emerald-200">Body: {Math.round(c.recvBody)}</span>
+                                  <span className="bg-emerald-50 text-emerald-900 px-1.5 py-0.5 rounded font-semibold border border-emerald-200">Rib: {Math.round(c.recvRib)}</span>
+                                  <span className="bg-emerald-50 text-emerald-900 px-1.5 py-0.5 rounded font-semibold border border-emerald-200">SJ: {Math.round(c.recvSJ)}</span>
                                 </div>
                               </td>
                             )}
 
+                            {/* Dyeing Balance (Pending to Receive) */}
+                            <td className="px-3 py-2 text-right border-l border-slate-200">
+                              <div className={`font-black text-[11.5px] px-2 py-0.5 rounded inline-block ${
+                                c.dyeingBalance > 0
+                                  ? 'bg-amber-100 text-amber-950 border border-amber-300'
+                                  : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                              }`}>
+                                {c.dyeingBalance > 0 ? `${Math.round(c.dyeingBalance).toLocaleString()} kg` : '0 kg (Done)'}
+                              </div>
+                            </td>
+
                             {drawerVisibleSections.deliveryQty && (
-                              <td className="px-2.5 py-2 text-right text-purple-950 font-bold border-l border-slate-200">
-                                <div>{Math.round(c.totalIssued)} kg</div>
-                                <div className="text-[10px] text-purple-700">
-                                  B:{Math.round(c.issuedBody)} R:{Math.round(c.issuedRib)} SJ:{Math.round(c.issuedSJ)}
+                              <td className="px-3 py-2 text-right border-l border-slate-200">
+                                <div className="font-black text-[12.5px] text-purple-950 mb-1">{Math.round(c.totalIssued).toLocaleString()} kg</div>
+                                <div className="flex items-center justify-end gap-1 text-[10px]">
+                                  <span className="bg-purple-50 text-purple-900 px-1.5 py-0.5 rounded font-semibold border border-purple-200">Body: {Math.round(c.issuedBody)}</span>
+                                  <span className="bg-purple-50 text-purple-900 px-1.5 py-0.5 rounded font-semibold border border-purple-200">Rib: {Math.round(c.issuedRib)}</span>
+                                  <span className="bg-purple-50 text-purple-900 px-1.5 py-0.5 rounded font-semibold border border-purple-200">SJ: {Math.round(c.issuedSJ)}</span>
                                 </div>
                               </td>
                             )}
 
                             {drawerVisibleSections.closingStock && (
-                              <td className="px-2.5 py-2 text-right font-extrabold text-sky-950 border-l border-slate-200">
-                                <div>{Math.round(c.stockBalance)} kg</div>
-                                <div className="text-[10px] text-sky-700">
-                                  B:{Math.round(c.stockBody)} R:{Math.round(c.stockRib)} SJ:{Math.round(c.stockSJ)}
+                              <td className="px-3 py-2 text-right border-l border-slate-200">
+                                <div className="font-black text-[12.5px] text-sky-950 mb-1">{Math.round(c.stockBalance).toLocaleString()} kg</div>
+                                <div className="flex items-center justify-end gap-1 text-[10px]">
+                                  <span className="bg-sky-50 text-sky-900 px-1.5 py-0.5 rounded font-semibold border border-sky-200">Body: {Math.round(c.stockBody)}</span>
+                                  <span className="bg-sky-50 text-sky-900 px-1.5 py-0.5 rounded font-semibold border border-sky-200">Rib: {Math.round(c.stockRib)}</span>
+                                  <span className="bg-sky-50 text-sky-900 px-1.5 py-0.5 rounded font-semibold border border-sky-200">SJ: {Math.round(c.stockSJ)}</span>
                                 </div>
                               </td>
                             )}
 
                             {drawerVisibleSections.location && (
                               <td className="px-2.5 py-2 text-center border-l border-slate-200">
-                                <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-800 border border-slate-300">
+                                <span className="px-2 py-0.5 rounded text-[11px] font-extrabold bg-blue-100 text-blue-900 border border-blue-300">
                                   {c.location || 'F.ST'}
                                 </span>
                               </td>

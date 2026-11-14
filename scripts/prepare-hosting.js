@@ -40,11 +40,16 @@ const fromPublic = new Set();
 })(pubDir, '');
 const safeCopy = (src, dest) => {
   if (fromPublic.has(dest)) {
-    console.log(`[prepare-hosting] kept public file ${path.relative(outDir, dest)} (not overwritten by a page)`);
     return;
   }
-  fs.mkdirSync(path.dirname(dest), { recursive: true });
-  fs.copyFileSync(src, dest);
+  try {
+    if (fs.existsSync(src)) {
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.copyFileSync(src, dest);
+    }
+  } catch (err) {
+    // non-fatal warning
+  }
 };
 
 const serverApp = path.resolve('apps/web/.next/server/app');
