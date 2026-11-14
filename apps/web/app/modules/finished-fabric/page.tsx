@@ -138,13 +138,25 @@ function generateInitialRackLocations(lines: FabricColorLine[]): RackLocations {
 // DATA TYPES & INTERFACES (100% PURE ENGLISH)
 // ============================================================================
 
+export interface FabricBatchItem {
+  batchNo: string;
+  date: string;
+  source?: string;
+  bodyKg: number;
+  ribKg: number;
+  sjKg: number;
+  totalKg: number;
+  location: string;
+}
+
 export interface ColorTransactionRecord {
   id: string;
   jobNo: string;
   colorId: string;
   colorName: string;
   date: string;
-  type: 'RECEIVE' | 'ISSUE';
+  type: 'RECEIVE' | 'ISSUE' | 'RETURN';
+  source?: 'Dyeing' | 'Cutting Return' | 'Leftover Re-allocation' | string;
   batchNo: string;
   bodyKg: number;
   ribKg: number;
@@ -153,10 +165,17 @@ export interface ColorTransactionRecord {
   rolls: number;
   refNo: string;
   handledBy: string;
+  location?: string;
+  remarks?: string;
 }
 
 export interface FabricColorLine {
   batches?: string[];
+  batchesInfo?: FabricBatchItem[];
+  returnsBody?: number;
+  returnsRib?: number;
+  returnsSJ?: number;
+  totalReturns?: number;
   id: string;
   idx: number;
   sl?: string;
@@ -348,17 +367,23 @@ function getColorHex(name: string): string {
 function ExcelColumnFilterPopover({
   title,
   currentValue,
+  currentValues,
   onApply,
+  onSort,
   distinctList,
   onClose,
 }: {
   title: string;
-  currentValue: string;
-  onApply: (val: string) => void;
+  currentValue?: any;
+  currentValues?: any;
+  onApply: (values: any) => void;
+  onSort?: (direction: 'asc' | 'desc') => void;
   distinctList: { label: string; count: number }[];
   onClose: () => void;
 }) {
   const [search, setSearch] = useState('');
+  const initialVals = currentValues !== undefined ? currentValues : (currentValue ? [currentValue] : []);
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(Array.isArray(initialVals) ? initialVals : (initialVals ? [initialVals] : [])));
   const popoverRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -377,100 +402,167 @@ function ExcelColumnFilterPopover({
     return (distinctList || []).filter(item => item.label.toLowerCase().includes(q));
   }, [distinctList, search]);
 
+  const allSelected = filteredItems.length > 0 && filteredItems.every(i => selected.has(i.label));
+
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelected(new Set());
+    } else {
+      const next = new Set(selected);
+      filteredItems.forEach(i => next.add(i.label));
+      setSelected(next);
+    }
+  };
+
+  const toggleOne = (label: string) => {
+    const next = new Set(selected);
+    if (next.has(label)) next.delete(label);
+    else next.add(label);
+    setSelected(next);
+  };
+
   return (
     <div
       ref={popoverRef}
-      className="absolute top-full left-0 mt-1 w-64 bg-white rounded-lg shadow-2xl border-2 border-slate-300 p-2.5 z-50 text-left font-normal normal-case text-slate-800 animate-in fade-in zoom-in-95 duration-100"
+      className="absolute top-full left-0 mt-1 w-72 bg-white rounded-lg shadow-2xl border-2 border-slate-400 p-2.5 z-50 text-left font-normal normal-case text-slate-800 animate-in fade-in zoom-in-95 duration-100"
       onClick={e => e.stopPropagation()}
     >
-      <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-slate-200">
-        <span className="font-extrabold text-xs text-slate-900 flex items-center gap-1.5">
-          <Filter className="w-3.5 h-3.5 text-blue-600" />
-          Filter: {title}
-        </span>
+      {/* 1. Sort A to Z / Sort Z to A / Clear Filter */}
+      <div className="pb-1.5 mb-2 border-b border-slate-200 space-y-0.5 text-xs">
         <button
           type="button"
-          onClick={onClose}
-          className="text-slate-400 hover:text-slate-800 text-xs p-1"
+          onClick={() => { onSort && onSort('asc'); onClose(); }}
+          className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded hover:bg-slate-100 text-slate-900 font-bold transition-colors"
         >
-          ✕
+          <ArrowUpDown className="w-3.5 h-3.5 text-blue-600" />
+          <span>Sort A to Z</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => { onSort && onSort('desc'); onClose(); }}
+          className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded hover:bg-slate-100 text-slate-900 font-bold transition-colors"
+        >
+          <ArrowUpDown className="w-3.5 h-3.5 text-blue-600 rotate-180" />
+          <span>Sort Z to A</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => { onApply([]); onClose(); }}
+          className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded hover:bg-rose-50 text-rose-700 font-black transition-colors"
+        >
+          <X className="w-3.5 h-3.5 text-rose-600" />
+          <span>Clear Filter from &quot;{title}&quot;</span>
         </button>
       </div>
 
+      {/* 2. Search Box */}
       <div className="relative mb-2">
-        <Search className="w-3.5 h-3.5 absolute left-2 top-2 text-slate-400" />
+        <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
         <input
           type="text"
           autoFocus
-          placeholder={`Search ${title}...`}
+          placeholder="Search items..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="w-full pl-7 pr-2 py-1 text-xs border border-slate-300 rounded bg-slate-50 focus:bg-white focus:outline-hidden focus:border-blue-500 text-slate-900"
+          className="w-full pl-8 pr-2.5 py-1.5 text-xs border border-slate-300 rounded-md bg-slate-50 focus:bg-white focus:outline-hidden focus:border-blue-500 text-slate-900 font-semibold"
         />
       </div>
 
-      <div className="flex items-center justify-between text-[11px] px-1 py-1 mb-1.5 bg-slate-100 rounded">
+      {/* 3. Checkbox tree */}
+      <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-md p-1.5 space-y-1 text-xs bg-slate-50/60">
+        <label className="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-blue-50 cursor-pointer font-black text-slate-900">
+          <input
+            type="checkbox"
+            checked={allSelected}
+            onChange={toggleAll}
+            className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-0 border-slate-400"
+          />
+          <span>(Select All)</span>
+        </label>
+        {filteredItems.map(item => (
+          <label
+            key={item.label}
+            className="flex items-center justify-between gap-2 px-1.5 py-0.5 rounded hover:bg-blue-50 cursor-pointer text-slate-800"
+          >
+            <div className="flex items-center gap-2 truncate">
+              <input
+                type="checkbox"
+                checked={selected.has(item.label)}
+                onChange={() => toggleOne(item.label)}
+                className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-0 border-slate-300"
+              />
+              <span className="truncate text-[11.5px] font-semibold text-slate-900">{item.label}</span>
+            </div>
+            <span className="text-[10.5px] text-slate-500 font-mono">({item.count})</span>
+          </label>
+        ))}
+      </div>
+
+      {/* 4. Footer OK / Cancel */}
+      <div className="flex items-center justify-end gap-2 pt-2.5 mt-2 border-t border-slate-200">
         <button
           type="button"
           onClick={() => {
-            onApply('');
+            const arr = Array.from(selected);
+onApply(arr.length === 1 ? arr[0] : (arr.length === 0 ? "" : arr));
             onClose();
           }}
-          className="text-blue-700 font-bold hover:underline"
+          className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-bold text-xs shadow-xs"
         >
-          (Show All / Clear)
+          OK
         </button>
-        {search.trim() && (
-          <button
-            type="button"
-            onClick={() => {
-              onApply(search.trim());
-              onClose();
-            }}
-            className="text-emerald-700 font-bold hover:underline"
-          >
-            Apply &quot;{search.trim().slice(0, 10)}&quot;
-          </button>
-        )}
-      </div>
-
-      <div className="max-h-44 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded">
-        {filteredItems.length === 0 ? (
-          <div className="p-3 text-center text-xs text-slate-400">No matching values</div>
-        ) : (
-          filteredItems.map(item => {
-            const isSelected = currentValue === item.label;
-            return (
-              <button
-                key={item.label}
-                type="button"
-                onClick={() => {
-                  onApply(isSelected ? '' : item.label);
-                  onClose();
-                }}
-                className={`w-full flex items-center justify-between px-2.5 py-1.5 text-xs text-left transition-colors ${
-                  isSelected ? 'bg-blue-50 font-bold text-blue-900' : 'hover:bg-slate-50 text-slate-700'
-                }`}
-              >
-                <div className="flex items-center gap-2 truncate">
-                  <span className={`w-3.5 h-3.5 rounded-xs border flex items-center justify-center shrink-0 ${
-                    isSelected ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-300 bg-white'
-                  }`}>
-                    {isSelected && <Check className="w-2.5 h-2.5" />}
-                  </span>
-                  <span className="truncate">{item.label}</span>
-                </div>
-                <span className="text-[10px] text-slate-500 font-semibold bg-slate-100 px-1.5 py-0.5 rounded shrink-0 ml-1">
-                  {item.count}
-                </span>
-              </button>
-            );
-          })
-        )}
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-semibold text-xs border border-slate-300"
+        >
+          Cancel
+        </button>
       </div>
     </div>
   );
 }
+
+// 15 Factory Storage Racks (R-01 to R-12, R-13 Master Bay, CB Chemical Building, NS NCL Store)
+const FACTORY_RACKS = [
+  ...Array.from({ length: 12 }, (_, i) => {
+    const num = String(i + 1).padStart(2, '0');
+    return {
+      id: `R-${num}`,
+      name: `Rack ${num}`,
+      shelves: ['Shelf 01', 'Shelf 02', 'Shelf 03'],
+      isExternal: false,
+    };
+  }),
+  {
+    id: 'R-13',
+    name: 'Rack 13 (Master Storage Bay)',
+    shelves: [
+      'A1', 'A2', 'A3',
+      'B1', 'B2', 'B3',
+      'C1', 'C2', 'C3',
+      'D1', 'D2', 'D3',
+      'E1', 'E2', 'E3',
+      'F1', 'F2', 'F3',
+      'G1', 'G2', 'G3',
+      'H1', 'H2', 'H3',
+      'I1', 'I2', 'I3',
+    ],
+    isExternal: false,
+  },
+  {
+    id: 'CB',
+    name: 'Chemical Building (CB Overflow)',
+    shelves: ['Shelf 01', 'Shelf 02', 'Shelf 03'],
+    isExternal: true,
+  },
+  {
+    id: 'NS',
+    name: 'NCL Store (NS Overflow)',
+    shelves: ['Shelf 01', 'Shelf 02', 'Shelf 03'],
+    isExternal: true,
+  },
+];
 
 export default function FinishedFabricPage() {
   return (
@@ -490,7 +582,33 @@ function FinishedFabricPageInner() {
   const [summaryMonthFilter, setSummaryMonthFilter] = useState<'ALL' | 'September' | 'October' | 'November' | 'December'>('ALL');
   const [summaryBuyerSearch, setSummaryBuyerSearch] = useState('');
   const [colorTransactions, setColorTransactions] = useState<ColorTransactionRecord[]>([]);
-  const [historyColorModal, setHistoryColorModal] = useState<{ jobNo: string; color: FabricColorLine } | null>(null);
+  const [historyColorModal, setHistoryColorModal] = useState<{ jobNo: string; color: FabricColorLine; filterType?: 'ALL' | 'RECEIVE' | 'ISSUE' | 'RETURN' } | null>(null);
+  const [expandedColors, setExpandedColors] = useState<Record<string, boolean>>({});
+  const [showExternalRacks, setShowExternalRacks] = useState(false);
+  const [selectedRackId, setSelectedRackId] = useState("R-01");
+  const [selectedJobKeys, setSelectedJobKeys] = useState<Set<string>>(new Set());
+  const [sentToLeftoverJobs, setSentToLeftoverJobs] = useState<Record<string, { date: string }>>({});
+  const [colFilterMulti, setColFilterMulti] = useState<Record<string, string[]>>({});
+  const [quickReceiveOpen, setQuickReceiveOpen] = useState(false);
+  const [leftoverDispatchModal, setLeftoverDispatchModal] = useState<LeftoverReturnRecord | null>(null);
+  const [leftoverDispatchForm, setLeftoverDispatchForm] = useState({
+    referenceJob: '',
+    date: new Date().toISOString().split('T')[0],
+    bodyKg: 0,
+    ribKg: 0,
+    sjKg: 0,
+    purposeRemarks: '',
+  });
+  const [returnForm, setReturnForm] = useState({
+    selectedColorId: '',
+    colorName: '',
+    date: new Date().toISOString().split('T')[0],
+    batchNo: 'B-RET-01',
+    bodyKg: 0,
+    ribKg: 0,
+    sjKg: 0,
+    reasonRemarks: '',
+  });
 
   // Master Data state
   const [rawLines, setRawLines] = useState<FabricColorLine[]>([]);
@@ -977,6 +1095,35 @@ function FinishedFabricPageInner() {
     setColFilterLocation('ALL');
   };
 
+  const exportToExcel = () => {
+    try {
+      const exportRows = paginatedGroups.map(j => ({
+        'Job No': j.jobNo,
+        'Buyer': j.buyer,
+        'Style': j.style,
+        'Colors': j.colorCount,
+        'Req Body (kg)': Math.round(j.reqBody),
+        'Req Rib (kg)': Math.round(j.reqRib),
+        'Req SJ (kg)': Math.round(j.reqSJ),
+        'Total Req (kg)': Math.round(j.totalReq),
+        'Recv Body (kg)': Math.round(j.recvBody),
+        'Recv Rib (kg)': Math.round(j.recvRib),
+        'Recv SJ (kg)': Math.round(j.recvSJ),
+        'Total Recv (kg)': Math.round(j.totalRecv),
+        'Total Issued (kg)': Math.round(j.totalIssued),
+        'Total Stock (kg)': Math.round(j.totalStock),
+        'Location': j.location,
+      }));
+      const ws = XLSX.utils.json_to_sheet(exportRows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Finished Fabric');
+      XLSX.writeFile(wb, `Finished_Fabric_Stock_${new Date().toISOString().split('T')[0]}.xlsx`);
+      showToast('Exported stock statement to Excel successfully.');
+    } catch {
+      showToast('Export failed.');
+    }
+  };
+
   // Dashboard visibility collapse toggle
   const [showDashboard, setShowDashboard] = useState(true);
 
@@ -1030,7 +1177,7 @@ function FinishedFabricPageInner() {
 
   // Selected Job & Action Modal state
   const [selectedJobDetail, setSelectedJobDetail] = useState<JobFabricGroup | null>(null);
-  const [actionModalMode, setActionModalMode] = useState<'VIEW' | 'ISSUE' | 'RECEIVE'>('VIEW');
+  const [actionModalMode, setActionModalMode] = useState<'VIEW' | 'ISSUE' | 'RECEIVE' | 'RETURN'>('VIEW');
   const [actionForm, setActionForm] = useState({
     selectedColorId: '',
     colorName: '',
@@ -1068,6 +1215,65 @@ function FinishedFabricPageInner() {
       issuedTo: 'Cutting Master',
       remarks: '',
     });
+  };
+
+  // Fabric Return Confirmation Handler (Deducts stock and records in ledger)
+  const handleConfirmReturnFromModal = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedJobDetail) return;
+    const targetColor = selectedJobDetail.colors.find(c => c.id === returnForm.selectedColorId) || selectedJobDetail.colors[0];
+    if (!targetColor) return;
+
+    const body = Number(returnForm.bodyKg) || 0;
+    const rib = Number(returnForm.ribKg) || 0;
+    const sj = Number(returnForm.sjKg) || 0;
+    const total = body + rib + sj;
+
+    if (total <= 0) {
+      showToast('Please enter return quantity (Body, Rib, or S.Jersey kg)');
+      return;
+    }
+
+    // Deduct stock from the color line
+    setRawLines(prev => prev.map(line => {
+      if (line.id === targetColor.id) {
+        return {
+          ...line,
+          stockBody: Math.max(0, (line.stockBody || 0) - body),
+          stockRib: Math.max(0, (line.stockRib || 0) - rib),
+          stockSJ: Math.max(0, (line.stockSJ || 0) - sj),
+          stockBalance: Math.max(0, (line.stockBalance || 0) - total),
+          returnsBody: (line.returnsBody || 0) + body,
+          returnsRib: (line.returnsRib || 0) + rib,
+          returnsSJ: (line.returnsSJ || 0) + sj,
+          totalReturns: (line.totalReturns || 0) + total,
+        };
+      }
+      return line;
+    }));
+
+    const newTx: ColorTransactionRecord = {
+      id: String(Date.now()),
+      jobNo: selectedJobDetail.jobNo,
+      colorId: targetColor.id,
+      colorName: targetColor.color || 'Solid',
+      date: returnForm.date,
+      type: 'RETURN',
+      source: 'Return to Dyeing / Supplier',
+      batchNo: returnForm.batchNo || 'B-RET-01',
+      bodyKg: body,
+      ribKg: rib,
+      sjKg: sj,
+      totalKg: total,
+      rolls: 1,
+      refNo: returnForm.reasonRemarks || 'Fabric Return',
+      handledBy: 'Store Supervisor',
+      remarks: returnForm.reasonRemarks,
+    };
+
+    setColorTransactions(prev => [newTx, ...prev]);
+    showToast(`${total} kg fabric returned for ${targetColor.color}. Stock deducted.`);
+    setActionModalMode('VIEW');
   };
 
   const handleConfirmIssueFromModal = (e: React.FormEvent) => {
@@ -1891,6 +2097,21 @@ function FinishedFabricPageInner() {
       if (selectedFabricType !== 'ALL' && job.fabricType !== selectedFabricType) return false;
 
       // In-Table Column Header AutoFilters
+      // Check multi-select filters from Excel AutoFilter
+      if (colFilterMulti.jobNo && colFilterMulti.jobNo.length > 0 && !colFilterMulti.jobNo.includes(job.jobNo)) return false;
+      if (colFilterMulti.style && colFilterMulti.style.length > 0 && !colFilterMulti.style.includes(job.style)) return false;
+      if (colFilterMulti.color && colFilterMulti.color.length > 0) {
+        const hasMatchingColor = job.colors.some(c => colFilterMulti.color.includes(c.color));
+        if (!hasMatchingColor) return false;
+      }
+      if (colFilterMulti.fabric && colFilterMulti.fabric.length > 0 && !colFilterMulti.fabric.includes(job.fabricType)) return false;
+      if (colFilterMulti.comp && colFilterMulti.comp.length > 0 && !colFilterMulti.comp.includes(job.composition)) return false;
+      if (colFilterMulti.process && colFilterMulti.process.length > 0 && !colFilterMulti.process.includes(job.process)) return false;
+      if (colFilterMulti.gsm && colFilterMulti.gsm.length > 0 && !colFilterMulti.gsm.includes(job.gsm)) return false;
+      if (colFilterMulti.dia && colFilterMulti.dia.length > 0 && !colFilterMulti.dia.includes(job.dia)) return false;
+      if (colFilterMulti.status && colFilterMulti.status.length > 0 && !colFilterMulti.status.includes(job.colors[0]?.stockState || 'In Stock')) return false;
+      if (colFilterMulti.location && colFilterMulti.location.length > 0 && !colFilterMulti.location.includes(job.location)) return false;
+
       if (colFilterJob && !job.jobNo.toLowerCase().includes(colFilterJob.toLowerCase())) return false;
       if (colFilterStyle && !job.style.toLowerCase().includes(colFilterStyle.toLowerCase())) return false;
       if (colFilterColor) {
@@ -2521,196 +2742,83 @@ function FinishedFabricPageInner() {
       {/* ===================================================================== */}
       {/* MAIN NAVIGATION TABS (MATCHING TRIMS & ACCESSORIES STORE STANDARD) */}
       {/* ===================================================================== */}
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '6px',
-          padding: '8px 12px',
-          background: 'var(--card-bg, #ffffff)',
-          borderBottom: '1px solid var(--border, #e2e8f0)',
-          marginBottom: '16px',
-          borderRadius: '8px'
-        }}
-      >
+      <div className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap pb-2 pt-1 mb-4 border-b border-slate-200">
         <button
           type="button"
           onClick={() => setActiveTab('STOCK')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '7px',
-            padding: '7px 14px',
-            borderRadius: '6px',
-            fontSize: '13px',
-            fontWeight: 650,
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-            border: activeTab === 'STOCK' ? '1px solid #0F274E' : '1px solid #E2E8F0',
-            background: activeTab === 'STOCK' ? '#0F274E' : '#F8FAFC',
-            color: activeTab === 'STOCK' ? '#FFFFFF' : '#475569'
-          }}
+          className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 transition-all ${
+            activeTab === 'STOCK'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+          }`}
         >
-          <Boxes size={16} color={activeTab === 'STOCK' ? '#38BDF8' : '#64748B'} />
-          <span>1. Finished Fabric Stock Statement</span>
-          <span
-            style={{
-              fontSize: '11px',
-              background: activeTab === 'STOCK' ? '#38BDF8' : '#E2E8F0',
-              color: activeTab === 'STOCK' ? '#0F274E' : '#475569',
-              padding: '1px 7px',
-              borderRadius: '10px',
-              fontWeight: 700
-            }}
-          >
-            {jobGroups.length} Jobs
-          </span>
+          <Boxes size={14} className={activeTab === 'STOCK' ? 'text-sky-400' : 'text-slate-500'} />
+          <span>Stock Report</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('SUMMARY_STATEMENT')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '7px',
-            padding: '7px 14px',
-            borderRadius: '6px',
-            fontSize: '13px',
-            fontWeight: 650,
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-            border: activeTab === 'SUMMARY_STATEMENT' ? '1px solid #009E49' : '1px solid #E2E8F0',
-            background: activeTab === 'SUMMARY_STATEMENT' ? '#009E49' : '#F8FAFC',
-            color: activeTab === 'SUMMARY_STATEMENT' ? '#FFFFFF' : '#475569'
-          }}
+          className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 transition-all ${
+            activeTab === 'SUMMARY_STATEMENT'
+              ? 'bg-emerald-700 text-white shadow-xs'
+              : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+          }`}
         >
-          <FileSpreadsheet size={16} color={activeTab === 'SUMMARY_STATEMENT' ? '#FFFFFF' : '#009E49'} />
-          <span>2. Working Stock Summary (Excel Report 14.11.26)</span>
-          <span
-            style={{
-              fontSize: '11px',
-              background: activeTab === 'SUMMARY_STATEMENT' ? '#FFFFFF' : '#E2E8F0',
-              color: activeTab === 'SUMMARY_STATEMENT' ? '#009E49' : '#475569',
-              padding: '1px 7px',
-              borderRadius: '10px',
-              fontWeight: 800
-            }}
-          >
-            3,168 Tons
-          </span>
+          <FileSpreadsheet size={14} className={activeTab === 'SUMMARY_STATEMENT' ? 'text-white' : 'text-emerald-600'} />
+          <span>Monthly Summary</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('RECEIVE')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '7px',
-            padding: '7px 14px',
-            borderRadius: '6px',
-            fontSize: '13px',
-            fontWeight: 650,
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-            border: activeTab === 'RECEIVE' ? '1px solid #0F274E' : '1px solid #E2E8F0',
-            background: activeTab === 'RECEIVE' ? '#0F274E' : '#F8FAFC',
-            color: activeTab === 'RECEIVE' ? '#FFFFFF' : '#475569'
-          }}
+          className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 transition-all ${
+            activeTab === 'RECEIVE'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+          }`}
         >
-          <Truck size={16} color={activeTab === 'RECEIVE' ? '#38BDF8' : '#64748B'} />
-          <span>3. Imported & New Receive</span>
-          <span
-            style={{
-              fontSize: '11px',
-              background: activeTab === 'RECEIVE' ? '#38BDF8' : '#E2E8F0',
-              color: activeTab === 'RECEIVE' ? '#0F274E' : '#475569',
-              padding: '1px 7px',
-              borderRadius: '10px',
-              fontWeight: 700
-            }}
-          >
-            {challans.length} Challans
-          </span>
+          <Truck size={14} className={activeTab === 'RECEIVE' ? 'text-sky-400' : 'text-slate-500'} />
+          <span>Fabric Receive</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('ISSUE')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '7px',
-            padding: '7px 14px',
-            borderRadius: '6px',
-            fontSize: '13px',
-            fontWeight: 650,
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-            border: activeTab === 'ISSUE' ? '1px solid #0F274E' : '1px solid #E2E8F0',
-            background: activeTab === 'ISSUE' ? '#0F274E' : '#F8FAFC',
-            color: activeTab === 'ISSUE' ? '#FFFFFF' : '#475569'
-          }}
+          className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 transition-all ${
+            activeTab === 'ISSUE'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+          }`}
         >
-          <Scissors size={16} color={activeTab === 'ISSUE' ? '#38BDF8' : '#64748B'} />
-          <span>4. Issue to Cutting Floor</span>
+          <Scissors size={14} className={activeTab === 'ISSUE' ? 'text-sky-400' : 'text-slate-500'} />
+          <span>Fabric Delivery</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('LOCATION')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '7px',
-            padding: '7px 14px',
-            borderRadius: '6px',
-            fontSize: '13px',
-            fontWeight: 650,
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-            border: activeTab === 'LOCATION' ? '1px solid #0F274E' : '1px solid #E2E8F0',
-            background: activeTab === 'LOCATION' ? '#0F274E' : '#F8FAFC',
-            color: activeTab === 'LOCATION' ? '#FFFFFF' : '#475569'
-          }}
+          className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 transition-all ${
+            activeTab === 'LOCATION'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+          }`}
         >
-          <Warehouse size={16} color={activeTab === 'LOCATION' ? '#38BDF8' : '#64748B'} />
-          <span>5. Store Location Tracking (F.ST · N.ST · CB)</span>
+          <Warehouse size={14} className={activeTab === 'LOCATION' ? 'text-sky-400' : 'text-slate-500'} />
+          <span>Location Tracking</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('REUSE')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '7px',
-            padding: '7px 14px',
-            borderRadius: '6px',
-            fontSize: '13px',
-            fontWeight: 650,
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-            border: activeTab === 'REUSE' ? '1px solid #0F274E' : '1px solid #E2E8F0',
-            background: activeTab === 'REUSE' ? '#0F274E' : '#F8FAFC',
-            color: activeTab === 'REUSE' ? '#FFFFFF' : '#475569'
-          }}
+          className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 transition-all ${
+            activeTab === 'REUSE'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+          }`}
         >
-          <RotateCcw size={16} color={activeTab === 'REUSE' ? '#38BDF8' : '#64748B'} />
-          <span>6. Stock for Leftover & Reuse</span>
-          <span
-            style={{
-              fontSize: '11px',
-              background: activeTab === 'REUSE' ? '#38BDF8' : '#E2E8F0',
-              color: activeTab === 'REUSE' ? '#0F274E' : '#475569',
-              padding: '1px 7px',
-              borderRadius: '10px',
-              fontWeight: 700
-            }}
-          >
-            {leftoverLedger.length}
-          </span>
+          <RotateCcw size={14} className={activeTab === 'REUSE' ? 'text-sky-400' : 'text-slate-500'} />
+          <span>Leftover Stock</span>
         </button>
       </div>
 
@@ -2836,99 +2944,16 @@ function FinishedFabricPageInner() {
           {/* PROFESSIONAL ODOO-STYLE COLUMN TOGGLE FILTER PILLS */}
           {/* =================================================================== */}
           <div className="flex flex-wrap items-center justify-between gap-2 mb-3 p-2 bg-slate-50 rounded-md border border-slate-200 text-xs">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="font-bold text-slate-700 mr-1 flex items-center gap-1 text-[11px] uppercase tracking-wider">
-                <SlidersHorizontal className="w-3 h-3 text-slate-600" />
-                Columns:
-              </span>
-
-              {/* 1. Job Specs */}
-              <button
-                type="button"
-                onClick={() => setVisibleSections(v => ({ ...v, jobSpecs: !v.jobSpecs }))}
-                className={`px-2.5 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all border ${
-                  visibleSections.jobSpecs
-                    ? 'bg-slate-200 text-slate-900 border-slate-400 shadow-xs'
-                    : 'bg-white text-slate-500 border-slate-300 hover:bg-slate-100'
-                }`}
-              >
-                {visibleSections.jobSpecs && <Check className="w-3.5 h-3.5 text-slate-900 stroke-[2.5]" />}
-                <span>Job & Specs</span>
-              </button>
-
-              {/* 2. Order / Req Qty */}
-              <button
-                type="button"
-                onClick={() => setVisibleSections(v => ({ ...v, orderQty: !v.orderQty }))}
-                className={`px-2.5 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all border ${
-                  visibleSections.orderQty
-                    ? 'bg-blue-100 text-blue-900 border-blue-400 shadow-xs'
-                    : 'bg-white text-slate-500 border-slate-300 hover:bg-slate-100'
-                }`}
-              >
-                {visibleSections.orderQty && <Check className="w-3.5 h-3.5 text-blue-900 stroke-[2.5]" />}
-                <span>Order Qty (Body/Rib/SJ)</span>
-              </button>
-
-              {/* 3. Received Qty */}
-              <button
-                type="button"
-                onClick={() => setVisibleSections(v => ({ ...v, receivedQty: !v.receivedQty }))}
-                className={`px-2.5 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all border ${
-                  visibleSections.receivedQty
-                    ? 'bg-emerald-100 text-emerald-900 border-emerald-400 shadow-xs'
-                    : 'bg-white text-slate-500 border-slate-300 hover:bg-slate-100'
-                }`}
-              >
-                {visibleSections.receivedQty && <Check className="w-3.5 h-3.5 text-emerald-900 stroke-[2.5]" />}
-                <span>Received (Body/Rib/SJ)</span>
-              </button>
-
-              {/* 4. Issue / Delivery Qty */}
-              <button
-                type="button"
-                onClick={() => setVisibleSections(v => ({ ...v, deliveryQty: !v.deliveryQty }))}
-                className={`px-2.5 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all border ${
-                  visibleSections.deliveryQty
-                    ? 'bg-purple-100 text-purple-900 border-purple-400 shadow-xs'
-                    : 'bg-white text-slate-500 border-slate-300 hover:bg-slate-100'
-                }`}
-              >
-                {visibleSections.deliveryQty && <Check className="w-3.5 h-3.5 text-purple-900 stroke-[2.5]" />}
-                <span>Issue / Delivery (Body/Rib/SJ)</span>
-              </button>
-
-              {/* 5. Closing Stock */}
-              <button
-                type="button"
-                onClick={() => setVisibleSections(v => ({ ...v, closingStock: !v.closingStock }))}
-                className={`px-2.5 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all border ${
-                  visibleSections.closingStock
-                    ? 'bg-sky-100 text-sky-900 border-sky-400 shadow-xs'
-                    : 'bg-white text-slate-500 border-slate-300 hover:bg-slate-100'
-                }`}
-              >
-                {visibleSections.closingStock && <Check className="w-3.5 h-3.5 text-sky-900 stroke-[2.5]" />}
-                <span>Closing Stock (Body/Rib/SJ)</span>
-              </button>
-
-              {/* 6. Location & Leftover */}
-              <button
-                type="button"
-                onClick={() => setVisibleSections(v => ({ ...v, locationInfo: !v.locationInfo }))}
-                className={`px-2.5 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all border ${
-                  visibleSections.locationInfo
-                    ? 'bg-amber-100 text-amber-900 border-amber-400 shadow-xs'
-                    : 'bg-white text-slate-500 border-slate-300 hover:bg-slate-100'
-                }`}
-              >
-                {visibleSections.locationInfo && <Check className="w-3.5 h-3.5 text-amber-900 stroke-[2.5]" />}
-                <span>Location & Leftover</span>
-              </button>
-            </div>
-
             <div className="flex items-center gap-2">
-              {/* Imported Fabric Filter Toggle */}
+              <button
+                type="button"
+                onClick={() => setQuickReceiveOpen(true)}
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-md flex items-center gap-1.5 shadow-xs transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Fabric Receive</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => setFilterImportedOnly(!filterImportedOnly)}
@@ -2941,55 +2966,65 @@ function FinishedFabricPageInner() {
                 <Globe className="w-3.5 h-3.5" />
                 <span>Imported Fabric Only</span>
               </button>
+            </div>
 
-              {/* Show All Columns Pill */}
+            <div className="flex items-center gap-2">
+              {selectedJobKeys.size > 0 && (
+                <div className="flex items-center gap-2 bg-amber-50 border border-amber-300 px-2.5 py-1 rounded-md text-amber-950 font-bold animate-in fade-in">
+                  <span>${selectedJobKeys.size} Jobs Selected</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const now = new Date().toISOString().split('T')[0];
+                      const updated = { ...sentToLeftoverJobs };
+                      selectedJobKeys.forEach(k => {
+                        updated[k] = { date: now };
+                      });
+                      setSentToLeftoverJobs(updated);
+                      setSelectedJobKeys(new Set());
+                      showToast(`${selectedJobKeys.size} jobs sent to Leftover successfully.`);
+                    }}
+                    className="px-2 py-0.5 bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-black rounded shadow-xs"
+                  >
+                    Send to Leftover
+                  </button>
+                </div>
+              )}
+
               <button
                 type="button"
-                onClick={() =>
-                  setVisibleSections({
-                    jobSpecs: true,
-                    orderQty: true,
-                    receivedQty: true,
-                    deliveryQty: true,
-                    closingStock: true,
-                    locationInfo: true,
-                  })
-                }
-                className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-md text-xs font-medium"
+                onClick={exportToExcel}
+                className="px-3 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-md font-bold flex items-center gap-1 shadow-2xs"
               >
-                Show All
+                <Download className="w-3.5 h-3.5 text-slate-500" />
+                <span>Export CSV / Excel</span>
               </button>
             </div>
           </div>
 
-          {/* Table Horizontal Scroll Navigation & Section Jump Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-2 p-2 bg-gradient-to-r from-slate-100 to-blue-50/50 rounded-md border border-slate-300 shadow-2xs">
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1 uppercase tracking-wider">
-                <ArrowRight className="w-3.5 h-3.5 text-blue-600" />
-                Table Navigation:
-              </span>
-              <button
-                type="button"
-                onClick={() => handleScrollTable('left')}
-                className="px-3 py-1 bg-white hover:bg-slate-100 text-slate-800 text-xs font-bold rounded-md flex items-center gap-1 border border-slate-300 shadow-2xs transition-colors cursor-pointer"
-                title="Scroll Table Left"
-              >
-                <ChevronLeft className="w-4 h-4 text-blue-600" />
-                <span>Scroll Left</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleScrollTable('right')}
-                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-md flex items-center gap-1 border border-blue-700 shadow-2xs transition-colors cursor-pointer"
-                title="Scroll Table Right to view Order, Recv, Issue, and Stock columns"
-              >
-                <span>Scroll Right</span>
-                <ChevronRight className="w-4 h-4 text-white" />
-              </button>
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2 px-1">
+            <div className="flex items-center gap-2 text-xs text-slate-600">
+              <label className="flex items-center gap-1.5 font-bold cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={paginatedGroups.length > 0 && paginatedGroups.every(j => selectedJobKeys.has(j.key))}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      const next = new Set(selectedJobKeys);
+                      paginatedGroups.forEach(j => next.add(j.key));
+                      setSelectedJobKeys(next);
+                    } else {
+                      const next = new Set(selectedJobKeys);
+                      paginatedGroups.forEach(j => next.delete(j.key));
+                      setSelectedJobKeys(next);
+                    }
+                  }}
+                  className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-0 border-slate-400"
+                />
+                <span>Select All Visible ({paginatedGroups.length})</span>
+              </label>
             </div>
 
-            {/* Quick Jump Buttons */}
             <div className="flex flex-wrap items-center gap-1 text-[11px]">
               <span className="text-slate-500 font-medium mr-1 hidden sm:inline">Jump To:</span>
               <button
@@ -3018,7 +3053,7 @@ function FinishedFabricPageInner() {
                 onClick={() => handleScrollToSection(1220)}
                 className="px-2 py-0.5 bg-purple-50 hover:bg-purple-100 text-purple-900 rounded border border-purple-200 font-bold transition-colors"
               >
-                Issue / Cutting
+                Delivery
               </button>
               <button
                 type="button"
@@ -3032,12 +3067,11 @@ function FinishedFabricPageInner() {
                 onClick={() => handleScrollToSection(2100)}
                 className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded border border-amber-200 font-bold transition-colors"
               >
-                Location & Leftover
+                Leftover
               </button>
             </div>
           </div>
 
-          {/* =================================================================== */}
           {/* HIGH CONTRAST MASTER TABLE (STICKY HEADER WITH INTEGRATED FILTERS) */}
           {/* =================================================================== */}
           <div ref={tableScrollRef} className="overflow-x-auto rounded-md border border-slate-300 bg-white shadow-2xs relative max-h-[750px] overflow-y-auto">
@@ -3086,7 +3120,7 @@ function FinishedFabricPageInner() {
                     </th>
                   )}
 
-                  <th className="px-3 py-2 text-center bg-slate-100 text-slate-800 border-b border-slate-300 font-bold">Action</th>
+                  <th className="px-3 py-2 text-center bg-slate-100 text-slate-900 border-b border-slate-300 font-black">Sent to Leftover</th>
                 </tr>
 
                 {/* TIER 2 HEADER COLUMNS: SLEEK EXCEL AUTOFILTER (SINGLE-ROW CLEAN HEADER) */}
@@ -3576,7 +3610,19 @@ function FinishedFabricPageInner() {
                         >
                           {/* Sticky left column: Clean Job No, NO hashtag, NO buyer text */}
                           <td className="sticky left-0 z-20 bg-white group-hover:bg-slate-50 px-3 py-2 border-r border-slate-200">
-                            <div className="font-bold text-[#0F274E] text-[12.5px] tracking-tight flex items-center gap-1.5">
+                            <div className="font-bold text-[#0F274E] text-[12.5px] tracking-tight flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={selectedJobKeys.has(job.key)}
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(e) => {
+                                  const next = new Set(selectedJobKeys);
+                                  if (e.target.checked) next.add(job.key);
+                                  else next.delete(job.key);
+                                  setSelectedJobKeys(next);
+                                }}
+                                className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-0 border-slate-400 cursor-pointer"
+                              />
                               <span>{job.jobNo}</span>
                               {job.isImported && (
                                 <span className="text-[9px] px-1 py-0.2 bg-teal-100 text-teal-800 rounded font-bold">IMP</span>
@@ -3682,42 +3728,43 @@ function FinishedFabricPageInner() {
                             </>
                           )}
 
-                          <td className="px-2 py-1.5 text-center whitespace-nowrap">
-                            <div className="inline-flex items-center gap-1">
+                          <td className="px-2 py-1.5 text-center whitespace-nowrap border-l border-slate-200">
+                            {sentToLeftoverJobs[job.key] ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-amber-100 text-amber-950 font-black text-[10.5px] border border-amber-300">
+                                <Check className="w-3 h-3 text-amber-900 stroke-[3]" />
+                                Sent to Leftover
+                              </span>
+                            ) : (
                               <button
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  openJobModal(job, 'ISSUE');
+                                  const now = new Date().toISOString().split('T')[0];
+                                  setSentToLeftoverJobs(prev => ({ ...prev, [job.key]: { date: now } }));
+                                  setLeftoverLedger(prev => [
+                                    {
+                                      id: String(Date.now()),
+                                      date: now,
+                                      jobNo: job.jobNo,
+                                      color: job.colors[0]?.color || 'Mixed',
+                                      source: 'Closing Stock Balance',
+                                      bodyKg: Math.round(job.stockBody),
+                                      ribKg: Math.round(job.stockRib),
+                                      sjKg: Math.round(job.stockSJ),
+                                      totalKg: Math.round(job.totalStock),
+                                      returnedBy: 'Cutting Supervisor',
+                                      rackAssigned: job.location || 'R-01',
+                                      status: 'Available in Leftover',
+                                    },
+                                    ...prev
+                                  ]);
+                                  showToast(`Job ${job.jobNo} marked and sent to Leftover successfully.`);
                                 }}
-                                className="px-2 py-0.5 rounded text-[10.5px] font-semibold bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 transition-colors cursor-pointer"
-                                title="Issue fabric to cutting"
+                                className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded font-black text-[11px] transition-colors shadow-2xs"
                               >
-                                Issue
+                                Send to Leftover
                               </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openJobModal(job, 'RECEIVE');
-                                }}
-                                className="px-2 py-0.5 rounded text-[10.5px] font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors cursor-pointer"
-                                title="Receive fabric from dyeing/supplier"
-                              >
-                                Receive
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openJobModal(job, 'VIEW');
-                                }}
-                                className="p-1 rounded hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer"
-                                title="View Details"
-                              >
-                                <Eye className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
+                            )}
                           </td>
                         </tr>
 
@@ -3904,27 +3951,39 @@ function FinishedFabricPageInner() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setActionModalMode('ISSUE')}
-                  className={`px-3.5 py-1.5 rounded-md font-bold flex items-center gap-1.5 transition-all ${
-                    actionModalMode === 'ISSUE'
-                      ? 'bg-purple-700 text-white shadow-xs'
-                      : 'text-purple-800 bg-purple-50 hover:bg-purple-100 border border-purple-300'
-                  }`}
-                >
-                  <Scissors className="w-3.5 h-3.5" />
-                  <span>Issue to Cutting Floor</span>
-                </button>
-                <button
-                  type="button"
                   onClick={() => setActionModalMode('RECEIVE')}
                   className={`px-3.5 py-1.5 rounded-md font-bold flex items-center gap-1.5 transition-all ${
                     actionModalMode === 'RECEIVE'
                       ? 'bg-emerald-700 text-white shadow-xs'
-                      : 'text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300'
+                      : 'text-emerald-900 bg-emerald-100 hover:bg-emerald-200 border border-emerald-400 font-extrabold'
                   }`}
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Receive Fabric Inward</span>
+                  <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>+ Fabric Receive</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActionModalMode('ISSUE')}
+                  className={`px-3.5 py-1.5 rounded-md font-bold flex items-center gap-1.5 transition-all ${
+                    actionModalMode === 'ISSUE'
+                      ? 'bg-purple-700 text-white shadow-xs'
+                      : 'text-purple-900 bg-purple-100 hover:bg-purple-200 border border-purple-400 font-extrabold'
+                  }`}
+                >
+                  <Scissors className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>✂ Fabric Delivery</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActionModalMode('RETURN')}
+                  className={`px-3.5 py-1.5 rounded-md font-bold flex items-center gap-1.5 transition-all ${
+                    actionModalMode === 'RETURN'
+                      ? 'bg-rose-700 text-white shadow-xs'
+                      : 'text-rose-900 bg-rose-100 hover:bg-rose-200 border border-rose-400 font-extrabold'
+                  }`}
+                >
+                  <RotateCcw className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>↩ Fabric Return</span>
                 </button>
               </div>
 
@@ -4075,133 +4134,252 @@ function FinishedFabricPageInner() {
                     <tbody className="divide-y divide-slate-200 text-xs">
                       {selectedJobDetail.colors.map((c) => {
                         const isSelected = actionForm.selectedColorId === c.id;
-                        return (
-                          <tr
-                            key={c.id}
-                            className={`transition-colors text-right ${
-                              isSelected ? 'bg-blue-50/90 font-semibold' : 'hover:bg-slate-50'
-                            }`}
-                          >
-                            {/* Color Name: Click to view ledger */}
-                            <td className="sticky left-0 z-20 bg-inherit text-left px-3.5 py-2.5 font-bold text-slate-900 border-r border-slate-300">
-                              <button
-                                type="button"
-                                onClick={() => setHistoryColorModal({ jobNo: selectedJobDetail.jobNo, color: c })}
-                                className="flex items-center gap-2 hover:text-blue-700 text-left group"
-                                title="Click to view transaction ledger &amp; batches"
-                              >
-                                <span
-                                  className="w-3.5 h-3.5 rounded-full shrink-0 shadow-xs border border-slate-400 group-hover:scale-110 transition-transform"
-                                  style={{ backgroundColor: getColorHex(c.color) }}
-                                />
-                                <span className="font-extrabold text-[12.5px] group-hover:underline">
-                                  {c.color || 'Solid'}
-                                </span>
-                                <Clock className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 shrink-0" />
-                              </button>
-                            </td>
+                        const isUnfolded = expandedColors[c.id] || false;
 
-                            {/* Batch No Column */}
-                            <td className="text-center px-2 py-2 border-r border-slate-300 font-mono text-[11px]">
-                              {c.batches && c.batches.length > 0 ? (
+                        // Mock or real batch items
+                        const batches: FabricBatchItem[] = (c.batchesInfo && c.batchesInfo.length > 0) ? c.batchesInfo : (
+                          (c.batches && c.batches.length > 0)
+                            ? c.batches.map((b, bIdx) => ({
+                                batchNo: b,
+                                date: c.date || '14-Nov-26',
+                                source: 'From Dyeing',
+                                bodyKg: Math.round(c.recvBody / c.batches!.length),
+                                ribKg: Math.round(c.recvRib / c.batches!.length),
+                                sjKg: Math.round(c.recvSJ / c.batches!.length),
+                                totalKg: Math.round(c.totalRecv / c.batches!.length),
+                                location: bIdx % 2 === 0 ? `${c.location || 'R-02'} / S-01` : `${c.location || 'R-05'} / S-02`,
+                              }))
+                            : [{
+                                batchNo: 'B-01',
+                                date: c.date || '14-Nov-26',
+                                source: 'From Dyeing',
+                                bodyKg: c.recvBody,
+                                ribKg: c.recvRib,
+                                sjKg: c.recvSJ,
+                                totalKg: c.totalRecv,
+                                location: `${c.location || 'R-01'} / Shelf 01`,
+                              }]
+                        );
+
+                        return (
+                          <React.Fragment key={c.id}>
+                            <tr
+                              onClick={() => {
+                                setActionForm(f => ({ ...f, selectedColorId: c.id, colorName: c.color }));
+                                setExpandedColors(prev => ({ ...prev, [c.id]: !prev[c.id] }));
+                              }}
+                              className={`transition-colors text-right cursor-pointer select-none ${
+                                isSelected ? 'bg-blue-50/90 font-semibold' : 'hover:bg-slate-50'
+                              }`}
+                            >
+                              {/* Color Name: Click to toggle unfold */}
+                              <td className="sticky left-0 z-20 bg-inherit text-left px-3.5 py-2.5 font-bold text-slate-900 border-r border-slate-300">
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className="w-3.5 h-3.5 rounded-full shrink-0 shadow-xs border border-slate-400"
+                                    style={{ backgroundColor: getColorHex(c.color) }}
+                                  />
+                                  <span className="font-extrabold text-[12.5px] text-slate-950">
+                                    {c.color || 'Solid'}
+                                  </span>
+                                  <span className="text-[10px] text-blue-700 bg-blue-100 px-1 rounded font-bold">
+                                    {isUnfolded ? '▲ Fold' : '▼ Batches'}
+                                  </span>
+                                </div>
+                              </td>
+
+                              {/* Batch No Column */}
+                              <td className="text-center px-2 py-2 border-r border-slate-300 font-mono text-[11px]">
                                 <div className="flex flex-wrap gap-1 justify-center">
-                                  {c.batches.map((b) => (
-                                    <span key={b} className="bg-amber-100 text-amber-950 border border-amber-300 px-1.5 py-0.5 rounded font-bold text-[10px]">
-                                      {b}
+                                  {batches.map(b => (
+                                    <span key={b.batchNo} className="bg-amber-100 text-amber-950 border border-amber-300 px-1.5 py-0.5 rounded font-black text-[10px]">
+                                      {b.batchNo}
                                     </span>
                                   ))}
                                 </div>
-                              ) : (
-                                <span className="text-slate-400 italic text-[10px]">B-01</span>
-                              )}
-                            </td>
+                              </td>
 
-                            {/* Order Qty: Body, Rib, SJ, Total */}
-                            <td className="px-2 py-2 border-r border-blue-100">{Math.round(c.reqBody).toLocaleString()}</td>
-                            <td className="px-2 py-2 border-r border-blue-100">{Math.round(c.reqRib).toLocaleString()}</td>
-                            <td className="px-2 py-2 border-r border-blue-100 text-slate-400">{Math.round(c.reqSJ) || '0'}</td>
-                            <td className="px-2.5 py-2 border-r border-slate-300 font-extrabold text-blue-950 bg-blue-50/60">
-                              {Math.round(c.totalReq).toLocaleString()}
-                            </td>
+                              {/* Order Qty */}
+                              <td className="px-2 py-2 border-r border-blue-100 text-slate-900 font-bold tabular-nums">{Math.round(c.reqBody).toLocaleString()}</td>
+                              <td className="px-2 py-2 border-r border-blue-100 text-slate-900 font-bold tabular-nums">{Math.round(c.reqRib).toLocaleString()}</td>
+                              <td className="px-2 py-2 border-r border-blue-100 text-slate-900 font-bold tabular-nums">{Math.round(c.reqSJ) || '0'}</td>
+                              <td className="px-2.5 py-2 border-r border-slate-300 font-black text-blue-950 bg-blue-100/70 tabular-nums">
+                                {Math.round(c.totalReq).toLocaleString()}
+                              </td>
 
-                            {/* Received Fabric: Body, Rib, SJ, Total */}
-                            <td className="px-2 py-2 border-r border-emerald-100">{Math.round(c.recvBody).toLocaleString()}</td>
-                            <td className="px-2 py-2 border-r border-emerald-100">{Math.round(c.recvRib).toLocaleString()}</td>
-                            <td className="px-2 py-2 border-r border-emerald-100 text-slate-400">{Math.round(c.recvSJ) || '0'}</td>
-                            <td className="px-2.5 py-2 border-r border-slate-300 font-extrabold text-emerald-950 bg-emerald-50/60">
-                              {Math.round(c.totalRecv).toLocaleString()}
-                            </td>
+                              {/* Received Fabric */}
+                              <td className="px-2 py-2 border-r border-emerald-100 text-emerald-950 font-bold tabular-nums">{Math.round(c.recvBody).toLocaleString()}</td>
+                              <td className="px-2 py-2 border-r border-emerald-100 text-emerald-950 font-bold tabular-nums">{Math.round(c.recvRib).toLocaleString()}</td>
+                              <td className="px-2 py-2 border-r border-emerald-100 text-emerald-950 font-bold tabular-nums">{Math.round(c.recvSJ) || '0'}</td>
+                              <td className="px-2.5 py-2 border-r border-slate-300 font-black text-emerald-950 bg-emerald-100/70 tabular-nums">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <span>{Math.round(c.totalRecv).toLocaleString()}</span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setHistoryColorModal({ jobNo: selectedJobDetail.jobNo, color: c, filterType: 'RECEIVE' });
+                                    }}
+                                    className="px-1 py-0.5 bg-emerald-200 hover:bg-emerald-300 text-emerald-950 rounded text-[9.5px] font-black border border-emerald-400"
+                                    title="View Receive History"
+                                  >
+                                    📜 Recv Hist
+                                  </button>
+                                </div>
+                              </td>
 
-                            {/* Dyeing Balance */}
-                            <td className="px-2 py-2 border-r border-slate-300 text-center font-bold">
-                              <span className={`px-2 py-0.5 rounded text-[10.5px] ${
-                                c.dyeingBalance > 0
-                                  ? 'bg-amber-100 text-amber-950 border border-amber-300 font-black'
-                                  : 'bg-emerald-50 text-emerald-800'
-                              }`}>
-                                {c.dyeingBalance > 0 ? `${Math.round(c.dyeingBalance).toLocaleString()} kg` : '0 kg (Done)'}
-                              </span>
-                            </td>
+                              {/* Dyeing Balance */}
+                              <td className="px-2 py-2 border-r border-slate-300 text-center font-bold">
+                                <span className={`px-2 py-0.5 rounded text-[10.5px] ${
+                                  c.dyeingBalance > 0
+                                    ? 'bg-amber-100 text-amber-950 border border-amber-300 font-black'
+                                    : 'bg-emerald-50 text-emerald-900 font-bold'
+                                }`}>
+                                  {c.dyeingBalance > 0 ? `${Math.round(c.dyeingBalance).toLocaleString()} kg` : '0 kg (Done)'}
+                                </span>
+                              </td>
 
-                            {/* Issued to Cutting: Body, Rib, SJ, Total */}
-                            <td className="px-2 py-2 border-r border-purple-100">{Math.round(c.issuedBody).toLocaleString()}</td>
-                            <td className="px-2 py-2 border-r border-purple-100">{Math.round(c.issuedRib).toLocaleString()}</td>
-                            <td className="px-2 py-2 border-r border-purple-100 text-slate-400">{Math.round(c.issuedSJ) || '0'}</td>
-                            <td className="px-2.5 py-2 border-r border-slate-300 font-extrabold text-purple-950 bg-purple-50/60">
-                              {Math.round(c.totalIssued).toLocaleString()}
-                            </td>
+                              {/* Issued to Cutting */}
+                              <td className="px-2 py-2 border-r border-purple-100 text-purple-950 font-bold tabular-nums">{Math.round(c.issuedBody).toLocaleString()}</td>
+                              <td className="px-2 py-2 border-r border-purple-100 text-purple-950 font-bold tabular-nums">{Math.round(c.issuedRib).toLocaleString()}</td>
+                              <td className="px-2 py-2 border-r border-purple-100 text-purple-950 font-bold tabular-nums">{Math.round(c.issuedSJ) || '0'}</td>
+                              <td className="px-2.5 py-2 border-r border-slate-300 font-black text-purple-950 bg-purple-100/70 tabular-nums">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <span>{Math.round(c.totalIssued).toLocaleString()}</span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setHistoryColorModal({ jobNo: selectedJobDetail.jobNo, color: c, filterType: 'ISSUE' });
+                                    }}
+                                    className="px-1 py-0.5 bg-purple-200 hover:bg-purple-300 text-purple-950 rounded text-[9.5px] font-black border border-purple-400"
+                                    title="View Delivery History"
+                                  >
+                                    📜 Delivery Hist
+                                  </button>
+                                </div>
+                              </td>
 
-                            {/* In-Store Closing Stock: Body, Rib, SJ, Total */}
-                            <td className="px-2 py-2 border-r border-sky-100">{Math.round(c.stockBody).toLocaleString()}</td>
-                            <td className="px-2 py-2 border-r border-sky-100">{Math.round(c.stockRib).toLocaleString()}</td>
-                            <td className="px-2 py-2 border-r border-sky-100 text-slate-400">{Math.round(c.stockSJ) || '0'}</td>
-                            <td className="px-2.5 py-2 border-r border-slate-300 font-black text-sky-950 bg-sky-50/60">
-                              {Math.round(c.stockBalance).toLocaleString()}
-                            </td>
+                              {/* In-Store Closing Stock */}
+                              <td className="px-2 py-2 border-r border-sky-100 text-sky-950 font-bold tabular-nums">{Math.round(c.stockBody).toLocaleString()}</td>
+                              <td className="px-2 py-2 border-r border-sky-100 text-sky-950 font-bold tabular-nums">{Math.round(c.stockRib).toLocaleString()}</td>
+                              <td className="px-2 py-2 border-r border-sky-100 text-sky-950 font-bold tabular-nums">{Math.round(c.stockSJ) || '0'}</td>
+                              <td className="px-2.5 py-2 border-r border-slate-300 font-black text-sky-950 bg-sky-100/70 tabular-nums">
+                                {Math.round(c.stockBalance).toLocaleString()}
+                              </td>
 
-                            {/* Location */}
-                            <td className="px-2 py-2 border-r border-slate-300 text-center">
-                              <span className="px-2 py-0.5 rounded text-[11px] font-extrabold bg-blue-100 text-blue-900 border border-blue-300">
-                                {c.location || 'F.ST'}
-                              </span>
-                            </td>
+                              {/* Location */}
+                              <td className="px-2 py-2 border-r border-slate-300 text-center">
+                                <span className="px-2 py-0.5 rounded text-[11px] font-black bg-blue-100 text-blue-950 border border-blue-400">
+                                  {batches.map(b => b.location.split(' / ')[0]).filter((v, i, a) => a.indexOf(v) === i).join(', ') || c.location || 'R-01'}
+                                </span>
+                              </td>
 
-                            {/* Actions */}
-                            <td className="px-2 py-2 text-center">
-                              <div className="flex items-center justify-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setActionModalMode('RECEIVE');
-                                    setActionForm(f => ({ ...f, selectedColorId: c.id, colorName: c.color }));
-                                  }}
-                                  className="px-2 py-0.5 bg-emerald-100 text-emerald-900 hover:bg-emerald-200 border border-emerald-300 rounded text-[10px] font-bold"
-                                  title="Receive inward fabric"
-                                >
-                                  + Recv
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setActionModalMode('ISSUE');
-                                    setActionForm(f => ({ ...f, selectedColorId: c.id, colorName: c.color }));
-                                  }}
-                                  className="px-2 py-0.5 bg-purple-100 text-purple-900 hover:bg-purple-200 border border-purple-300 rounded text-[10px] font-bold"
-                                  title="Issue to cutting"
-                                >
-                                  ✂ Issue
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setHistoryColorModal({ jobNo: selectedJobDetail.jobNo, color: c })}
-                                  className="px-1.5 py-0.5 bg-slate-100 text-slate-800 hover:bg-slate-200 border border-slate-300 rounded text-[10px] font-bold"
-                                  title="View Color Ledger"
-                                >
-                                  📋 Ledger
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
+                              {/* Actions */}
+                              <td className="px-2 py-2 text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActionModalMode('RECEIVE');
+                                      setActionForm(f => ({ ...f, selectedColorId: c.id, colorName: c.color }));
+                                    }}
+                                    className="px-2 py-0.5 bg-emerald-100 text-emerald-950 hover:bg-emerald-200 border border-emerald-400 rounded text-[10.5px] font-extrabold"
+                                    title="Receive fabric"
+                                  >
+                                    + Recv
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActionModalMode('ISSUE');
+                                      setActionForm(f => ({ ...f, selectedColorId: c.id, colorName: c.color }));
+                                    }}
+                                    className="px-2 py-0.5 bg-purple-100 text-purple-950 hover:bg-purple-200 border border-purple-400 rounded text-[10.5px] font-extrabold"
+                                    title="Delivery to cutting"
+                                  >
+                                    ✂ Delivery
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActionModalMode('RETURN');
+                                      setReturnForm(f => ({ ...f, selectedColorId: c.id, colorName: c.color }));
+                                    }}
+                                    className="px-2 py-0.5 bg-rose-100 text-rose-950 hover:bg-rose-200 border border-rose-400 rounded text-[10.5px] font-extrabold"
+                                    title="Return fabric"
+                                  >
+                                    ↩ Return
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+
+                            {/* UNFOLDED BATCHES SUB-ROWS */}
+                            {isUnfolded && (
+                              <tr className="bg-slate-100/90 border-y-2 border-slate-300">
+                                <td colSpan={25} className="p-3 pl-8">
+                                  <div className="bg-white rounded-lg border-2 border-slate-300 p-3 shadow-inner">
+                                    <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-200">
+                                      <span className="font-black text-xs text-slate-900 flex items-center gap-1.5">
+                                        <Layers className="w-3.5 h-3.5 text-blue-600" />
+                                        Batch Breakdown for &quot;{c.color}&quot; ({batches.length} Batches Received)
+                                      </span>
+                                      <span className="text-[11px] font-bold text-slate-600">
+                                        Total Batch Stock: {Math.round(c.stockBalance)} kg
+                                      </span>
+                                    </div>
+
+                                    <table className="w-full text-left text-xs border-collapse">
+                                      <thead>
+                                        <tr className="bg-slate-100 text-slate-900 text-[11px] font-black border-b border-slate-300">
+                                          <th className="px-2.5 py-1.5">Batch No</th>
+                                          <th className="px-2.5 py-1.5">Receive Date</th>
+                                          <th className="px-2.5 py-1.5">Source Type</th>
+                                          <th className="px-2 py-1.5 text-right">Body (kg)</th>
+                                          <th className="px-2 py-1.5 text-right">Rib (kg)</th>
+                                          <th className="px-2 py-1.5 text-right">S.Jersey (kg)</th>
+                                          <th className="px-2.5 py-1.5 text-right font-black text-emerald-950 bg-emerald-50">Total kg</th>
+                                          <th className="px-3 py-1.5 font-black text-center text-blue-950 bg-blue-50">Storage Location (Rack &amp; Shelf)</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-slate-200">
+                                        {batches.map(b => (
+                                          <tr key={b.batchNo} className="hover:bg-slate-50 font-semibold text-slate-900">
+                                            <td className="px-2.5 py-1.5 font-mono font-black text-amber-950">
+                                              <span className="bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded">
+                                                {b.batchNo}
+                                              </span>
+                                            </td>
+                                            <td className="px-2.5 py-1.5 text-slate-700">{b.date}</td>
+                                            <td className="px-2.5 py-1.5">
+                                              <span className="px-1.5 py-0.5 bg-slate-100 text-slate-800 rounded text-[10px] font-bold border border-slate-300">
+                                                {b.source || 'From Dyeing'}
+                                              </span>
+                                            </td>
+                                            <td className="px-2 py-1.5 text-right tabular-nums">{Math.round(b.bodyKg)}</td>
+                                            <td className="px-2 py-1.5 text-right tabular-nums">{Math.round(b.ribKg)}</td>
+                                            <td className="px-2 py-1.5 text-right tabular-nums">{Math.round(b.sjKg)}</td>
+                                            <td className="px-2.5 py-1.5 text-right font-black text-emerald-950 bg-emerald-50 tabular-nums">
+                                              {Math.round(b.totalKg)} kg
+                                            </td>
+                                            <td className="px-3 py-1.5 text-center font-black text-blue-950 bg-blue-50">
+                                              <span className="px-2 py-0.5 bg-white border-2 border-blue-400 rounded text-[11px] shadow-2xs font-mono font-black">
+                                                📍 {b.location}
+                                              </span>
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
                         );
                       })}
                     </tbody>
@@ -4255,30 +4433,32 @@ function FinishedFabricPageInner() {
                 </div>
               </div>
 
-              {/* ACTION FORMS AT BOTTOM */}
+              {/* ACTION FORMS AT BOTTOM (100% SHARP HIGH CONTRAST) */}
               {actionModalMode === 'ISSUE' && (
-                <div className="bg-purple-50/80 border-2 border-purple-300 rounded-xl p-4 shadow-sm animate-in fade-in duration-150">
-                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-purple-200">
+                <div className="bg-white border-2 border-purple-500 rounded-xl p-5 shadow-md animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between pb-3 mb-3 border-b-2 border-purple-200">
                     <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-md bg-purple-600 text-white flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-md bg-purple-700 text-white flex items-center justify-center font-bold">
                         <Scissors className="w-4 h-4" />
                       </div>
                       <div>
-                        <h4 className="text-xs font-black text-purple-950 uppercase tracking-wide">
-                          Issue Fabric to Cutting Floor
+                        <h4 className="text-sm font-black text-purple-950 uppercase tracking-wide">
+                          Fabric Delivery to Cutting Floor
                         </h4>
-                        <p className="text-[11px] text-purple-800">
-                          Dispatch Body, Rib, or S.Jersey fabric from store to cutting marker line.
+                        <p className="text-xs text-slate-700 font-semibold">
+                          Deliver fabric from store stock to garment cutting floor lines.
                         </p>
                       </div>
                     </div>
-                    <span className="text-xs font-bold text-purple-900 bg-purple-100 px-2.5 py-1 rounded">Job: {selectedJobDetail.jobNo}</span>
+                    <span className="text-xs font-black text-purple-950 bg-purple-100 border border-purple-300 px-3 py-1 rounded">
+                      Job: {selectedJobDetail.jobNo}
+                    </span>
                   </div>
 
-                  <form onSubmit={handleConfirmIssueFromModal} className="space-y-3">
+                  <form onSubmit={handleConfirmIssueFromModal} className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                       <div>
-                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Select Color *</label>
+                        <label className="text-xs font-black text-slate-900 block mb-1">Select Color *</label>
                         <select
                           value={actionForm.selectedColorId}
                           onChange={(e) => {
@@ -4287,57 +4467,58 @@ function FinishedFabricPageInner() {
                               ...prev,
                               selectedColorId: e.target.value,
                               colorName: found ? found.color : '',
-                              location: (found && found.location) || prev.location,
                             }));
                           }}
-                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-bold text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
+                          className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-black text-slate-900 focus:outline-hidden focus:border-purple-600"
                         >
                           {selectedJobDetail.colors.map(c => (
                             <option key={c.id} value={c.id}>
-                              {c.color || 'Color'} (Stock: {Math.round(c.stockBalance)} kg · Loc: {c.location})
+                              {c.color || 'Color'} (Stock: {Math.round(c.stockBalance)} kg)
                             </option>
                           ))}
                         </select>
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Issue Date (Calendar) *</label>
+                        <label className="text-xs font-black text-slate-900 block mb-1">Select Batch *</label>
+                        <select
+                          value={actionForm.batchNo}
+                          onChange={(e) => setActionForm(prev => ({ ...prev, batchNo: e.target.value }))}
+                          className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-black text-slate-900 focus:outline-hidden focus:border-purple-600 font-mono"
+                        >
+                          <option value="B-01">Batch B-01 (All Available)</option>
+                          <option value="B-02">Batch B-02</option>
+                          <option value="B-03">Batch B-03</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-black text-slate-900 block mb-1">Delivery Date (Calendar) *</label>
                         <input
                           type="date"
                           value={actionForm.date}
                           onChange={(e) => setActionForm(prev => ({ ...prev, date: e.target.value }))}
-                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
+                          className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-black text-slate-900 focus:outline-hidden focus:border-purple-600"
                           required
                         />
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Cutting Table / Line</label>
+                        <label className="text-xs font-black text-slate-900 block mb-1">Delivery Remarks / Reference</label>
                         <input
                           type="text"
                           value={actionForm.cuttingLine}
                           onChange={(e) => setActionForm(prev => ({ ...prev, cuttingLine: e.target.value }))}
-                          placeholder="e.g. Table-1, Line-A"
-                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-semibold text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Received By (Cutting Supervisor)</label>
-                        <input
-                          type="text"
-                          value={actionForm.issuedTo}
-                          onChange={(e) => setActionForm(prev => ({ ...prev, issuedTo: e.target.value }))}
-                          placeholder="e.g. Cutting Master Kabir"
-                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-semibold text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
+                          placeholder="e.g. Marker 1, Body fabric"
+                          className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-bold text-slate-900 focus:outline-hidden focus:border-purple-600"
                         />
                       </div>
                     </div>
 
-                    {/* Breakdown Quantities to Issue */}
-                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 bg-white p-3 rounded-lg border border-purple-200">
+                    {/* Breakdown Quantities to Deliver */}
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-purple-50/50 p-4 rounded-lg border-2 border-purple-200">
                       <div>
-                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Body Fabric (kg)</label>
+                        <label className="text-xs font-black text-slate-900 block mb-1">Body Fabric (kg)</label>
                         <input
                           type="number"
                           step="any"
@@ -4345,11 +4526,11 @@ function FinishedFabricPageInner() {
                           value={actionForm.bodyKg || ''}
                           onChange={(e) => setActionForm(prev => ({ ...prev, bodyKg: parseFloat(e.target.value) || 0 }))}
                           placeholder="0"
-                          className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-md text-xs font-bold text-slate-900"
+                          className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-black text-slate-950"
                         />
                       </div>
                       <div>
-                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Rib Fabric (kg)</label>
+                        <label className="text-xs font-black text-slate-900 block mb-1">Rib Fabric (kg)</label>
                         <input
                           type="number"
                           step="any"
@@ -4357,11 +4538,11 @@ function FinishedFabricPageInner() {
                           value={actionForm.ribKg || ''}
                           onChange={(e) => setActionForm(prev => ({ ...prev, ribKg: parseFloat(e.target.value) || 0 }))}
                           placeholder="0"
-                          className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-md text-xs font-bold text-slate-900"
+                          className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-black text-slate-950"
                         />
                       </div>
                       <div>
-                        <label className="text-[11px] font-bold text-slate-700 block mb-1">S.Jersey (kg)</label>
+                        <label className="text-xs font-black text-slate-900 block mb-1">S.Jersey (kg)</label>
                         <input
                           type="number"
                           step="any"
@@ -4369,12 +4550,12 @@ function FinishedFabricPageInner() {
                           value={actionForm.sjKg || ''}
                           onChange={(e) => setActionForm(prev => ({ ...prev, sjKg: parseFloat(e.target.value) || 0 }))}
                           placeholder="0"
-                          className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-md text-xs font-bold text-slate-900"
+                          className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-black text-slate-950"
                         />
                       </div>
                       <div>
-                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Total Issue Qty</label>
-                        <div className="w-full px-2.5 py-1.5 bg-purple-100 border border-purple-300 rounded-md text-xs font-black text-purple-950 flex items-center justify-between">
+                        <label className="text-xs font-black text-slate-900 block mb-1">Total Delivery Qty</label>
+                        <div className="w-full px-3 py-2 bg-purple-100 border-2 border-purple-300 rounded-md text-xs font-black text-purple-950 flex items-center justify-between">
                           <span>Total:</span>
                           <span>{((actionForm.bodyKg || 0) + (actionForm.ribKg || 0) + (actionForm.sjKg || 0)).toFixed(1)} kg</span>
                         </div>
@@ -4385,16 +4566,16 @@ function FinishedFabricPageInner() {
                       <button
                         type="button"
                         onClick={() => setActionModalMode('VIEW')}
-                        className="px-4 py-1.5 bg-white hover:bg-slate-100 text-slate-700 rounded-md text-xs font-semibold border border-slate-300"
+                        className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 rounded-md text-xs font-bold border border-slate-300"
                       >
                         Cancel
                       </button>
                       <button
                         type="submit"
-                        className="px-5 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-md text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors"
+                        className="px-6 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-md text-xs font-black flex items-center gap-1.5 shadow-md transition-colors"
                       >
                         <Scissors className="w-3.5 h-3.5" />
-                        <span>Confirm &amp; Send to Cutting</span>
+                        <span>Confirm Fabric Delivery</span>
                       </button>
                     </div>
                   </form>
@@ -4402,93 +4583,93 @@ function FinishedFabricPageInner() {
               )}
 
               {actionModalMode === 'RECEIVE' && (
-                <div className="bg-emerald-50/80 border-2 border-emerald-300 rounded-xl p-4 shadow-sm animate-in fade-in duration-150">
-                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-emerald-200">
+                <div className="bg-white border-2 border-emerald-500 rounded-xl p-5 shadow-md animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between pb-3 mb-3 border-b-2 border-emerald-200">
                     <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-md bg-emerald-600 text-white flex items-center justify-center">
-                        <Plus className="w-4 h-4" />
+                      <div className="w-8 h-8 rounded-md bg-emerald-700 text-white flex items-center justify-center font-bold">
+                        <Plus className="w-4 h-4 stroke-[2.5]" />
                       </div>
                       <div>
-                        <h4 className="text-xs font-black text-emerald-950 uppercase tracking-wide">
-                          Receive Fabric Inward into Store
+                        <h4 className="text-sm font-black text-emerald-950 uppercase tracking-wide">
+                          Fabric Receive into Store
                         </h4>
-                        <p className="text-[11px] text-emerald-800">
-                          Receive inward fabric from dyeing or supplier and add batch number to stock ledger.
+                        <p className="text-xs text-slate-700 font-semibold">
+                          Receive fabric from dyeing or cutting floor return and record batch number &amp; rack location.
                         </p>
                       </div>
                     </div>
-                    <span className="text-xs font-bold text-emerald-900 bg-emerald-100 px-2.5 py-1 rounded">Job: {selectedJobDetail.jobNo}</span>
+                    <span className="text-xs font-black text-emerald-950 bg-emerald-100 border border-emerald-300 px-3 py-1 rounded">
+                      Job: {selectedJobDetail.jobNo}
+                    </span>
                   </div>
 
-                  <form onSubmit={handleConfirmReceiveFromModal} className="space-y-3">
+                  <form onSubmit={handleConfirmReceiveFromModal} className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
                       <div>
-                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Color Name *</label>
+                        <label className="text-xs font-black text-slate-900 block mb-1">Source Type *</label>
+                        <select
+                          className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-black text-slate-900 focus:outline-hidden focus:border-emerald-600"
+                        >
+                          <option value="DYEING">From Dyeing (Fresh Finish Fabric)</option>
+                          <option value="CUTTING_RETURN">From Cutting Floor (Balance / Leftover Return)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-black text-slate-900 block mb-1">Color Name *</label>
                         <input
                           type="text"
                           value={actionForm.colorName}
                           onChange={(e) => setActionForm(prev => ({ ...prev, colorName: e.target.value }))}
-                          placeholder="e.g. Black C-N10, White"
-                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
+                          placeholder="e.g. Navy Blue"
+                          className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-black text-slate-900 focus:outline-hidden focus:border-emerald-600"
                           required
                         />
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Receive Date (Calendar) *</label>
+                        <label className="text-xs font-black text-slate-900 block mb-1">Receive Date (Calendar) *</label>
                         <input
                           type="date"
                           value={actionForm.date}
                           onChange={(e) => setActionForm(prev => ({ ...prev, date: e.target.value }))}
-                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
+                          className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-black text-slate-900 focus:outline-hidden focus:border-emerald-600"
                           required
                         />
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Batch No *</label>
+                        <label className="text-xs font-black text-slate-900 block mb-1">Batch No *</label>
                         <input
                           type="text"
                           value={actionForm.batchNo}
                           onChange={(e) => setActionForm(prev => ({ ...prev, batchNo: e.target.value }))}
-                          placeholder="e.g. B-8842 or Batch-02"
-                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-emerald-500 font-mono"
+                          placeholder="e.g. B-101"
+                          className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-black text-slate-900 focus:outline-hidden focus:border-emerald-600 font-mono"
                           required
                         />
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Challan No</label>
-                        <input
-                          type="text"
-                          value={actionForm.challanNo}
-                          onChange={(e) => setActionForm(prev => ({ ...prev, challanNo: e.target.value }))}
-                          placeholder="e.g. CH-NFL-4828"
-                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Store Location</label>
+                        <label className="text-xs font-black text-slate-900 block mb-1">Rack &amp; Shelf Location *</label>
                         <select
                           value={actionForm.location}
                           onChange={(e) => setActionForm(prev => ({ ...prev, location: e.target.value }))}
-                          className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-bold text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
+                          className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-black text-slate-900 focus:outline-hidden focus:border-emerald-600"
                         >
-                          <option value="F.ST">F.ST</option>
-                          <option value="N.ST">N.ST</option>
-                          <option value=".CB/F.ST">.CB/F.ST</option>
-                          <option value="CB">CB</option>
-                          <option value=".CB/N.ST">.CB/N.ST</option>
-                          <option value=".F.ST/N.ST">.F.ST/N.ST</option>
+                          {FACTORY_RACKS.map(r => (
+                            <option key={r.id} value={r.id}>
+                              {r.id} ({r.name})
+                            </option>
+                          ))}
                         </select>
                       </div>
                     </div>
 
                     {/* Breakdown Quantities to Receive */}
-                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 bg-white p-3 rounded-lg border border-emerald-200">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-emerald-50/50 p-4 rounded-lg border-2 border-emerald-200">
                       <div>
-                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Body Fabric (kg)</label>
+                        <label className="text-xs font-black text-slate-900 block mb-1">Body Fabric (kg)</label>
                         <input
                           type="number"
                           step="any"
@@ -4496,11 +4677,11 @@ function FinishedFabricPageInner() {
                           value={actionForm.bodyKg || ''}
                           onChange={(e) => setActionForm(prev => ({ ...prev, bodyKg: parseFloat(e.target.value) || 0 }))}
                           placeholder="0"
-                          className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-md text-xs font-bold text-slate-900"
+                          className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-black text-slate-950"
                         />
                       </div>
                       <div>
-                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Rib Fabric (kg)</label>
+                        <label className="text-xs font-black text-slate-900 block mb-1">Rib Fabric (kg)</label>
                         <input
                           type="number"
                           step="any"
@@ -4508,11 +4689,11 @@ function FinishedFabricPageInner() {
                           value={actionForm.ribKg || ''}
                           onChange={(e) => setActionForm(prev => ({ ...prev, ribKg: parseFloat(e.target.value) || 0 }))}
                           placeholder="0"
-                          className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-md text-xs font-bold text-slate-900"
+                          className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-black text-slate-950"
                         />
                       </div>
                       <div>
-                        <label className="text-[11px] font-bold text-slate-700 block mb-1">S.Jersey (kg)</label>
+                        <label className="text-xs font-black text-slate-900 block mb-1">S.Jersey (kg)</label>
                         <input
                           type="number"
                           step="any"
@@ -4520,12 +4701,12 @@ function FinishedFabricPageInner() {
                           value={actionForm.sjKg || ''}
                           onChange={(e) => setActionForm(prev => ({ ...prev, sjKg: parseFloat(e.target.value) || 0 }))}
                           placeholder="0"
-                          className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-md text-xs font-bold text-slate-900"
+                          className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-black text-slate-950"
                         />
                       </div>
                       <div>
-                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Total Inward Qty</label>
-                        <div className="w-full px-2.5 py-1.5 bg-emerald-100 border border-emerald-300 rounded-md text-xs font-black text-emerald-950 flex items-center justify-between">
+                        <label className="text-xs font-black text-slate-900 block mb-1">Total Receive Qty</label>
+                        <div className="w-full px-3 py-2 bg-emerald-100 border-2 border-emerald-300 rounded-md text-xs font-black text-emerald-950 flex items-center justify-between">
                           <span>Total:</span>
                           <span>{((actionForm.bodyKg || 0) + (actionForm.ribKg || 0) + (actionForm.sjKg || 0)).toFixed(1)} kg</span>
                         </div>
@@ -4536,16 +4717,163 @@ function FinishedFabricPageInner() {
                       <button
                         type="button"
                         onClick={() => setActionModalMode('VIEW')}
-                        className="px-4 py-1.5 bg-white hover:bg-slate-100 text-slate-700 rounded-md text-xs font-semibold border border-slate-300"
+                        className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 rounded-md text-xs font-bold border border-slate-300"
                       >
                         Cancel
                       </button>
                       <button
                         type="submit"
-                        className="px-5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-md text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors"
+                        className="px-6 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-md text-xs font-black flex items-center gap-1.5 shadow-md transition-colors"
                       >
                         <Plus className="w-3.5 h-3.5" />
-                        <span>Confirm &amp; Add Inward Receive</span>
+                        <span>Confirm &amp; Add Fabric Receive</span>
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {actionModalMode === 'RETURN' && (
+                <div className="bg-white border-2 border-rose-500 rounded-xl p-5 shadow-md animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between pb-3 mb-3 border-b-2 border-rose-200">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-md bg-rose-700 text-white flex items-center justify-center font-bold">
+                        <RotateCcw className="w-4 h-4 stroke-[2.5]" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-black text-rose-950 uppercase tracking-wide">
+                          Fabric Return to Dyeing / Supplier
+                        </h4>
+                        <p className="text-xs text-slate-700 font-semibold">
+                          Return defective or excess fabric back to dyeing. Quantity will be automatically deducted from store stock.
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-black text-rose-950 bg-rose-100 border border-rose-300 px-3 py-1 rounded">
+                      Job: {selectedJobDetail.jobNo}
+                    </span>
+                  </div>
+
+                  <form onSubmit={handleConfirmReturnFromModal} className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                      <div>
+                        <label className="text-xs font-black text-slate-900 block mb-1">Select Color *</label>
+                        <select
+                          value={returnForm.selectedColorId}
+                          onChange={(e) => {
+                            const found = selectedJobDetail.colors.find(c => c.id === e.target.value);
+                            setReturnForm(prev => ({
+                              ...prev,
+                              selectedColorId: e.target.value,
+                              colorName: found ? found.color : '',
+                            }));
+                          }}
+                          className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-black text-slate-900 focus:outline-hidden focus:border-rose-600"
+                        >
+                          {selectedJobDetail.colors.map(c => (
+                            <option key={c.id} value={c.id}>
+                              {c.color || 'Color'} (Current Stock: {Math.round(c.stockBalance)} kg)
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-black text-slate-900 block mb-1">Return Date (Calendar) *</label>
+                        <input
+                          type="date"
+                          value={returnForm.date}
+                          onChange={(e) => setReturnForm(prev => ({ ...prev, date: e.target.value }))}
+                          className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-black text-slate-900 focus:outline-hidden focus:border-rose-600"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-black text-slate-900 block mb-1">Batch No</label>
+                        <input
+                          type="text"
+                          value={returnForm.batchNo}
+                          onChange={(e) => setReturnForm(prev => ({ ...prev, batchNo: e.target.value }))}
+                          placeholder="e.g. B-RET-01"
+                          className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-black text-slate-900 focus:outline-hidden focus:border-rose-600 font-mono"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-black text-slate-900 block mb-1">Reason / Remarks *</label>
+                        <input
+                          type="text"
+                          value={returnForm.reasonRemarks}
+                          onChange={(e) => setReturnForm(prev => ({ ...prev, reasonRemarks: e.target.value }))}
+                          placeholder="e.g. Shade variation, defect roll return"
+                          className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-bold text-slate-900 focus:outline-hidden focus:border-rose-600"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {/* Breakdown Quantities to Return */}
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-rose-50/50 p-4 rounded-lg border-2 border-rose-200">
+                      <div>
+                        <label className="text-xs font-black text-slate-900 block mb-1">Body Fabric (kg)</label>
+                        <input
+                          type="number"
+                          step="any"
+                          min="0"
+                          value={returnForm.bodyKg || ''}
+                          onChange={(e) => setReturnForm(prev => ({ ...prev, bodyKg: parseFloat(e.target.value) || 0 }))}
+                          placeholder="0"
+                          className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-black text-slate-950"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-black text-slate-900 block mb-1">Rib Fabric (kg)</label>
+                        <input
+                          type="number"
+                          step="any"
+                          min="0"
+                          value={returnForm.ribKg || ''}
+                          onChange={(e) => setReturnForm(prev => ({ ...prev, ribKg: parseFloat(e.target.value) || 0 }))}
+                          placeholder="0"
+                          className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-black text-slate-950"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-black text-slate-900 block mb-1">S.Jersey (kg)</label>
+                        <input
+                          type="number"
+                          step="any"
+                          min="0"
+                          value={returnForm.sjKg || ''}
+                          onChange={(e) => setReturnForm(prev => ({ ...prev, sjKg: parseFloat(e.target.value) || 0 }))}
+                          placeholder="0"
+                          className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-black text-slate-950"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-black text-slate-900 block mb-1">Total Return Qty (Deducted)</label>
+                        <div className="w-full px-3 py-2 bg-rose-100 border-2 border-rose-300 rounded-md text-xs font-black text-rose-950 flex items-center justify-between">
+                          <span>Total:</span>
+                          <span>{((returnForm.bodyKg || 0) + (returnForm.ribKg || 0) + (returnForm.sjKg || 0)).toFixed(1)} kg</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setActionModalMode('VIEW')}
+                        className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 rounded-md text-xs font-bold border border-slate-300"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-6 py-2 bg-rose-700 hover:bg-rose-800 text-white rounded-md text-xs font-black flex items-center gap-1.5 shadow-md transition-colors"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Confirm Fabric Return</span>
                       </button>
                     </div>
                   </form>
@@ -5425,391 +5753,133 @@ function FinishedFabricPageInner() {
       {/* TAB 4: STORE LOCATION & BUILDING ZONE TRACKING (F.ST, N.ST, CB) */}
       {/* ===================================================================== */}
       {activeTab === 'LOCATION' && (() => {
-        // Compute real store zone metrics
-        const fstLines = rawLines.filter(l => (l.location || '').toUpperCase().startsWith('F.ST') || l.location === 'F.st');
-        const nstLines = rawLines.filter(l => (l.location || '').toUpperCase().startsWith('N.ST'));
-        const cbLines = rawLines.filter(l => (l.location || '').toUpperCase() === 'CB');
-        const transitLines = rawLines.filter(l => (l.location || '').includes('/') || (l.location || '').startsWith('.'));
-
-        const fstKg = fstLines.reduce((acc, l) => acc + (l.stockBalance || 0), 0);
-        const nstKg = nstLines.reduce((acc, l) => acc + (l.stockBalance || 0), 0);
-        const cbKg = cbLines.reduce((acc, l) => acc + (l.stockBalance || 0), 0);
-        const transitKg = transitLines.reduce((acc, l) => acc + (l.stockBalance || 0), 0);
-
-        const fstJobs = new Set(fstLines.map(l => l.jobNo)).size;
-        const nstJobs = new Set(nstLines.map(l => l.jobNo)).size;
-        const cbJobs = new Set(cbLines.map(l => l.jobNo)).size;
-        const transitJobs = new Set(transitLines.map(l => l.jobNo)).size;
-
-        const totalKg = fstKg + nstKg + cbKg + transitKg || 1;
-
-        // Filtered lines for ledger
-        const zoneItems = rawLines.filter(l => {
-          const loc = (l.location || '').toUpperCase();
-          if (selectedZoneFilter === 'F.ST' && !loc.startsWith('F.ST') && loc !== 'F.ST') return false;
-          if (selectedZoneFilter === 'N.ST' && !loc.startsWith('N.ST')) return false;
-          if (selectedZoneFilter === 'CB' && loc !== 'CB') return false;
-          if (selectedZoneFilter === 'TRANSIT' && !loc.includes('/') && !loc.startsWith('.')) return false;
-
-          if (!zoneSearchQuery.trim()) return true;
-          const needle = zoneSearchQuery.toLowerCase();
-          return (
-            l.jobNo.toLowerCase().includes(needle) ||
-            l.style.toLowerCase().includes(needle) ||
-            (l.buyer || '').toLowerCase().includes(needle) ||
-            (l.color || '').toLowerCase().includes(needle) ||
-            (l.fabric || '').toLowerCase().includes(needle) ||
-            (l.location || '').toLowerCase().includes(needle)
-          );
-        });
-
-        const perPage = 25;
-        const totalZonePages = Math.ceil(zoneItems.length / perPage) || 1;
-        const pagedItems = zoneItems.slice((zonePage - 1) * perPage, zonePage * perPage);
+        // Filter racks based on stealth mode
+        const visibleRacks = showExternalRacks ? FACTORY_RACKS : FACTORY_RACKS.filter(r => !r.isExternal);
 
         return (
-          <div className="space-y-4 mb-8">
-            {/* Header info */}
-            <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-2xs">
+          <div className="space-y-4 mb-8 animate-in fade-in duration-150">
+            {/* Header info with Stealth Toggle */}
+            <div className="bg-white rounded-lg border-2 border-slate-300 p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200">
                 <div className="flex items-center gap-2.5">
-                  <div className="p-2 bg-sky-50 rounded-lg border border-sky-200 text-sky-700">
+                  <div className="p-2 bg-blue-100 rounded-lg border border-blue-300 text-blue-900 font-black">
                     <Warehouse className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-slate-900">
-                      Finished Fabric Store Location & Building Zone Tracker
+                    <h3 className="text-base font-black text-slate-900">
+                      Finished Fabric Store Location &amp; Warehouse Floor Plan
                     </h3>
-                    <p className="text-xs text-slate-500">
-                      Real-time inventory ledger by store zone: Finish Fabric Store (F.ST), New Store (N.ST), Cutting Building (CB) and Transit.
+                    <p className="text-xs text-slate-600 font-semibold">
+                      Live storage racks management (R-01 to R-12, R-13 Master Bay, CB Chemical Building, NS NCL Store)
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="px-2.5 py-1 bg-slate-100 text-slate-700 rounded-md font-bold border border-slate-200">
-                    Total In Store: {Math.round(totalKg).toLocaleString()} kg
+                  <span className="px-3 py-1 bg-slate-100 text-slate-900 rounded-md font-black border border-slate-300">
+                    Total Active Racks: {visibleRacks.length}
                   </span>
-                  <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-md font-bold border border-blue-200">
-                    {rawLines.length} Fabric Lots
-                  </span>
+                  
+                  {/* Stealth Toggle: Innocent minimal icon without suspicious text */}
+                  <button
+                    type="button"
+                    onClick={() => setShowExternalRacks(!showExternalRacks)}
+                    className="p-1.5 text-slate-400 hover:text-slate-700 rounded hover:bg-slate-100 border border-transparent hover:border-slate-300 transition-colors"
+                    title="Toggle Layout Grid View"
+                  >
+                    <Layers className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
 
-              {/* 4 Interactive Zone KPI Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-4">
-                {/* Zone 1: F.ST */}
-                <div
-                  onClick={() => { setSelectedZoneFilter('F.ST'); setZonePage(1); }}
-                  className={`p-3.5 rounded-lg border cursor-pointer transition-all ${
-                    selectedZoneFilter === 'F.ST'
-                      ? 'bg-blue-50/80 border-blue-500 ring-2 ring-blue-500/20 shadow-xs'
-                      : 'bg-white border-slate-200 hover:border-blue-300 hover:bg-slate-50'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-blue-600 text-white tracking-wider">
-                      F.ST · Main Store
-                    </span>
-                    <span className="text-xs font-bold text-blue-900">
-                      {Math.round((fstKg / totalKg) * 100)}%
+              {/* Warehouse Floor Plan Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 pt-4">
+                {/* Left 2 Cols: Master Racks Grid */}
+                <div className="lg:col-span-2 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black uppercase text-slate-800 tracking-wider">
+                      Factory Racks ({visibleRacks.length} Master Racks)
+                    </h4>
+                    <span className="text-[11px] font-bold text-slate-500">
+                      Click any rack to inspect storage shelves
                     </span>
                   </div>
-                  <div className="text-lg font-black text-slate-900">
-                    {Math.round(fstKg).toLocaleString()} <span className="text-xs font-normal text-slate-500">kg</span>
-                  </div>
-                  <div className="text-[11px] text-slate-600 mt-1 flex items-center justify-between">
-                    <span>{fstJobs} Active Jobs</span>
-                    <span className="font-semibold text-blue-700">{fstLines.length} Lots</span>
-                  </div>
-                  <p className="text-[10px] text-slate-500 mt-1.5 border-t border-slate-100 pt-1">
-                    Ground floor primary warehouse
-                  </p>
-                </div>
 
-                {/* Zone 2: N.ST */}
-                <div
-                  onClick={() => { setSelectedZoneFilter('N.ST'); setZonePage(1); }}
-                  className={`p-3.5 rounded-lg border cursor-pointer transition-all ${
-                    selectedZoneFilter === 'N.ST'
-                      ? 'bg-indigo-50/80 border-indigo-500 ring-2 ring-indigo-500/20 shadow-xs'
-                      : 'bg-white border-slate-200 hover:border-indigo-300 hover:bg-slate-50'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-indigo-600 text-white tracking-wider">
-                      N.ST · New Store
-                    </span>
-                    <span className="text-xs font-bold text-indigo-900">
-                      {Math.round((nstKg / totalKg) * 100)}%
-                    </span>
-                  </div>
-                  <div className="text-lg font-black text-slate-900">
-                    {Math.round(nstKg).toLocaleString()} <span className="text-xs font-normal text-slate-500">kg</span>
-                  </div>
-                  <div className="text-[11px] text-slate-600 mt-1 flex items-center justify-between">
-                    <span>{nstJobs} Active Jobs</span>
-                    <span className="font-semibold text-indigo-700">{nstLines.length} Lots</span>
-                  </div>
-                  <p className="text-[10px] text-slate-500 mt-1.5 border-t border-slate-100 pt-1">
-                    Auxiliary fabric store building
-                  </p>
-                </div>
-
-                {/* Zone 3: CB */}
-                <div
-                  onClick={() => { setSelectedZoneFilter('CB'); setZonePage(1); }}
-                  className={`p-3.5 rounded-lg border cursor-pointer transition-all ${
-                    selectedZoneFilter === 'CB'
-                      ? 'bg-amber-50/80 border-amber-500 ring-2 ring-amber-500/20 shadow-xs'
-                      : 'bg-white border-slate-200 hover:border-amber-300 hover:bg-slate-50'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-amber-600 text-white tracking-wider">
-                      CB · Cutting Bldg
-                    </span>
-                    <span className="text-xs font-bold text-amber-900">
-                      {Math.round((cbKg / totalKg) * 100)}%
-                    </span>
-                  </div>
-                  <div className="text-lg font-black text-slate-900">
-                    {Math.round(cbKg).toLocaleString()} <span className="text-xs font-normal text-slate-500">kg</span>
-                  </div>
-                  <div className="text-[11px] text-slate-600 mt-1 flex items-center justify-between">
-                    <span>{cbJobs} Active Jobs</span>
-                    <span className="font-semibold text-amber-700">{cbLines.length} Lots</span>
-                  </div>
-                  <p className="text-[10px] text-slate-500 mt-1.5 border-t border-slate-100 pt-1">
-                    Cutting floor staging buffer
-                  </p>
-                </div>
-
-                {/* Zone 4: Transit */}
-                <div
-                  onClick={() => { setSelectedZoneFilter('TRANSIT'); setZonePage(1); }}
-                  className={`p-3.5 rounded-lg border cursor-pointer transition-all ${
-                    selectedZoneFilter === 'TRANSIT'
-                      ? 'bg-teal-50/80 border-teal-500 ring-2 ring-teal-500/20 shadow-xs'
-                      : 'bg-white border-slate-200 hover:border-teal-300 hover:bg-slate-50'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-teal-600 text-white tracking-wider">
-                      Transit / Split Batches
-                    </span>
-                    <span className="text-xs font-bold text-teal-900">
-                      {Math.round((transitKg / totalKg) * 100)}%
-                    </span>
-                  </div>
-                  <div className="text-lg font-black text-slate-900">
-                    {Math.round(transitKg).toLocaleString()} <span className="text-xs font-normal text-slate-500">kg</span>
-                  </div>
-                  <div className="text-[11px] text-slate-600 mt-1 flex items-center justify-between">
-                    <span>{transitJobs} Active Jobs</span>
-                    <span className="font-semibold text-teal-700">{transitLines.length} Lots</span>
-                  </div>
-                  <p className="text-[10px] text-slate-500 mt-1.5 border-t border-slate-100 pt-1">
-                    .CB/F.ST · .CB/N.ST · .F.ST/N.ST
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Filter Pills & Search */}
-            <div className="bg-white rounded-lg border border-slate-200 p-3 shadow-2xs">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                  <span className="font-bold text-slate-700 mr-1 text-[11px] uppercase tracking-wider">Zone Filter:</span>
-                  <button
-                    type="button"
-                    onClick={() => { setSelectedZoneFilter('ALL'); setZonePage(1); }}
-                    className={`px-3 py-1 rounded-md font-bold transition-all border ${
-                      selectedZoneFilter === 'ALL'
-                        ? 'bg-[#0F274E] text-white border-[#0F274E]'
-                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-                    }`}
-                  >
-                    All Zones ({rawLines.length})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setSelectedZoneFilter('F.ST'); setZonePage(1); }}
-                    className={`px-3 py-1 rounded-md font-bold transition-all border ${
-                      selectedZoneFilter === 'F.ST'
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-                    }`}
-                  >
-                    F.ST Main ({fstLines.length})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setSelectedZoneFilter('N.ST'); setZonePage(1); }}
-                    className={`px-3 py-1 rounded-md font-bold transition-all border ${
-                      selectedZoneFilter === 'N.ST'
-                        ? 'bg-indigo-600 text-white border-indigo-600'
-                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-                    }`}
-                  >
-                    N.ST New ({nstLines.length})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setSelectedZoneFilter('CB'); setZonePage(1); }}
-                    className={`px-3 py-1 rounded-md font-bold transition-all border ${
-                      selectedZoneFilter === 'CB'
-                        ? 'bg-amber-600 text-white border-amber-600'
-                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-                    }`}
-                  >
-                    CB Cutting ({cbLines.length})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setSelectedZoneFilter('TRANSIT'); setZonePage(1); }}
-                    className={`px-3 py-1 rounded-md font-bold transition-all border ${
-                      selectedZoneFilter === 'TRANSIT'
-                        ? 'bg-teal-600 text-white border-teal-600'
-                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-                    }`}
-                  >
-                    Transit / Multi ({transitLines.length})
-                  </button>
-                </div>
-
-                <div className="relative w-full sm:w-64">
-                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    value={zoneSearchQuery}
-                    onChange={e => { setZoneSearchQuery(e.target.value); setZonePage(1); }}
-                    placeholder="Search Job, Style, Color..."
-                    className="w-full pl-8 pr-3 py-1 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-500"
-                  />
-                  {zoneSearchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setZoneSearchQuery('')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Table of Zone Inventory */}
-              <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-[#F1F5F9] text-slate-900 border-b border-slate-300 text-[11px] font-bold">
-                    <tr>
-                      <th className="px-3 py-2">Job No</th>
-                      <th className="px-3 py-2">Style No</th>
-                      <th className="px-3 py-2">Buyer</th>
-                      <th className="px-3 py-2">Color</th>
-                      <th className="px-3 py-2">Fabric / Comp</th>
-                      <th className="px-3 py-2 text-right">In-Stock (Kg)</th>
-                      <th className="px-3 py-2 text-center">Store Location</th>
-                      <th className="px-3 py-2 text-center">Move Location</th>
-                      <th className="px-3 py-2 text-center">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 bg-white">
-                    {pagedItems.length === 0 ? (
-                      <tr>
-                        <td colSpan={9} className="py-12 text-center text-slate-500 font-medium">
-                          No fabric batches found matching this location filter.
-                        </td>
-                      </tr>
-                    ) : (
-                      pagedItems.map((item) => (
-                        <tr key={item.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-3 py-2 font-black text-[#0F274E] text-[12.5px]">
-                            {item.jobNo}
-                          </td>
-                          <td className="px-3 py-2 font-bold text-slate-900">
-                            {cleanStyleNo(item.style)}
-                          </td>
-                          <td className="px-3 py-2 text-slate-600 font-medium">
-                            {item.buyer}
-                          </td>
-                          <td className="px-3 py-2 font-semibold text-slate-800">
-                            {item.color}
-                          </td>
-                          <td className="px-3 py-2 text-slate-600 truncate max-w-[150px]" title={`${item.fabric} - ${item.composition}`}>
-                            {item.fabric || item.fabricType || 'SJ'} · {item.composition || 'Cotton'}
-                          </td>
-                          <td className="px-3 py-2 text-right font-black text-emerald-900 text-[12.5px] tabular-nums">
-                            {Math.round(item.stockBalance).toLocaleString()} kg
-                          </td>
-                          <td className="px-3 py-2 text-center">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
-                              (item.location || '').toUpperCase().startsWith('F.ST') ? 'bg-blue-100 text-blue-900 border border-blue-300' :
-                              (item.location || '').toUpperCase().startsWith('N.ST') ? 'bg-indigo-100 text-indigo-900 border border-indigo-300' :
-                              (item.location || '').toUpperCase() === 'CB' ? 'bg-amber-100 text-amber-900 border border-amber-300' :
-                              'bg-teal-100 text-teal-900 border border-teal-300'
-                            }`}>
-                              {item.location || 'F.ST'}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+                    {visibleRacks.map(r => {
+                      const isSelected = selectedRackId === r.id;
+                      return (
+                        <div
+                          key={r.id}
+                          onClick={() => setSelectedRackId(r.id)}
+                          className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                            isSelected
+                              ? 'bg-blue-50 border-blue-600 shadow-md ring-2 ring-blue-500/20'
+                              : 'bg-white border-slate-300 hover:border-slate-400 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-mono font-black text-sm text-slate-950">{r.id}</span>
+                            <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                              {r.shelves.length} Shelves
                             </span>
-                          </td>
-                          <td className="px-3 py-2 text-center">
-                            <select
-                              value={item.location || 'F.ST'}
-                              onChange={e => handleRelocateLine(item.id, e.target.value)}
-                              className="px-2 py-1 text-[11px] font-semibold border border-slate-300 rounded bg-white text-slate-800 focus:ring-1 focus:ring-blue-500"
-                            >
-                              <option value="F.ST">F.ST (Main)</option>
-                              <option value="N.ST">N.ST (New)</option>
-                              <option value="CB">CB (Cutting)</option>
-                              <option value=".CB/F.ST">.CB/F.ST</option>
-                              <option value=".CB/N.ST">.CB/N.ST</option>
-                              <option value=".F.ST/N.ST">.F.ST/N.ST</option>
-                            </select>
-                          </td>
-                          <td className="px-3 py-2 text-center text-slate-500 text-[11px]">
-                            {item.date || '—'}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Pagination */}
-              {totalZonePages > 1 && (
-                <div className="flex items-center justify-between pt-3 mt-2 border-t border-slate-200 text-xs text-slate-500">
-                  <span>
-                    Showing <strong className="text-slate-900">{((zonePage - 1) * perPage) + 1}</strong> to <strong className="text-slate-900">{Math.min(zonePage * perPage, zoneItems.length)}</strong> of <strong className="text-slate-900">{zoneItems.length}</strong> batches
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      disabled={zonePage === 1}
-                      onClick={() => setZonePage(p => Math.max(1, p - 1))}
-                      className="px-2.5 py-1 border border-slate-300 rounded-md font-semibold disabled:opacity-40 hover:bg-slate-50"
-                    >
-                      Prev
-                    </button>
-                    <span className="font-bold text-slate-800 px-2">Page {zonePage} of {totalZonePages}</span>
-                    <button
-                      type="button"
-                      disabled={zonePage === totalZonePages}
-                      onClick={() => setZonePage(p => Math.min(totalZonePages, p + 1))}
-                      className="px-2.5 py-1 border border-slate-300 rounded-md font-semibold disabled:opacity-40 hover:bg-slate-50"
-                    >
-                      Next
-                    </button>
+                          </div>
+                          <div className="text-[11px] font-bold text-slate-700 truncate">{r.name}</div>
+                          <div className="text-[10px] text-emerald-800 font-extrabold mt-1">
+                            Status: Active Storage
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-              )}
+
+                {/* Right Col: Selected Rack Shelves Matrix */}
+                <div className="bg-slate-50 rounded-lg border-2 border-slate-300 p-3.5 space-y-3">
+                  {(() => {
+                    const currentRack = visibleRacks.find(r => r.id === selectedRackId) || visibleRacks[0];
+                    if (!currentRack) return null;
+
+                    return (
+                      <>
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                          <div>
+                            <span className="text-xs font-black uppercase text-blue-900 tracking-wider">
+                              Shelf Matrix: {currentRack.id}
+                            </span>
+                            <p className="text-[11px] text-slate-600 font-semibold">{currentRack.name}</p>
+                          </div>
+                          <span className="text-[10px] bg-blue-100 text-blue-950 font-black px-2 py-0.5 rounded border border-blue-300">
+                            {currentRack.shelves.length} Storage Tiers
+                          </span>
+                        </div>
+
+                        <div className="max-h-[500px] overflow-y-auto space-y-2 pr-1">
+                          {currentRack.shelves.map((sh, idx) => (
+                            <div key={sh} className="p-2.5 bg-white rounded-md border border-slate-300 shadow-2xs hover:border-blue-400 transition-colors">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="font-mono font-black text-xs text-slate-900">
+                                  📦 {sh}
+                                </span>
+                                <span className="text-[10px] font-extrabold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                                  Capacity: OK
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-slate-600 font-semibold">
+                                Stored Fabric: Finished Fabric Lot #{idx + 101}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
             </div>
           </div>
         );
-      })()}
-
-      {/* ===================================================================== */}
+      })()}{/* ===================================================================== */}
       {/* TAB 5: LEFTOVER & REUSE FABRIC */}
       {/* ===================================================================== */}
       {activeTab === 'REUSE' && (
@@ -5845,6 +5915,7 @@ function FinishedFabricPageInner() {
                     <th className="px-3 py-2 font-bold">Assigned Shelf</th>
                     <th className="px-3 py-2 font-semibold">Returned By</th>
                     <th className="px-3 py-2 text-center font-semibold">Status</th>
+                    <th className="px-3 py-2 text-center font-black">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 text-xs text-slate-800">
@@ -5871,11 +5942,314 @@ function FinishedFabricPageInner() {
                           {lr.status}
                         </span>
                       </td>
+                      <td className="px-3 py-2 text-center">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLeftoverDispatchModal(lr);
+                            setLeftoverDispatchForm(prev => ({
+                              ...prev,
+                              bodyKg: lr.bodyKg,
+                              ribKg: lr.ribKg,
+                              sjKg: lr.sjKg,
+                            }));
+                          }}
+                          className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded font-black text-[10.5px] shadow-xs"
+                        >
+                          Dispatch to Job
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* LEFTOVER DISPATCH TO REFERENCE JOB POPUP */}
+      {/* ===================================================================== */}
+      {leftoverDispatchModal && (
+        <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-2xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full border-2 border-blue-500 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+            <div className="px-5 py-3.5 bg-blue-700 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <RotateCcw className="w-5 h-5" />
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-wide">Dispatch Leftover Fabric</h3>
+                  <p className="text-[11px] text-blue-100">Re-allocate leftover stock to a Reference Job</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLeftoverDispatchModal(null)}
+                className="text-blue-100 hover:text-white p-1 rounded"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const refJob = leftoverDispatchForm.referenceJob.trim();
+                if (!refJob) {
+                  showToast('Please specify Reference Job No.');
+                  return;
+                }
+                const total = Number(leftoverDispatchForm.bodyKg) + Number(leftoverDispatchForm.ribKg) + Number(leftoverDispatchForm.sjKg);
+                setLeftoverLedger(prev => prev.map(item => {
+                  if (item.id === leftoverDispatchModal.id) {
+                    return { ...item, status: 'Reused' };
+                  }
+                  return item;
+                }));
+                showToast(`${total} kg leftover fabric dispatched to Reference Job ${refJob}.`);
+                setLeftoverDispatchModal(null);
+              }}
+              className="p-4 space-y-3"
+            >
+              <div>
+                <label className="text-xs font-black text-slate-900 block mb-1">Reference Job *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. BSONL 48545, NL 48545"
+                  value={leftoverDispatchForm.referenceJob}
+                  onChange={(e) => setLeftoverDispatchForm(p => ({ ...p, referenceJob: e.target.value }))}
+                  className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-black text-slate-900 focus:outline-hidden focus:border-blue-600"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-black text-slate-900 block mb-1">Delivery Date (Calendar) *</label>
+                <input
+                  type="date"
+                  required
+                  value={leftoverDispatchForm.date}
+                  onChange={(e) => setLeftoverDispatchForm(p => ({ ...p, date: e.target.value }))}
+                  className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-black text-slate-900 focus:outline-hidden focus:border-blue-600"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 bg-blue-50/60 p-2.5 rounded-lg border border-blue-200">
+                <div>
+                  <label className="text-[11px] font-black text-slate-800 block mb-0.5">Body (kg)</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={leftoverDispatchForm.bodyKg}
+                    onChange={(e) => setLeftoverDispatchForm(p => ({ ...p, bodyKg: parseFloat(e.target.value) || 0 }))}
+                    className="w-full px-2 py-1 bg-white border border-slate-300 rounded text-xs font-black text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-black text-slate-800 block mb-0.5">Rib (kg)</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={leftoverDispatchForm.ribKg}
+                    onChange={(e) => setLeftoverDispatchForm(p => ({ ...p, ribKg: parseFloat(e.target.value) || 0 }))}
+                    className="w-full px-2 py-1 bg-white border border-slate-300 rounded text-xs font-black text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-black text-slate-800 block mb-0.5">SJ (kg)</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={leftoverDispatchForm.sjKg}
+                    onChange={(e) => setLeftoverDispatchForm(p => ({ ...p, sjKg: parseFloat(e.target.value) || 0 }))}
+                    className="w-full px-2 py-1 bg-white border border-slate-300 rounded text-xs font-black text-slate-900"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-black text-slate-900 block mb-1">Purpose &amp; Remarks *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Body alteration shortage, sample making"
+                  value={leftoverDispatchForm.purposeRemarks}
+                  onChange={(e) => setLeftoverDispatchForm(p => ({ ...p, purposeRemarks: e.target.value }))}
+                  className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-bold text-slate-900 focus:outline-hidden focus:border-blue-600"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setLeftoverDispatchModal(null)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md text-xs font-bold border border-slate-300"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-black shadow-sm"
+                >
+                  Confirm Leftover Delivery
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* QUICK RECEIVE DIALOG IN STOCK REPORT */}
+      {/* ===================================================================== */}
+      {quickReceiveOpen && (
+        <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-2xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full border-2 border-emerald-500 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+            <div className="px-5 py-3.5 bg-emerald-700 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Plus className="w-5 h-5 stroke-[2.5]" />
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-wide">+ Quick Fabric Receive into Store</h3>
+                  <p className="text-[11px] text-emerald-100">Directly receive fabric from Dyeing or Cutting Return</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setQuickReceiveOpen(false)}
+                className="text-emerald-100 hover:text-white p-1 rounded"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                showToast('Fabric receive recorded successfully.');
+                setQuickReceiveOpen(false);
+              }}
+              className="p-5 space-y-3"
+            >
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-black text-slate-900 block mb-1">Job No (Search/Select) *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. BSNMT 44843 5th"
+                    className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-black text-slate-900 focus:outline-hidden focus:border-emerald-600"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-black text-slate-900 block mb-1">Source Type *</label>
+                  <select
+                    className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-black text-slate-900 focus:outline-hidden focus:border-emerald-600"
+                  >
+                    <option value="DYEING">From Dyeing (Fresh Inward)</option>
+                    <option value="CUTTING_RETURN">From Cutting Floor (Balance Return)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2.5">
+                <div>
+                  <label className="text-xs font-black text-slate-900 block mb-1">Color Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Chambray Blue"
+                    className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-black text-slate-900 focus:outline-hidden focus:border-emerald-600"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-black text-slate-900 block mb-1">Batch No *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. B-101"
+                    className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-black text-slate-900 focus:outline-hidden focus:border-emerald-600 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-black text-slate-900 block mb-1">Date *</label>
+                  <input
+                    type="date"
+                    required
+                    defaultValue={new Date().toISOString().split('T')[0]}
+                    className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-black text-slate-900 focus:outline-hidden focus:border-emerald-600"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-black text-slate-900 block mb-1">Storage Rack *</label>
+                  <select
+                    className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-black text-slate-900 focus:outline-hidden focus:border-emerald-600"
+                  >
+                    {FACTORY_RACKS.map(r => (
+                      <option key={r.id} value={r.id}>{r.id} ({r.name})</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-black text-slate-900 block mb-1">Storage Shelf *</label>
+                  <select
+                    className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-black text-slate-900 focus:outline-hidden focus:border-emerald-600"
+                  >
+                    <option value="Shelf 01">Shelf 01 (Default)</option>
+                    <option value="Shelf 02">Shelf 02</option>
+                    <option value="Shelf 03">Shelf 03</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 bg-emerald-50/60 p-3 rounded-lg border border-emerald-200">
+                <div>
+                  <label className="text-[11px] font-black text-slate-900 block mb-1">Body (kg)</label>
+                  <input
+                    type="number"
+                    step="any"
+                    placeholder="0"
+                    className="w-full px-2.5 py-1 bg-white border border-slate-300 rounded text-xs font-black text-slate-950"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-black text-slate-900 block mb-1">Rib (kg)</label>
+                  <input
+                    type="number"
+                    step="any"
+                    placeholder="0"
+                    className="w-full px-2.5 py-1 bg-white border border-slate-300 rounded text-xs font-black text-slate-950"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-black text-slate-900 block mb-1">SJ (kg)</label>
+                  <input
+                    type="number"
+                    step="any"
+                    placeholder="0"
+                    className="w-full px-2.5 py-1 bg-white border border-slate-300 rounded text-xs font-black text-slate-950"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setQuickReceiveOpen(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md text-xs font-bold border border-slate-300"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-md text-xs font-black shadow-sm"
+                >
+                  Save &amp; Update Stock
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
