@@ -20,8 +20,9 @@ export function Card({ title, action, children, className = '', style }: {
 }
 
 /* ---------------- KPI card: label, big number, delta, sparkline ---------------- */
-export function KpiCard({ label, value, unit, delta, deltaDirection, series = [], onClick, onDoubleClick }: {
-  label: string; value: string | number; unit?: string;
+export function KpiCard({ label, value, unit, sub, tone, delta, deltaDirection, series = [], onClick, onDoubleClick }: {
+  label: string; value: React.ReactNode; unit?: string;
+  sub?: React.ReactNode; tone?: 'plan' | 'done' | 'balance' | 'mid' | 'ink' | 'muted';
   delta?: string; deltaDirection?: 'up' | 'down' | 'flat';
   series?: number[]; onClick?: (e: React.MouseEvent<HTMLDivElement>) => void; onDoubleClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
 }) {
@@ -37,12 +38,13 @@ export function KpiCard({ label, value, unit, delta, deltaDirection, series = []
       className="nos-card nos-kpi"
       onClick={onClick}
       onDoubleClick={onDoubleClick}
+      data-tone={tone}
       style={onClick || onDoubleClick ? { cursor: 'pointer' } : undefined}
     >
       <span className="nos-kpi-l">{label}</span>
       <span className="nos-kpi-v">{value}{unit ? <span className="u">{unit}</span> : null}</span>
       <span className="nos-kpi-f">
-        <span className={dir === 'up' ? 'nos-up' : dir === 'down' ? 'nos-down' : 'nos-flat'}>{delta ?? ''}</span>
+        <span className={dir === 'up' ? 'nos-up' : dir === 'down' ? 'nos-down' : 'nos-flat'}>{delta ?? sub ?? ''}</span>
         {points && (
           <svg width="80" height="24" viewBox="0 0 80 24" aria-hidden="true">
             <polyline points={points} fill="none" stroke={colour} strokeWidth="1.6" />
@@ -175,3 +177,8 @@ export type {
 } from './DashboardKit';
 export { default as SectionNav } from './SectionNav';
 export type { SectionNavItem, SectionNavProps } from './SectionNav';
+export { DataImportModal } from './DataImportModal';
+export type { DataImportModalProps } from './DataImportModal';
+export { EditableSheetGrid } from './EditableSheetGrid';
+export type { SheetColumn, SheetColumnType, EditableSheetGridProps } from './EditableSheetGrid';
+

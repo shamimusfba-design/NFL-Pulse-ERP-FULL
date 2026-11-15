@@ -8,14 +8,18 @@ import {
   CommandBar,
   CrossFilterProvider,
   DataGrid,
+  DataImportModal,
   DrillPopup,
   DrillPopupSpec,
+  EditableSheetGrid,
   GridColumn,
   KpiCard,
   RecordPanel,
-  RecordSection
+  RecordSection,
+  SheetColumn
 } from '../../../components/ui';
 import { fmtDate, fmtNum, fmtQty } from '../../../lib/format';
+import { recordGreigeRoll } from '../../../lib/store/operational-store';
 
 export interface GreigeRollLotRecord {
   id: string;
@@ -67,7 +71,113 @@ export default function GreigeStorePage() {
   const [selectedLot, setSelectedLot] = useState<GreigeRollLotRecord | null>(null);
   const [lastDeletedLot, setLastDeletedLot] = useState<GreigeRollLotRecord | null>(null);
   const [drill, setDrill] = useState<{ spec: DrillPopupSpec; anchor: DOMRect | null } | null>(null);
+  const [showEntryModal, setShowEntryModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [notice, setNotice] = useState('');
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+
+  // New Greige Roll Form State
+  const [formLotNo, setFormLotNo] = useState('');
+  const [formJobNo, setFormJobNo] = useState('48093');
+  const [formBuyer, setFormBuyer] = useState('ONLY');
+  const [formStyle, setFormStyle] = useState('22040024');
+  const [formFabric, setFormFabric] = useState('Single Jersey 100% Cotton');
+  const [formGsm, setFormGsm] = useState(180);
+  const [formDia, setFormDia] = useState('68" Open');
+  const [formYarnLot, setFormYarnLot] = useState('LOT-SQ-402 (30/1 Combed)');
+  const [formMachine, setFormMachine] = useState('KM-02 Mayer & Cie');
+  const [formBin, setFormBin] = useState('Bin A-05');
+  const [formRolls, setFormRolls] = useState(120);
+  const [formRecvKg, setFormRecvKg] = useState(3000);
+
+  const handleInwardRollSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const lot = formLotNo.trim() || `GL-${formJobNo}-${Date.now().toString().slice(-4)}`;
+    const newLot: GreigeRollLotRecord = {
+      id: `GR-${Date.now()}`,
+      lotNo: lot,
+      jobNo: formJobNo,
+      buyer: formBuyer,
+      styleNo: formStyle,
+      fabricType: formFabric,
+      gsm: Number(formGsm) || 180,
+      diaWidth: formDia,
+      yarnLot: formYarnLot,
+      knittingMachine: formMachine,
+      binRack: formBin,
+      rollsCount: Number(formRolls) || 100,
+      receivedKg: Number(formRecvKg) || 2500,
+      allocatedDyeingKg: 0,
+      availableKg: Number(formRecvKg) || 2500,
+      fourPointPassPct: 98.5,
+      receivedDate: new Date().toISOString().slice(0, 10),
+      agingDays: 0,
+      status: 'AVAILABLE',
+      remarks: 'Inward floor entry recorded.'
+    };
+    setLots((prev) => [newLot, ...prev]);
+    recordGreigeRoll({
+      id: newLot.id,
+      lotNo: newLot.lotNo,
+      jobNo: newLot.jobNo,
+      fabricType: newLot.fabricType,
+      receivedKg: newLot.receivedKg,
+      allocatedDyeingKg: 0,
+      availableKg: newLot.availableKg,
+      agingDays: 0,
+      status: 'AVAILABLE'
+    });
+    setNotice(`Inward Greige Roll registered: Lot ${lot} (${fmtNum(newLot.receivedKg)} kg) saved and rolled into live Executive dashboard.`);
+    setShowEntryModal(false);
+    setFormLotNo('');
+  };
+
+  const handleImportGreigeSpreadsheet = (rows: Record<string, any>[]) => {
+    const imported: GreigeRollLotRecord[] = rows.map((r, idx) => {
+      const lot = String(r['lotNo'] || r['lot'] || `GL-IMP-${idx + 1}`);
+      const job = String(r['jobNo'] || r['job'] || '48093');
+      const buyer = String(r['buyer'] || 'ONLY');
+      const fabric = String(r['fabricType'] || r['fabric'] || 'Single Jersey 100% Cotton');
+      const rolls = Number(r['rollsCount'] || r['rolls'] || 80);
+      const recvKg = Number(r['receivedKg'] || r['qty'] || 2000);
+      const rec: GreigeRollLotRecord = {
+        id: `GR-IMP-${Date.now()}-${idx}`,
+        lotNo: lot,
+        jobNo: job,
+        buyer,
+        styleNo: String(r['styleNo'] || r['style'] || 'STD-STYLE'),
+        fabricType: fabric,
+        gsm: Number(r['gsm'] || 180),
+        diaWidth: String(r['diaWidth'] || r['dia'] || '68" Open'),
+        yarnLot: String(r['yarnLot'] || 'Spinning Lot A'),
+        knittingMachine: String(r['knittingMachine'] || 'Knitting Floor'),
+        binRack: String(r['binRack'] || 'Bin A-01'),
+        rollsCount: rolls,
+        receivedKg: recvKg,
+        allocatedDyeingKg: 0,
+        availableKg: recvKg,
+        fourPointPassPct: 98.0,
+        receivedDate: new Date().toISOString().slice(0, 10),
+        agingDays: 0,
+        status: 'AVAILABLE'
+      };
+      recordGreigeRoll({
+        id: rec.id,
+        lotNo: rec.lotNo,
+        jobNo: rec.jobNo,
+        fabricType: rec.fabricType,
+        receivedKg: rec.receivedKg,
+        allocatedDyeingKg: 0,
+        availableKg: rec.availableKg,
+        agingDays: 0,
+        status: 'AVAILABLE'
+      });
+      return rec;
+    });
+
+    setLots((prev) => [...imported, ...prev]);
+    setNotice(`Successfully imported ${imported.length} greige fabric lots from spreadsheet.`);
+  };
 
   const filteredLots = useMemo(() => {
     return lots.filter((l) => {
@@ -390,20 +500,38 @@ export default function GreigeStorePage() {
                   Greige Roll &amp; Lot Register ({filteredLots.length})
                 </button>
                 <button type="button" aria-selected={viewMode === 'SHEET'} onClick={() => setViewMode('SHEET')}>
-                  Floor Receiving Sheet
+                  📊 Floor Receiving Sheet (Live Edit)
                 </button>
               </div>
             }
             right={
-              viewMode === 'LEDGER' ? (
-                <select className="nos-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                  <option value="ALL">All Statuses</option>
-                  <option value="AVAILABLE">Available</option>
-                  <option value="ALLOCATED_WINCH">Allocated to Winch</option>
-                  <option value="AGING_ALERT">Aging Alert</option>
-                  <option value="QUALITY_HOLD">Quality Hold</option>
-                </select>
-              ) : null
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => setShowEntryModal(true)}
+                  style={{ fontSize: '12px', padding: '6px 12px' }}
+                >
+                  + Inward Greige Roll
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowImportModal(true)}
+                  style={{ fontSize: '12px', padding: '6px 12px' }}
+                >
+                  📁 Import Spreadsheet
+                </button>
+                {viewMode === 'LEDGER' && (
+                  <select className="nos-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                    <option value="ALL">All Statuses</option>
+                    <option value="AVAILABLE">Available</option>
+                    <option value="ALLOCATED_WINCH">Allocated to Winch</option>
+                    <option value="AGING_ALERT">Aging Alert</option>
+                    <option value="QUALITY_HOLD">Quality Hold</option>
+                  </select>
+                )}
+              </div>
             }
           />
 
@@ -419,18 +547,85 @@ export default function GreigeStorePage() {
               onRowClick={(r) => setSelectedLot(r)}
             />
           ) : (
-            <iframe
-              ref={iframeRef}
-              src="/greige-store/index.html"
-              title="Greige Fabric Store"
-              onLoad={syncThemeToIframe}
-              style={{
-                width: '100%',
-                height: 'calc(100vh - 220px)',
-                border: '1px solid var(--nos-line)',
-                borderRadius: 12,
-                background: 'var(--nos-surface)'
+            <EditableSheetGrid<GreigeRollLotRecord>
+              title="Greige Fabric Floor Receiving & Allocation Sheet"
+              subtitle="Double-click or press Enter on any cell to edit · Available Balance (kg) = Received - Dyeing Alloc auto-calculates"
+              rows={filteredLots}
+              rowKey={(r) => r.id}
+              columns={[
+                { key: 'lotNo', header: 'Greige Lot #', type: 'text', width: 130, tone: 'plan', summary: 'count' },
+                { key: 'jobNo', header: 'Job No', type: 'text', width: 95 },
+                { key: 'buyer', header: 'Buyer', type: 'select', width: 110, options: ['ONLY', 'BS-NMT', 'OVS', 'UTG', 'Name It', 'Only&Sons'] },
+                { key: 'styleNo', header: 'Style No', type: 'text', width: 115 },
+                { key: 'fabricType', header: 'Fabric Construction', type: 'text', width: 195 },
+                { key: 'gsm', header: 'GSM', type: 'number', width: 80 },
+                { key: 'binRack', header: 'Bin / Rack', type: 'text', width: 105 },
+                { key: 'rollsCount', header: 'Rolls', type: 'number', width: 90, unit: 'rolls', summary: 'sum' },
+                { key: 'receivedKg', header: 'Received', type: 'number', width: 125, unit: 'kg', tone: 'plan', summary: 'sum' },
+                { key: 'allocatedDyeingKg', header: 'Dyeing Alloc', type: 'number', width: 130, unit: 'kg', summary: 'sum' },
+                {
+                  key: 'availableKg',
+                  header: 'Available Bal',
+                  type: 'formula',
+                  width: 135,
+                  unit: 'kg',
+                  formulaLabel: '= max(0, Received (I) - Dyeing Alloc (J))',
+                  compute: (r) => Math.max(0, (Number(r.receivedKg) || 0) - (Number(r.allocatedDyeingKg) || 0)),
+                  tone: (r) => ((Number(r.receivedKg) || 0) - (Number(r.allocatedDyeingKg) || 0) > 0 ? 'done' : 'mid'),
+                  summary: 'sum',
+                },
+                { key: 'status', header: 'Status', type: 'select', width: 145, options: ['AVAILABLE', 'ALLOCATED_WINCH', 'AGING_ALERT', 'QUALITY_HOLD'] },
+              ] as SheetColumn<GreigeRollLotRecord>[]}
+              recalculateRow={(r) => {
+                const recv = Number(r.receivedKg) || 0;
+                const alloc = Number(r.allocatedDyeingKg) || 0;
+                const avail = Math.max(0, recv - alloc);
+                return {
+                  ...r,
+                  receivedKg: recv,
+                  allocatedDyeingKg: alloc,
+                  availableKg: avail,
+                };
               }}
+              createEmptyRow={(idx) => ({
+                id: `GR-SH-${Date.now()}-${idx}`,
+                lotNo: `GL-48093-${idx}`,
+                jobNo: '48093',
+                buyer: 'ONLY',
+                styleNo: '22040024',
+                fabricType: 'Single Jersey 100% Cotton',
+                gsm: 180,
+                diaWidth: '68" Open',
+                yarnLot: 'LOT-SQ-402',
+                knittingMachine: 'KM-02 Mayer & Cie',
+                binRack: 'Bin A-06',
+                rollsCount: 100,
+                receivedKg: 2500,
+                allocatedDyeingKg: 0,
+                availableKg: 2500,
+                fourPointPassPct: 98.5,
+                receivedDate: new Date().toISOString().slice(0, 10),
+                agingDays: 0,
+                status: 'AVAILABLE',
+              })}
+              onChange={(nextRows) => {
+                setLots(nextRows);
+                if (nextRows[0]) {
+                  recordGreigeRoll({
+                    id: nextRows[0].id,
+                    lotNo: nextRows[0].lotNo,
+                    jobNo: nextRows[0].jobNo,
+                    fabricType: nextRows[0].fabricType,
+                    receivedKg: nextRows[0].receivedKg,
+                    allocatedDyeingKg: nextRows[0].allocatedDyeingKg,
+                    availableKg: nextRows[0].availableKg,
+                    agingDays: nextRows[0].agingDays,
+                    status: nextRows[0].status,
+                  });
+                }
+              }}
+              onOpenImportModal={() => setShowImportModal(true)}
+              exportFileName="greige-floor-receiving-sheet"
             />
           )}
 
@@ -498,6 +693,157 @@ export default function GreigeStorePage() {
               }}
             />
           )}
+
+          {/* New Greige Roll Inward Modal */}
+          {showEntryModal && (
+            <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+              <div style={{ background: '#fff', borderRadius: '12px', width: '100%', maxWidth: '580px', padding: '24px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                    📥 Inward Greige Roll Lot &amp; Storage Intake
+                  </h3>
+                  <button type="button" onClick={() => setShowEntryModal(false)} style={{ background: 'transparent', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#64748b' }}>×</button>
+                </div>
+
+                <form onSubmit={handleInwardRollSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>Greige Lot Number</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. GL-48093-X"
+                        value={formLotNo}
+                        onChange={(e) => setFormLotNo(e.target.value)}
+                        required
+                        style={{ width: '100%', padding: '7px 10px', fontSize: '13px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>Job No</label>
+                      <input
+                        type="text"
+                        value={formJobNo}
+                        onChange={(e) => setFormJobNo(e.target.value)}
+                        required
+                        style={{ width: '100%', padding: '7px 10px', fontSize: '13px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>Buyer Brand</label>
+                      <select
+                        value={formBuyer}
+                        onChange={(e) => setFormBuyer(e.target.value)}
+                        style={{ width: '100%', padding: '7px 10px', fontSize: '13px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                      >
+                        <option value="ONLY">ONLY</option>
+                        <option value="BS-NMT">BS-NMT</option>
+                        <option value="OVS">OVS</option>
+                        <option value="UTG">UTG</option>
+                        <option value="Name It">Name It</option>
+                        <option value="Only&Sons">Only&amp;Sons</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>Style Number</label>
+                      <input
+                        type="text"
+                        value={formStyle}
+                        onChange={(e) => setFormStyle(e.target.value)}
+                        style={{ width: '100%', padding: '7px 10px', fontSize: '13px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>Fabric Construction</label>
+                    <input
+                      type="text"
+                      value={formFabric}
+                      onChange={(e) => setFormFabric(e.target.value)}
+                      required
+                      style={{ width: '100%', padding: '7px 10px', fontSize: '13px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>GSM</label>
+                      <input
+                        type="number"
+                        value={formGsm}
+                        onChange={(e) => setFormGsm(Number(e.target.value))}
+                        style={{ width: '100%', padding: '7px 10px', fontSize: '13px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>Dia / Width</label>
+                      <input
+                        type="text"
+                        value={formDia}
+                        onChange={(e) => setFormDia(e.target.value)}
+                        style={{ width: '100%', padding: '7px 10px', fontSize: '13px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>Bin / Rack</label>
+                      <input
+                        type="text"
+                        value={formBin}
+                        onChange={(e) => setFormBin(e.target.value)}
+                        style={{ width: '100%', padding: '7px 10px', fontSize: '13px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>Total Rolls</label>
+                      <input
+                        type="number"
+                        value={formRolls}
+                        onChange={(e) => setFormRolls(Number(e.target.value))}
+                        required
+                        style={{ width: '100%', padding: '7px 10px', fontSize: '13px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>Received Weight (kg)</label>
+                      <input
+                        type="number"
+                        value={formRecvKg}
+                        onChange={(e) => setFormRecvKg(Number(e.target.value))}
+                        required
+                        style={{ width: '100%', padding: '7px 10px', fontSize: '13px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '14px', borderTop: '1px solid #f1f5f9', paddingTop: '12px' }}>
+                    <button type="button" onClick={() => setShowEntryModal(false)} className="btn btn-secondary">
+                      Cancel
+                    </button>
+                    <button type="submit" className="btn btn-primary">
+                      Record Greige Inward &amp; Sync
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* DataImportModal for Greige Lots */}
+          <DataImportModal
+            isOpen={showImportModal}
+            onClose={() => setShowImportModal(false)}
+            title="Import Greige Store Roll Delivery Sheet"
+            department="Greige Store"
+            expectedColumns={['lotNo', 'jobNo', 'buyer', 'fabricType', 'gsm', 'rollsCount', 'receivedKg', 'binRack']}
+            sampleTemplate="lotNo,jobNo,buyer,fabricType,gsm,rollsCount,receivedKg,binRack\nGL-48110-A,48110,ONLY,Single Jersey 100% Cotton,180,110,2750,Bin A-08\nGL-48099-B,48099,OVS,French Terry Unbrushed,260,95,2470,Bin B-03"
+            onImport={handleImportGreigeSpreadsheet}
+          />
         </div>
       </CrossFilterProvider>
     </Shell>

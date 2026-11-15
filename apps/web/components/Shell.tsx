@@ -35,6 +35,7 @@ const MAIN_NAVIGATION_ITEMS: SidebarItem[] = [
   { id: 'management', name: 'Management Dashboard', href: '/management', requiresManagement: true },
   { id: 'executive', name: 'Executive Dashboard', href: '/' },
   { id: 'job360', name: 'Job 360', href: '/jobs' },
+  { id: 'data-entry', name: 'Live Sheet & Data Entry', href: '/data-entry', matchPrefixes: ['/data-entry', '/modules/data-import'], badge: '7 Sheets', badgeType: 'primary' },
   { id: 'tasks', name: 'My Pending Work', href: '/my-pending-work', matchPrefixes: ['/my-pending-work', '/tasks'] },
   { id: 'settings', name: 'Settings', href: '/settings', matchPrefixes: ['/settings'] },
 ];
@@ -135,7 +136,9 @@ const DEPARTMENT_TOP_NAVS: DepartmentNavConfig[] = [
     deptName: 'Sewing & Finishing',
     matchPrefixes: ['/modules/sewing', '/modules/finishing'],
     subItems: [
-      { name: 'Sewing Operations', href: '/modules/sewing' },
+      { name: 'Line Plan & Shipment Follow-up', href: '/modules/sewing/line-plan' },
+      { name: 'Sewing Operations Overview', href: '/modules/sewing' },
+      { name: 'Sewing Line Gantt Chart', href: '/modules/sewing-planning' },
       { name: 'Finishing & Packing', href: '/modules/finishing' },
     ]
   },

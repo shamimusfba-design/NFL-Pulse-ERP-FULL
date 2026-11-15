@@ -33,6 +33,8 @@ import {
   CrossFilterChips,
 } from '../../components/ui';
 import { fmtDate, fmtNum } from '../../lib/format';
+import { getInitialOperationalState, OperationalStoreState } from '../../lib/store/operational-store';
+import { calculateExecutiveRollup, ExecutiveRollupResult } from '../../lib/calculations/rollup';
 
 // Strict Corporate Palette
 const COLORS = {
@@ -196,6 +198,30 @@ export default function ManagementDashboardPage() {
   // Raw Data
   const jobs: any[] = useMemo(() => (demo2000DataRaw as any)?.jobs || [], []);
   const buyerQuotasRaw: any[] = useMemo(() => (factoryKpiMasterRaw as any)?.buyerQuota || [], []);
+
+  // Live Operational Store & Dynamic Rollups
+  const [opState, setOpState] = useState<OperationalStoreState>(() => getInitialOperationalState());
+
+  useEffect(() => {
+    const handleStoreChange = (e: Event) => {
+      const custom = e as CustomEvent<OperationalStoreState>;
+      if (custom.detail) {
+        setOpState(custom.detail);
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('nos-operational-data-changed', handleStoreChange);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('nos-operational-data-changed', handleStoreChange);
+      }
+    };
+  }, []);
+
+  const liveRollup: ExecutiveRollupResult = useMemo(() => {
+    return calculateExecutiveRollup(opState);
+  }, [opState]);
 
   // Check authorization
   useEffect(() => {
@@ -609,20 +635,24 @@ export default function ManagementDashboardPage() {
     ];
   }, [overviewStats, isAllFiltered, filteredJobs.length]);
 
-  // Section 08: Dyeing Reprocess & Multi-Factory Subcontract Register
+  // Section 08: Dyeing Reprocess & Multi-Factory Subcontract Register (Dynamically linked to liveRollup)
   const dyeingReprocessData = useMemo(() => {
-    const dyeingTotal = isAllFiltered ? 462.0 : Number(((overviewStats.totalOrderQty * 0.21) / 1000).toFixed(1));
+    const dyeingTotal = liveRollup.dyeingRequiredTons > 0 ? liveRollup.dyeingRequiredTons : (isAllFiltered ? 462.0 : Number(((overviewStats.totalOrderQty * 0.21) / 1000).toFixed(1)));
+    const rftPct = liveRollup.bulkRftPct > 0 ? liveRollup.bulkRftPct : 91.4;
+    const nonRftPct = Math.max(0, 100 - rftPct);
+    const toppingPct = Number((nonRftPct * 0.72).toFixed(1));
+    const redyeingPct = Number((nonRftPct - toppingPct).toFixed(1));
     return {
       dyeingTotal,
-      rftTons: Number((dyeingTotal * 0.914).toFixed(1)),
-      toppingTons: Number((dyeingTotal * 0.062).toFixed(1)),
-      redyeingTons: Number((dyeingTotal * 0.024).toFixed(1)),
-      rftPct: 91.4,
-      toppingPct: 6.2,
-      redyeingPct: 2.4,
+      rftTons: Number(((dyeingTotal * rftPct) / 100).toFixed(1)),
+      toppingTons: Number(((dyeingTotal * toppingPct) / 100).toFixed(1)),
+      redyeingTons: Number(((dyeingTotal * redyeingPct) / 100).toFixed(1)),
+      rftPct,
+      toppingPct,
+      redyeingPct,
       loadPct: 67.0
     };
-  }, [overviewStats.totalOrderQty, isAllFiltered]);
+  }, [liveRollup, overviewStats.totalOrderQty, isAllFiltered]);
 
   // Comprehensive Factory-level Subcontract Register (Categorized by Process Section)
   const masterSubcontractFactories = useMemo(() => {

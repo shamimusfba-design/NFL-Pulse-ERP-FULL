@@ -1,0 +1,6 @@
+{
+  "summary":  "Updated implementation plan for Sewing Line Plan & Shipment Follow-Up with zero-column-drop architecture (all 52 columns preserved), departmental auto-pull data flow, and dynamic column visibility toggle buttons (Job Information, Cutting Status, Production Status, Material & T&A, Shipment Follow-up).",
+  "updatedAt":  "2026-11-09T07:39:26.705298758Z",
+  "requestFeedback":  true,
+  "userFacing":  true
+}

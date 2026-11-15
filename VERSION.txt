@@ -1,2 +1,3 @@
-NFL Pulse ERP v0.4.35
-Planning Scale & Line Cleanup cumulative build — no fixed Job cap in Capacity/T&A/Gantt, NFL/NCL physical-line deduplication, and official Northern Fashions Limited branding.
+NFL Pulse ERP v0.4.36
+Sewing Line Plan & Shipment Follow-up release — full 52-column master sheet integration, dynamic column group toggles, Dyeing-style supply & stage charts, and Cutting Status Gate enforcement.
+

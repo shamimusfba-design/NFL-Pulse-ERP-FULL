@@ -11,6 +11,8 @@ import demo2000DataRaw from '../data/demo-2000-master.json';
 import { SectionNav } from './ui/SectionNav';
 import { CrossFilterProvider, DrillPopup, DrillTarget } from './ui/DashboardKit';
 import { fmtNum } from '../lib/format';
+import { getInitialOperationalState, OperationalStoreState } from '../lib/store/operational-store';
+import { calculateExecutiveRollup, ExecutiveRollupResult } from '../lib/calculations/rollup';
 
 // Helper number formatters
 function n(v: any, decimals = 1) {
@@ -347,13 +349,37 @@ export function ExecutiveKpiDashboard() {
   const [factoryScope, setFactoryScope] = useState<'ALL' | 'NFL' | 'NCL'>('ALL');
   const [activeQuickTab, setActiveQuickTab] = useState<'ALL' | 'BOTTLENECKS' | 'QUALITY'>('ALL');
   const [drill, setDrill] = useState<DrillTarget | null>(null);
+  const [opState, setOpState] = useState<OperationalStoreState>(() => getInitialOperationalState());
+
+  // Listen to live operational updates from across all departments
+  React.useEffect(() => {
+    const handleUpdate = (e: any) => {
+      if (e.detail) {
+        setOpState(e.detail);
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('nos-operational-data-changed', handleUpdate);
+      return () => window.removeEventListener('nos-operational-data-changed', handleUpdate);
+    }
+  }, []);
+
+  const liveRollup: ExecutiveRollupResult = useMemo(() => {
+    return calculateExecutiveRollup(opState);
+  }, [opState]);
 
   // Master Data Source Bindings
   const yarnMaster = (yarnStockMasterRaw as any) || {};
   const knittingMaster = (knittingExecutionMasterRaw as any) || {};
   const factoryKpiMaster = (factoryKpiMasterRaw as any) || {};
   const dyeingData = (dyeingFactoryDataRaw as any) || {};
-  const masterJobs: any[] = useMemo(() => (demo2000DataRaw as any)?.jobs || [], []);
+  const masterJobs: any[] = useMemo(() => {
+    const liveJobs = (opState.orders || []).map((o) => ({
+      ...o,
+      orderQty: o.orderQty,
+    }));
+    return liveJobs.length > 0 ? liveJobs : (demo2000DataRaw as any)?.jobs || [];
+  }, [opState.orders]);
 
   const buyerShares = useMemo(() => {
     const map = new Map<string, { qty: number; jobs: number }>();
@@ -422,15 +448,15 @@ export function ExecutiveKpiDashboard() {
 
   // Section 1: Yarn Management Data
   const yarnData = useMemo(() => {
-    const rawTotal = yarnMaster.summary?.totalStockTons || 988.97;
-    const whiteTons = yarnMaster.summary?.whiteStockKg ? yarnMaster.summary.whiteStockKg / 1000 : 157.65;
-    const colorTons = yarnMaster.summary?.colorStockKg ? yarnMaster.summary.colorStockKg / 1000 : 831.32;
-    const pipelineTons = yarnMaster.summary?.pipelineLcOpenTons || 119.53;
-    const requisitionTons = yarnMaster.summary?.openRequisitionsTons || 342.5;
-    const deadStockTons = yarnMaster.summary?.deadStockTons || 18.4;
+    const rawTotal = (liveRollup.yarnTotalStockTons > 0 ? liveRollup.yarnTotalStockTons : yarnMaster.summary?.totalStockTons || 988.97) * multiplier;
+    const whiteTons = yarnMaster.summary?.whiteStockKg ? (yarnMaster.summary.whiteStockKg / 1000) * multiplier : 157.65 * multiplier;
+    const colorTons = yarnMaster.summary?.colorStockKg ? (yarnMaster.summary.colorStockKg / 1000) * multiplier : 831.32 * multiplier;
+    const pipelineTons = (yarnMaster.summary?.pipelineLcOpenTons || 119.53) * multiplier;
+    const requisitionTons = (yarnMaster.summary?.openRequisitionsTons || 342.5) * multiplier;
+    const deadStockTons = (yarnMaster.summary?.deadStockTons || 18.4) * multiplier;
     const deadStockCount = yarnMaster.summary?.deadStockCount || 14;
-    const safetyShortageCount = yarnMaster.summary?.safetyStockShortageCount || 8;
-    const avgDailyIssueTons = yarnMaster.summary?.avgDailyDeliveryTons || 38.2;
+    const safetyShortageCount = liveRollup.yarnDeficitTons > 0 ? 3 : (yarnMaster.summary?.safetyStockShortageCount || 8);
+    const avgDailyIssueTons = (yarnMaster.summary?.avgDailyDeliveryTons || 38.2) * multiplier;
 
     const donutData = [
       { label: 'Carded Cotton', value: 415.2, color: '#3b82f6' },
@@ -476,8 +502,8 @@ export function ExecutiveKpiDashboard() {
 
   // Section 2: Knitting Execution & Yarn Availability Data
   const knittingData = useMemo(() => {
-    const rawPlanTons = (knittingMaster.summary?.totalKnittingPlanTons || 468.68) * multiplier;
-    const rawProdTons = (knittingMaster.summary?.totalKnittingProductionTons || 468.63) * multiplier;
+    const rawPlanTons = (liveRollup.knittingPlanTons > 0 ? liveRollup.knittingPlanTons : knittingMaster.summary?.totalKnittingPlanTons || 468.68) * multiplier;
+    const rawProdTons = (liveRollup.knittingActualTons > 0 ? liveRollup.knittingActualTons : knittingMaster.summary?.totalKnittingProductionTons || 468.63) * multiplier;
     const yarnShortageJobs = knittingMaster.yarnShortageDelayedJobs || [
       { jobNo: '48085', buyer: 'BS-NMT', count: '28/1 Cotton Melange', shortageKg: 3400, delayDays: 4 },
       { jobNo: '48002', buyer: 'ONLY', count: '34/1 Combed Cotton', shortageKg: 4200, delayDays: 3 },
@@ -503,7 +529,7 @@ export function ExecutiveKpiDashboard() {
     return {
       planTons: rawPlanTons,
       prodTons: rawProdTons,
-      achievePct: pct(rawProdTons, rawPlanTons),
+      achievePct: pct(rawProdTons, rawPlanTons) || liveRollup.knittingEfficiencyPct,
       bookedCapPct: 94,
       loadedCapPct: 89,
       yarnShortageJobs,
@@ -511,13 +537,13 @@ export function ExecutiveKpiDashboard() {
       allocationDonut,
       slotComparison
     };
-  }, [knittingMaster, multiplier]);
+  }, [knittingMaster, multiplier, liveRollup]);
 
   // Section 3: Dyeing Execution & RFT Data
   const dyeingSectionData = useMemo(() => {
-    const rawPlanTons = 512.4 * multiplier;
-    const rawProdTons = 486.2 * multiplier;
-    const rftPct = 91.4; // Right First Time
+    const rawPlanTons = (liveRollup.dyeingRequiredTons > 0 ? liveRollup.dyeingRequiredTons : 512.4) * multiplier;
+    const rawProdTons = (liveRollup.dyeingDeliveredTons > 0 ? liveRollup.dyeingDeliveredTons : 486.2) * multiplier;
+    const rftPct = liveRollup.dyeingOverallRftPct || 91.4; // Right First Time
     const redyeingPct = 2.4;
     const toppingPct = 6.2;
 
@@ -876,6 +902,25 @@ export function ExecutiveKpiDashboard() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <Link
+              href="/data-entry"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '7px 14px',
+                borderRadius: '6px',
+                border: '1px solid #1d4ed8',
+                background: '#2563eb',
+                fontSize: '12px',
+                fontWeight: 800,
+                color: '#ffffff',
+                textDecoration: 'none',
+                boxShadow: '0 1px 2px rgba(37, 99, 235, 0.25)'
+              }}
+            >
+              <span>📊</span> Live Sheet &amp; Data Entry (7 Sheets)
+            </Link>
             <Link
               href="/modules/kpi-board"
               style={{

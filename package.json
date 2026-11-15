@@ -6,7 +6,7 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "npm run dev --workspace=apps/web",
+    "dev": "npm --prefix apps/web run dev",
     "build": "npm run build --workspace=apps/web",
     "publish:hosting": "npm run build && node scripts/prepare-hosting.js && npx firebase-tools deploy --only hosting",
     "lint": "node -e 'process.exit(0)'",
