@@ -1190,7 +1190,9 @@ function FinishedFabricPageInner() {
     rollCount: 1,
     challanNo: '',
     supplier: 'Northern Dyeing Unit-1',
-    location: 'F.ST',
+    rackNo: 'R-02',
+    shelfNo: 'Shelf 01',
+    location: 'R-02 / Shelf 01',
     cuttingLine: 'Cutting Table-1',
     issuedTo: 'Cutting Master',
     remarks: '',
@@ -1211,7 +1213,9 @@ function FinishedFabricPageInner() {
       rollCount: 1,
       challanNo: `CH-NFL-${Math.floor(1000 + Math.random() * 9000)}`,
       supplier: job.supplier || 'Northern Dyeing Unit-1',
-      location: (firstColor && firstColor.location) || 'F.ST',
+      rackNo: ((firstColor && firstColor.location) || 'R-02').split(' / ')[0] || 'R-02',
+      shelfNo: ((firstColor && firstColor.location) || 'Shelf 01').split(' / ')[1] || 'Shelf 01',
+      location: (firstColor && firstColor.location) || 'R-02 / Shelf 01',
       cuttingLine: 'Cutting Table-1',
       issuedTo: 'Cutting Master',
       remarks: '',
@@ -4097,39 +4101,39 @@ function FinishedFabricPageInner() {
                         </th>
                       </tr>
 
-                      {/* TIER 2: Component Breakdown Columns */}
-                      <tr className="bg-slate-50 text-slate-800 text-[11px] font-bold border-b border-slate-300 text-right">
-                        <th className="sticky left-0 z-30 bg-slate-100 text-left px-3.5 py-1.5 border-r border-slate-300 text-[10px] text-slate-500 font-semibold">
+                      {/* TIER 2: Component Breakdown Columns - 100% High Contrast Dark Text & Darker Excel Borders */}
+                      <tr className="bg-slate-100 text-slate-950 text-[11px] font-black border-b-2 border-slate-400 text-center">
+                        <th className="sticky left-0 z-30 bg-slate-200 text-left px-3.5 py-1.5 border-r border-slate-400 text-[10px] text-slate-900 font-bold" style={{ color: '#090d16' }}>
                           (Click for Ledger)
                         </th>
-                        <th className="text-center px-2 py-1.5 border-r border-slate-300 text-[10px] text-slate-500 font-semibold">
+                        <th className="text-center px-2 py-1.5 border-r border-slate-400 text-[10px] text-slate-900 font-bold" style={{ color: '#090d16' }}>
                           Batch Tags
                         </th>
 
-                        <th className="px-2 py-1.5 border-r border-blue-200 bg-blue-50/70 text-blue-950">Body</th>
-                        <th className="px-2 py-1.5 border-r border-blue-200 bg-blue-50/70 text-blue-950">Rib</th>
-                        <th className="px-2 py-1.5 border-r border-blue-200 bg-blue-50/70 text-blue-950">SJ</th>
-                        <th className="px-2.5 py-1.5 border-r border-slate-300 bg-blue-100 text-blue-950 font-black">Total Req</th>
+                        <th className="px-2 py-1.5 border-r border-slate-400 bg-blue-200 font-black" style={{ color: '#090d16' }}>Body</th>
+                        <th className="px-2 py-1.5 border-r border-slate-400 bg-blue-200 font-black" style={{ color: '#090d16' }}>Rib</th>
+                        <th className="px-2 py-1.5 border-r border-slate-400 bg-blue-200 font-black" style={{ color: '#090d16' }}>S.Jersey (SJ)</th>
+                        <th className="px-2.5 py-1.5 border-r border-slate-400 bg-blue-300 font-black" style={{ color: '#090d16' }}>Total Req</th>
 
-                        <th className="px-2 py-1.5 border-r border-emerald-200 bg-emerald-50/70 text-emerald-950">Body</th>
-                        <th className="px-2 py-1.5 border-r border-emerald-200 bg-emerald-50/70 text-emerald-950">Rib</th>
-                        <th className="px-2 py-1.5 border-r border-emerald-200 bg-emerald-50/70 text-emerald-950">SJ</th>
-                        <th className="px-2.5 py-1.5 border-r border-slate-300 bg-emerald-100 text-emerald-950 font-black">Total Recv</th>
+                        <th className="px-2 py-1.5 border-r border-slate-400 bg-emerald-200 font-black" style={{ color: '#090d16' }}>Body</th>
+                        <th className="px-2 py-1.5 border-r border-slate-400 bg-emerald-200 font-black" style={{ color: '#090d16' }}>Rib</th>
+                        <th className="px-2 py-1.5 border-r border-slate-400 bg-emerald-200 font-black" style={{ color: '#090d16' }}>S.Jersey (SJ)</th>
+                        <th className="px-2.5 py-1.5 border-r border-slate-400 bg-emerald-300 font-black" style={{ color: '#090d16' }}>Total Recv</th>
 
-                        <th className="px-2 py-1.5 border-r border-slate-300 bg-amber-50 text-amber-950 font-black text-center">Pending</th>
+                        <th className="px-2 py-1.5 border-r border-slate-400 bg-amber-200 font-black text-center" style={{ color: '#090d16' }}>Pending</th>
 
-                        <th className="px-2 py-1.5 border-r border-purple-200 bg-purple-50/70 text-purple-950">Body</th>
-                        <th className="px-2 py-1.5 border-r border-purple-200 bg-purple-50/70 text-purple-950">Rib</th>
-                        <th className="px-2 py-1.5 border-r border-purple-200 bg-purple-50/70 text-purple-950">SJ</th>
-                        <th className="px-2.5 py-1.5 border-r border-slate-300 bg-purple-100 text-purple-950 font-black">Total Issued</th>
+                        <th className="px-2 py-1.5 border-r border-slate-400 bg-purple-200 font-black" style={{ color: '#090d16' }}>Body</th>
+                        <th className="px-2 py-1.5 border-r border-slate-400 bg-purple-200 font-black" style={{ color: '#090d16' }}>Rib</th>
+                        <th className="px-2 py-1.5 border-r border-slate-400 bg-purple-200 font-black" style={{ color: '#090d16' }}>S.Jersey (SJ)</th>
+                        <th className="px-2.5 py-1.5 border-r border-slate-400 bg-purple-300 font-black" style={{ color: '#090d16' }}>Total Issued</th>
 
-                        <th className="px-2 py-1.5 border-r border-sky-200 bg-sky-50/70 text-sky-950">Body</th>
-                        <th className="px-2 py-1.5 border-r border-sky-200 bg-sky-50/70 text-sky-950">Rib</th>
-                        <th className="px-2 py-1.5 border-r border-sky-200 bg-sky-50/70 text-sky-950">SJ</th>
-                        <th className="px-2.5 py-1.5 border-r border-slate-300 bg-sky-100 text-sky-950 font-black">Stock Bal</th>
+                        <th className="px-2 py-1.5 border-r border-slate-400 bg-sky-200 font-black" style={{ color: '#090d16' }}>Body</th>
+                        <th className="px-2 py-1.5 border-r border-slate-400 bg-sky-200 font-black" style={{ color: '#090d16' }}>Rib</th>
+                        <th className="px-2 py-1.5 border-r border-slate-400 bg-sky-200 font-black" style={{ color: '#090d16' }}>S.Jersey (SJ)</th>
+                        <th className="px-2.5 py-1.5 border-r border-slate-400 bg-sky-300 font-black" style={{ color: '#090d16' }}>Stock Bal</th>
 
-                        <th className="text-center px-2 py-1.5 border-r border-slate-300 text-[10px] text-slate-500">Zone</th>
-                        <th className="text-center px-2 py-1.5 text-[10px] text-slate-500">Action Desk</th>
+                        <th className="text-center px-2 py-1.5 border-r border-slate-400 text-[10px] text-slate-900 font-bold" style={{ color: '#090d16' }}>Zone</th>
+                        <th className="text-center px-2 py-1.5 text-[10px] text-slate-900 font-bold" style={{ color: '#090d16' }}>Action Desk</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 text-xs">
@@ -4209,52 +4213,52 @@ function FinishedFabricPageInner() {
                                 </div>
                               </td>
 
-                              {/* Order Qty */}
-                              <td className="px-2 py-2 border-r border-blue-100 text-slate-900 font-bold tabular-nums">{Math.round(c.reqBody).toLocaleString()}</td>
-                              <td className="px-2 py-2 border-r border-blue-100 text-slate-900 font-bold tabular-nums">{Math.round(c.reqRib).toLocaleString()}</td>
-                              <td className="px-2 py-2 border-r border-blue-100 text-slate-900 font-bold tabular-nums">{Math.round(c.reqSJ) || '0'}</td>
-                              <td className="px-2.5 py-2 border-r border-slate-300 font-black text-blue-950 bg-blue-100/70 tabular-nums">
+                              {/* Order Qty - CENTER ALIGNED, DARKER EXCEL BORDER */}
+                              <td className="px-2 py-2 border-r border-b border-slate-400 text-center align-middle text-slate-950 font-bold tabular-nums">{Math.round(c.reqBody).toLocaleString()}</td>
+                              <td className="px-2 py-2 border-r border-b border-slate-400 text-center align-middle text-slate-950 font-bold tabular-nums">{Math.round(c.reqRib).toLocaleString()}</td>
+                              <td className="px-2 py-2 border-r border-b border-slate-400 text-center align-middle text-slate-950 font-bold tabular-nums">{Math.round(c.reqSJ) || '0'}</td>
+                              <td className="px-2.5 py-2 border-r border-b border-slate-400 text-center align-middle font-black text-blue-950 bg-blue-100/80 tabular-nums">
                                 {Math.round(c.totalReq).toLocaleString()}
                               </td>
 
-                              {/* Received Fabric - CLEAN UNOBSTRUCTED NUMBER */}
-                              <td className="px-2 py-2 border-r border-emerald-100 text-emerald-950 font-bold tabular-nums">{Math.round(c.recvBody).toLocaleString()}</td>
-                              <td className="px-2 py-2 border-r border-emerald-100 text-emerald-950 font-bold tabular-nums">{Math.round(c.recvRib).toLocaleString()}</td>
-                              <td className="px-2 py-2 border-r border-emerald-100 text-emerald-950 font-bold tabular-nums">{Math.round(c.recvSJ) || '0'}</td>
-                              <td className="px-2.5 py-2 border-r border-slate-300 font-black text-emerald-950 bg-emerald-100/70 tabular-nums text-right">
+                              {/* Received Fabric - CENTER ALIGNED, DARKER EXCEL BORDER */}
+                              <td className="px-2 py-2 border-r border-b border-slate-400 text-center align-middle text-emerald-950 font-bold tabular-nums">{Math.round(c.recvBody).toLocaleString()}</td>
+                              <td className="px-2 py-2 border-r border-b border-slate-400 text-center align-middle text-emerald-950 font-bold tabular-nums">{Math.round(c.recvRib).toLocaleString()}</td>
+                              <td className="px-2 py-2 border-r border-b border-slate-400 text-center align-middle text-emerald-950 font-bold tabular-nums">{Math.round(c.recvSJ) || '0'}</td>
+                              <td className="px-2.5 py-2 border-r border-b border-slate-400 text-center align-middle font-black text-emerald-950 bg-emerald-100/80 tabular-nums">
                                 {Math.round(c.totalRecv).toLocaleString()}
                               </td>
 
-                              {/* Dyeing Balance */}
-                              <td className="px-2 py-2 border-r border-slate-300 text-center font-bold">
-                                <span className={`px-2 py-0.5 rounded text-[10.5px] ${
+                              {/* Dyeing Balance - CENTER ALIGNED, DARKER EXCEL BORDER */}
+                              <td className="px-2 py-2 border-r border-b border-slate-400 text-center align-middle font-bold">
+                                <span className={`px-2 py-0.5 rounded text-[10.5px] inline-block ${
                                   c.dyeingBalance > 0
-                                    ? 'bg-amber-100 text-amber-950 border border-amber-300 font-black'
-                                    : 'bg-emerald-50 text-emerald-900 font-bold'
+                                    ? 'bg-amber-100 text-amber-950 border border-amber-400 font-black'
+                                    : 'bg-emerald-50 text-emerald-900 font-bold border border-emerald-300'
                                 }`}>
                                   {c.dyeingBalance > 0 ? `${Math.round(c.dyeingBalance).toLocaleString()} kg` : '0 kg (Done)'}
                                 </span>
                               </td>
 
-                              {/* Issued to Cutting - CLEAN UNOBSTRUCTED NUMBER */}
-                              <td className="px-2 py-2 border-r border-purple-100 text-purple-950 font-bold tabular-nums">{Math.round(c.issuedBody).toLocaleString()}</td>
-                              <td className="px-2 py-2 border-r border-purple-100 text-purple-950 font-bold tabular-nums">{Math.round(c.issuedRib).toLocaleString()}</td>
-                              <td className="px-2 py-2 border-r border-purple-100 text-purple-950 font-bold tabular-nums">{Math.round(c.issuedSJ) || '0'}</td>
-                              <td className="px-2.5 py-2 border-r border-slate-300 font-black text-purple-950 bg-purple-100/70 tabular-nums text-right">
+                              {/* Issued to Cutting - CENTER ALIGNED, DARKER EXCEL BORDER */}
+                              <td className="px-2 py-2 border-r border-b border-slate-400 text-center align-middle text-purple-950 font-bold tabular-nums">{Math.round(c.issuedBody).toLocaleString()}</td>
+                              <td className="px-2 py-2 border-r border-b border-slate-400 text-center align-middle text-purple-950 font-bold tabular-nums">{Math.round(c.issuedRib).toLocaleString()}</td>
+                              <td className="px-2 py-2 border-r border-b border-slate-400 text-center align-middle text-purple-950 font-bold tabular-nums">{Math.round(c.issuedSJ) || '0'}</td>
+                              <td className="px-2.5 py-2 border-r border-b border-slate-400 text-center align-middle font-black text-purple-950 bg-purple-100/80 tabular-nums">
                                 {Math.round(c.totalIssued).toLocaleString()}
                               </td>
 
-                              {/* In-Store Closing Stock */}
-                              <td className="px-2 py-2 border-r border-sky-100 text-sky-950 font-bold tabular-nums">{Math.round(c.stockBody).toLocaleString()}</td>
-                              <td className="px-2 py-2 border-r border-sky-100 text-sky-950 font-bold tabular-nums">{Math.round(c.stockRib).toLocaleString()}</td>
-                              <td className="px-2 py-2 border-r border-sky-100 text-sky-950 font-bold tabular-nums">{Math.round(c.stockSJ) || '0'}</td>
-                              <td className="px-2.5 py-2 border-r border-slate-300 font-black text-sky-950 bg-sky-100/70 tabular-nums">
+                              {/* In-Store Closing Stock - CENTER ALIGNED, DARKER EXCEL BORDER */}
+                              <td className="px-2 py-2 border-r border-b border-slate-400 text-center align-middle text-sky-950 font-bold tabular-nums">{Math.round(c.stockBody).toLocaleString()}</td>
+                              <td className="px-2 py-2 border-r border-b border-slate-400 text-center align-middle text-sky-950 font-bold tabular-nums">{Math.round(c.stockRib).toLocaleString()}</td>
+                              <td className="px-2 py-2 border-r border-b border-slate-400 text-center align-middle text-sky-950 font-bold tabular-nums">{Math.round(c.stockSJ) || '0'}</td>
+                              <td className="px-2.5 py-2 border-r border-b border-slate-400 text-center align-middle font-black text-sky-950 bg-sky-100/80 tabular-nums">
                                 {Math.round(c.stockBalance).toLocaleString()}
                               </td>
 
-                              {/* Location */}
-                              <td className="px-2 py-2 border-r border-slate-300 text-center">
-                                <span className="px-2 py-0.5 rounded text-[11px] font-black bg-blue-100 text-blue-950 border border-blue-400">
+                              {/* Location - CENTER ALIGNED, DARKER EXCEL BORDER */}
+                              <td className="px-2 py-2 border-r border-b border-slate-400 text-center align-middle">
+                                <span className="px-2 py-0.5 rounded text-[11px] font-black bg-blue-100 text-blue-950 border border-blue-400 inline-block">
                                   {batches.map(b => b.location.split(' / ')[0]).filter((v, i, a) => a.indexOf(v) === i).join(', ') || c.location || 'R-01'}
                                 </span>
                               </td>
@@ -4520,35 +4524,35 @@ function FinishedFabricPageInner() {
                           {selectedJobDetail.colorCount} Colors
                         </td>
 
-                        <td className="px-2 py-2 border-r border-blue-200">{Math.round(selectedJobDetail.reqBody).toLocaleString()}</td>
-                        <td className="px-2 py-2 border-r border-blue-200">{Math.round(selectedJobDetail.reqRib).toLocaleString()}</td>
-                        <td className="px-2 py-2 border-r border-blue-200">{Math.round(selectedJobDetail.reqSJ).toLocaleString()}</td>
-                        <td className="px-2.5 py-2 border-r border-slate-400 font-black text-blue-950 bg-blue-100">
+                        <td className="px-2 py-2 border-r border-b border-slate-400 text-center align-middle font-bold text-slate-950">{Math.round(selectedJobDetail.reqBody).toLocaleString()}</td>
+                        <td className="px-2 py-2 border-r border-b border-slate-400 text-center align-middle font-bold text-slate-950">{Math.round(selectedJobDetail.reqRib).toLocaleString()}</td>
+                        <td className="px-2 py-2 border-r border-b border-slate-400 text-center align-middle font-bold text-slate-950">{Math.round(selectedJobDetail.reqSJ).toLocaleString()}</td>
+                        <td className="px-2.5 py-2 border-r border-b border-slate-400 text-center align-middle font-black text-blue-950 bg-blue-100">
                           {Math.round(selectedJobDetail.totalReq).toLocaleString()}
                         </td>
 
-                        <td className="px-2 py-2 border-r border-emerald-200">{Math.round(selectedJobDetail.recvBody).toLocaleString()}</td>
-                        <td className="px-2 py-2 border-r border-emerald-200">{Math.round(selectedJobDetail.recvRib).toLocaleString()}</td>
-                        <td className="px-2 py-2 border-r border-emerald-200">{Math.round(selectedJobDetail.recvSJ).toLocaleString()}</td>
-                        <td className="px-2.5 py-2 border-r border-slate-400 font-black text-emerald-950 bg-emerald-100">
+                        <td className="px-2 py-2 border-r border-b border-slate-400 text-center align-middle font-bold text-slate-950">{Math.round(selectedJobDetail.recvBody).toLocaleString()}</td>
+                        <td className="px-2 py-2 border-r border-b border-slate-400 text-center align-middle font-bold text-slate-950">{Math.round(selectedJobDetail.recvRib).toLocaleString()}</td>
+                        <td className="px-2 py-2 border-r border-b border-slate-400 text-center align-middle font-bold text-slate-950">{Math.round(selectedJobDetail.recvSJ).toLocaleString()}</td>
+                        <td className="px-2.5 py-2 border-r border-b border-slate-400 text-center align-middle font-black text-emerald-950 bg-emerald-100">
                           {Math.round(selectedJobDetail.totalRecv).toLocaleString()}
                         </td>
 
-                        <td className="px-2 py-2 border-r border-slate-400 text-center font-black text-amber-950 bg-amber-100">
+                        <td className="px-2 py-2 border-r border-b border-slate-400 text-center align-middle font-black text-amber-950 bg-amber-100">
                           {Math.max(0, Math.round(selectedJobDetail.totalReq - selectedJobDetail.totalRecv)).toLocaleString()}
                         </td>
 
-                        <td className="px-2 py-2 border-r border-purple-200">{Math.round(selectedJobDetail.issuedBody).toLocaleString()}</td>
-                        <td className="px-2 py-2 border-r border-purple-200">{Math.round(selectedJobDetail.issuedRib).toLocaleString()}</td>
-                        <td className="px-2 py-2 border-r border-purple-200">{Math.round(selectedJobDetail.issuedSJ).toLocaleString()}</td>
-                        <td className="px-2.5 py-2 border-r border-slate-400 font-black text-purple-950 bg-purple-100">
+                        <td className="px-2 py-2 border-r border-b border-slate-400 text-center align-middle font-bold text-slate-950">{Math.round(selectedJobDetail.issuedBody).toLocaleString()}</td>
+                        <td className="px-2 py-2 border-r border-b border-slate-400 text-center align-middle font-bold text-slate-950">{Math.round(selectedJobDetail.issuedRib).toLocaleString()}</td>
+                        <td className="px-2 py-2 border-r border-b border-slate-400 text-center align-middle font-bold text-slate-950">{Math.round(selectedJobDetail.issuedSJ).toLocaleString()}</td>
+                        <td className="px-2.5 py-2 border-r border-b border-slate-400 text-center align-middle font-black text-purple-950 bg-purple-100">
                           {Math.round(selectedJobDetail.totalIssued).toLocaleString()}
                         </td>
 
-                        <td className="px-2 py-2 border-r border-sky-200">{Math.round(selectedJobDetail.stockBody).toLocaleString()}</td>
-                        <td className="px-2 py-2 border-r border-sky-200">{Math.round(selectedJobDetail.stockRib).toLocaleString()}</td>
-                        <td className="px-2 py-2 border-r border-sky-200">{Math.round(selectedJobDetail.stockSJ).toLocaleString()}</td>
-                        <td className="px-2.5 py-2 border-r border-slate-400 font-black text-sky-950 bg-sky-100">
+                        <td className="px-2 py-2 border-r border-b border-slate-400 text-center align-middle font-bold text-slate-950">{Math.round(selectedJobDetail.stockBody).toLocaleString()}</td>
+                        <td className="px-2 py-2 border-r border-b border-slate-400 text-center align-middle font-bold text-slate-950">{Math.round(selectedJobDetail.stockRib).toLocaleString()}</td>
+                        <td className="px-2 py-2 border-r border-b border-slate-400 text-center align-middle font-bold text-slate-950">{Math.round(selectedJobDetail.stockSJ).toLocaleString()}</td>
+                        <td className="px-2.5 py-2 border-r border-b border-slate-400 text-center align-middle font-black text-sky-950 bg-sky-100">
                           {Math.round(selectedJobDetail.totalStock).toLocaleString()}
                         </td>
 
@@ -4657,7 +4661,7 @@ function FinishedFabricPageInner() {
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-black text-slate-900 block mb-1">Rib Fabric (kg)</label>
+                        <label className="text-xs font-black block mb-1.5" style={{ color: '#090d16' }}>Rib Fabric (kg)</label>
                         <input
                           type="number"
                           step="any"
@@ -4669,7 +4673,7 @@ function FinishedFabricPageInner() {
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-black text-slate-900 block mb-1">S.Jersey (kg)</label>
+                        <label className="text-xs font-black block mb-1.5" style={{ color: '#090d16' }}>Single Jersey / SJ (kg)</label>
                         <input
                           type="number"
                           step="any"
@@ -4731,7 +4735,7 @@ function FinishedFabricPageInner() {
                   </div>
 
                   <form onSubmit={handleConfirmReceiveFromModal} className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-6 gap-2.5">
                       <div>
                         <label className="text-xs font-black text-slate-900 block mb-1">Source Type *</label>
                         <select
@@ -4778,11 +4782,18 @@ function FinishedFabricPageInner() {
                       </div>
 
                       <div>
-                        <label className="text-xs font-black text-slate-900 block mb-1">Rack &amp; Shelf Location *</label>
+                        <label className="text-xs font-black text-slate-900 block mb-1">Rack No *</label>
                         <select
-                          value={actionForm.location}
-                          onChange={(e) => setActionForm(prev => ({ ...prev, location: e.target.value }))}
-                          className="w-full px-3 py-2 bg-white border-2 border-slate-300 rounded-md text-xs font-black text-slate-900 focus:outline-hidden focus:border-emerald-600"
+                          value={actionForm.rackNo || 'R-02'}
+                          onChange={(e) => {
+                            const r = e.target.value;
+                            setActionForm(prev => ({
+                              ...prev,
+                              rackNo: r,
+                              location: `${r} / ${prev.shelfNo || 'Shelf 01'}`,
+                            }));
+                          }}
+                          className="w-full px-3 py-2 bg-white border-2 border-slate-400 rounded-md text-xs font-black text-slate-900 focus:outline-hidden focus:border-emerald-600"
                         >
                           {FACTORY_RACKS.map(r => (
                             <option key={r.id} value={r.id}>
@@ -4791,12 +4802,54 @@ function FinishedFabricPageInner() {
                           ))}
                         </select>
                       </div>
+
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-xs font-black text-slate-900">Shelf No (Slot / Shelf) *</label>
+                          <span className="text-[10px] text-emerald-800 font-bold bg-emerald-100 px-1 rounded">Select / Type</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <select
+                            value={['Shelf 01', 'Shelf 02', 'Shelf 03', 'Shelf 04', 'Shelf 05'].includes(actionForm.shelfNo) ? actionForm.shelfNo : 'custom'}
+                            onChange={(e) => {
+                              const s = e.target.value === 'custom' ? (actionForm.shelfNo || 'Shelf 01') : e.target.value;
+                              setActionForm(prev => ({
+                                ...prev,
+                                shelfNo: s,
+                                location: `${prev.rackNo || 'R-02'} / ${s}`,
+                              }));
+                            }}
+                            className="w-1/2 px-2 py-2 bg-white border-2 border-slate-400 rounded-md text-xs font-black text-slate-900 focus:outline-hidden focus:border-emerald-600"
+                          >
+                            <option value="Shelf 01">Shelf 01 (Default)</option>
+                            <option value="Shelf 02">Shelf 02</option>
+                            <option value="Shelf 03">Shelf 03</option>
+                            <option value="Shelf 04">Shelf 04</option>
+                            <option value="Shelf 05">Shelf 05</option>
+                            <option value="custom">Custom</option>
+                          </select>
+                          <input
+                            type="text"
+                            value={actionForm.shelfNo || 'Shelf 01'}
+                            onChange={(e) => {
+                              const s = e.target.value;
+                              setActionForm(prev => ({
+                                ...prev,
+                                shelfNo: s,
+                                location: `${prev.rackNo || 'R-02'} / ${s}`,
+                              }));
+                            }}
+                            placeholder="Type Shelf"
+                            className="w-1/2 px-2 py-2 bg-white border-2 border-slate-400 rounded-md text-xs font-black text-slate-900 focus:outline-hidden focus:border-emerald-600 font-mono"
+                          />
+                        </div>
+                      </div>
                     </div>
 
                     {/* Breakdown Quantities to Receive */}
-                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-emerald-50/50 p-4 rounded-lg border-2 border-emerald-200">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-emerald-50 p-4 rounded-lg border-2 border-emerald-300">
                       <div>
-                        <label className="text-xs font-black text-slate-900 block mb-1">Body Fabric (kg)</label>
+                        <label className="text-xs font-black block mb-1.5" style={{ color: '#090d16' }}>Body Fabric (kg)</label>
                         <input
                           type="number"
                           step="any"
@@ -4808,7 +4861,7 @@ function FinishedFabricPageInner() {
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-black text-slate-900 block mb-1">Rib Fabric (kg)</label>
+                        <label className="text-xs font-black block mb-1.5" style={{ color: '#090d16' }}>Rib Fabric (kg)</label>
                         <input
                           type="number"
                           step="any"
@@ -4820,7 +4873,7 @@ function FinishedFabricPageInner() {
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-black text-slate-900 block mb-1">S.Jersey (kg)</label>
+                        <label className="text-xs font-black block mb-1.5" style={{ color: '#090d16' }}>Single Jersey / SJ (kg)</label>
                         <input
                           type="number"
                           step="any"
@@ -4955,7 +5008,7 @@ function FinishedFabricPageInner() {
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-black text-slate-900 block mb-1">Rib Fabric (kg)</label>
+                        <label className="text-xs font-black block mb-1.5" style={{ color: '#090d16' }}>Rib Fabric (kg)</label>
                         <input
                           type="number"
                           step="any"
@@ -4967,7 +5020,7 @@ function FinishedFabricPageInner() {
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-black text-slate-900 block mb-1">S.Jersey (kg)</label>
+                        <label className="text-xs font-black block mb-1.5" style={{ color: '#090d16' }}>Single Jersey / SJ (kg)</label>
                         <input
                           type="number"
                           step="any"
