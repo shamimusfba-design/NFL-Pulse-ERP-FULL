@@ -2,8 +2,7 @@
    Table text never below 12px; header row and the left Job/Style columns stay frozen;
    the page keeps one vertical scroll, the grid only scrolls sideways. */
 
-.nos-dg{display:flex;flex-direction:column;gap:var(--sp-2);min-width:0;width:100%}
-.nos-dg[data-no-filters] .nos-dg-bar{display:none}
+.nos-dg{display:flex;flex-direction:column;gap:var(--sp-2)}
 
 /* ---- toolbar ---- */
 .nos-dg-bar{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap}
@@ -21,16 +20,15 @@
 .nos-dg-bulk .spacer{flex:1}
 
 /* ---- the table ---- */
-.nos-dg-scroller{overflow:auto;overscroll-behavior:contain;border:1px solid #cbd5e1;border-radius:6px;background:var(--nos-card);width:100%;max-width:100%;min-width:0;scrollbar-gutter:stable}
+.nos-dg-scroller{overflow:auto;overscroll-behavior:contain;border:1px solid var(--nos-line);border-radius:var(--r-md);background:var(--nos-card)}
 .nos-dg-scroller::-webkit-scrollbar{height:12px}
-.nos-dg-table{border-collapse:separate;border-spacing:0;table-layout:fixed;font-size:13px;color:var(--nos-ink);min-width:100%}
-.nos-dg-table tbody tr{height:38px}
-.nos-dg-scroller.compact .nos-dg-table tbody tr{height:32px}
-.nos-dg-table th,.nos-dg-table td{padding:9px 11px;border-right:1px solid #e2e8f0;border-bottom:1px solid #dbe2ea;text-align:left;white-space:nowrap;background:var(--nos-card);font-size:13px;line-height:1.35}
-.nos-dg-table th:last-child,.nos-dg-table td:last-child{border-right:0}
-.nos-dg-scroller.compact .nos-dg-table th,.nos-dg-scroller.compact .nos-dg-table td{padding:6px 9px}
+.nos-dg-table{border-collapse:separate;border-spacing:0;table-layout:fixed;font-size:var(--fs-xs);color:var(--nos-ink)}
+.nos-dg-table tbody tr{height:31px}
+.nos-dg-scroller.compact .nos-dg-table tbody tr{height:25px}
+.nos-dg-table th,.nos-dg-table td{padding:7px 10px;border-bottom:1px solid var(--nos-line);text-align:left;white-space:nowrap;background:var(--nos-card)}
+.nos-dg-scroller.compact .nos-dg-table th,.nos-dg-scroller.compact .nos-dg-table td{padding:4px 8px}
 .nos-dg-table td{overflow:hidden;text-overflow:ellipsis}
-.nos-dg-table thead th{overflow:visible;position:sticky;top:0;z-index:20;background:#eaf0f6;color:#172b4d;font-weight:700;border-bottom:2px solid #94a3b8;min-height:42px}
+.nos-dg-table thead th{overflow:visible;position:sticky;top:0;z-index:20;background:var(--nos-inset);color:var(--nos-ink);font-weight:var(--fw-medium);border-bottom:1px solid var(--nos-line-strong)}
 .nos-dg-table tbody tr:hover > td{background:var(--nos-inset)}
 .nos-dg-table tbody tr.is-selected > td{background:rgba(37,99,235,.10)}
 .nos-dg-table .ta-r{text-align:right}

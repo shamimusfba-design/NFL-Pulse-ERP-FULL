@@ -1938,7 +1938,6 @@ function FinishedFabricPageInner() {
             <DataGrid
               rows={colorGridRows}
               columns={colorGridColumns}
-              showColumnFilters={false}
               rowKey={(r) => r.id}
               frozenColumns={2}
               stickyTop={0}
@@ -1952,7 +1951,6 @@ function FinishedFabricPageInner() {
             <DataGrid
               rows={filteredJobGroups}
               columns={jobGridColumns}
-              showColumnFilters={false}
               rowKey={(r) => r.key}
               frozenColumns={2}
               stickyTop={0}

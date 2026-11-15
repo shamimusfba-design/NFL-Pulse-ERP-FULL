@@ -61,8 +61,6 @@ export type DataGridProps<T> = {
   /** extra controls shown on the toolbar's left */
   toolbarLeft?: React.ReactNode;
   loading?: boolean;
-  /** hide per-column filter controls while a page is in its spreadsheet-layout phase */
-  showColumnFilters?: boolean;
 };
 
 type ColFilter = { picked: Set<string> };
@@ -83,7 +81,7 @@ export function DataGrid<T>({
   columns, rows, rowKey, frozenColumns = 0, stickyTop = 0,
   onRowClick, selectedRowKey, selectable = false, bulkActions,
   storageKey, exportName = 'export', emptyText, emptyMessage,
-  toolbarLeft, loading = false, showColumnFilters = true,
+  toolbarLeft, loading = false,
 }: DataGridProps<T>) {
   const emptyLabel = emptyText ?? emptyMessage ?? 'No rows match the current filters.';
   const [filters, setFilters] = useState<Record<string, ColFilter>>({});
@@ -309,7 +307,7 @@ export function DataGrid<T>({
   };
 
   return (
-    <div className="nos-dg" data-nos data-no-filters={!showColumnFilters ? "" : undefined}>
+    <div className="nos-dg" data-nos>
       {/* toolbar: filters chips, group by, columns, density, views, export */}
       <div className="nos-dg-bar">
         {toolbarLeft}
@@ -441,7 +439,7 @@ export function DataGrid<T>({
                   >
                     <span className="nos-dg-th">
                       <span className="nos-dg-htext" title={c.header}>{c.header}</span>
-                      {showColumnFilters && c.filterable !== false && (
+                      {c.filterable !== false && (
                         <button
                           type="button"
                           className={`nos-dg-fbtn ${picked.size ? 'on' : ''}`}
