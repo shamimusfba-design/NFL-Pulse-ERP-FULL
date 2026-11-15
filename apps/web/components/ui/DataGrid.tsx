@@ -444,8 +444,19 @@ export function DataGrid<T>({
                           type="button"
                           className={`nos-dg-fbtn ${picked.size ? 'on' : ''}`}
                           aria-label={`Filter ${c.header}`}
+                          title={picked.size ? `Filter active (${picked.size} selected) - click to change` : `Filter by ${c.header}`}
                           onClick={e => { e.stopPropagation(); setOpenMenu(openMenu === c.key ? null : c.key); }}
-                        >▾</button>
+                        >
+                          {picked.size ? (
+                            <svg className="nos-dg-ficon" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z" />
+                            </svg>
+                          ) : (
+                            <svg className="nos-dg-ficon" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                        </button>
                       )}
                     </span>
                     {openMenu === c.key && (

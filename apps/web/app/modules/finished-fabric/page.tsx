@@ -584,6 +584,7 @@ function FinishedFabricPageInner() {
   const [colorTransactions, setColorTransactions] = useState<ColorTransactionRecord[]>([]);
   const [historyColorModal, setHistoryColorModal] = useState<{ jobNo: string; color: FabricColorLine; filterType?: 'ALL' | 'RECEIVE' | 'ISSUE' | 'RETURN' } | null>(null);
   const [expandedColors, setExpandedColors] = useState<Record<string, boolean>>({});
+  const [inlineHistoryTab, setInlineHistoryTab] = useState<Record<string, "RECEIVE" | "ISSUE" | "RETURN">>({});
   const [showExternalRacks, setShowExternalRacks] = useState(false);
   const [selectedRackId, setSelectedRackId] = useState("R-01");
   const [selectedJobKeys, setSelectedJobKeys] = useState<Set<string>>(new Set());
@@ -3126,7 +3127,7 @@ function FinishedFabricPageInner() {
                 {/* TIER 2 HEADER COLUMNS: SLEEK EXCEL AUTOFILTER (SINGLE-ROW CLEAN HEADER) */}
                 <tr className="bg-slate-100 text-slate-900 text-xs border-b border-slate-300 font-bold select-none">
                   {/* Sticky frozen Job No */}
-                  <th className="sticky left-0 z-40 bg-slate-100 p-2 text-slate-900 font-bold border-r border-slate-300 min-w-[140px] relative">
+                  <th className="sticky left-0 z-40 bg-slate-100 p-2 text-slate-900 font-black border-r border-slate-300 min-w-[220px] whitespace-nowrap relative">
                     <div className="flex items-center justify-between gap-1">
                       <button
                         type="button"
@@ -3609,8 +3610,8 @@ function FinishedFabricPageInner() {
                           }`}
                         >
                           {/* Sticky left column: Clean Job No, NO hashtag, NO buyer text */}
-                          <td className="sticky left-0 z-20 bg-white group-hover:bg-slate-50 px-3 py-2 border-r border-slate-200">
-                            <div className="font-bold text-[#0F274E] text-[12.5px] tracking-tight flex items-center gap-2">
+                          <td className="sticky left-0 z-20 bg-white group-hover:bg-slate-50 px-3 py-2 border-r border-slate-200 min-w-[220px] whitespace-nowrap">
+                            <div className="font-bold text-[#0F274E] text-[12.5px] tracking-tight inline-flex items-center gap-2 whitespace-nowrap">
                               <input
                                 type="checkbox"
                                 checked={selectedJobKeys.has(job.key)}
@@ -3621,11 +3622,11 @@ function FinishedFabricPageInner() {
                                   else next.delete(job.key);
                                   setSelectedJobKeys(next);
                                 }}
-                                className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-0 border-slate-400 cursor-pointer"
+                                className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-0 border-slate-400 cursor-pointer shrink-0"
                               />
-                              <span>{job.jobNo}</span>
+                              <span className="whitespace-nowrap font-black">{job.jobNo}</span>
                               {job.isImported && (
-                                <span className="text-[9px] px-1 py-0.2 bg-teal-100 text-teal-800 rounded font-bold">IMP</span>
+                                <span className="text-[9px] px-1.5 py-0.2 bg-teal-100 text-teal-800 rounded font-bold shrink-0">IMP</span>
                               )}
                             </div>
                           </td>
@@ -3778,7 +3779,7 @@ function FinishedFabricPageInner() {
                             >
                               <td className="sticky left-0 z-20 bg-slate-50/95 px-3 py-1.5 border-r border-slate-200 pl-6 text-slate-500 font-medium flex items-center gap-1.5">
                                 <span className="text-slate-400">└</span>
-                                <span className="text-[11px] text-slate-600 font-medium">{job.jobNo}</span>
+                                <span className="text-[11px] text-slate-600 font-medium whitespace-nowrap">{job.jobNo}</span>
                               </td>
 
                               <td className="px-3 py-1.5 text-slate-800 font-medium border-r border-slate-200">{job.style || '—'}</td>
@@ -4135,8 +4136,17 @@ function FinishedFabricPageInner() {
                       {selectedJobDetail.colors.map((c) => {
                         const isSelected = actionForm.selectedColorId === c.id;
                         const isUnfolded = expandedColors[c.id] || false;
+                        const currentHistTab = inlineHistoryTab[c.id] || 'RECEIVE';
 
-                        // Mock or real batch items
+                        // Transactions for this color
+                        const colorTxs = colorTransactions.filter(
+                          t => t.jobNo === selectedJobDetail.jobNo && (t.colorId === c.id || t.colorName === c.color)
+                        );
+                        const recvTxs = colorTxs.filter(t => t.type === 'RECEIVE');
+                        const issueTxs = colorTxs.filter(t => t.type === 'ISSUE');
+                        const returnTxs = colorTxs.filter(t => t.type === 'RETURN');
+
+                        // Default batches list
                         const batches: FabricBatchItem[] = (c.batchesInfo && c.batchesInfo.length > 0) ? c.batchesInfo : (
                           (c.batches && c.batches.length > 0)
                             ? c.batches.map((b, bIdx) => ({
@@ -4179,11 +4189,11 @@ function FinishedFabricPageInner() {
                                     className="w-3.5 h-3.5 rounded-full shrink-0 shadow-xs border border-slate-400"
                                     style={{ backgroundColor: getColorHex(c.color) }}
                                   />
-                                  <span className="font-extrabold text-[12.5px] text-slate-950">
+                                  <span className="font-black text-[12.5px] text-slate-950">
                                     {c.color || 'Solid'}
                                   </span>
-                                  <span className="text-[10px] text-blue-700 bg-blue-100 px-1 rounded font-bold">
-                                    {isUnfolded ? '▲ Fold' : '▼ Batches'}
+                                  <span className="text-[10px] text-blue-700 bg-blue-100 hover:bg-blue-200 px-1.5 py-0.5 rounded font-black border border-blue-300">
+                                    {isUnfolded ? '▲ Close History' : '▼ View History'}
                                   </span>
                                 </div>
                               </td>
@@ -4207,25 +4217,12 @@ function FinishedFabricPageInner() {
                                 {Math.round(c.totalReq).toLocaleString()}
                               </td>
 
-                              {/* Received Fabric */}
+                              {/* Received Fabric - CLEAN UNOBSTRUCTED NUMBER */}
                               <td className="px-2 py-2 border-r border-emerald-100 text-emerald-950 font-bold tabular-nums">{Math.round(c.recvBody).toLocaleString()}</td>
                               <td className="px-2 py-2 border-r border-emerald-100 text-emerald-950 font-bold tabular-nums">{Math.round(c.recvRib).toLocaleString()}</td>
                               <td className="px-2 py-2 border-r border-emerald-100 text-emerald-950 font-bold tabular-nums">{Math.round(c.recvSJ) || '0'}</td>
-                              <td className="px-2.5 py-2 border-r border-slate-300 font-black text-emerald-950 bg-emerald-100/70 tabular-nums">
-                                <div className="flex items-center justify-end gap-1.5">
-                                  <span>{Math.round(c.totalRecv).toLocaleString()}</span>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setHistoryColorModal({ jobNo: selectedJobDetail.jobNo, color: c, filterType: 'RECEIVE' });
-                                    }}
-                                    className="px-1 py-0.5 bg-emerald-200 hover:bg-emerald-300 text-emerald-950 rounded text-[9.5px] font-black border border-emerald-400"
-                                    title="View Receive History"
-                                  >
-                                    📜 Recv Hist
-                                  </button>
-                                </div>
+                              <td className="px-2.5 py-2 border-r border-slate-300 font-black text-emerald-950 bg-emerald-100/70 tabular-nums text-right">
+                                {Math.round(c.totalRecv).toLocaleString()}
                               </td>
 
                               {/* Dyeing Balance */}
@@ -4239,25 +4236,12 @@ function FinishedFabricPageInner() {
                                 </span>
                               </td>
 
-                              {/* Issued to Cutting */}
+                              {/* Issued to Cutting - CLEAN UNOBSTRUCTED NUMBER */}
                               <td className="px-2 py-2 border-r border-purple-100 text-purple-950 font-bold tabular-nums">{Math.round(c.issuedBody).toLocaleString()}</td>
                               <td className="px-2 py-2 border-r border-purple-100 text-purple-950 font-bold tabular-nums">{Math.round(c.issuedRib).toLocaleString()}</td>
                               <td className="px-2 py-2 border-r border-purple-100 text-purple-950 font-bold tabular-nums">{Math.round(c.issuedSJ) || '0'}</td>
-                              <td className="px-2.5 py-2 border-r border-slate-300 font-black text-purple-950 bg-purple-100/70 tabular-nums">
-                                <div className="flex items-center justify-end gap-1.5">
-                                  <span>{Math.round(c.totalIssued).toLocaleString()}</span>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setHistoryColorModal({ jobNo: selectedJobDetail.jobNo, color: c, filterType: 'ISSUE' });
-                                    }}
-                                    className="px-1 py-0.5 bg-purple-200 hover:bg-purple-300 text-purple-950 rounded text-[9.5px] font-black border border-purple-400"
-                                    title="View Delivery History"
-                                  >
-                                    📜 Delivery Hist
-                                  </button>
-                                </div>
+                              <td className="px-2.5 py-2 border-r border-slate-300 font-black text-purple-950 bg-purple-100/70 tabular-nums text-right">
+                                {Math.round(c.totalIssued).toLocaleString()}
                               </td>
 
                               {/* In-Store Closing Stock */}
@@ -4276,7 +4260,7 @@ function FinishedFabricPageInner() {
                               </td>
 
                               {/* Actions */}
-                              <td className="px-2 py-2 text-center">
+                              <td className="px-2 py-2 text-center whitespace-nowrap">
                                 <div className="flex items-center justify-center gap-1">
                                   <button
                                     type="button"
@@ -4285,7 +4269,7 @@ function FinishedFabricPageInner() {
                                       setActionModalMode('RECEIVE');
                                       setActionForm(f => ({ ...f, selectedColorId: c.id, colorName: c.color }));
                                     }}
-                                    className="px-2 py-0.5 bg-emerald-100 text-emerald-950 hover:bg-emerald-200 border border-emerald-400 rounded text-[10.5px] font-extrabold"
+                                    className="px-2 py-0.5 bg-emerald-100 text-emerald-950 hover:bg-emerald-200 border border-emerald-400 rounded text-[10.5px] font-black"
                                     title="Receive fabric"
                                   >
                                     + Recv
@@ -4297,7 +4281,7 @@ function FinishedFabricPageInner() {
                                       setActionModalMode('ISSUE');
                                       setActionForm(f => ({ ...f, selectedColorId: c.id, colorName: c.color }));
                                     }}
-                                    className="px-2 py-0.5 bg-purple-100 text-purple-950 hover:bg-purple-200 border border-purple-400 rounded text-[10.5px] font-extrabold"
+                                    className="px-2 py-0.5 bg-purple-100 text-purple-950 hover:bg-purple-200 border border-purple-400 rounded text-[10.5px] font-black"
                                     title="Delivery to cutting"
                                   >
                                     ✂ Delivery
@@ -4309,7 +4293,7 @@ function FinishedFabricPageInner() {
                                       setActionModalMode('RETURN');
                                       setReturnForm(f => ({ ...f, selectedColorId: c.id, colorName: c.color }));
                                     }}
-                                    className="px-2 py-0.5 bg-rose-100 text-rose-950 hover:bg-rose-200 border border-rose-400 rounded text-[10.5px] font-extrabold"
+                                    className="px-2 py-0.5 bg-rose-100 text-rose-950 hover:bg-rose-200 border border-rose-400 rounded text-[10.5px] font-black"
                                     title="Return fabric"
                                   >
                                     ↩ Return
@@ -4318,63 +4302,207 @@ function FinishedFabricPageInner() {
                               </td>
                             </tr>
 
-                            {/* UNFOLDED BATCHES SUB-ROWS */}
+                            {/* INLINE UNFOLDED HISTORY SECTION (NO AWKWARD POPUP!) */}
                             {isUnfolded && (
-                              <tr className="bg-slate-100/90 border-y-2 border-slate-300">
-                                <td colSpan={25} className="p-3 pl-8">
-                                  <div className="bg-white rounded-lg border-2 border-slate-300 p-3 shadow-inner">
-                                    <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-200">
-                                      <span className="font-black text-xs text-slate-900 flex items-center gap-1.5">
-                                        <Layers className="w-3.5 h-3.5 text-blue-600" />
-                                        Batch Breakdown for &quot;{c.color}&quot; ({batches.length} Batches Received)
-                                      </span>
-                                      <span className="text-[11px] font-bold text-slate-600">
-                                        Total Batch Stock: {Math.round(c.stockBalance)} kg
-                                      </span>
+                              <tr className="bg-slate-100/95 border-y-2 border-slate-400 animate-in fade-in duration-100">
+                                <td colSpan={25} className="p-3 pl-6">
+                                  <div className="bg-white rounded-lg border-2 border-slate-300 p-3.5 shadow-md space-y-3">
+                                    {/* Tabs inside inline unfold: Receive History / Delivery History / Returns */}
+                                    <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-200">
+                                      <div className="flex items-center gap-2">
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setInlineHistoryTab(prev => ({ ...prev, [c.id]: 'RECEIVE' }));
+                                          }}
+                                          className={`px-3 py-1 rounded-md text-xs font-black flex items-center gap-1.5 transition-all ${
+                                            currentHistTab === 'RECEIVE'
+                                              ? 'bg-emerald-700 text-white shadow-xs'
+                                              : 'bg-emerald-50 text-emerald-900 border border-emerald-300 hover:bg-emerald-100'
+                                          }`}
+                                        >
+                                          <span>📥 Receive History &amp; Batches ({batches.length})</span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setInlineHistoryTab(prev => ({ ...prev, [c.id]: 'ISSUE' }));
+                                          }}
+                                          className={`px-3 py-1 rounded-md text-xs font-black flex items-center gap-1.5 transition-all ${
+                                            currentHistTab === 'ISSUE'
+                                              ? 'bg-purple-700 text-white shadow-xs'
+                                              : 'bg-purple-50 text-purple-900 border border-purple-300 hover:bg-purple-100'
+                                          }`}
+                                        >
+                                          <span>📤 Delivery History to Cutting ({issueTxs.length})</span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setInlineHistoryTab(prev => ({ ...prev, [c.id]: 'RETURN' }));
+                                          }}
+                                          className={`px-3 py-1 rounded-md text-xs font-black flex items-center gap-1.5 transition-all ${
+                                            currentHistTab === 'RETURN'
+                                              ? 'bg-rose-700 text-white shadow-xs'
+                                              : 'bg-rose-50 text-rose-900 border border-rose-300 hover:bg-rose-100'
+                                          }`}
+                                        >
+                                          <span>↩ Return Records ({returnTxs.length})</span>
+                                        </button>
+                                      </div>
+
+                                      <div className="text-xs font-black text-slate-800">
+                                        Color: <span className="text-blue-900 font-black">{c.color}</span> &middot; Stock: {Math.round(c.stockBalance)} kg
+                                      </div>
                                     </div>
 
-                                    <table className="w-full text-left text-xs border-collapse">
-                                      <thead>
-                                        <tr className="bg-slate-100 text-slate-900 text-[11px] font-black border-b border-slate-300">
-                                          <th className="px-2.5 py-1.5">Batch No</th>
-                                          <th className="px-2.5 py-1.5">Receive Date</th>
-                                          <th className="px-2.5 py-1.5">Source Type</th>
-                                          <th className="px-2 py-1.5 text-right">Body (kg)</th>
-                                          <th className="px-2 py-1.5 text-right">Rib (kg)</th>
-                                          <th className="px-2 py-1.5 text-right">S.Jersey (kg)</th>
-                                          <th className="px-2.5 py-1.5 text-right font-black text-emerald-950 bg-emerald-50">Total kg</th>
-                                          <th className="px-3 py-1.5 font-black text-center text-blue-950 bg-blue-50">Storage Location (Rack &amp; Shelf)</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody className="divide-y divide-slate-200">
-                                        {batches.map(b => (
-                                          <tr key={b.batchNo} className="hover:bg-slate-50 font-semibold text-slate-900">
-                                            <td className="px-2.5 py-1.5 font-mono font-black text-amber-950">
-                                              <span className="bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded">
-                                                {b.batchNo}
-                                              </span>
-                                            </td>
-                                            <td className="px-2.5 py-1.5 text-slate-700">{b.date}</td>
-                                            <td className="px-2.5 py-1.5">
-                                              <span className="px-1.5 py-0.5 bg-slate-100 text-slate-800 rounded text-[10px] font-bold border border-slate-300">
-                                                {b.source || 'From Dyeing'}
-                                              </span>
-                                            </td>
-                                            <td className="px-2 py-1.5 text-right tabular-nums">{Math.round(b.bodyKg)}</td>
-                                            <td className="px-2 py-1.5 text-right tabular-nums">{Math.round(b.ribKg)}</td>
-                                            <td className="px-2 py-1.5 text-right tabular-nums">{Math.round(b.sjKg)}</td>
-                                            <td className="px-2.5 py-1.5 text-right font-black text-emerald-950 bg-emerald-50 tabular-nums">
-                                              {Math.round(b.totalKg)} kg
-                                            </td>
-                                            <td className="px-3 py-1.5 text-center font-black text-blue-950 bg-blue-50">
-                                              <span className="px-2 py-0.5 bg-white border-2 border-blue-400 rounded text-[11px] shadow-2xs font-mono font-black">
-                                                📍 {b.location}
-                                              </span>
-                                            </td>
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
+                                    {/* Tab 1: RECEIVE HISTORY */}
+                                    {currentHistTab === 'RECEIVE' && (
+                                      <div>
+                                        <h5 className="text-[11px] font-black uppercase text-emerald-950 mb-1.5 flex items-center gap-1.5">
+                                          <span>Batch Inward Receive Records</span>
+                                        </h5>
+                                        <table className="w-full text-left text-xs border-collapse border border-slate-200 rounded">
+                                          <thead>
+                                            <tr className="bg-emerald-100 text-emerald-950 text-[11px] font-black border-b border-emerald-300">
+                                              <th className="px-2.5 py-1.5">Batch No</th>
+                                              <th className="px-2.5 py-1.5">Receive Date</th>
+                                              <th className="px-2.5 py-1.5">Source Type</th>
+                                              <th className="px-2 py-1.5 text-right">Body (kg)</th>
+                                              <th className="px-2 py-1.5 text-right">Rib (kg)</th>
+                                              <th className="px-2 py-1.5 text-right">S.Jersey (kg)</th>
+                                              <th className="px-2.5 py-1.5 text-right font-black text-emerald-950 bg-emerald-200">Total kg</th>
+                                              <th className="px-3 py-1.5 font-black text-center text-blue-950 bg-blue-100">Location (Rack &amp; Shelf)</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody className="divide-y divide-slate-200">
+                                            {batches.map(b => (
+                                              <tr key={b.batchNo} className="hover:bg-slate-50 font-bold text-slate-900">
+                                                <td className="px-2.5 py-1.5 font-mono font-black text-amber-950">
+                                                  <span className="bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded">
+                                                    {b.batchNo}
+                                                  </span>
+                                                </td>
+                                                <td className="px-2.5 py-1.5 text-slate-700">{b.date}</td>
+                                                <td className="px-2.5 py-1.5">
+                                                  <span className="px-1.5 py-0.5 bg-slate-100 text-slate-800 rounded text-[10.5px] font-bold border border-slate-300">
+                                                    {b.source || 'From Dyeing'}
+                                                  </span>
+                                                </td>
+                                                <td className="px-2 py-1.5 text-right tabular-nums">{Math.round(b.bodyKg)}</td>
+                                                <td className="px-2 py-1.5 text-right tabular-nums">{Math.round(b.ribKg)}</td>
+                                                <td className="px-2 py-1.5 text-right tabular-nums">{Math.round(b.sjKg)}</td>
+                                                <td className="px-2.5 py-1.5 text-right font-black text-emerald-950 bg-emerald-50 tabular-nums">
+                                                  {Math.round(b.totalKg)} kg
+                                                </td>
+                                                <td className="px-3 py-1.5 text-center font-black text-blue-950">
+                                                  <span className="px-2 py-0.5 bg-blue-50 border border-blue-300 rounded text-[11px] font-mono font-black">
+                                                    📍 {b.location}
+                                                  </span>
+                                                </td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    )}
+
+                                    {/* Tab 2: DELIVERY HISTORY */}
+                                    {currentHistTab === 'ISSUE' && (
+                                      <div>
+                                        <h5 className="text-[11px] font-black uppercase text-purple-950 mb-1.5 flex items-center gap-1.5">
+                                          <span>Cutting Floor Dispatch Records</span>
+                                        </h5>
+                                        {issueTxs.length === 0 ? (
+                                          <div className="p-3 text-center text-xs text-slate-600 bg-purple-50/60 rounded border border-purple-200 font-semibold">
+                                            No delivery to cutting recorded yet for this color.
+                                          </div>
+                                        ) : (
+                                          <table className="w-full text-left text-xs border-collapse border border-slate-200 rounded">
+                                            <thead>
+                                              <tr className="bg-purple-100 text-purple-950 text-[11px] font-black border-b border-purple-300">
+                                                <th className="px-2.5 py-1.5">Delivery Date</th>
+                                                <th className="px-2.5 py-1.5">Batch Dispatched</th>
+                                                <th className="px-2 py-1.5 text-right">Body (kg)</th>
+                                                <th className="px-2 py-1.5 text-right">Rib (kg)</th>
+                                                <th className="px-2 py-1.5 text-right">S.Jersey (kg)</th>
+                                                <th className="px-2.5 py-1.5 text-right font-black text-purple-950 bg-purple-200">Total Issued</th>
+                                                <th className="px-3 py-1.5">Delivery Remarks</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-200">
+                                              {issueTxs.map(t => (
+                                                <tr key={t.id} className="hover:bg-slate-50 font-bold text-slate-900">
+                                                  <td className="px-2.5 py-1.5 text-slate-700">{t.date}</td>
+                                                  <td className="px-2.5 py-1.5 font-mono font-black text-amber-950">
+                                                    <span className="bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded">
+                                                      {t.batchNo || 'B-01'}
+                                                    </span>
+                                                  </td>
+                                                  <td className="px-2 py-1.5 text-right tabular-nums">{Math.round(t.bodyKg)}</td>
+                                                  <td className="px-2 py-1.5 text-right tabular-nums">{Math.round(t.ribKg)}</td>
+                                                  <td className="px-2 py-1.5 text-right tabular-nums">{Math.round(t.sjKg)}</td>
+                                                  <td className="px-2.5 py-1.5 text-right font-black text-purple-950 bg-purple-50 tabular-nums">
+                                                    {Math.round(t.totalKg)} kg
+                                                  </td>
+                                                  <td className="px-3 py-1.5 text-slate-700 font-semibold">{t.remarks || t.refNo || 'Cutting delivery'}</td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        )}
+                                      </div>
+                                    )}
+
+                                    {/* Tab 3: RETURN HISTORY */}
+                                    {currentHistTab === 'RETURN' && (
+                                      <div>
+                                        <h5 className="text-[11px] font-black uppercase text-rose-950 mb-1.5 flex items-center gap-1.5">
+                                          <span>Fabric Return Records</span>
+                                        </h5>
+                                        {returnTxs.length === 0 ? (
+                                          <div className="p-3 text-center text-xs text-slate-600 bg-rose-50/60 rounded border border-rose-200 font-semibold">
+                                            No fabric return recorded for this color.
+                                          </div>
+                                        ) : (
+                                          <table className="w-full text-left text-xs border-collapse border border-slate-200 rounded">
+                                            <thead>
+                                              <tr className="bg-rose-100 text-rose-950 text-[11px] font-black border-b border-rose-300">
+                                                <th className="px-2.5 py-1.5">Return Date</th>
+                                                <th className="px-2.5 py-1.5">Batch</th>
+                                                <th className="px-2 py-1.5 text-right">Body (kg)</th>
+                                                <th className="px-2 py-1.5 text-right">Rib (kg)</th>
+                                                <th className="px-2 py-1.5 text-right">S.Jersey (kg)</th>
+                                                <th className="px-2.5 py-1.5 text-right font-black text-rose-950 bg-rose-200">Total Deducted</th>
+                                                <th className="px-3 py-1.5">Reason &amp; Remarks</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-200">
+                                              {returnTxs.map(t => (
+                                                <tr key={t.id} className="hover:bg-slate-50 font-bold text-slate-900">
+                                                  <td className="px-2.5 py-1.5 text-slate-700">{t.date}</td>
+                                                  <td className="px-2.5 py-1.5 font-mono font-black text-amber-950">
+                                                    <span className="bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded">
+                                                      {t.batchNo || 'B-RET-01'}
+                                                    </span>
+                                                  </td>
+                                                  <td className="px-2 py-1.5 text-right tabular-nums">{Math.round(t.bodyKg)}</td>
+                                                  <td className="px-2 py-1.5 text-right tabular-nums">{Math.round(t.ribKg)}</td>
+                                                  <td className="px-2 py-1.5 text-right tabular-nums">{Math.round(t.sjKg)}</td>
+                                                  <td className="px-2.5 py-1.5 text-right font-black text-rose-950 bg-rose-50 tabular-nums">
+                                                    {Math.round(t.totalKg)} kg
+                                                  </td>
+                                                  <td className="px-3 py-1.5 text-slate-700 font-semibold">{t.remarks || t.refNo || 'Defect return'}</td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        )}
+                                      </div>
+                                    )}
                                   </div>
                                 </td>
                               </tr>
@@ -4383,7 +4511,6 @@ function FinishedFabricPageInner() {
                         );
                       })}
                     </tbody>
-                    {/* TOTAL JOB ROW */}
                     <tfoot>
                       <tr className="bg-slate-200/90 font-black text-slate-900 text-right border-t-2 border-slate-400">
                         <td className="sticky left-0 z-20 bg-slate-200 text-left px-3.5 py-2 uppercase tracking-wide border-r border-slate-400">
