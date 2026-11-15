@@ -677,6 +677,9 @@ function FinishedFabricPageInner() {
     if (typeof window !== 'undefined' && window.confirm('Are you sure you want to delete all Fabric Store data? This will clear all records and rack locations.')) {
       setRawLines([]);
       setRackLoc({});
+      setLeftoverLedger([]);
+      setChallans([]);
+      setCuttingIssues([]);
       try {
         localStorage.removeItem(FINISHED_FABRIC_STORAGE_KEY);
         localStorage.removeItem(RACK_STORE_KEY);
@@ -1759,36 +1762,7 @@ function FinishedFabricPageInner() {
   // --------------------------------------------------------------------------
   // LEFTOVER & REUSE LEDGER STATE
   // --------------------------------------------------------------------------
-  const [leftoverLedger, setLeftoverLedger] = useState<LeftoverReturnRecord[]>([
-    {
-      id: 'lr-1',
-      date: '2026-11-09',
-      jobNo: 'BSONS 48283 4th',
-      color: 'Black C-N10 (B/Part Dye)',
-      source: 'Closing Stock Balance',
-      bodyKg: 31,
-      ribKg: 13,
-      sjKg: 0,
-      totalKg: 44,
-      returnedBy: 'Store Inventory Closing',
-      rackAssigned: 'R-19 · Shelf 02',
-      status: 'Available in Leftover',
-    },
-    {
-      id: 'lr-2',
-      date: '2026-11-10',
-      jobNo: 'OVS 47858',
-      color: 'Cashmere Blue',
-      source: 'Cutting Return',
-      bodyKg: 18,
-      ribKg: 0,
-      sjKg: 0,
-      totalKg: 18,
-      returnedBy: 'Cutting Floor Unit-1',
-      rackAssigned: 'R-18 · Shelf 01',
-      status: 'Available in Leftover',
-    },
-  ]);
+  const [leftoverLedger, setLeftoverLedger] = useState<LeftoverReturnRecord[]>([]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -2278,8 +2252,16 @@ function FinishedFabricPageInner() {
     let totalBalanceKg = 0;
     let totalIssuedKg = 0;
     let totalLeftoverKg = 0;
+    let recvBodyKg = 0;
+    let recvRibKg = 0;
+    let issuedBodyKg = 0;
+    let issuedRibKg = 0;
 
     rawLines.forEach(l => {
+      recvBodyKg += l.recvBody;
+      recvRibKg += l.recvRib;
+      issuedBodyKg += l.issuedBody;
+      issuedRibKg += l.issuedRib;
       totalStockKg += l.stockBalance;
       totalOrderKg += l.totalReq;
       totalRecvKg += l.totalRecv;
@@ -2289,8 +2271,14 @@ function FinishedFabricPageInner() {
     });
 
     const pendingCuttingIssueKg = Math.max(0, totalRecvKg - totalIssuedKg);
-    const dailyReceiveKg = 2480;
-    const dailyDeliveryKg = 2150;
+    // Daily run-rate = average per active day from the real receive / issue records (0 when there are none)
+    const avgPerDay = (items: { date: string; kg: number }[]) => {
+      if (items.length === 0) return 0;
+      const days = new Set(items.map(i => i.date)).size || 1;
+      return Math.round(items.reduce((a, i) => a + i.kg, 0) / days);
+    };
+    const dailyReceiveKg = avgPerDay(challans.filter(c => c.status === 'Accepted').map(c => ({ date: c.date, kg: c.totalKg })));
+    const dailyDeliveryKg = avgPerDay(cuttingIssues.map(c => ({ date: c.date, kg: c.totalKg })));
 
     const buyerMap: Record<string, { orderKg: number; recvKg: number; issuedKg: number; stockKg: number; balanceKg: number; jobs: Set<string> }> = {};
     rawLines.forEach(l => {
@@ -2333,12 +2321,16 @@ function FinishedFabricPageInner() {
       pendingCuttingIssueKg,
       pendingCuttingIssueTons: (pendingCuttingIssueKg / 1000).toFixed(1),
       totalLeftoverKg,
+      recvBodyKg,
+      recvRibKg,
+      issuedBodyKg,
+      issuedRibKg,
       totalLeftoverLots: leftoverLedger.length,
       dailyReceiveKg,
       dailyDeliveryKg,
       buyerChartData,
     };
-  }, [rawLines, jobGroups, leftoverLedger]);
+  }, [rawLines, jobGroups, leftoverLedger, challans, cuttingIssues]);
 
   // --------------------------------------------------------------------------
   // ACTIONS: RECEIVE MODAL CONFIRMATION
@@ -2629,10 +2621,10 @@ function FinishedFabricPageInner() {
                 Received vs Balance
               </span>
               <div className="text-base font-bold text-emerald-800 mt-0.5">
-                3,168.3 <span className="text-xs font-normal text-slate-500">Tons Recv</span>
+                {dashboardKpis.totalRecvTons} <span className="text-xs font-normal text-slate-500">Tons Recv</span>
               </div>
               <div className="text-xs font-semibold text-emerald-700 mt-1">
-                Body: 2,941.2T · Rib: 227.1T
+                Body: {(dashboardKpis.recvBodyKg / 1000).toFixed(1)}T · Rib: {(dashboardKpis.recvRibKg / 1000).toFixed(1)}T
               </div>
             </div>
 
@@ -2641,10 +2633,10 @@ function FinishedFabricPageInner() {
                 Cutting Issue & Pending
               </span>
               <div className="text-base font-bold text-purple-800 mt-0.5">
-                2,832.3 <span className="text-xs font-normal text-slate-500">Tons Issued</span>
+                {dashboardKpis.totalIssuedTons} <span className="text-xs font-normal text-slate-500">Tons Issued</span>
               </div>
               <div className="text-xs font-semibold text-purple-700 mt-1">
-                Body: 2,622.8T · Rib: 209.5T
+                Body: {(dashboardKpis.issuedBodyKg / 1000).toFixed(1)}T · Rib: {(dashboardKpis.issuedRibKg / 1000).toFixed(1)}T
               </div>
             </div>
 
@@ -2747,82 +2739,82 @@ function FinishedFabricPageInner() {
       {/* ===================================================================== */}
       {/* MAIN NAVIGATION TABS (MATCHING TRIMS & ACCESSORIES STORE STANDARD) */}
       {/* ===================================================================== */}
-      <div className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap pb-2 pt-1 mb-4 border-b border-slate-200">
+      <div className="flex w-full items-stretch gap-2 overflow-x-auto whitespace-nowrap pb-2 pt-1 mb-4 border-b border-slate-200">
         <button
           type="button"
           onClick={() => setActiveTab('STOCK')}
-          className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 transition-all ${
+          className={`flex-1 justify-center px-4 py-2.5 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${
             activeTab === 'STOCK'
               ? 'bg-slate-900 text-white shadow-xs'
               : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
           }`}
         >
-          <Boxes size={14} className={activeTab === 'STOCK' ? 'text-sky-400' : 'text-slate-500'} />
+          <Boxes size={17} className={activeTab === 'STOCK' ? 'text-sky-400' : 'text-slate-500'} />
           <span>Stock Report</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('SUMMARY_STATEMENT')}
-          className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 transition-all ${
+          className={`flex-1 justify-center px-4 py-2.5 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${
             activeTab === 'SUMMARY_STATEMENT'
               ? 'bg-emerald-700 text-white shadow-xs'
               : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
           }`}
         >
-          <FileSpreadsheet size={14} className={activeTab === 'SUMMARY_STATEMENT' ? 'text-white' : 'text-emerald-600'} />
+          <FileSpreadsheet size={17} className={activeTab === 'SUMMARY_STATEMENT' ? 'text-white' : 'text-emerald-600'} />
           <span>Monthly Summary</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('RECEIVE')}
-          className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 transition-all ${
+          className={`flex-1 justify-center px-4 py-2.5 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${
             activeTab === 'RECEIVE'
               ? 'bg-slate-900 text-white shadow-xs'
               : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
           }`}
         >
-          <Truck size={14} className={activeTab === 'RECEIVE' ? 'text-sky-400' : 'text-slate-500'} />
+          <Truck size={17} className={activeTab === 'RECEIVE' ? 'text-sky-400' : 'text-slate-500'} />
           <span>Fabric Receive</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('ISSUE')}
-          className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 transition-all ${
+          className={`flex-1 justify-center px-4 py-2.5 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${
             activeTab === 'ISSUE'
               ? 'bg-slate-900 text-white shadow-xs'
               : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
           }`}
         >
-          <Scissors size={14} className={activeTab === 'ISSUE' ? 'text-sky-400' : 'text-slate-500'} />
+          <Scissors size={17} className={activeTab === 'ISSUE' ? 'text-sky-400' : 'text-slate-500'} />
           <span>Fabric Delivery</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('LOCATION')}
-          className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 transition-all ${
+          className={`flex-1 justify-center px-4 py-2.5 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${
             activeTab === 'LOCATION'
               ? 'bg-slate-900 text-white shadow-xs'
               : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
           }`}
         >
-          <Warehouse size={14} className={activeTab === 'LOCATION' ? 'text-sky-400' : 'text-slate-500'} />
+          <Warehouse size={17} className={activeTab === 'LOCATION' ? 'text-sky-400' : 'text-slate-500'} />
           <span>Location Tracking</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('REUSE')}
-          className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 transition-all ${
+          className={`flex-1 justify-center px-4 py-2.5 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${
             activeTab === 'REUSE'
               ? 'bg-slate-900 text-white shadow-xs'
               : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
           }`}
         >
-          <RotateCcw size={14} className={activeTab === 'REUSE' ? 'text-sky-400' : 'text-slate-500'} />
+          <RotateCcw size={17} className={activeTab === 'REUSE' ? 'text-sky-400' : 'text-slate-500'} />
           <span>Leftover Stock</span>
         </button>
       </div>
@@ -6283,8 +6275,8 @@ function FinishedFabricPageInner() {
       {/* QUICK RECEIVE DIALOG IN STOCK REPORT */}
       {/* ===================================================================== */}
       {quickReceiveOpen && (
-        <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-2xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full border-2 border-emerald-500 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+        <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-2xs flex items-center justify-center p-4" style={{isolation: 'isolate'}}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full border-2 border-emerald-500 animate-in fade-in zoom-in-95 duration-100">
             <div className="px-5 py-3.5 bg-emerald-700 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Plus className="w-5 h-5 stroke-[2.5]" />
